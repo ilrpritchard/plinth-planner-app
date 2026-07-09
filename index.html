@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <!-- never cache during development, so code changes always take effect -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>PL/NNER — Plan Your Kitchen · PL/NTH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;1,500;1,600&display=swap" />
+  <link rel="stylesheet" href="./src/ui/styles.css" />
+  <!-- Three.js via import-map: no build step, drop straight onto the Plinth site. -->
+  <!-- Three.js vendored locally so the planner is fully self-contained (no CDN). -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/three.module.js",
+      "three/addons/": "./vendor/three/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="topbar">
+      <div class="brand">PL<span class="slash">/</span>NTH <span class="sub brandmark">PL<span class="slash">/</span>NNER</span> <span class="sub" id="buildTag" style="opacity:.45;font-size:9px">build …</span></div>
+      <div class="mode-switch" id="modeSwitch">
+        <button data-mode="home" class="active">Home</button>
+        <button data-mode="trade">Trade</button>
+      </div>
+      <div class="topbar-actions">
+        <button class="sm topbar-guided" id="wzTopOpen" title="Start from one of our designs — pick a size and we'll sketch a few ideas">✎ Sketch my kitchen</button>
+        <button class="sm" id="btnAccount" style="background:var(--brass);color:var(--brown-deep)">Sign in</button>
+        <button class="ghost sm" id="btnExport">Save</button>
+        <button class="ghost sm" id="btnImport">Open</button>
+        <button class="ghost sm" id="btnClear">Clear</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none" />
+      </div>
+    </div>
+
+    <div id="stage"></div>
+
+    <!-- first-run tour (shown once — localStorage 'plnnerTourSeen') -->
+    <div id="emptyState">
+      <div class="es-card">
+        <button class="es-close" id="esClose" aria-label="Dismiss">&times;</button>
+        <div class="es-eyebrow">Welcome to PL/NNER</div>
+        <h3>Let's plan your kitchen</h3>
+        <div class="es-tour">
+          <div class="es-t-step"><span class="n">1</span><p><strong>Sketch my kitchen</strong> — answer five quick questions</p></div>
+          <div class="es-t-line"></div>
+          <div class="es-t-step"><span class="n">2</span><p>Tap or drag cabinets to make it yours</p></div>
+          <div class="es-t-line"></div>
+          <div class="es-t-step"><span class="n">3</span><p>Quote / PDF when you love it</p></div>
+        </div>
+        <button class="cta es-cta" id="esInspire">✎ Sketch my kitchen</button>
+        <div class="es-blank"><button type="button" id="esBlank">or start from a blank room</button></div>
+      </div>
+    </div>
+
+    <!-- guided setup wizard -->
+    <div id="wizard"></div>
+
+    <!-- click-a-wall popup: add an opening right where you clicked -->
+    <div id="wallMenu" class="wall-menu" style="display:none">
+      <div class="wm-title">Add to this wall</div>
+      <button type="button" data-op="window">＋ Window</button>
+      <button type="button" data-op="door">＋ Door</button>
+      <button type="button" data-op="doorway">＋ Doorway</button>
+      <button type="button" data-fill="1">▦ Fill this wall</button>
+    </div>
+
+    <!-- architect's technical floor plan (2D overlay) -->
+    <div id="planOverlay">
+      <div class="plan-toolbar">
+        <span class="plan-title">PL/NTH · Floor Plan</span>
+        <div class="plan-actions">
+          <button class="vc-btn" id="planPDF">⤓ Export PDF</button>
+          <button class="vc-btn" id="planPrint">Print</button>
+          <button class="vc-btn" id="planExport">Export SVG</button>
+          <button class="vc-btn" id="planDXF" title="AutoCAD DXF — walls, cabinet footprints &amp; code labels">⤓ DXF</button>
+          <button class="vc-btn" id="planClose">Close</button>
+        </div>
+      </div>
+      <div class="plan-host" id="planHost"></div>
+    </div>
+
+    <!-- branded printable quote / spec sheet -->
+    <div id="quoteOverlay">
+      <div class="plan-toolbar">
+        <span class="plan-title">PL/NTH · Quote</span>
+        <div class="plan-actions">
+          <button class="vc-btn" id="quotePrint">Save as PDF / Print</button>
+          <button class="vc-btn" id="quoteClose">Close</button>
+        </div>
+      </div>
+      <div class="quote-host" id="quoteHost"></div>
+    </div>
+
+    <!-- floating view controls — one toolbar, three labeled clusters -->
+    <div id="viewControls">
+      <div class="vc-group">
+        <span class="vc-label">View</span>
+        <div class="vc-row">
+          <div class="view-switch" id="viewSwitch">
+            <button data-view="3d" class="active">3D</button>
+            <button data-view="plan">Plan</button>
+            <button data-view="back">Back</button>
+            <button data-view="front">Front</button>
+            <button data-view="left">Left</button>
+            <button data-view="right">Right</button>
+          </div>
+        </div>
+      </div>
+      <div class="vc-group">
+        <span class="vc-label">Navigate</span>
+        <div class="vc-row">
+          <div class="view-switch" id="navSwitch" title="Left-drag mode">
+            <button data-nav="orbit" class="active">Orbit</button>
+            <button data-nav="pan">Pan</button>
+          </div>
+          <button class="vc-btn" id="btnWalk" title="Stand in the kitchen at eye level — press again for another viewpoint">👁 Walkthrough</button>
+          <button class="vc-btn" id="btnRecenter" title="Re-frame the view">Recenter</button>
+          <button class="vc-btn" id="btnUndo" title="Undo (Cmd/Ctrl+Z)">↶ Undo</button>
+          <button class="vc-btn" id="btnRedo" title="Redo (Shift+Cmd/Ctrl+Z)">↷ Redo</button>
+        </div>
+      </div>
+      <div class="vc-group">
+        <span class="vc-label">Output</span>
+        <div class="vc-row">
+          <button class="vc-btn" id="btnTechnical" title="Architect's black & white floor plan">Technical plan</button>
+          <button class="vc-btn" id="btnQuote" title="Branded PDF quote with plan, schedule & price">Quote / PDF</button>
+          <button class="vc-btn" id="btnPhoto" title="Save a high-resolution image">⤓ Photo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEFT: room + catalogue -->
+    <aside class="panel" id="leftPanel">
+      <button class="panel-toggle">Catalog</button>
+      <div class="panel-body" id="leftBody">
+        <div class="lp-tabs" id="lpTabs">
+          <button type="button" data-tab="build" class="active">Cabinets</button>
+          <button type="button" data-tab="room">Room</button>
+        </div>
+        <div id="tabRoom">
+        <div class="setup-divider"><span>Room &amp; setup</span><em>dimensions · finishes · doors · countertop · crown molding</em></div>
+        <details class="setup-drop" id="dropRoom">
+          <summary>Room size <span class="sd-val" id="sumRoomSize"></span></summary>
+          <div class="hint" style="margin:2px 0 10px">Grab a tape measure and enter your wall lengths and ceiling height.</div>
+          <div class="space-setup">
+            <div class="space-plan" id="roomPlan"></div>
+            <div class="space-fields">
+              <div class="field dim"><label>Back wall (width)</label><input id="roomW" inputmode="text" /></div>
+              <div class="field dim"><label>Side wall (depth)</label><input id="roomD" inputmode="text" /></div>
+              <div class="field dim"><label>Ceiling height</label><input id="roomH" inputmode="text" /></div>
+            </div>
+          </div>
+          <div class="hint">Format: feet &amp; inches like <kbd>12' 6"</kbd> — or plain inches like <kbd>150</kbd>.</div>
+        </details>
+
+        <details class="setup-drop" id="dropFloorplan">
+          <summary>Floorplan underlay <span class="sd-val" id="sumFloorplan">None</span></summary>
+          <div class="hint" style="margin:2px 0 8px">Upload a sketch of your plan, set its real width, then trace over it in <strong>Plan</strong> view.</div>
+          <button class="ghost sm" id="fpUpload" style="width:100%">Upload sketch / drawing</button>
+          <input type="file" id="fpFile" accept="image/*" style="display:none" />
+          <div id="fpControls" style="display:none">
+            <div class="field dim" style="margin-top:10px"><label>Real width of the drawing</label><input id="fpWidth" inputmode="text" placeholder="e.g. 12' 0&quot;" /></div>
+            <label class="rs-toggle" style="margin-top:8px"><input type="checkbox" id="fpShow" checked /> Show under Plan view</label>
+            <div class="rs-slider"><label>Opacity</label><input type="range" id="fpOpacity" min="0.1" max="1" step="0.05" value="0.5" /></div>
+            <button class="ghost sm" id="fpRemove" style="margin-top:6px">Remove</button>
+          </div>
+        </details>
+
+        <details class="setup-drop" id="dropStyle">
+          <summary>Floor &amp; walls <span class="sd-val" id="sumStyle"></span></summary>
+          <div class="rs-label">Floor</div>
+          <div class="rs-swatches" id="floorSwatches"></div>
+          <div class="rs-label">Walls</div>
+          <div class="rs-swatches" id="wallSwatches"></div>
+          <div class="rs-label">Show walls <span style="text-transform:none;letter-spacing:0;font-size:9px">they also hide as you orbit</span></div>
+          <div class="wall-toggles" id="wallToggles">
+            <button type="button" data-wall="back" class="on">Back</button>
+            <button type="button" data-wall="front" class="on">Front</button>
+            <button type="button" data-wall="left" class="on">Left</button>
+            <button type="button" data-wall="right" class="on">Right</button>
+          </div>
+        </details>
+
+        <details class="setup-drop" id="dropOpenings">
+          <summary>Doors &amp; windows <span class="sd-val" id="sumOpenings">None</span></summary>
+          <div class="hint" style="margin:2px 0 10px">Add as many as you like to either wall — windows, doors, or a doorway (an opening with no door). Then slide each to position.</div>
+          <div class="op-add">
+            <select id="opWall" class="op-wall">
+              <option value="back">Back wall</option>
+              <option value="front">Front wall</option>
+              <option value="left">Left wall</option>
+              <option value="right">Right wall</option>
+            </select>
+            <div class="op-btns">
+              <button type="button" data-add="window">+ Window</button>
+              <button type="button" data-add="door">+ Door</button>
+              <button type="button" data-add="doorway">+ Doorway</button>
+            </div>
+          </div>
+          <div id="openingsList"></div>
+        </details>
+
+        <details class="setup-drop" id="dropBoxing">
+          <summary>Bulkheads &amp; chases <span class="sd-val" id="sumBoxing">None</span></summary>
+          <div class="hint" style="margin:2px 0 10px">Box in a pipe run or stack — a floor-to-ceiling column finished in the wall color. Set where it sits and how far it projects.</div>
+          <div class="op-add">
+            <select id="bxWall" class="op-wall">
+              <option value="back">Back wall</option>
+              <option value="front">Front wall</option>
+              <option value="left">Left wall</option>
+              <option value="right">Right wall</option>
+            </select>
+            <div class="op-btns"><button type="button" id="bxAdd" style="flex:1">+ Add bulkhead</button></div>
+          </div>
+          <div id="boxingList"></div>
+        </details>
+
+        <details class="setup-drop" id="dropWorktop">
+          <summary>Countertop <span class="sd-val" id="sumWorktop"></span></summary>
+          <div class="hint" style="margin:2px 0 10px">Pick a countertop look. Select a cabinet run first to set just that run, or set the default for the whole kitchen. Countertops aren't supplied by Plinth.</div>
+          <div class="rs-swatches" id="worktopSwatches"></div>
+        </details>
+
+        <details class="setup-drop" id="dropCornice">
+          <summary>Crown molding <span class="sd-val" id="sumCornice">None</span></summary>
+          <div class="hint" style="margin:2px 0 10px">A crown molding for the top of your wall, tall &amp; counter cabinets. Pick one and we add it to every upper run automatically and price it by the foot.</div>
+          <div class="cornice-grid" id="corniceGrid"></div>
+          <div class="cornice-readout" id="corniceReadout"></div>
+        </details>
+
+        <details class="setup-drop" id="dropAccessories">
+          <summary>Accessories <span class="sd-val" id="sumAccessories">None</span></summary>
+          <div class="hint" style="margin:2px 0 10px">Cutlery &amp; utensil inserts, end panels. Set a quantity and they're added to your estimate.</div>
+          <div id="accessoriesList"></div>
+        </details>
+        </div><!-- /tabRoom -->
+
+        <div id="tabBuild">
+        <div class="cabinets-head">Cabinets <span>tap to add to your kitchen</span></div>
+        <div id="wallFit"></div>
+        <div id="catalogue"></div>
+        </div><!-- /tabBuild -->
+      </div>
+    </aside>
+
+    <!-- RIGHT: finishes + cost + order -->
+    <aside class="panel" id="rightPanel">
+      <button class="panel-toggle">Finish &amp; cost</button>
+      <div class="panel-head">Finish <span id="finishName" style="text-transform:none;letter-spacing:0;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span></div>
+      <div class="panel-body" style="flex:0 0 auto;max-height:38%;border-bottom:1px solid var(--line)">
+        <div id="finishes"></div>
+        <div class="handle-pick">
+          <div class="rs-label" style="margin-top:14px">Handles</div>
+          <div class="handle-opts" id="handleOpts">
+            <button type="button" data-handle="knob">Knob</button>
+            <button type="button" data-handle="bar">Bar pull</button>
+            <button type="button" data-handle="handleless">Handleless</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-head">Estimate</div>
+      <div class="panel-body">
+        <div id="costLines"></div>
+        <div class="cost-total" id="costTotal"></div>
+        <div class="cost-delivery" id="costDelivery"></div>
+        <div class="budget-row">
+          <label>Your budget <span>(optional)</span></label>
+          <input id="budgetInput" inputmode="numeric" placeholder="e.g. $20,000" />
+        </div>
+        <div class="budget-readout" id="budgetReadout"></div>
+        <div id="warnings"></div>
+        <div class="cost-note">Customer price for cabinets only. Shipping &amp; tax confirmed on your order. Countertops shown are representative and not supplied by Plinth.</div>
+
+        <details class="incl-drop" id="dropIncluded">
+          <summary>What's included &amp; what happens next</summary>
+          <ul class="incl-list">
+            <li>Hand-painted solid-wood cabinets in your chosen PL/NTH finish</li>
+            <li>Soft-close doors &amp; dovetailed drawers as standard</li>
+            <li>Adjustable legs &amp; a color-matched plinth</li>
+            <li>Delivered flat-pack-free, fully built and ready to install</li>
+          </ul>
+          <div class="incl-next">
+            <strong>After you send your design:</strong> we review it, confirm measurements on a free Order Advisor call, and send a fixed quote — nothing's charged until you approve it. Typical lead time is <strong>12–14 weeks</strong>.
+          </div>
+        </details>
+
+        <div class="panel-head" style="margin:18px -16px 12px;padding-left:0;border-bottom:none">Your details</div>
+        <div class="field"><label>Name</label><input id="custName" placeholder="Your name" /></div>
+        <div class="field"><label>Email</label><input id="custEmail" type="email" placeholder="you@email.com" /></div>
+        <div class="field"><label>Zip</label><input id="custZip" placeholder="ZIP code" /></div>
+        <div class="field"><label>Notes</label><textarea id="custNotes" rows="2" placeholder="Anything we should know?"></textarea></div>
+        <button class="cta" id="placeOrder" style="width:100%;padding:11px">Place order →</button>
+        <div class="share-row">
+          <button class="ghost sm" id="btnShare">🔗 Copy share link</button>
+          <button class="ghost sm" id="btnEmailMe">✉ Email me my design</button>
+        </div>
+        <a class="book-cta" id="btnBook" href="#" target="_blank" rel="noopener">Book a free design call →</a>
+        <div class="cost-note">This opens an email to hello@plinthmade.com with your full block list so we can prepare your quote.</div>
+      </div>
+    </aside>
+
+    <!-- selected-item floating bar -->
+    <div id="selbar">
+      <span id="selLabel"></span>
+      <select id="selSwap" class="sm" title="Swap for a same-width alternative — keeps its exact position"></select>
+      <button class="sm" id="selHinge" title="Flip which side the door is hinged on">Hinge: Left</button>
+      <button class="sm" id="selOpen">Open doors</button>
+      <button class="sm" id="selRotate">Rotate</button>
+      <button class="sm" id="selDuplicate">Duplicate</button>
+      <button class="sm" id="selDelete">Delete</button>
+    </div>
+
+    <!-- TRADE: multi-unit spec-sheet order builder (shown in Trade mode) -->
+    <div id="tradePanel"></div>
+
+    <!-- cloud account / save modal (only active when Supabase is configured) -->
+    <div id="cloudModal"></div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
