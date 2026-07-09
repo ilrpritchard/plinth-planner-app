@@ -312,7 +312,7 @@ export const WORKTOP_OPTIONS = {
 
 // Interior finish constants (for materials / labels)
 export const BRAND = {
-  brown: '#3d2817', cream: '#f5efe0', paper: '#faf6ec', line: '#d9cfb8',
+  brown: '#3d2817', cream: '#f5efe0', paper: '#f7f5eb', line: '#d9cfb8',
   muted: '#7a6d54', charcoal: '#3D3632', offwhite: '#FDFBF8',
   red: '#b1392b', green: '#4a7a3a', amber: '#c08a2a',
   oak: '#c9a978',      // oak veneer interior

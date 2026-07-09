@@ -120,7 +120,7 @@ export class CabinetLayer {
     this.selectedId = id;
     if (this.selBox) { this.scene.remove(this.selBox); this.selBox.geometry.dispose(); this.selBox = null; }
     if (id != null && this.map.has(id)) {
-      this.selBox = makeOutline(this.map.get(id).group, 0x332318); // brand brown (no gold)
+      this.selBox = makeOutline(this.map.get(id).group, 0x645b3d); // brand brown (no gold)
       this.scene.add(this.selBox);
     }
     if (id === this.hoverId) this.setHover(null);

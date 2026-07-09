@@ -339,11 +339,11 @@ export function buildUnitSheets({ project, unit, date }) {
 const CSS = `
     @page { size: letter landscape; margin: 10mm; }
     * { box-sizing: border-box; }
-    body { font-family: ui-sans-serif, -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #332318; margin: 0; }
+    body { font-family: ui-sans-serif, -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #645b3d; margin: 0; }
     .sheet { height: 195mm; display: flex; flex-direction: column; page-break-after: always; overflow: hidden; }
     .sheet:last-child { page-break-after: auto; }
     header { display: flex; justify-content: space-between; align-items: flex-end;
-      background: #332318; color: #efebe5; padding: 12px 18px; border-radius: 6px; }
+      background: #645b3d; color: #f7f5eb; padding: 12px 18px; border-radius: 6px; }
     .brand { font-size: 22px; font-weight: 800; letter-spacing: 3px; }
     .brand .slash { opacity: 0.55; }
     .brand small { display: block; font-size: 9px; font-weight: 400; letter-spacing: 4px; opacity: 0.7; margin-top: 2px; }
@@ -375,8 +375,8 @@ const CSS = `
     table.fin th { text-align: left; padding: 3px 8px 3px 0; width: 118px; color: #7a6d54; font-weight: 600; vertical-align: top; }
     table.fin td { padding: 3px 8px 3px 0; border-bottom: 1px solid #ece4d2; vertical-align: top; }
     table.fin td.mut { color: #9a8d74; font-size: 8.5px; }
-    table.fin tr.hi td, table.fin tr.hi th { border-top: 2px solid #332318; border-bottom: none; }
-    table.cab th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #332318; padding: 2px 6px 3px 0; }
+    table.fin tr.hi td, table.fin tr.hi th { border-top: 2px solid #645b3d; border-bottom: none; }
+    table.cab th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #645b3d; padding: 2px 6px 3px 0; }
     table.cab td { padding: 2.5px 6px 2.5px 0; border-bottom: 1px solid #ece4d2; }
     .num { text-align: right; }
     .tr { text-align: right; color: #7a6d54; }

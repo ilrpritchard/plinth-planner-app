@@ -14,10 +14,10 @@ const DISCLAIMER = 'This change order amends the referenced trade order. Once co
 const CSS = `
     @page { size: letter portrait; margin: 12mm; }
     * { box-sizing: border-box; }
-    body { font-family: ui-sans-serif, -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #332318; margin: 0; }
+    body { font-family: ui-sans-serif, -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #645b3d; margin: 0; }
     .sheet { min-height: 253mm; display: flex; flex-direction: column; }
     header { display: flex; justify-content: space-between; align-items: flex-end;
-      background: #332318; color: #efebe5; padding: 12px 18px; border-radius: 6px; }
+      background: #645b3d; color: #f7f5eb; padding: 12px 18px; border-radius: 6px; }
     .brand { font-size: 22px; font-weight: 800; letter-spacing: 3px; }
     .brand .slash { opacity: 0.55; }
     .brand small { display: block; font-size: 9px; font-weight: 400; letter-spacing: 4px; opacity: 0.7; margin-top: 2px; }
@@ -31,7 +31,7 @@ const CSS = `
     .co-box .mut { color: #7a6d54; }
     .warn { border: 1px solid #b2543a; color: #b2543a; border-radius: 6px; padding: 6px 10px; font-size: 9.5px; margin-top: 8px; }
     table { border-collapse: collapse; width: 100%; font-size: 10px; }
-    table.lines th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #332318; padding: 3px 8px 4px 0; }
+    table.lines th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #645b3d; padding: 3px 8px 4px 0; }
     table.lines td { padding: 4px 8px 4px 0; border-bottom: 1px solid #ece4d2; }
     .num { text-align: right; }
     tr.ut-head td { background: #f3eee2; font-weight: 700; padding: 5px 8px; border-bottom: 1px solid #d9cfb8; }
@@ -42,15 +42,15 @@ const CSS = `
     table.tot { width: 62%; margin-left: auto; margin-top: 6px; }
     table.tot td { padding: 3px 0 3px 8px; }
     table.tot td.l { color: #7a6d54; }
-    table.tot tr.hi td { border-top: 2px solid #332318; font-weight: 800; font-size: 11px; }
+    table.tot tr.hi td { border-top: 2px solid #645b3d; font-weight: 800; font-size: 11px; }
     .due-box { display: flex; justify-content: space-between; align-items: center;
-      background: #332318; color: #efebe5; border-radius: 6px; padding: 12px 16px; margin-top: 12px; }
+      background: #645b3d; color: #f7f5eb; border-radius: 6px; padding: 12px 16px; margin-top: 12px; }
     .due-box .lbl { font-size: 10px; letter-spacing: 2.5px; }
     .due-box .lbl small { display: block; font-size: 8.5px; letter-spacing: 1px; opacity: 0.75; margin-top: 3px; }
     .due-box .amt { font-size: 26px; font-weight: 800; letter-spacing: 0.5px; }
     .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 14px; page-break-inside: avoid; }
     .sign-box { border: 1px solid #d9cfb8; border-radius: 6px; padding: 10px 12px; font-size: 9.5px; color: #5a4a38; }
-    .sign-box .party { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; color: #332318; }
+    .sign-box .party { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; color: #645b3d; }
     .sign-line { border-bottom: 1px solid #7a6d54; height: 26px; margin: 14px 0 3px; }
     .sign-lbl { font-size: 8px; letter-spacing: 1px; color: #7a6d54; }
     footer { display: flex; justify-content: space-between; gap: 14px; margin-top: 6px;

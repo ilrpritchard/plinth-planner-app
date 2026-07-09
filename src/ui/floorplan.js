@@ -394,9 +394,9 @@ export function buildPlanSheetHTML(state, underlay = null) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>PL/NTH — Floor plan</title><style>
     @page { size: letter landscape; margin: 10mm; }
     * { box-sizing: border-box; }
-    body { font-family: ui-sans-serif, -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #332318; margin: 0; }
+    body { font-family: ui-sans-serif, -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #645b3d; margin: 0; }
     header { display: flex; justify-content: space-between; align-items: flex-end;
-      background: #332318; color: #efebe5; padding: 14px 18px; border-radius: 6px; }
+      background: #645b3d; color: #f7f5eb; padding: 14px 18px; border-radius: 6px; }
     .brand { font-size: 24px; font-weight: 800; letter-spacing: 3px; }
     .brand .slash { opacity: 0.55; }
     .brand small { display: block; font-size: 10px; font-weight: 400; letter-spacing: 4px; opacity: 0.7; margin-top: 2px; }

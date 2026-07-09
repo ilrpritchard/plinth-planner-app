@@ -16,10 +16,10 @@ const PAYMENT_NOTE = 'Payment details are included on your order confirmation em
 const CSS = `
     @page { size: letter portrait; margin: 12mm; }
     * { box-sizing: border-box; }
-    body { font-family: ui-sans-serif, -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #332318; margin: 0; }
+    body { font-family: ui-sans-serif, -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #645b3d; margin: 0; }
     .sheet { height: 253mm; display: flex; flex-direction: column; overflow: hidden; }
     header { display: flex; justify-content: space-between; align-items: flex-end;
-      background: #332318; color: #efebe5; padding: 12px 18px; border-radius: 6px; }
+      background: #645b3d; color: #f7f5eb; padding: 12px 18px; border-radius: 6px; }
     .brand { font-size: 22px; font-weight: 800; letter-spacing: 3px; }
     .brand .slash { opacity: 0.55; }
     .brand small { display: block; font-size: 9px; font-weight: 400; letter-spacing: 4px; opacity: 0.7; margin-top: 2px; }
@@ -32,22 +32,22 @@ const CSS = `
     .inv-box .who { font-size: 13px; font-weight: 700; }
     .inv-box .mut { color: #7a6d54; }
     table { border-collapse: collapse; width: 100%; font-size: 10px; }
-    table.lines th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #332318; padding: 3px 8px 4px 0; }
+    table.lines th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #645b3d; padding: 3px 8px 4px 0; }
     table.lines td { padding: 4px 8px 4px 0; border-bottom: 1px solid #ece4d2; }
     .num { text-align: right; }
     table.tot { width: 62%; margin-left: auto; margin-top: 6px; }
     table.tot td { padding: 3px 0 3px 8px; }
     table.tot td.l { color: #7a6d54; }
-    table.tot tr.hi td { border-top: 2px solid #332318; font-weight: 800; font-size: 11px; }
+    table.tot tr.hi td { border-top: 2px solid #645b3d; font-weight: 800; font-size: 11px; }
     .due-box { display: flex; justify-content: space-between; align-items: center;
-      background: #332318; color: #efebe5; border-radius: 6px; padding: 12px 16px; margin-top: 12px; }
+      background: #645b3d; color: #f7f5eb; border-radius: 6px; padding: 12px 16px; margin-top: 12px; }
     .due-box .lbl { font-size: 10px; letter-spacing: 2.5px; }
     .due-box .lbl small { display: block; font-size: 8.5px; letter-spacing: 1px; opacity: 0.75; margin-top: 3px; }
     .due-box .amt { font-size: 26px; font-weight: 800; letter-spacing: 0.5px; }
     table.sched td, table.sched th { padding: 4px 8px 4px 0; border-bottom: 1px solid #ece4d2; }
-    table.sched th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #332318; }
+    table.sched th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #645b3d; }
     .slot { display: inline-block; width: 9px; height: 9px; border: 1px solid #7a6d54; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
-    .slot.now { background: #332318; border-color: #332318; }
+    .slot.now { background: #645b3d; border-color: #645b3d; }
     .this-inv { font-weight: 800; letter-spacing: 0.5px; }
     .pay-note { border: 1px solid #d9cfb8; border-radius: 6px; padding: 8px 10px; font-size: 9.5px; color: #5a4a38; margin-top: 10px; line-height: 1.55; }
     footer { display: flex; justify-content: space-between; gap: 14px; margin-top: 6px;
