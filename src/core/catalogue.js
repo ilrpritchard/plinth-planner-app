@@ -142,6 +142,7 @@ const APPLIANCES = [
   { code: 'AP5', appliance: 'hob', desc: 'Cooktop 36"', w: 36, d: 21, h: 2, mountY: 36.5 },
   { code: 'AP6', appliance: 'sink', desc: 'Sink (Single)', w: 24, d: 20, h: 8, mountY: 36.5 },
   { code: 'AP7', appliance: 'sink', desc: 'Sink (Double)', w: 33, d: 20, h: 8, mountY: 36.5 },
+  { code: 'AP10', appliance: 'sink', desc: 'Sink (Prep) 15"', w: 15, d: 18, h: 8, mountY: 36.5 },
   { code: 'AP8', appliance: 'hood', desc: 'Range Hood 36"', w: 36, d: 20, h: 28, mountY: 58 },
   { code: 'AP9', appliance: 'fridge', desc: 'Refrigerator (Freestanding)', w: 36, d: 28, h: 70, mountY: 0 },
 ];

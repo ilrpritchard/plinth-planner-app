@@ -14,6 +14,8 @@ const GLASS = () => mat(0x121417, 0.3, 0.12, 1.0);
 const CHROME = () => mat(0xe2e6ea, 0.95, 0.12, 1.2);
 const ENAMEL = () => mat(0xf3f3f0, 0.1, 0.45, 0.7);
 const CAST = () => mat(0x1c1d1f, 0.2, 0.6, 0.4);
+const RED = () => mat(0x9e1b21, 0.35, 0.4, 0.8);      // pro-range signature knob red
+const BASIN = () => mat(0xaeb3b8, 0.9, 0.28, 1.0);    // brushed basin interior
 
 function box(w, h, d, m, r = 0) {
   const g = r > 0 ? new THREE.BoxGeometry(w, h, d) : new THREE.BoxGeometry(w, h, d);
@@ -51,11 +53,13 @@ function burner(g, x, z, topY, size) {
 }
 
 function gooseneck(g, x, z) {
-  const base = cyl(0.85, 1.0, 1.4, CHROME()); base.position.set(x, 0.7, z); g.add(base);
-  const col = cyl(0.45, 0.5, 9, CHROME()); col.position.set(x, 5.5, z); g.add(col);
-  const arc = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.42, 12, 24, Math.PI), CHROME());
-  arc.position.set(x, 9.8, z + 2.6); arc.rotation.set(Math.PI / 2, 0, 0); g.add(arc);
-  const spout = cyl(0.42, 0.42, 1.6, CHROME()); spout.position.set(x, 9, z + 5.2); g.add(spout);
+  // vertical column, a half-torus ARC standing in the y/z plane curving over
+  // toward the basin (+z), and a down-turned spout at the arc's far end
+  const base = cyl(0.8, 0.95, 1.2, CHROME()); base.position.set(x, 0.6, z); g.add(base);
+  const col = cyl(0.42, 0.48, 8.2, CHROME()); col.position.set(x, 4.9, z); g.add(col);
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.4, 12, 24, Math.PI), CHROME());
+  arc.position.set(x, 9.0, z + 2.4); arc.rotation.y = Math.PI / 2; arc.castShadow = true; g.add(arc);
+  const spout = cyl(0.34, 0.4, 2.6, CHROME()); spout.position.set(x, 7.9, z + 4.8); g.add(spout);
 }
 
 export function buildAppliance(cab) {
@@ -68,38 +72,52 @@ export function buildAppliance(cab) {
 
   switch (cab.appliance) {
     case 'range': {
-      // brushed-steel body over a recessed dark toe kick
-      const body = box(w, h - 1.4, d, STEEL()); body.position.y = (h - 1.4) / 2 + 1.4; g.add(body);
+      // pro range in the Wolf idiom: all-stainless body and fascia, a SOLID
+      // stainless oven door with a stout tubular handle, signature RED knobs
+      // on a stainless rail, and continuous black cast grates over the burners
+      const BRIGHT = () => mat(0xd6dade, 0.72, 0.36, 1.1);   // brushed stainless that reads bright in flat light
+      const body = box(w, h - 1.4, d, BRIGHT()); body.position.y = (h - 1.4) / 2 + 1.4; g.add(body);
       const kick = box(w - 1.5, 1.5, d - 1.5, DARK()); kick.position.set(0, 0.75, -0.75); g.add(kick);
-      // recessed oven door: slightly darker steel set back into the body,
-      // with a dark-glass window inset and a full-width handle rail
-      const doorW = w - 3, doorH = h * 0.52, doorY = h * 0.36;
-      const inset = box(doorW + 0.8, doorH + 0.8, 0.4, DARK()); inset.position.set(0, doorY, fz - 0.15); g.add(inset);
-      const door = box(doorW, doorH, 0.5, STEEL_DK()); door.position.set(0, doorY, fz + 0.05); g.add(door);
-      const win = box(doorW - 6, doorH * 0.52, 0.3, GLASS()); win.position.set(0, doorY - doorH * 0.06, fz + 0.32); win.castShadow = false; g.add(win);
-      const winRim = box(doorW - 5, doorH * 0.52 + 1, 0.15, STEEL_DK()); winRim.position.set(0, doorY - doorH * 0.06, fz + 0.22); winRim.castShadow = false; g.add(winRim);
-      // horizontal handle rail (cylinder on two posts, near the door top)
-      const railY = doorY + doorH / 2 - 1.0;
-      const rail = cyl(0.42, 0.42, doorW - 2.5, CHROME()); rail.rotation.z = Math.PI / 2; rail.position.set(0, railY, fz + 1.5); g.add(rail);
+      // solid door(s): a 48" gets the twin-oven split, narrower a single door
+      const doorW = w - 2.2, doorH = h * 0.52, doorY = h * 0.36;
+      const seamIn = box(doorW + 0.6, doorH + 0.6, 0.3, DARK()); seamIn.position.set(0, doorY, fz - 0.1); g.add(seamIn);
+      const door = box(doorW, doorH, 0.6, BRIGHT()); door.position.set(0, doorY, fz + 0.12); g.add(door);
+      if (w >= 40) { const vs = box(0.35, doorH, 0.2, DARK()); vs.position.set(w * 0.08, doorY, fz + 0.48); vs.castShadow = false; g.add(vs); }
+      // badge plate low-centre of the door
+      const badge = box(4.6, 1.1, 0.15, STEEL_DK()); badge.position.set(0, doorY - doorH * 0.28, fz + 0.5); badge.castShadow = false; g.add(badge);
+      // stout tubular handle across the door top on heavy posts
+      const railY = doorY + doorH / 2 - 1.2;
+      const rail = cyl(0.6, 0.6, doorW - 1.6, CHROME()); rail.rotation.z = Math.PI / 2; rail.position.set(0, railY, fz + 2.0); g.add(rail);
       for (const sx of [-1, 1]) {
-        const pst = cyl(0.24, 0.24, 1.7, CHROME()); pst.rotation.x = Math.PI / 2;
-        pst.position.set(sx * (doorW - 5) / 2, railY, fz + 0.75); g.add(pst);
+        const pst = cyl(0.34, 0.42, 2.2, CHROME()); pst.rotation.x = Math.PI / 2;
+        pst.position.set(sx * (doorW - 4) / 2, railY, fz + 1.0); g.add(pst);
       }
-      // control rail across the top with a row of small knobs
-      const panel = box(w - 1.6, h * 0.13, 1.0, STEEL_DK()); panel.position.set(0, h * 0.87, fz - 0.4); g.add(panel);
+      // stainless control rail with the red knobs
+      const panel = box(w, h * 0.14, 1.2, STEEL()); panel.position.set(0, h * 0.865, fz - 0.5); g.add(panel);
       const nKnobs = w >= 40 ? 8 : w >= 34 ? 6 : 5;
       for (let i = 0; i < nKnobs; i++) {
         const kx = -w / 2 + 4 + i * ((w - 8) / (nKnobs - 1));
-        const k = cyl(0.62, 0.72, 1.1, DARK()); k.rotation.x = Math.PI / 2; k.position.set(kx, h * 0.87, fz + 0.45); g.add(k);
-        const mark = box(0.16, 0.5, 0.14, CHROME()); mark.position.set(kx, h * 0.87 + 0.28, fz + 0.95); mark.castShadow = false; g.add(mark);
+        const bezel = cyl(0.85, 0.85, 0.35, STEEL_DK()); bezel.rotation.x = Math.PI / 2; bezel.position.set(kx, h * 0.865, fz + 0.2); bezel.castShadow = false; g.add(bezel);
+        const k = cyl(0.68, 0.78, 1.3, RED()); k.rotation.x = Math.PI / 2; k.position.set(kx, h * 0.865, fz + 0.75); g.add(k);
+        const mark = box(0.16, 0.55, 0.14, CHROME()); mark.position.set(kx, h * 0.865 + 0.3, fz + 1.3); mark.castShadow = false; g.add(mark);
       }
-      // cooktop: dark glass slab in a steel surround, ring burners + grates
+      // cooktop: stainless surround, black porcelain burner deck, ring burners
+      // under CONTINUOUS cast grate sections (front-to-back rails + cross bars)
       const surround = box(w, 0.8, d, STEEL()); surround.position.set(0, h + 0.3, 0); g.add(surround);
-      const slab = box(w - 1.6, 0.5, d - 2, GLASS()); slab.position.set(0, h + 0.62, 0.2); g.add(slab);
+      const deck = box(w - 1.4, 0.5, d - 2, CAST()); deck.position.set(0, h + 0.62, 0.2); g.add(deck);
       const cols = w >= 40 ? 3 : 2;                       // 6 burners on a 48", else 4
-      const ringR = Math.min(w / (cols * 2.6), d / 5.4);
-      for (let c = 0; c < cols; c++) for (const rz of [-1, 1]) {
-        ringBurner(g, -w / 2 + (w / (cols + 1)) * (c + 1), rz * d / 5.2, h + 0.95, ringR);
+      const secW = (w - 2.6) / cols, secD = d - 3.2;
+      const ringR = Math.min(secW / 5.2, d / 5.8);
+      for (let c = 0; c < cols; c++) {
+        const cx = -w / 2 + 1.3 + secW * (c + 0.5);
+        for (const rz of [-1, 1]) ringBurner(g, cx, rz * d / 5.2, h + 0.8, ringR);
+        // continuous grate over the section: 2 side rails + 3 cross bars, cast black
+        for (const gx of [-1, 1]) {
+          const railG = box(0.5, 0.35, secD, CAST()); railG.position.set(cx + gx * (secW / 2 - 0.6), h + 1.28, 0.2); g.add(railG);
+        }
+        for (const gz of [-1, 0, 1]) {
+          const bar = box(secW - 0.8, 0.35, 0.5, CAST()); bar.position.set(cx, h + 1.28, 0.2 + gz * (secD / 2 - 0.4)); g.add(bar);
+        }
       }
       // low back rail: slim steel upstand with a round top bar
       const up = box(w - 1.6, 2.4, 0.7, STEEL()); up.position.set(0, h + 1.6, -d / 2 + 0.6); g.add(up);
@@ -113,16 +131,27 @@ export function buildAppliance(cab) {
       break;
     }
     case 'sink': {
-      const rim = box(w, 1.0, d, STEEL()); rim.position.y = -0.2; g.add(rim);
+      // UNDERMOUNT stainless: no proud rim. The worktop slab is continuous, so
+      // the bowl is FAKED from above: a hairline steel cutout edge sits 0.05"
+      // proud, each bowl is a darker brushed pan 0.13" proud (reading as the
+      // basin in shadow) with a chromed drain ring on it — convincing at every
+      // real viewing angle without cutting the worktop mesh.
       const double = /double/i.test(cab.desc);
-      const basins = double ? [-w / 4, w / 4] : [0];
-      for (const x of basins) {
-        const bw = (double ? w / 2 : w) - 4;
-        const inner = box(bw, 8, d - 5, STEEL_DK());
-        inner.position.set(x, -4.2, 0); inner.material = inner.material.clone(); inner.material.side = THREE.BackSide; inner.castShadow = false; g.add(inner);
-        const drain = cyl(0.9, 0.9, 0.4, CHROME()); drain.position.set(x, -8, 0); g.add(drain);
+      const cutW = w - 2.4, cutD = d - 4.5;
+      const edge = box(cutW + 0.6, 0.1, cutD + 0.6, STEEL_DK()); edge.position.y = 0.05; edge.castShadow = false; g.add(edge);
+      const bowlMat = () => mat(0x565c61, 0.85, 0.38, 0.9);   // basin-in-shadow steel
+      const bowls = double ? [[-cutW / 4 - 0.25, cutW / 2 - 0.5], [cutW / 4 + 0.25, cutW / 2 - 0.5]] : [[0, cutW]];
+      for (const [x, bw] of bowls) {
+        const pan = box(bw, 0.14, cutD, bowlMat()); pan.position.set(x, 0.13, 0); pan.castShadow = false; g.add(pan);
+        const drain = cyl(0.8, 0.8, 0.1, DARK()); drain.position.set(x, 0.22, 1.4); drain.castShadow = false; g.add(drain);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.82, 0.1, 8, 24), CHROME());
+        ring.rotation.x = Math.PI / 2; ring.position.set(x, 0.23, 1.4); ring.castShadow = false; g.add(ring);
       }
-      gooseneck(g, double ? 0 : 0, -d / 2 + 2.6);
+      gooseneck(g, 0, -d / 2 + 1.6);
+      // single lever handle beside the column
+      const lx = Math.min(w / 2 - 2, 4.2);
+      const lever = cyl(0.32, 0.4, 1.5, CHROME()); lever.position.set(lx, 0.85, -d / 2 + 1.6); g.add(lever);
+      const tip = cyl(0.16, 0.16, 1.8, CHROME()); tip.rotation.z = Math.PI / 2.4; tip.position.set(lx + 0.7, 1.75, -d / 2 + 1.6); g.add(tip);
       break;
     }
     case 'hood': {

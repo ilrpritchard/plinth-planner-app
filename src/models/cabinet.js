@@ -441,14 +441,17 @@ function buildFront(g, cab, ctx) {
       hingedDoor(g, doors, { w: faceW, h: doorH, mat, glazed: false, frontZ, hingeX: (ctx.hinge ?? -1) * faceW / 2, centerY: y0 + doorH / 2, hingeSign: ctx.hinge ?? -1, handle });
       g.add(flatDrawer(faceW, drawH - REVEAL, mat, ctx.frontFlush, y0 + doorH + REVEAL + (drawH - REVEAL) / 2, handle));
       const oy0 = y0 + doorH + drawH + 2 * REVEAL;   // oven fascia bottom (~33")
-      const fascia = box(faceW, ovenH, 0.6, steel); fascia.position.set(0, oy0 + ovenH / 2, frontZ - 0.3); g.add(fascia);
-      const win = box(faceW - 4, ovenH * 0.5, 0.3, dkGlass); win.position.set(0, oy0 + ovenH * 0.37, frontZ + 0.05); win.castShadow = false; g.add(win);
-      const strip = box(faceW - 4, 2.0, 0.25, steelDk); strip.position.set(0, oy0 + ovenH - 2.4, frontZ + 0.05); strip.castShadow = false; g.add(strip);
-      const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, faceW - 6, 12), steel);
-      rail.rotation.z = Math.PI / 2; rail.position.set(0, oy0 + ovenH * 0.72, frontZ + 1.0); rail.castShadow = true; g.add(rail);
+      // gallery-style oven front (the Gaggenau idiom): ONE uninterrupted
+      // dark-glass panel in a hairline steel surround, a small display strip,
+      // and a single slim full-width bar handle — no window frame, no trim.
+      const fascia = box(faceW, ovenH, 0.5, steelDk); fascia.position.set(0, oy0 + ovenH / 2, frontZ - 0.28); g.add(fascia);
+      const glassFront = box(faceW - 0.7, ovenH - 0.7, 0.45, dkGlass); glassFront.position.set(0, oy0 + ovenH / 2, frontZ + 0.02); glassFront.castShadow = false; g.add(glassFront);
+      const display = box(Math.min(faceW * 0.35, 9), 0.9, 0.12, steel); display.position.set(0, oy0 + ovenH - 2.0, frontZ + 0.32); display.castShadow = false; g.add(display);
+      const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, faceW - 3, 12), steel);
+      rail.rotation.z = Math.PI / 2; rail.position.set(0, oy0 + ovenH - 4.6, frontZ + 1.0); rail.castShadow = true; g.add(rail);
       for (const sx of [-1, 1]) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.2, 8), steel);
-        post.rotation.x = Math.PI / 2; post.position.set(sx * (faceW - 7) / 2, oy0 + ovenH * 0.72, frontZ + 0.45); g.add(post);
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.1, 8), steel);
+        post.rotation.x = Math.PI / 2; post.position.set(sx * (faceW - 4) / 2, oy0 + ovenH - 4.6, frontZ + 0.45); g.add(post);
       }
       const bh = Math.max(0.5, openTop - (oy0 + ovenH + REVEAL));
       const blank = box(faceW, bh, DOOR_T, mat); blank.position.set(0, oy0 + ovenH + REVEAL + bh / 2, frontZ - DOOR_T / 2); g.add(blank);
