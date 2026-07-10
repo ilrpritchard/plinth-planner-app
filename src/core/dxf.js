@@ -2,15 +2,16 @@
 //
 // Two exports:
 //   buildCabinetLibraryDXF() — every Plinth SKU as a 3D model, drawn to the
-//     client's reference file ('PLINTH F1 F10 F20'): millimetre units,
-//     polyface-mesh boxes, carcass panels on layer BODY in modelspace, the
-//     shaker front as a named BLOCK '<CODE>_FRONT_FACE' on layer FRONT,
-//     and a centred TEXT code on layer LABEL.
-//   buildPlanDXF(state)      — the current kitchen as a 3D model (millimetres):
-//     double-line wall plan on the floor, every placed cabinet INSERTed as its
-//     '<CODE>_FRONT_FACE' block (rotated + lifted to its mount height) with its
-//     carcass meshes, appliances as plain boxes — top view reads as the plan,
-//     orbit shows the whole kitchen in 3D.
+//     client's reference file ('PLINTH F1 F10 F20') but in INCH units (the
+//     catalogue's own units): polyface-mesh boxes, carcass panels on layer
+//     BODY in modelspace, the shaker front as a named BLOCK '<CODE>_FRONT_FACE'
+//     on layer FRONT, and a centred TEXT code on layer LABEL.
+//   buildPlanDXF(state)      — the current kitchen as a 3D model (inches):
+//     double-line wall plan + cabinet footprints on the floor (PLAN layers,
+//     hung units dashed), every placed cabinet INSERTed as its
+//     '<CODE>_FRONT_FACE' block (rotated + lifted to its mount height) with
+//     its carcass meshes. Appliances/sinks are left as honest gaps. Top view
+//     reads as the plan, orbit shows the whole kitchen in 3D.
 //
 // R12 ASCII only: LINE, TEXT, INSERT and POLYLINE polyface meshes (all R12
 // citizens — LWPOLYLINE is R14+ so it is never used). No DOM, no Three.js —
@@ -22,6 +23,13 @@ import { openingCenter, openingWidth } from './openings.js';
 // ---- low-level group-code helpers ----------------------------------------
 // A DXF ASCII file is strictly alternating lines: group code, then value.
 // We build flat arrays of those lines and join at the end.
+//
+// OUTPUT UNITS ARE INCHES ($INSUNITS 1) — the catalogue is authored in inches
+// and the client works in them. Construction detail is still CALCULATED in
+// real millimetres (22mm strips, 5mm recess, 115mm plinth…) and converted at
+// emission by these helpers, so every internal function keeps working in mm.
+
+const K = 1 / 25.4;   // mm → inches at emission
 
 function num(v) {
   const n = Number(v);
@@ -30,22 +38,22 @@ function num(v) {
 
 function line(x1, y1, x2, y2, layer = '0') {
   return ['0', 'LINE', '8', layer,
-    '10', num(x1), '20', num(y1), '30', 0,
-    '11', num(x2), '21', num(y2), '31', 0];
+    '10', num(x1 * K), '20', num(y1 * K), '30', 0,
+    '11', num(x2 * K), '21', num(y2 * K), '31', 0];
 }
 
 function text(x, y, h, str, { align = 'left', rot = 0, layer = '0' } = {}) {
   const out = ['0', 'TEXT', '8', layer,
-    '10', num(x), '20', num(y), '30', 0,
-    '40', num(h), '1', String(str ?? '')];
+    '10', num(x * K), '20', num(y * K), '30', 0,
+    '40', num(h * K), '1', String(str ?? '')];
   if (rot) out.push('50', num(rot));
-  if (align === 'center') out.push('72', '1', '11', num(x), '21', num(y), '31', 0);
+  if (align === 'center') out.push('72', '1', '11', num(x * K), '21', num(y * K), '31', 0);
   return out;
 }
 
 function insert(name, x, y, { z = 0, rot = 0 } = {}) {
   const out = ['0', 'INSERT', '8', '0', '2', name,
-    '10', num(x), '20', num(y), '30', num(z)];
+    '10', num(x * K), '20', num(y * K), '30', num(z * K)];
   if (rot) out.push('50', num(rot));
   return out;
 }
@@ -58,7 +66,7 @@ function pface(verts, faces, layer) {
     '10', 0, '20', 0, '30', 0];
   for (const [x, y, z] of verts) {
     L.push('0', 'VERTEX', '8', layer,
-      '10', num(x), '20', num(y), '30', num(z), '70', '192');
+      '10', num(x * K), '20', num(y * K), '30', num(z * K), '70', '192');
   }
   for (const f of faces) {
     L.push('0', 'VERTEX', '8', layer, '10', 0, '20', 0, '30', 0, '70', '128',
@@ -80,7 +88,8 @@ function box(x0, x1, y0, y1, z0, z1, layer) {
   ], BOXF, layer);
 }
 
-/** Assemble a whole document: HEADER + TABLES + (optional) BLOCKS + ENTITIES. */
+/** Assemble a whole document: HEADER + TABLES + (optional) BLOCKS + ENTITIES.
+ *  layers: names, or { name, ltype: 'DASHED' } for dashed layers. */
 function dxfDoc(blocks, entities, { units = 1, layers = [] } = {}) {
   const L = [];
   L.push('0', 'SECTION', '2', 'HEADER',
@@ -89,13 +98,17 @@ function dxfDoc(blocks, entities, { units = 1, layers = [] } = {}) {
     '0', 'ENDSEC');
   if (layers.length) {
     L.push('0', 'SECTION', '2', 'TABLES');
-    L.push('0', 'TABLE', '2', 'LTYPE', '70', '1',
+    L.push('0', 'TABLE', '2', 'LTYPE', '70', '2',
       '0', 'LTYPE', '2', 'CONTINUOUS', '70', '0', '3', 'Solid line',
       '72', '65', '73', '0', '40', '0',
+      '0', 'LTYPE', '2', 'DASHED', '70', '0', '3', 'Dashed __ __ __',
+      '72', '65', '73', '2', '40', '0.75', '49', '0.5', '49', '-0.25',
       '0', 'ENDTAB');
     L.push('0', 'TABLE', '2', 'LAYER', '70', String(layers.length));
-    for (const name of layers) {
-      L.push('0', 'LAYER', '2', name, '70', '0', '62', '7', '6', 'CONTINUOUS');
+    for (const l of layers) {
+      const name = typeof l === 'string' ? l : l.name;
+      const ltype = (typeof l === 'object' && l.ltype) || 'CONTINUOUS';
+      L.push('0', 'LAYER', '2', name, '70', '0', '62', '7', '6', ltype);
     }
     L.push('0', 'ENDTAB', '0', 'ENDSEC');
   }
@@ -360,7 +373,7 @@ export function buildCabinetLibraryDXF() {
   const skus = librarySKUs();
   const blocks = skus.map((cab) => ({ name: cab.code + '_FRONT_FACE', lines: frontEntities(cab) }));
   const ents = [];
-  ents.push(...text(0, 900, 200, 'PL/NTH CABINET LIBRARY - 3D, millimetres', { layer: 'LABEL' }));
+  ents.push(...text(0, 900, 200, 'PL/NTH CABINET LIBRARY - 3D, inches', { layer: 'LABEL' }));
   let x = 0, y = 0;
   const GAP = 300, WRAP = 12000, ROW = 2400;
   for (const cab of skus) {
@@ -374,7 +387,7 @@ export function buildCabinetLibraryDXF() {
     ents.push(...text(ox + W / 2, y + D / 2, 101.6, cab.code, { align: 'center', layer: 'LABEL' }));
     x += W + R + GAP;
   }
-  return dxfDoc(blocks, ents, { units: 4, layers: ['0', 'BODY', 'FRONT', 'LABEL'] });
+  return dxfDoc(blocks, ents, { units: 1, layers: ['0', 'BODY', 'FRONT', 'LABEL'] });
 }
 
 // ---- kitchen 3D model -------------------------------------------------------
@@ -402,7 +415,7 @@ export function buildPlanDXF(state) {
   ];
   // a wall-run line at offset `fix` from a..b along the wall (horiz: along=x)
   const wallLine = (horiz, fix, a, b) =>
-    horiz ? line(a * IN, -fix * IN, b * IN, -fix * IN) : line(fix * IN, -a * IN, fix * IN, -b * IN);
+    horiz ? line(a * IN, -fix * IN, b * IN, -fix * IN, 'PLAN') : line(fix * IN, -a * IN, fix * IN, -b * IN, 'PLAN');
   for (const wd of walls) {
     const room = { width: W, depth: D };
     const gaps = (r.openings || [])
@@ -422,13 +435,15 @@ export function buildPlanDXF(state) {
     for (const [a, b] of gaps) {
       for (const e of [a, b]) {
         ents.push(...(wd.horiz
-          ? line(e * IN, -wd.fixed * IN, e * IN, -wd.out * IN)
-          : line(wd.fixed * IN, -e * IN, wd.out * IN, -e * IN)));
+          ? line(e * IN, -wd.fixed * IN, e * IN, -wd.out * IN, 'PLAN')
+          : line(wd.fixed * IN, -e * IN, wd.out * IN, -e * IN, 'PLAN')));
       }
     }
   }
 
-  // one '<CODE>_FRONT_FACE' block per DISTINCT supplied cabinet in the design
+  // one '<CODE>_FRONT_FACE' block per DISTINCT supplied cabinet in the design.
+  // Appliances and sinks are NOT Plinth products — they are left out entirely,
+  // so the model shows honest GAPS where the client's own appliances go.
   const used = new Map();
   for (const it of (state && state.items) || []) {
     const cab = getCab(it.code);
@@ -436,10 +451,11 @@ export function buildPlanDXF(state) {
   }
   const blocks = [...used.values()].map((cab) => ({ name: cab.code + '_FRONT_FACE', lines: frontEntities(cab) }));
 
-  // place every item: block INSERT (rotated, lifted to mount height) + carcass
+  // place every cabinet: block INSERT (rotated, lifted to mount height),
+  // carcass meshes, a clean plan footprint (dashed for hung units) + label
   for (const it of (state && state.items) || []) {
     const cab = getCab(it.code);
-    if (!cab || !cab.placeable) continue;
+    if (!cab || !cab.placeable || cab.notSupplied) continue;
     const th = (it.rotDeg || 0) * Math.PI / 180;
     const fx = Math.sin(th), fz = Math.cos(th);        // front (into the room), plan coords
     // block axes in DXF coords (plan z → −y): local +X runs across the front,
@@ -453,23 +469,34 @@ export function buildPlanDXF(state) {
     const oy = cy - u[1] * Wmm / 2 - v[1] * Dmm / 2;
     const rotDXF = Math.atan2(u[1], u[0]) * 180 / Math.PI;
     const xf = (lx, ly, lz) => [ox + u[0] * lx + v[0] * ly, oy + u[1] * lx + v[1] * ly, zOff + lz];
-    const placedBox = (x0, x1, y0, y1, z0, z1, layer) => pface([
-      xf(x0, y0, z0), xf(x1, y0, z0), xf(x1, y1, z0), xf(x0, y1, z0),
-      xf(x0, y0, z1), xf(x1, y0, z1), xf(x1, y1, z1), xf(x0, y1, z1),
-    ], BOXF, layer);
-    if (cab.notSupplied) {
-      // appliance: a plain box at its mount height so the 3D reads complete
-      ents.push(...placedBox(0, Wmm, 0, Dmm, 0, cab.h * IN, 'BODY'));
-    } else {
-      ents.push(...insert(cab.code + '_FRONT_FACE', ox, oy, { z: zOff, rot: rotDXF }));
-      for (const [x0, x1, y0, y1, z0, z1] of bodyBoxes(cab)) {
-        ents.push(...placedBox(x0, x1, y0, y1, z0, z1, 'BODY'));
-      }
+    ents.push(...insert(cab.code + '_FRONT_FACE', ox, oy, { z: zOff, rot: rotDXF }));
+    for (const [x0, x1, y0, y1, z0, z1] of bodyBoxes(cab)) {
+      ents.push(...pface([
+        xf(x0, y0, z0), xf(x1, y0, z0), xf(x1, y1, z0), xf(x0, y1, z0),
+        xf(x0, y0, z1), xf(x1, y0, z1), xf(x1, y1, z1), xf(x0, y1, z1),
+      ], BOXF, 'BODY'));
     }
+    // plan footprint on the floor: solid for floor-standing, dashed for hung
+    // (standard kitchen-plan convention), on its own layer so the plan reads
+    // clean with the 3D layers frozen
+    const hung = cab.type === 'WALL' || cab.type === 'COUNTER';
+    const fpLayer = hung ? 'PLAN-UPPER' : 'PLAN';
+    const fpts = [xf(0, 0, 0), xf(Wmm, 0, 0), xf(Wmm, Dmm, 0), xf(0, Dmm, 0)];
+    for (let i = 0; i < 4; i++) {
+      const p = fpts[i], q = fpts[(i + 1) % 4];
+      ents.push(...line(p[0], p[1], q[0], q[1], fpLayer));
+    }
+    // label: floor units at centre; hung units shifted to their back quarter
+    // so the two rows never collide where uppers hang over a base run
+    const lx = cx + (hung ? v[0] * Dmm * 0.25 : 0);
+    const ly = cy + (hung ? v[1] * Dmm * 0.25 : 0);
     const rot = (((it.rotDeg || 0) % 180) + 180) % 180;
-    ents.push(...text(cx, cy, 76.2, cab.baseCode || cab.code,
+    ents.push(...text(lx, ly, 63.5, cab.baseCode || cab.code,
       { align: 'center', rot: Math.abs(rot - 90) < 1 ? 90 : 0, layer: 'LABEL' }));
   }
 
-  return dxfDoc(blocks, ents, { units: 4, layers: ['0', 'BODY', 'FRONT', 'LABEL'] });
+  return dxfDoc(blocks, ents, {
+    units: 1,
+    layers: ['0', 'PLAN', { name: 'PLAN-UPPER', ltype: 'DASHED' }, 'BODY', 'FRONT', 'LABEL'],
+  });
 }
