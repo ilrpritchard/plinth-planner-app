@@ -207,7 +207,6 @@ function glazedDoor(p, x, y, w, h, frame) {
   p.push(rect(x, y, w, h, 1));
   const fr = Math.min(frame, w * 0.3, h * 0.18);
   p.push(rect(x + fr, y + fr, w - 2 * fr, h - 2 * fr, 0.7, HAIR, GLASS));
-  p.push(vline(x + w / 2, y + fr, y + h - fr, 0.5));
 }
 function openShelves(p, x, y, w, h, n) {
   for (let i = 1; i <= n; i++) p.push(hline(x + 1, x + w - 1, y + (h * i) / (n + 1), 1.1));
