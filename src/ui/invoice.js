@@ -26,18 +26,18 @@ const CSS = `
     .meta { text-align: right; font-size: 10px; line-height: 1.55; opacity: 0.92; }
     .meta strong { font-size: 12px; letter-spacing: 1px; }
     .body { flex: 1; margin-top: 8px; border: 1px solid #d9cfb8; border-radius: 6px; padding: 14px 16px; overflow: hidden; }
-    h3 { font-size: 10px; letter-spacing: 1.5px; color: #7a6d54; margin: 12px 0 5px; }
+    h3 { font-size: 10px; letter-spacing: 1.5px; color: #7d7558; margin: 12px 0 5px; }
     .inv-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
     .inv-box { border: 1px solid #d9cfb8; border-radius: 6px; padding: 8px 10px; font-size: 10.5px; line-height: 1.6; }
     .inv-box .who { font-size: 13px; font-weight: 700; }
-    .inv-box .mut { color: #7a6d54; }
+    .inv-box .mut { color: #7d7558; }
     table { border-collapse: collapse; width: 100%; font-size: 10px; }
-    table.lines th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #645b3d; padding: 3px 8px 4px 0; }
+    table.lines th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7d7558; border-bottom: 1px solid #645b3d; padding: 3px 8px 4px 0; }
     table.lines td { padding: 4px 8px 4px 0; border-bottom: 1px solid #ece4d2; }
     .num { text-align: right; }
     table.tot { width: 62%; margin-left: auto; margin-top: 6px; }
     table.tot td { padding: 3px 0 3px 8px; }
-    table.tot td.l { color: #7a6d54; }
+    table.tot td.l { color: #7d7558; }
     table.tot tr.hi td { border-top: 2px solid #645b3d; font-weight: 800; font-size: 11px; }
     .due-box { display: flex; justify-content: space-between; align-items: center;
       background: #645b3d; color: #f7f5eb; border-radius: 6px; padding: 12px 16px; margin-top: 12px; }
@@ -45,13 +45,13 @@ const CSS = `
     .due-box .lbl small { display: block; font-size: 8.5px; letter-spacing: 1px; opacity: 0.75; margin-top: 3px; }
     .due-box .amt { font-size: 26px; font-weight: 800; letter-spacing: 0.5px; }
     table.sched td, table.sched th { padding: 4px 8px 4px 0; border-bottom: 1px solid #ece4d2; }
-    table.sched th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #645b3d; }
-    .slot { display: inline-block; width: 9px; height: 9px; border: 1px solid #7a6d54; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+    table.sched th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7d7558; border-bottom: 1px solid #645b3d; }
+    .slot { display: inline-block; width: 9px; height: 9px; border: 1px solid #7d7558; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
     .slot.now { background: #645b3d; border-color: #645b3d; }
     .this-inv { font-weight: 800; letter-spacing: 0.5px; }
-    .pay-note { border: 1px solid #d9cfb8; border-radius: 6px; padding: 8px 10px; font-size: 9.5px; color: #5a4a38; margin-top: 10px; line-height: 1.55; }
+    .pay-note { border: 1px solid #d9cfb8; border-radius: 6px; padding: 8px 10px; font-size: 9.5px; color: #5c5535; margin-top: 10px; line-height: 1.55; }
     footer { display: flex; justify-content: space-between; gap: 14px; margin-top: 6px;
-      border-top: 1px solid #d9cfb8; padding-top: 5px; font-size: 8px; color: #7a6d54; }
+      border-top: 1px solid #d9cfb8; padding-top: 5px; font-size: 8px; color: #7d7558; }
     footer .disc { max-width: 64%; }
     footer .stamp { text-align: right; white-space: nowrap; }
     @media print { header, .due-box, .slot.now { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }

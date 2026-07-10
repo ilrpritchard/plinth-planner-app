@@ -354,41 +354,41 @@ const CSS = `
     .ri-tab th:nth-child(1) { width: 20%; } .ri-tab th:nth-child(2) { width: 30%; }
     .ri-tab th:nth-child(3) { width: 15%; } .ri-tab th:nth-child(4) { width: 10%; }
     .ri-tab th.num { text-align: right; }
-    .fig-note { font-size: 8.5px; color: #7a6d54; margin-top: 4px; }
+    .fig-note { font-size: 8.5px; color: #7d7558; margin-top: 4px; }
     footer { display: flex; justify-content: space-between; gap: 14px; margin-top: 6px;
-      border-top: 1px solid #d9cfb8; padding-top: 5px; font-size: 8px; color: #7a6d54; }
+      border-top: 1px solid #d9cfb8; padding-top: 5px; font-size: 8px; color: #7d7558; }
     footer .disc { max-width: 64%; }
     footer .stamp { text-align: right; white-space: nowrap; }
-    h3 { font-size: 10px; letter-spacing: 1.5px; color: #7a6d54; margin: 10px 0 4px; }
+    h3 { font-size: 10px; letter-spacing: 1.5px; color: #7d7558; margin: 10px 0 4px; }
     .cover { padding: 8mm 6mm 0; }
-    .cover-kicker { font-size: 10px; letter-spacing: 3px; color: #7a6d54; }
+    .cover-kicker { font-size: 10px; letter-spacing: 3px; color: #7d7558; }
     .cover h1 { font-size: 30px; margin: 6px 0 0; letter-spacing: 0.5px; }
-    .cover h2 { font-size: 17px; margin: 4px 0 0; font-weight: 600; color: #5a4a38; }
-    .cover-sub { font-size: 11px; margin-top: 6px; color: #5a4a38; }
+    .cover h2 { font-size: 17px; margin: 4px 0 0; font-weight: 600; color: #5c5535; }
+    .cover-sub { font-size: 11px; margin-top: 6px; color: #5c5535; }
     .cover-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; margin-top: 8mm; }
     .swatch { display: inline-block; width: 10px; height: 10px; border: 1px solid #b8ab90; border-radius: 2px; vertical-align: -1px; }
     table { border-collapse: collapse; width: 100%; font-size: 9.5px; }
     table.idx td { padding: 3px 6px 3px 0; border-bottom: 1px solid #ece4d2; }
     table.idx td.no { width: 52px; font-weight: 700; }
-    .disc-block { font-size: 9px; color: #7a6d54; line-height: 1.5; border: 1px solid #d9cfb8; border-radius: 4px; padding: 6px 8px; }
+    .disc-block { font-size: 9px; color: #7d7558; line-height: 1.5; border: 1px solid #d9cfb8; border-radius: 4px; padding: 6px 8px; }
     .two-col { display: grid; grid-template-columns: 1.2fr 1fr; gap: 8mm; }
-    table.fin th { text-align: left; padding: 3px 8px 3px 0; width: 118px; color: #7a6d54; font-weight: 600; vertical-align: top; }
+    table.fin th { text-align: left; padding: 3px 8px 3px 0; width: 118px; color: #7d7558; font-weight: 600; vertical-align: top; }
     table.fin td { padding: 3px 8px 3px 0; border-bottom: 1px solid #ece4d2; vertical-align: top; }
-    table.fin td.mut { color: #9a8d74; font-size: 8.5px; }
+    table.fin td.mut { color: #948e6e; font-size: 8.5px; }
     table.fin tr.hi td, table.fin tr.hi th { border-top: 2px solid #645b3d; border-bottom: none; }
-    table.cab th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #645b3d; padding: 2px 6px 3px 0; }
+    table.cab th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7d7558; border-bottom: 1px solid #645b3d; padding: 2px 6px 3px 0; }
     table.cab td { padding: 2.5px 6px 2.5px 0; border-bottom: 1px solid #ece4d2; }
     .num { text-align: right; }
-    .tr { text-align: right; color: #7a6d54; }
+    .tr { text-align: right; color: #7d7558; }
     .cut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; height: 100%; align-content: start; padding-top: 4mm; }
     .cut-card { border: 1px solid #d9cfb8; border-radius: 6px; padding: 8px 10px; text-align: center; }
     .cut-glyph { display: flex; justify-content: center; align-items: flex-end; min-height: 56mm; }
     .cut-glyph svg { max-width: 100%; }
     .cut-code { font-size: 15px; font-weight: 800; margin-top: 4px; }
-    .cut-fam { font-size: 9px; font-weight: 400; color: #7a6d54; letter-spacing: 1px; }
+    .cut-fam { font-size: 9px; font-weight: 400; color: #7d7558; letter-spacing: 1px; }
     .cut-desc { font-size: 10px; margin-top: 2px; }
-    .cut-dims { font-size: 9px; color: #5a4a38; margin-top: 3px; }
-    .cut-notes { text-align: left; font-size: 8.5px; color: #7a6d54; margin: 5px 0 0; padding-left: 14px; }
+    .cut-dims { font-size: 9px; color: #5c5535; margin-top: 3px; }
+    .cut-notes { text-align: left; font-size: 8.5px; color: #7d7558; margin: 5px 0 0; padding-left: 14px; }
     .cut-notes li { margin-bottom: 1px; }
     @media print { header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 `;

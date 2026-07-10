@@ -416,7 +416,7 @@ export class UI {
     // draw each opening on its wall (back = top edge, left = left edge)
     let win = '', door = '';
     for (const o of (r.openings || [])) {
-      const col = o.type === 'window' ? '#7aa7c4' : (o.type === 'doorway' ? '#8a7d54' : '#b1392b');
+      const col = o.type === 'window' ? '#7aa7c4' : (o.type === 'doorway' ? '#838052' : '#b1392b');
       if (o.wall === 'left') {
         const len = rh * 0.18, cy = y + rh * (o.pos ?? 0.5);
         door += `<line x1="${x}" y1="${Math.max(y, cy - len / 2)}" x2="${x}" y2="${Math.min(y + rh, cy + len / 2)}" stroke="${col}" stroke-width="3"/>`;
@@ -427,11 +427,11 @@ export class UI {
     }
     el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
       <rect x="${x}" y="${y}" width="${rw}" height="${rh}" fill="#fbf7ee" stroke="#d9cfb8" stroke-width="1"/>
-      <line x1="${x}" y1="${y}" x2="${x + rw}" y2="${y}" stroke="#3d2817" stroke-width="2.5"/>
-      <line x1="${x}" y1="${y}" x2="${x}" y2="${y + rh}" stroke="#3d2817" stroke-width="2.5"/>
+      <line x1="${x}" y1="${y}" x2="${x + rw}" y2="${y}" stroke="#3f3a24" stroke-width="2.5"/>
+      <line x1="${x}" y1="${y}" x2="${x}" y2="${y + rh}" stroke="#3f3a24" stroke-width="2.5"/>
       ${win}${door}
-      <text x="${x + rw / 2}" y="${y - 6}" font-size="8" fill="#7a6d54" text-anchor="middle">${fmtFeetIn(r.width)}</text>
-      <text x="${x - 7}" y="${y + rh / 2}" font-size="8" fill="#7a6d54" text-anchor="middle" transform="rotate(-90 ${x - 7} ${y + rh / 2})">${fmtFeetIn(r.depth)}</text>
+      <text x="${x + rw / 2}" y="${y - 6}" font-size="8" fill="#7d7558" text-anchor="middle">${fmtFeetIn(r.width)}</text>
+      <text x="${x - 7}" y="${y + rh / 2}" font-size="8" fill="#7d7558" text-anchor="middle" transform="rotate(-90 ${x - 7} ${y + rh / 2})">${fmtFeetIn(r.depth)}</text>
     </svg>`;
   }
 

@@ -24,24 +24,24 @@ const CSS = `
     .meta { text-align: right; font-size: 10px; line-height: 1.55; opacity: 0.92; }
     .meta strong { font-size: 12px; letter-spacing: 1px; }
     .body { flex: 1; margin-top: 8px; border: 1px solid #d9cfb8; border-radius: 6px; padding: 14px 16px; }
-    h3 { font-size: 10px; letter-spacing: 1.5px; color: #7a6d54; margin: 12px 0 5px; }
+    h3 { font-size: 10px; letter-spacing: 1.5px; color: #7d7558; margin: 12px 0 5px; }
     .co-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
     .co-box { border: 1px solid #d9cfb8; border-radius: 6px; padding: 8px 10px; font-size: 10.5px; line-height: 1.6; }
     .co-box .who { font-size: 13px; font-weight: 700; }
-    .co-box .mut { color: #7a6d54; }
+    .co-box .mut { color: #7d7558; }
     .warn { border: 1px solid #b2543a; color: #b2543a; border-radius: 6px; padding: 6px 10px; font-size: 9.5px; margin-top: 8px; }
     table { border-collapse: collapse; width: 100%; font-size: 10px; }
-    table.lines th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7a6d54; border-bottom: 1px solid #645b3d; padding: 3px 8px 4px 0; }
+    table.lines th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7d7558; border-bottom: 1px solid #645b3d; padding: 3px 8px 4px 0; }
     table.lines td { padding: 4px 8px 4px 0; border-bottom: 1px solid #ece4d2; }
     .num { text-align: right; }
     tr.ut-head td { background: #f3eee2; font-weight: 700; padding: 5px 8px; border-bottom: 1px solid #d9cfb8; }
     tr.ut-sub td { font-weight: 700; border-bottom: 2px solid #d9cfb8; }
     .tag { display: inline-block; font-size: 7.5px; letter-spacing: 1px; border: 1px solid currentColor; border-radius: 3px; padding: 0 4px; margin-left: 6px; vertical-align: 1px; }
-    .add { color: #3a6b35; } .rem { color: #b2543a; } .chg { color: #7a6d54; }
+    .add { color: #3a6b35; } .rem { color: #b2543a; } .chg { color: #7d7558; }
     .pos { color: #b2543a; } .neg { color: #3a6b35; }
     table.tot { width: 62%; margin-left: auto; margin-top: 6px; }
     table.tot td { padding: 3px 0 3px 8px; }
-    table.tot td.l { color: #7a6d54; }
+    table.tot td.l { color: #7d7558; }
     table.tot tr.hi td { border-top: 2px solid #645b3d; font-weight: 800; font-size: 11px; }
     .due-box { display: flex; justify-content: space-between; align-items: center;
       background: #645b3d; color: #f7f5eb; border-radius: 6px; padding: 12px 16px; margin-top: 12px; }
@@ -49,12 +49,12 @@ const CSS = `
     .due-box .lbl small { display: block; font-size: 8.5px; letter-spacing: 1px; opacity: 0.75; margin-top: 3px; }
     .due-box .amt { font-size: 26px; font-weight: 800; letter-spacing: 0.5px; }
     .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 14px; page-break-inside: avoid; }
-    .sign-box { border: 1px solid #d9cfb8; border-radius: 6px; padding: 10px 12px; font-size: 9.5px; color: #5a4a38; }
+    .sign-box { border: 1px solid #d9cfb8; border-radius: 6px; padding: 10px 12px; font-size: 9.5px; color: #5c5535; }
     .sign-box .party { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; color: #645b3d; }
-    .sign-line { border-bottom: 1px solid #7a6d54; height: 26px; margin: 14px 0 3px; }
-    .sign-lbl { font-size: 8px; letter-spacing: 1px; color: #7a6d54; }
+    .sign-line { border-bottom: 1px solid #7d7558; height: 26px; margin: 14px 0 3px; }
+    .sign-lbl { font-size: 8px; letter-spacing: 1px; color: #7d7558; }
     footer { display: flex; justify-content: space-between; gap: 14px; margin-top: 6px;
-      border-top: 1px solid #d9cfb8; padding-top: 5px; font-size: 8px; color: #7a6d54; }
+      border-top: 1px solid #d9cfb8; padding-top: 5px; font-size: 8px; color: #7d7558; }
     footer .disc { max-width: 64%; }
     footer .stamp { text-align: right; white-space: nowrap; }
     @media print { header, .due-box, tr.ut-head td { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
@@ -84,7 +84,7 @@ function unitTypeRows(ut) {
       <td class="num">${fmtCents(l.newEachCents || l.oldEachCents)}</td>
       <td class="num ${dcls(l.deltaCents)}"><strong>${fmtDelta(l.deltaCents)}</strong> /unit</td></tr>`).join('');
 
-  const note = ut.lines.length ? '' : `<tr><td colspan="6" style="color:#7a6d54">No line changes - ${
+  const note = ut.lines.length ? '' : `<tr><td colspan="6" style="color:#7d7558">No line changes - ${
     ut.oldUnits !== ut.newUnits ? 'unit count changed' : 'revision reissued'}.</td></tr>`;
 
   const sub = `<tr class="ut-sub"><td colspan="5">${esc(ut.name)} - extended change (${

@@ -404,7 +404,7 @@ export function buildPlanSheetHTML(state, underlay = null) {
     .plan { margin-top: 10px; border: 1px solid #d9cfb8; border-radius: 6px; padding: 6px; }
     .plan svg { display: block; width: 100%; height: auto; max-height: 158mm; }
     footer { display: flex; justify-content: space-between; margin-top: 8px;
-      border-top: 1px solid #d9cfb8; padding-top: 6px; font-size: 9px; color: #7a6d54; }
+      border-top: 1px solid #d9cfb8; padding-top: 6px; font-size: 9px; color: #7d7558; }
     @media print { header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
   </style></head><body>
     <header>
