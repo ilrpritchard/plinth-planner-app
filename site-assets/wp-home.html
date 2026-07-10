@@ -1,0 +1,211 @@
+<style>
+.elementor .e-con, .elementor .e-con-inner { max-width:100% !important; width:100% !important; padding:0 !important; margin:0 !important; }
+.elementor-widget-html, .elementor-widget-html .elementor-widget-container { width:100% !important; }
+html { background:#f7f5eb !important; }
+body { margin:0 !important; }
+/* keep the theme's fonts and colors out of our block */
+.elementor-widget-html :is(h1,h2,h3,h4,h5,h6,p,a,li,blockquote) { color:inherit; }
+.elementor-widget-html h4, .elementor-widget-html summary, .elementor-widget-html label, .elementor-widget-html input, .elementor-widget-html textarea, .elementor-widget-html button { font-family:'Noto Sans W','Noto Sans',-apple-system,'Helvetica Neue',Arial,sans-serif; }
+.elementor-widget-html hr.hair { margin:calc(4.5*var(--u)) 0 !important; border:none; border-top:1px solid rgba(90,75,37,0.25); }
+</style>
+<style>
+/* Rebuilt from Imogen's "HOME PAGE.svg" export (design width 1024.5).
+   Every measurement below is design-units / 10.245 = vw. */
+@font-face { font-family:'TeX Gyre Termes'; src:url('https://ilrpritchard.github.io/plinth-planner-app/site-assets/fonts/texgyretermes-italic.otf') format('opentype'); font-style:italic; font-weight:400; font-display:swap; }
+@font-face { font-family:'TeX Gyre Termes'; src:url('https://ilrpritchard.github.io/plinth-planner-app/site-assets/fonts/texgyretermes-bolditalic.otf') format('opentype'); font-style:italic; font-weight:700; font-display:swap; }
+@font-face { font-family:'Noto Sans W'; src:url('https://ilrpritchard.github.io/plinth-planner-app/site-assets/fonts/notosans-1.woff2') format('woff2'); font-weight:100 900; font-display:swap; }
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --green:#645b3d; --paper:#f7f5eb; --paper2:#f7f4eb;
+  --howInk:#655012; --stepInk:#5a4b25; --cardInk:#efebe5;
+  --serif:'TeX Gyre Termes','Tinos','Times New Roman',Georgia,serif;
+  --sans:'Noto Sans W','Noto Sans',-apple-system,'Helvetica Neue',Arial,sans-serif;
+  --black:'Arial Black','Arial Bold',Arial,sans-serif;
+  --u:min(1vw, 9.6px);
+  --uw:min(1vw, 12.6px);
+  --maxw:1260px;
+}
+html { scroll-behavior:smooth; background:#f7f5eb; }
+body { background:var(--paper); color:var(--paper); font-family:var(--sans); -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+a { color:inherit; text-decoration:none; }
+
+/* ---- HERO: photo from the very top, nav overlaid, rule under nav, strip near bottom ---- */
+.hero { position:relative; height:min(64.7vw, 90vh); }
+.hero > img.bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 35%; }
+.hero::before { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(51,38,22,0.18) 0%, rgba(51,38,22,0.30) 42%, rgba(51,38,22,0.22) 70%, rgba(51,38,22,0.34) 100%); z-index:1; pointer-events:none; }
+.nav { position:absolute; top:0; left:0; right:0; height:calc(7*var(--uw)); z-index:3; }
+.nav-in { max-width:var(--maxw); margin:0 auto; height:100%; display:flex; align-items:center; justify-content:space-between; padding:0 calc(1.9*var(--uw)) 0 calc(2.73*var(--uw)); }
+.logo { font-family:var(--black); font-weight:900; font-size:calc(1.95*var(--uw)); letter-spacing:0.13em; color:var(--paper); text-shadow:0 1px 10px rgba(40,32,16,0.25); }
+.nav-r { display:flex; align-items:center; gap:calc(4*var(--uw)); }
+.nav-r a { font-size:calc(1.47*var(--uw)); font-weight:400; letter-spacing:0.155em; text-transform:uppercase; color:var(--paper); text-shadow:0 1px 10px rgba(40,32,16,0.25); }
+.nav-r a.go { background:var(--paper); color:var(--green); text-shadow:none; font-weight:700; font-size:calc(1.37*var(--uw)); padding:0 0; width:calc(14.35*var(--uw)); height:calc(3.03*var(--uw)); display:flex; align-items:center; justify-content:center; transition:opacity .3s; }
+.nav-r a.go:hover { opacity:0.85; }
+.hero .kick { position:absolute; top:33.7%; left:0; right:0; text-align:center; font-size:calc(1.47*var(--uw)); font-weight:700; letter-spacing:0.3em; text-transform:uppercase; color:var(--paper); text-shadow:0 1px 6px rgba(40,32,16,0.55), 0 1px 18px rgba(40,32,16,0.4); z-index:2; }
+.hero h1 { position:absolute; top:38%; left:0; right:0; text-align:center; font-family:var(--serif); font-style:italic; font-weight:400; font-size:calc(6.4*var(--uw)); line-height:1.15; color:var(--paper); text-shadow:0 1px 26px rgba(40,32,16,0.35); z-index:2; }
+.hero .lead { position:absolute; top:63.4%; left:0; right:0; text-align:center; font-family:var(--serif); font-style:italic; font-weight:400; font-size:calc(2*var(--uw)); color:var(--paper); text-shadow:0 1px 12px rgba(40,32,16,0.45); z-index:2; }
+.hero .btn-planner { position:absolute; top:71%; left:50%; transform:translateX(-50%); width:calc(33.97*var(--uw)); height:calc(4.69*var(--uw)); display:flex; align-items:center; justify-content:center; font-size:calc(2.6*var(--uw)); font-weight:700; letter-spacing:0.155em; text-transform:uppercase; color:var(--paper); border:2px solid var(--paper); background:rgba(40,32,16,0.1); backdrop-filter:blur(1.5px); text-shadow:0 1px 12px rgba(40,32,16,0.3); transition:all .3s; z-index:2; }
+.hero .btn-planner:hover { background:var(--paper); color:var(--green); text-shadow:none; }
+.hero .strip { position:absolute; bottom:3.3%; left:0; right:0; overflow:hidden; font-size:calc(1.56*var(--uw)); font-weight:700; letter-spacing:0.13em; text-transform:uppercase; color:var(--paper); text-shadow:0 1px 14px rgba(40,32,16,0.4); white-space:nowrap; z-index:2; }
+.hero .strip .marq { display:inline-flex; animation:marq 50s linear infinite; }
+.hero .strip .marq > span { flex:none; }
+.hero .strip b { font-weight:700; margin:0 0.6em; }
+@keyframes marq { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+
+.rule { height:calc(0.98*var(--u)); background:var(--paper); }
+.rule-thin { height:calc(0.39*var(--u)); background:var(--paper); }
+.rule-hair { height:1px; background:var(--paper); }
+
+/* ---- stats on green ---- */
+.stats { background:var(--green); }
+.stats-in { max-width:var(--maxw); margin:0 auto; display:flex; justify-content:space-between; text-align:center; padding:calc(5.05*var(--u)) calc(3.9*var(--u)) calc(5.05*var(--u)); }
+.stat b { display:block; font-family:var(--serif); font-style:italic; font-weight:700; font-size:calc(4.5*var(--u)); line-height:0.85; white-space:nowrap; color:var(--paper); }
+.stat span { display:block; font-family:var(--serif); font-style:italic; font-weight:400; font-size:calc(2.05*var(--u)); line-height:1.1; margin-top:calc(0.55*var(--u)); white-space:nowrap; color:var(--paper); }
+
+/* ---- two full-bleed photo cards, text overlaid ---- */
+.routes-band { background:var(--paper); }
+.routes { display:flex; }
+.route { position:relative; width:50%; aspect-ratio:1/1; overflow:hidden; }
+.route > img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.route::after { content:''; position:absolute; inset:0; background:var(--green); opacity:0; transition:opacity .45s ease; z-index:1; }
+.route:hover::after { opacity:1; }
+.route.left > img { object-position:39% 50%; }
+.route.right > img { object-position:50% 25%; }
+.route .txt { position:absolute; left:calc(4.4*var(--u)); right:calc(3*var(--u)); top:52%; z-index:2; }
+.route h3 { font-family:var(--serif); font-style:italic; font-weight:400; font-size:calc(3.4*var(--u)); line-height:1.23; color:var(--cardInk); text-shadow:0 1px 18px rgba(40,32,16,0.35); }
+.route p { font-size:calc(1.76*var(--u)); font-weight:300; line-height:1.39; margin-top:calc(2.7*var(--u)); max-width:calc(32*var(--u)); color:var(--cardInk); text-shadow:0 1px 12px rgba(40,32,16,0.35); }
+.route .pillbtn { margin-top:calc(4*var(--u)); width:calc(17.96*var(--u)); height:calc(2.93*var(--u)); display:flex; align-items:center; justify-content:center; background:var(--paper); color:var(--green); font-size:calc(1.37*var(--u)); font-weight:700; letter-spacing:0.155em; text-transform:uppercase; z-index:2; transition:opacity .3s; }
+.route .pillbtn:hover { opacity:0.85; }
+
+/* ---- how it works on paper ---- */
+.how { background:var(--paper2); color:var(--howInk); }
+.how-in { max-width:var(--maxw); margin:0 auto; min-height:calc(50.4*var(--u)); display:grid; grid-template-columns:calc(29.2*var(--u)) 1fr; padding:calc(6.2*var(--u)) calc(6*var(--u)) calc(6*var(--u)) calc(6.8*var(--u)); }
+.how .kick { font-size:calc(1.46*var(--u)); font-weight:700; letter-spacing:0.155em; text-transform:uppercase; }
+.how h2 { font-family:var(--serif); font-style:italic; font-weight:400; font-size:calc(4.1*var(--u)); line-height:1.17; margin-top:calc(3.2*var(--u)); }
+.steps { display:flex; flex-direction:column; gap:calc(2.3*var(--u)); margin-top:calc(-0.7*var(--u)); }
+.step { display:flex; gap:calc(2.2*var(--u)); align-items:baseline; }
+.step i { font-family:var(--serif); font-style:italic; font-weight:700; font-size:calc(5.3*var(--u)); line-height:0.8; flex:none; width:calc(6*var(--u)); text-align:right; color:var(--stepInk); }
+.step h4 { font-size:calc(1.85*var(--u)); line-height:1.2; font-weight:700; color:var(--stepInk); }
+.step p { font-size:calc(1.76*var(--u)); font-weight:400; line-height:1.39; margin-top:calc(0.6*var(--u)); max-width:calc(41*var(--u)); color:var(--stepInk); }
+
+/* ---- ready to go / start planning on green ---- */
+.cta { background:var(--green); text-align:center; padding:calc(7*var(--u)) 1rem calc(6.5*var(--u)); }
+.cta .ready { font-family:var(--serif); font-style:italic; font-weight:400; font-size:calc(2.93*var(--u)); color:var(--paper); }
+.cta a { margin:calc(1.4*var(--u)) auto 0; width:calc(29*var(--u)); height:calc(4.69*var(--u)); display:flex; align-items:center; justify-content:center; font-size:calc(2.44*var(--u)); font-weight:700; letter-spacing:0.155em; text-transform:uppercase; color:var(--paper); border:2px solid var(--paper); transition:all .3s; }
+.cta a:hover { background:var(--paper); color:var(--green); }
+
+/* ---- footer columns on green ---- */
+.foot { background:var(--green); color:var(--cardInk); }
+.foot-in { max-width:var(--maxw); margin:0 auto; display:grid; grid-template-columns:calc(17.5*var(--u)) calc(27.1*var(--u)) calc(25.1*var(--u)) 1fr; padding:calc(3.2*var(--u)) calc(5*var(--u)) calc(3.4*var(--u)); }
+.foot .logo { color:var(--paper); }
+.fcol { padding-top:calc(0.15*var(--u)); }
+.fcol h5 { font-size:calc(1.22*var(--u)); font-weight:700; letter-spacing:0.155em; text-transform:uppercase; padding-bottom:calc(0.55*var(--u)); border-bottom:1px solid rgba(239,235,229,0.6); color:rgba(239,235,229,0.65); display:inline-block; }
+.fcol a { display:block; font-size:calc(1.37*var(--u)); line-height:1; font-weight:400; letter-spacing:0.155em; text-transform:uppercase; margin-top:calc(1.95*var(--u)); color:var(--cardInk); }
+.fcol a:first-of-type { margin-top:calc(2.2*var(--u)); }
+.fcol a:hover { color:var(--paper); }
+
+/* ---- bottom bar ---- */
+.bar { background:var(--green); }
+.bar-in { max-width:var(--maxw); margin:0 auto; height:calc(6.9*var(--u)); display:flex; align-items:center; justify-content:space-between; padding:0 calc(5.8*var(--u)) 0 calc(2.5*var(--u)); font-size:calc(1.22*var(--u)); font-weight:400; letter-spacing:0.155em; text-transform:uppercase; color:var(--cardInk); }
+.bar .r { display:flex; gap:calc(3.2*var(--u)); }
+
+@media (max-width:600px) {
+  .how-in { grid-template-columns:1fr; }
+  .how h2 { margin-bottom:calc(5*var(--u)); }
+  .foot-in { grid-template-columns:1fr 1fr; row-gap:calc(5*var(--u)); }
+}
+</style>
+
+
+<section class="hero">
+  <img class="bg" src="https://ilrpritchard.github.io/plinth-planner-app/site-assets/design-img-0.jpg" alt="PL/NTH painted kitchen">
+  <div class="nav"><div class="nav-in">
+    <a class="logo" href="#">PL/NTH</a>
+    <div class="nav-r">
+      <a href="/cabinets-colors/">Cabinets + Colors</a>
+      <a href="/about/">About</a>
+      <a class="go" href="https://ilrpritchard.github.io/plinth-planner-app/">Get Started</a>
+    </div>
+  </div></div>
+  <div class="kick">Made-to-Order Kitchen Cabinets</div>
+  <h1>Beyond Flatpack<br>and Built Like Bespoke.</h1>
+  <div class="lead">Plan one kitchen or a whole building, priced as you go.</div>
+  <a class="btn-planner" href="https://ilrpritchard.github.io/plinth-planner-app/">PL/NTH PL/NNER</a>
+  <div class="strip"><div class="marq"><span>Painted Kitchen Cabinets <b>&bull;</b> Planned Online <b>&bull;</b> Made to Order <b>&bull;</b> Built in England <b>&bull;</b>&nbsp;</span><span>Painted Kitchen Cabinets <b>&bull;</b> Planned Online <b>&bull;</b> Made to Order <b>&bull;</b> Built in England <b>&bull;</b>&nbsp;</span></div></div>
+</section>
+
+<div class="rule"></div>
+
+<div class="stats"><div class="stats-in">
+  <div class="stat"><b>12-14</b><span>week leadtime</span></div>
+  <div class="stat"><b>80+</b><span>cabinet options</span></div>
+  <div class="stat"><b>15</b><span>paint colors</span></div>
+  <div class="stat"><b>$0</b><span>design fees</span></div>
+  <div class="stat"><b>20 to 400+</b><span>cabinets per order</span></div>
+</div></div>
+
+<div class="routes-band"><section class="routes">
+  <div class="route left">
+    <img src="https://ilrpritchard.github.io/plinth-planner-app/site-assets/design-img-1.jpg" alt="A PL/NTH kitchen at home">
+    <div class="txt">
+      <h3>A Kitchen With<br>You As The Designer.</h3>
+      <p>Choose from the full PL/NTH catalog, pick your color, and order online.</p>
+      <a class="pillbtn" href="https://ilrpritchard.github.io/plinth-planner-app/">PL/NTH Home</a>
+    </div>
+  </div>
+  <div class="route right">
+    <img src="https://ilrpritchard.github.io/plinth-planner-app/site-assets/design-img-2.jpg" alt="PL/NTH kitchens at scale">
+    <div class="txt">
+      <h3>One System.<br>Built For Scale.</h3>
+      <p>For contractors, builders and designers. Trade pricing. No design fees.</p>
+      <a class="pillbtn" href="https://ilrpritchard.github.io/plinth-planner-app/?mode=trade">PL/NTH Trade</a>
+    </div>
+  </div>
+</section></div>
+
+<section class="how"><div class="how-in">
+  <div class="how-l">
+    <div class="kick">How It Works</div>
+    <h2>Choose,<br>design, order,<br>delivered.</h2>
+  </div>
+  <div class="steps">
+    <div class="step"><i>1.</i><div><h4>Choose your cabinets.</h4><p>80+ blocks, 15 colors, one system.</p></div></div>
+    <div class="step"><i>2.</i><div><h4>Design your layout.</h4><p>Use the planner or drop our blocks into your own drawings.</p></div></div>
+    <div class="step"><i>3.</i><div><h4>Review your order.</h4><p>Book a free Order Advisor call to check everything before you commit.</p></div></div>
+    <div class="step"><i>4.</i><div><h4>Delivered.</h4><p>Made in England. Fully assembled, shipped across the US.</p></div></div>
+  </div>
+</div></section>
+
+<section class="cta">
+  <div class="ready">Ready to go?</div>
+  <a href="https://ilrpritchard.github.io/plinth-planner-app/">Start PL/NNING</a>
+</section>
+
+<div class="rule-thin"></div>
+
+<footer class="foot"><div class="foot-in">
+  <span class="logo" style="font-family:var(--black); font-weight:900; font-size:calc(1.95 * var(--u)); letter-spacing:0.13em;">PL/NTH</span>
+  <div class="fcol c1">
+    <h5>Explore</h5>
+    <a href="/cabinets-colors/">Cabinets + Colors</a>
+    <a href="/about/">About</a>
+    <a href="/faq/">FAQ</a>
+  </div>
+  <div class="fcol c2">
+    <h5>Start</h5>
+    <a href="https://ilrpritchard.github.io/plinth-planner-app/">Plan Your Kitchen</a>
+    <a href="https://ilrpritchard.github.io/plinth-planner-app/?mode=trade">Get Trade Access</a>
+  </div>
+  <div class="fcol c3">
+    <h5>Contact</h5>
+    <a href="mailto:hello@plinthmade.com">hello@plinthmade.com</a>
+    <a href="https://instagram.com/plinthmade">Instagram</a>
+  </div>
+</div></footer>
+
+<div class="rule-hair"></div>
+
+<div class="bar"><div class="bar-in">
+  <span>&copy; 2026 PL/NTH</span>
+  <span class="r"><a href="#">Privacy + Terms</a><a href="#">PLINTHMADE.COM</a></span>
+</div></div>
+
