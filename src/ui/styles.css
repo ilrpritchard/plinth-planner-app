@@ -111,16 +111,19 @@ button {
   font-family: inherit; font-size: 13px; cursor: pointer;
   background: var(--cream); color: var(--brown-deep); border: none;
   padding: 8px 13px; border-radius: 6px; letter-spacing: 0.03em;
-  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s, filter 0.15s;
 }
-button:hover { background: #fff; }
+/* hover DARKENS whatever the button already is — a solid olive button gets
+   deeper, a light one gets a shade of grey. (The old rule flipped the
+   background to white, which made paper-text buttons vanish on hover.) */
+button:hover { filter: brightness(0.94); }
 button.ghost { background: transparent; color: var(--cream); border: 1px solid var(--line-strong); }
 button.ghost:hover { background: var(--cream); color: var(--brown-deep); border-color: var(--cream); }
 button.sm { padding: 5px 10px; font-size: 12px; }
 button.danger { background: transparent; color: var(--red); border: 1px solid rgba(217,117,106,0.5); }
 button.danger:hover { background: var(--red); color: #fff; }
 button.cta { background: var(--brass); color: var(--brown-deep); }
-button.cta:hover { background: #ffffff; }
+button.cta:hover { background: var(--cream-hi); filter: none; }
 
 /* ---- side panels ---- */
 .panel {
