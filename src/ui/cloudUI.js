@@ -154,12 +154,15 @@ export class CloudUI {
   // ----- signed in -----
   _loggedInHTML() {
     return `<h3>My designs</h3>
-      <p class="cloud-sub">Signed in as ${esc(this.user.email)} · <button class="linkbtn" id="signOut">sign out</button></p>
+      <p class="cloud-sub">Signed in as ${esc(this.user.email)}</p>
       <div class="cloud-save">
         <input id="saveName" placeholder="Design name (e.g. Smith kitchen)">
         <button class="cta" id="saveBtn">Save current design</button>
       </div>
-      <div class="cloud-list" id="designList"><div class="cloud-msg">Loading…</div></div>`;
+      <div class="cloud-list" id="designList"><div class="cloud-msg">Loading…</div></div>
+      <div class="cloud-foot" style="margin-top:14px;text-align:right">
+        <button type="button" class="ghost sm" id="signOut">Sign out</button>
+      </div>`;
   }
   _wireLoggedIn() {
     this.modal.querySelector('#signOut').addEventListener('click', async () => { await signOut(); this.user = null; this._syncBtn(); this.render(); });

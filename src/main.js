@@ -451,7 +451,7 @@ document.getElementById('btnEmailMe')?.addEventListener('click', () => {
   window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 });
 const bookBtn = document.getElementById('btnBook');
-if (bookBtn) { if (BOOKING_URL) bookBtn.href = BOOKING_URL; else bookBtn.href = 'mailto:hello@plinthmade.com?subject=Book a design call'; }
+if (bookBtn) { if (BOOKING_URL) bookBtn.href = BOOKING_URL; else bookBtn.href = 'mailto:hello@plinthmade.com?subject=' + encodeURIComponent('Book a free order check'); }
 
 // expose a tiny mount API so the planner can drop onto a page if desired —
 // loadState is the same rebuild sequence the compare tray uses, and is what

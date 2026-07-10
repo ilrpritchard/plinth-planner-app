@@ -8,6 +8,7 @@ export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 export const cloudEnabled = () => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
-// Where the "Book a free design call" button sends customers. Paste your
-// Calendly / booking / contact URL here (leave as-is to email instead).
-export const BOOKING_URL = 'https://plinthmade.com/pages/book-a-call';
+// Where the "Book a free order check" button sends customers — the contact
+// form on the site. Swap for a Calendly / HubSpot Meetings URL when there is
+// one (leave blank to fall back to an email instead).
+export const BOOKING_URL = 'https://plinthmade.com/contact/';
