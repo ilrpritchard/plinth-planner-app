@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>PL/NTH — Coming Soon</title>
+<link rel="icon" href="https://plinthmade.com/wp-content/uploads/2026/05/cropped-PLNTH-LOGO-scaled-1-32x32.png">
+<style>
+@font-face { font-family:'TeX Gyre Termes'; src:url('../site-assets/fonts/texgyretermes-italic.otf') format('opentype'); font-style:italic; font-weight:400; font-display:swap; }
+@font-face { font-family:'Noto Sans W'; src:url('../site-assets/fonts/notosans-1.woff2') format('woff2'); font-weight:100 900; font-display:swap; }
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root { --green:#645b3d; --paper:#f7f5eb; }
+html, body { height:100%; }
+body {
+  background:var(--green); color:var(--paper);
+  font-family:'Noto Sans W','Noto Sans',-apple-system,'Helvetica Neue',Arial,sans-serif;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; padding:24px; -webkit-font-smoothing:antialiased;
+}
+.logo { font-family:'Arial Black','Arial Bold',Arial,sans-serif; font-weight:900; font-size:clamp(22px,3vw,34px); letter-spacing:0.16em; }
+.kick { margin-top:clamp(36px,7vh,70px); font-size:clamp(11px,1.2vw,14px); font-weight:700; letter-spacing:0.3em; text-transform:uppercase; color:rgba(247,245,235,0.65); }
+h1 { font-family:'TeX Gyre Termes','Times New Roman',Georgia,serif; font-style:italic; font-weight:400; font-size:clamp(44px,7vw,84px); line-height:1.1; margin-top:18px; }
+.sub { font-family:'TeX Gyre Termes','Times New Roman',Georgia,serif; font-style:italic; font-size:clamp(17px,2vw,23px); color:rgba(247,245,235,0.85); margin-top:22px; }
+form { margin-top:clamp(30px,6vh,54px); display:flex; gap:16px; align-items:flex-end; justify-content:center; flex-wrap:wrap; }
+input[type=password] {
+  background:transparent; border:none; border-bottom:1px solid rgba(247,245,235,0.5);
+  color:var(--paper); font-family:inherit; font-size:18px; letter-spacing:0.08em;
+  padding:10px 2px; width:min(300px, 70vw); outline:none; text-align:center; border-radius:0;
+}
+input[type=password]::placeholder { color:rgba(247,245,235,0.45); letter-spacing:0.15em; }
+input[type=password]:focus { border-bottom-color:var(--paper); }
+button {
+  background:var(--paper); color:var(--green); border:none; cursor:pointer;
+  font-family:inherit; font-weight:700; font-size:13px; letter-spacing:0.18em; text-transform:uppercase;
+  padding:14px 34px; transition:opacity .25s;
+}
+button:hover { opacity:0.85; }
+.foot { position:fixed; left:0; right:0; bottom:26px; font-size:11px; font-weight:700; letter-spacing:0.22em; text-transform:uppercase; color:rgba(247,245,235,0.45); }
+.foot b { font-weight:700; margin:0 0.8em; }
+</style>
+</head>
+<body>
+<div>
+  <div class="logo">PL/NTH</div>
+  <div class="kick">Early Access</div>
+  <h1>Coming soon.</h1>
+  <div class="sub">Friends and family, you're early. Enter your password to look around.</div>
+  <form method="POST" action="https://plinthmade.com/?password-protected=login&redirect_to=https%3A%2F%2Fplinthmade.com%2F">
+    <input type="password" name="password_protected_pwd" placeholder="Password" required autocomplete="off">
+    <button type="submit" name="wp-submit">Enter</button>
+  </form>
+</div>
+<div class="foot">Painted Kitchen Cabinets <b>&bull;</b> Planned Online <b>&bull;</b> Made to Order <b>&bull;</b> Built in England</div>
+</body>
+</html>
