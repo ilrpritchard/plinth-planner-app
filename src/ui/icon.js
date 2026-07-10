@@ -8,9 +8,9 @@
 import { SPEC } from '../core/units.js';
 
 // cream line-art so the catalogue elevations read on the dark brand cards
-const STROKE = '#f7f5eb';
-const HAIR = 'rgba(247,245,235,0.4)';
-const KNOB = '#f7f5eb';
+const STROKE = '#645b3d';
+const HAIR = 'rgba(100,91,61,0.45)';
+const KNOB = '#645b3d';
 const GLASS = 'rgba(150,175,178,0.22)';
 const BOX = 100;
 const PAD = 13;
