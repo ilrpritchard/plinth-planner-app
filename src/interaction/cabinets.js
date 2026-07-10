@@ -62,7 +62,8 @@ export class CabinetLayer {
   _build(cab, item) {
     if (cab.type === 'APPLIANCES') return buildAppliance(cab);
     if (cab.type === 'SHELF') return buildFloatingShelf(cab);
-    const opts = { hinge: item.hinge, handle: this.store.state.handle, backPanel: !!item.backPanel };
+    // hardware is not user-choosable: every Plinth cabinet ships with knobs
+    const opts = { hinge: item.hinge, handle: 'knob', backPanel: !!item.backPanel };
     // corner units: draw the blank return long enough to meet the adjacent
     // wall flush (sized from the actual distance — see cornerReturnLength)
     if (cab.corner) opts.returnLen = cornerReturnLength(cab, item, this.store.state.room);

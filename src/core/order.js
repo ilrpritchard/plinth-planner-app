@@ -26,7 +26,7 @@ export function buildOrderEmail(state) {
   L.push('');
   L.push(`Room:   ${fmtFeetIn(r.width)} W × ${fmtFeetIn(r.depth)} D × ${fmtFeetIn(r.height)} ceiling`);
   L.push(`Finish: ${state.finish} (all cabinets)`);
-  L.push(`Handles: ${state.handle || 'knob'}`);
+  L.push('Handles: knob');
   if (c.budget) L.push(`Budget: $${Number(c.budget).toLocaleString('en-US')}`);
   L.push('');
   L.push('CABINETS');

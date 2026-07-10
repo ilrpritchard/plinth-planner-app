@@ -69,7 +69,7 @@ export function rowsFromDesign(items) {
     if (!cab || !cab.placeable || cab.notSupplied) continue;
     byCode.set(cab.code, (byCode.get(cab.code) || 0) + 1);
   }
-  const order = { FLOOR: 0, WALL: 1, SHELF: 2, COUNTER: 3, TALL: 4 };
+  const order = { FLOOR: 0, WALL: 1, COUNTER: 3, TALL: 4 };
   return [...byCode.entries()]
     .map(([code, qty]) => ({ code, qty }))
     .sort((a, b) => ((order[getCab(a.code).type] ?? 9) - (order[getCab(b.code).type] ?? 9))

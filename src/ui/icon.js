@@ -87,8 +87,7 @@ function drawFront(p, cab, a) {
   };
   const drawerFront = (x, y, w, h) => {
     p.push(rect(x, y, w, h, 1)); // flat front, no shaker panel
-    const bw = Math.min(w * 0.24, 9 * a.s / a.s); // pull bar
-    p.push(bar(x + w / 2 - bw / 2, y + h / 2, bw));
+    knob(p, x + w / 2, y + h / 2); // centred knob — Plinth hardware is knobs only
   };
 
   const isTall = cab.type === 'TALL';
@@ -150,7 +149,7 @@ function drawFront(p, cab, a) {
       p.push(hline(ox + rev * 4, ox + ow - rev * 4, oyv + ovenH * 0.18, 1.1)); // handle bar
       const dy = oyv + ovenH + rev;
       p.push(rect(ox + rev, dy, ow - 2 * rev, drawH - rev, 1));            // drawer panel
-      p.push(bar(ox + ow / 2 - (ow * 0.12), dy + (drawH - rev) / 2, ow * 0.24));
+      knob(p, ox + ow / 2, dy + (drawH - rev) / 2);
       doorPanel(ox + rev, dy + drawH, ow - 2 * rev, oy + oh - (dy + drawH) - rev, +1); // low door
       break;
     }
@@ -266,6 +265,5 @@ function rect(x, y, w, h, sw, stroke = STROKE, fill = 'none') {
 }
 function vline(x, y1, y2, sw) { return `<line x1="${f(x)}" y1="${f(y1)}" x2="${f(x)}" y2="${f(y2)}" stroke="${HAIR}" stroke-width="${sw}"/>`; }
 function hline(x1, x2, y, sw) { return `<line x1="${f(x1)}" y1="${f(y)}" x2="${f(x2)}" y2="${f(y)}" stroke="${HAIR}" stroke-width="${sw}"/>`; }
-function bar(cx, cy, w) { return `<rect x="${f(cx)}" y="${f(cy - 0.5)}" width="${f(w)}" height="1" rx="0.5" fill="${KNOB}" stroke="none"/>`; }
 function knob(p, cx, cy) { p.push(`<circle cx="${f(cx)}" cy="${f(cy)}" r="1.4" fill="${KNOB}" stroke="none"/>`); }
 function f(n) { return Math.round(n * 100) / 100; }

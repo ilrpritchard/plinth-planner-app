@@ -19,7 +19,7 @@ import { buildFloorplanSVG, PLAN_STYLE as P, svgLine, svgDimH, svgDimV, svgN as 
 import { drawFront, frontParts } from './frontdraw.js';
 
 const DISCLAIMER = 'Please note: all room dimensions, openings and services shown are as entered by the client. The client is responsible for checking and confirming every measurement on site before ordering — PL/NTH does not survey or verify site dimensions.';
-const HANDLE_LABEL = { knob: 'Brushed steel knob', bar: 'Brushed steel bar pull', handleless: 'Handleless (integrated pull)' };
+const HANDLE_LABEL = { knob: 'Brushed steel knob' };  // fixed — Plinth hardware is knobs only
 
 // ---- scribe filler, hatched exactly like the plan --------------------------
 function drawFiller(out, f, Y) {

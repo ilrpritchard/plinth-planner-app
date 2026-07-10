@@ -615,15 +615,6 @@ kbd {
 }
 .book-cta:hover { filter: brightness(1.07); }
 
-/* handle style picker */
-.handle-opts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-.handle-opts button {
-  padding: 8px 4px; cursor: pointer; font-size: 11px; border-radius: 6px;
-  background: var(--brown-soft); color: var(--dim); border: 1px solid var(--line);
-}
-.handle-opts button:hover { border-color: var(--brass); color: var(--cream); }
-.handle-opts button.on { background: var(--cream); color: var(--brown-deep); border-color: var(--cream); }
-
 /* budget target + over/under */
 .budget-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .budget-row label { font-size: 11px; color: var(--dim); white-space: nowrap; }

@@ -169,7 +169,7 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
   // same kitchen with one cabinet moved:
   //   chef        — biggest range that fits + hood, tray storage, drawer banks
   //   entertainer — glazed dressers, open shelving, a show island, wide bin
-  //   minimal     — floating shelves, clean drawer runs, nothing fussy
+  //   minimal     — clean drawer runs, plain uppers, nothing fussy
   //   classic     — the balanced Plinth look
   const persona = pick(['classic', 'chef', 'entertainer', 'minimal']);
 
@@ -265,6 +265,19 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
 
   // --- optional extras, added in a designer's priority order while there's room ---
   const minLand = W('F17');                              // 20" — the narrowest landing
+  // DOOR-AWARE tall end: a door on a side wall near the back corner means a
+  // tall block at that end of the back run would box the doorway in (a dead
+  // corner you walk into) — so the talls anchor the OTHER end. Only when no
+  // door constrains the run does the seeded coin pick the end.
+  let doorEnd = null;                                    // 'left' | 'right' — back-run end that meets a doorway
+  for (const o of (room.openings || [])) {
+    if (o.type !== 'door' && o.type !== 'doorway') continue;
+    const ow = o.wall || 'back';
+    if (ow !== 'left' && ow !== 'right') continue;
+    const half = ((o.width || 34) + 8) / 2;
+    const c = (o.pos ?? 0.5) * depth;                    // pos measured from the back wall
+    if (c - half < 40) doorEnd = ow;                     // door begins within 40" of the back corner
+  }
   const tallEnd = chance(0.5) ? 'right' : 'left';
   // a landing is as wide as fits: 28" / 24" / 20", so a tight wall still gets one
   // (and the gap-closer can then widen it out to the wall — no dead gap).
@@ -301,14 +314,13 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
 
   const fill = fillRun(Math.max(0, avail));
 
-  // sink group: DISHWASHER · SINK · BIN together; a landing (when present) adds
-  // worktop before the COOKER, which has a landing + tray on its far side.
-  // the DW·SINK·BIN trio stays grouped, but which side the dishwasher takes
-  // varies per seed — a cheap, always-available "Generate again" difference
-  // that also moves the window (it recentres on the sink).
-  const trio = chance(0.5)
-    ? [...(dw2 ? [dw2] : []), sink, ...(dw ? [dw] : []), ...(bin ? [bin] : [])]
-    : [...(dw ? [dw] : []), sink, ...(dw2 ? [dw2] : []), ...(bin ? [bin] : [])];
+  // sink group: the sink is FLANKED — dishwasher one side, bin (or the second
+  // dishwasher) the other — never left with a bare flank. The bin defaults to
+  // the cooker side, where it doubles as the sink↔cooker separator. A seeded
+  // mirror of the trio varies "Generate again" — skipped when it would drop
+  // the leg-less F7 straight onto the cooker (no landing between them).
+  let trio = [...(dw ? [dw] : []), sink, ...(dw2 ? [dw2] : []), ...(bin ? [bin] : [])];
+  if ((bin || dw2) && dw && (landingL || !cookOnBack) && chance(0.5)) trio = trio.slice().reverse();
   const cookStep = cookOnBack ? { code: cook, hob } : null;
   const sinkGroup = [
     ...(sinkLanding ? [sinkLanding] : []),
@@ -324,6 +336,12 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
   const groupEndsWithCook = cookOnBack && sinkGroup[sinkGroup.length - 1] === cookStep;
   let cut = Math.floor(r() * (fill.length + 1));
   if (groupEndsWithCook && fill.length && cut >= fill.length) cut = fill.length - 1;
+  // the sink group's EXPOSED flanks (the sink itself, or the leg-less F7)
+  // never meet a bare wall end when a fill unit can cover them: worktop must
+  // run past the basin, and the dishwasher panel borrows its neighbours' legs.
+  const exposedStep = (s) => !!s && (!!s.sink || s.code === 'F7');
+  if (fill.length && !sinkLanding && exposedStep(sinkGroup[0]) && cut === 0) cut = 1;
+  if (fill.length && exposedStep(sinkGroup[sinkGroup.length - 1]) && cut >= fill.length) cut = fill.length - 1;
   const fillA = fill.slice(0, cut), fillB = fill.slice(cut);
 
   let run;
@@ -336,8 +354,22 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
     // talls anchor one end (varies between layouts); fill splits around the sink.
     // But if NOTHING follows the cooker (no guard fit, no fill) the talls MUST
     // close that end — the cooker is never left at the bare wall end.
+    const body = [...fillA, ...sinkGroup, ...fillB];
     let end = tallEnd;
-    if (talls.length && fillB.length === 0 && groupEndsWithCook) end = 'right';
+    if (doorEnd) end = doorEnd === 'left' ? 'right' : 'left';   // talls flee the doorway end
+    // the body flank that meets the BARE wall end (opposite the talls) should
+    // be the most harmless one: the sink or the leg-less F7 must NEVER stand
+    // there, and the cooker is a distant second choice. Mirroring the body
+    // keeps every internal adjacency (bin still separates sink and cooker)
+    // while tucking the worst flank against the tall block.
+    if (talls.length && body.length > 1) {
+      // worst → best at a bare wall: the cooker (hard rule — heat never at the
+      // wall end), then the leg-less F7, then the sink, then anything else.
+      // On an over-constrained wall this forfeits the lesser rules in order.
+      const flankScore = (s) => isCookStep(s) ? 3 : s.code === 'F7' ? 2 : s.sink ? 1 : 0;
+      const bareIdx = end === 'right' ? 0 : body.length - 1;
+      if (flankScore(body[bareIdx]) > flankScore(body[body.length - 1 - bareIdx])) body.reverse();
+    }
     // a FREESTANDING fridge parks at the very END of the run — the outermost
     // tall slot — so the owner can slide it out for cleaning / replacement.
     if (freeFridge) {
@@ -347,11 +379,11 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
         if (end === 'right') talls.push(f); else talls.unshift(f);
       }
     }
-    const body = [...fillA, ...sinkGroup, ...fillB];
     run = end === 'right' ? [...body, ...talls] : [...talls, ...body];
     // seeded MIRROR of the whole run — preserves every adjacency (each unit
     // keeps its neighbours), so even a fully-constrained wall has two looks.
-    if (chance(0.5)) run.reverse();
+    // Skipped when a doorway dictates the tall end (the mirror would undo it).
+    if (!doorEnd && chance(0.5)) run.reverse();
   }
   // close any end gap: widen the flexible base units (landings + fill drawers)
   // in +4" steps so the run reaches the wall, leaving only a scribe-filler gap.
@@ -523,7 +555,7 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
     classic: ['wall', 'wall', 'mix', 'counter'],
     chef: ['wall', 'wall', 'mix'],
     entertainer: ['counter', 'mix', 'counter', 'wall'],
-    minimal: ['shelf', 'wall', 'shelf'],                     // floating oak shelves
+    minimal: ['wall'],                                       // plain hung uppers only
   };
   const features = {
     persona,
@@ -543,8 +575,55 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
   // works BETWEEN two leg-bearing cabinets whose 22mm legs it borrows. Never
   // at a run end, never first at a corner junction, never beside an appliance.
   enforceDishwasherPlacement(steps);
+  // ---- SINK PLACEMENT (hard rule): the sink never stands hard against a wall
+  // end — worktop must run past the basin on both sides. Runs LAST so no other
+  // repair pass re-exposes it.
+  enforceSinkOffEnds(steps);
 
   return { steps, features };
+}
+
+
+// ---- sink end-guard repair ----------------------------------------------------
+// The seeded fill split (or a dishwasher re-seat) can leave the SINK as the
+// outermost unit of a run — the basin hard against the wall. Repair: move one
+// safely-movable plain base unit to the exposed end so worktop runs past the
+// sink. A donor is never taken from beside the cooker or a tall (their
+// clearance guards stay), never strands an F7 against a leg-less neighbour,
+// and never joins the sink to the cooker.
+export function enforceSinkOffEnds(steps) {
+  for (const wall of ['back', 'left', 'right', 'front']) {
+    const seq = steps.filter((s) => s.wall === wall);
+    if (seq.length < 3) continue;
+    for (const atEnd of [0, 1]) {
+      const at = atEnd ? seq.length - 1 : 0;
+      if (!seq[at].sink) continue;
+      const donorOk = (k) => {
+        const st = seq[k];
+        const c = getCab(st.code);
+        if (!c || c.type !== 'FLOOR' || st.sink || st.corner || st.hob || isCookStep(st) ||
+            st.code === 'F7' || c.form === 'bin') return false;
+        const L = seq[k - 1], R = seq[k + 1];
+        if ((L && (isCookStep(L) || isTallishStep(L))) ||
+            (R && (isCookStep(R) || isTallishStep(R)))) return false;  // keep cook/tall guards in place
+        if (L && L.code === 'F7' && !legCabStep(R)) return false;      // F7 must keep leg-bearing neighbours
+        if (R && R.code === 'F7' && !legCabStep(L)) return false;
+        return true;
+      };
+      // scan from the OPPOSITE end so the donor disturbs the run least
+      const order = [];
+      for (let k = 0; k < seq.length; k++) order.push(atEnd ? k : seq.length - 1 - k);
+      for (const k of order) {
+        if (k === at) continue;
+        if (!donorOk(k)) continue;
+        const [d] = seq.splice(k, 1);
+        if (atEnd) seq.push(d); else seq.unshift(d);
+        break;
+      }
+    }
+    let w = 0;
+    for (let k = 0; k < steps.length; k++) if (steps[k].wall === wall) steps[k] = seq[w++];
+  }
 }
 
 
@@ -587,20 +666,26 @@ export function enforceRangeClearance(steps) {
       const ti = seq.indexOf(bad.tall);
       const lo = Math.min(i, ti), hi = Math.max(i, ti);
       // donor: farthest movable plain base OUTSIDE the cook->tall stretch
-      const movable = (k) => {
+      const movable = (k, allowTrio) => {
         const st = seq[k];
         const c = getCab(st.code);
         if (!c || c.type !== 'FLOOR' || st.sink || st.corner || st.hob || isCookStep(st)) return false;
+        // the DW·SINK·BIN trio stays glued to the sink — broken up only as a
+        // LAST RESORT, when no other unit can pad the cooker clearance
+        if (!allowTrio && (c.form === 'dishwasher' || c.form === 'bin')) return false;
         if (Math.abs(k - i) === 1) return false;      // keep the cook guarded + off the ends
         const L = seq[k - 1], R = seq[k + 1];         // removal must not join sink & cook
         if (L && R && ((L.sink && isCookStep(R)) || (R.sink && isCookStep(L)))) return false;
         return true;
       };
       let donorIdx = -1;
-      for (let dist = seq.length; dist > 0 && donorIdx < 0; dist--) {
-        for (const k of [i - dist, i + dist]) {
-          if (k >= 0 && k < seq.length && (k < lo || k > hi) && movable(k)) { donorIdx = k; break; }
+      for (const allowTrio of [false, true]) {
+        for (let dist = seq.length; dist > 0 && donorIdx < 0; dist--) {
+          for (const k of [i - dist, i + dist]) {
+            if (k >= 0 && k < seq.length && (k < lo || k > hi) && movable(k, allowTrio)) { donorIdx = k; break; }
+          }
         }
+        if (donorIdx >= 0) break;
       }
       if (donorIdx < 0) break;                        // nothing safe to move
       const [donor] = seq.splice(donorIdx, 1);
@@ -629,7 +714,9 @@ const legCabStep = (s) => {
 
 /** Count adjacency-rule violations in one wall sequence (lower is better). */
 function runViolations(seq) {
-  let sinkCook = 0, cookEnd = 0, clearance = 0, cornerMid = 0, dw = 0;
+  let sinkCook = 0, cookEnd = 0, clearance = 0, cornerMid = 0, dw = 0, sinkEnd = 0;
+  const si = seq.findIndex((s) => s.sink);
+  if (si === 0 || (si >= 0 && si === seq.length - 1)) sinkEnd++;
   for (let i = 0; i < seq.length; i++) {
     const st = seq[i];
     if (st.corner && i !== 0 && i !== seq.length - 1) cornerMid++;
@@ -650,7 +737,7 @@ function runViolations(seq) {
       }
     }
   }
-  return { sinkCook, cookEnd, clearance, cornerMid, dw };
+  return { sinkCook, cookEnd, clearance, cornerMid, dw, sinkEnd };
 }
 
 /** Re-seat every badly-neighboured F7 in the best valid slot on its wall. */
@@ -674,16 +761,23 @@ export function enforceDishwasherPlacement(steps) {
       for (let k = 1; k < seq.length; k++) slots.push(k);
       slots.sort((a, b) => (sinkIdx < 0 ? 0 : Math.abs(a - sinkIdx) - Math.abs(b - sinkIdx)));
       let placed = false;
-      for (const k of slots) {
-        if (!legCabStep(seq[k - 1]) || !legCabStep(seq[k])) continue;
-        // inserting BEFORE the sink shifts the sink downstream by the DW width
-        const sinkEff = sinkAt == null ? null : (k <= sinkIdx ? sinkAt + W(dwStep.code) : sinkAt);
-        if (sinkEff != null && Math.abs(runPos(k) + W(dwStep.code) / 2 - sinkEff) > 56) continue;
-        seq.splice(k, 0, dwStep);
-        const v = runViolations(seq);
-        if (v.dw === 0 && v.sinkCook <= base.sinkCook && v.cookEnd <= base.cookEnd &&
-            v.clearance <= base.clearance && v.cornerMid <= base.cornerMid) { placed = true; break; }
-        seq.splice(k, 1);
+      // two passes: first only slots that don't push the SINK to a wall end;
+      // then — the leg rule outranks the sink rule (a leg-less panel at the
+      // wall is unbuildable) — retry accepting a sink-end regression.
+      for (const strictSink of [true, false]) {
+        for (const k of slots) {
+          if (!legCabStep(seq[k - 1]) || !legCabStep(seq[k])) continue;
+          // inserting BEFORE the sink shifts the sink downstream by the DW width
+          const sinkEff = sinkAt == null ? null : (k <= sinkIdx ? sinkAt + W(dwStep.code) : sinkAt);
+          if (sinkEff != null && Math.abs(runPos(k) + W(dwStep.code) / 2 - sinkEff) > 56) continue;
+          seq.splice(k, 0, dwStep);
+          const v = runViolations(seq);
+          if (v.dw === 0 && v.sinkCook <= base.sinkCook && v.cookEnd <= base.cookEnd &&
+              v.clearance <= base.clearance && v.cornerMid <= base.cornerMid &&
+              (!strictSink || v.sinkEnd <= base.sinkEnd)) { placed = true; break; }
+          seq.splice(k, 1);
+        }
+        if (placed) break;
       }
       if (!placed) { seq.splice(Math.min(i, seq.length), 0, dwStep); break; }  // no safe slot — leave it (warning catches it)
     }

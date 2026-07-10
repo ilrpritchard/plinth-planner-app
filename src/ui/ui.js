@@ -563,16 +563,6 @@ export class UI {
       if (!sw) return;
       this.store.setFinish(sw.dataset.finish);
     });
-    document.getElementById('handleOpts')?.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-handle]'); if (!b) return;
-      this.store.setHandle(b.dataset.handle);
-      this.controls?.layer?.rebuildAll();
-      this._refreshHandle();
-    });
-  }
-  _refreshHandle() {
-    const cur = this.store.state.handle || 'knob';
-    document.querySelectorAll('#handleOpts [data-handle]').forEach((b) => b.classList.toggle('on', b.dataset.handle === cur));
   }
 
   _refreshFinish() {
@@ -582,7 +572,6 @@ export class UI {
     });
     const f = getFinish(cur);
     document.getElementById('finishName').textContent = `${f.name} — ${f.desc}`;
-    this._refreshHandle();
   }
 
   // ---------- cost ----------

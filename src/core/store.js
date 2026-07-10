@@ -23,7 +23,7 @@ function defaultState() {
       nextBoxing: 1,
     },
     finish: DEFAULT_FINISH,
-    handle: 'knob',       // 'knob' | 'bar' | 'handleless'
+    handle: 'knob',       // fixed — Plinth cabinets ship with knobs only (kept for old saves)
     items: [],            // { id, code, x, z, rotDeg, finish? }
     accessories: {},      // { code: qty } — cutlery inserts, end panels, etc.
     customer: { name: '', email: '', zip: '', notes: '' },
@@ -161,12 +161,6 @@ export class Store {
     this._record();
     this.state.finish = name;
     this._emit({ type: 'finish' });
-  }
-
-  setHandle(name) {
-    this._record();
-    this.state.handle = name;
-    this._emit({ type: 'finish' }); // rebuilds cabinets like a finish change
   }
 
   setCustomer(patch) {

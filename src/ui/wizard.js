@@ -809,7 +809,7 @@ export class Wizard {
    *  cabinets, then uppers, then fillers. Guarantees a clean layout no matter
    *  what the generator produced. */
   _resolveOverlaps() {
-    const PRI = { APPLIANCES: 5, TALL: 4, FLOOR: 3, COUNTER: 2, WALL: 2, SHELF: 1 };
+    const PRI = { APPLIANCES: 5, TALL: 4, FLOOR: 3, COUNTER: 2, WALL: 2 };
     const TOL = 1.0;                                     // ignore butting / hairline contact
     const box = (it) => {
       const c = getCab(it.code); if (!c) return null;
@@ -892,10 +892,11 @@ export class Wizard {
     // no-go spans: the range (+200mm each side), the window, and any tall unit.
     const RANGE_CLEAR = 8;                               // 200mm safety gap
     const zones = [];
+    const tallZones = [];                                // tall sides — uppers butt TIGHT against these
     for (const it of items) {
       const c = getCab(it.code); if (!c) continue;
       if ((c.appliance === 'range' || c.appliance === 'hob') && onBack(it, c)) zones.push([it.x - c.w / 2 - RANGE_CLEAR, it.x + c.w / 2 + RANGE_CLEAR]);
-      if ((c.type === 'TALL' || c.appliance === 'fridge') && onBack(it, c)) zones.push([it.x - c.w / 2, it.x + c.w / 2]);
+      if ((c.type === 'TALL' || c.appliance === 'fridge') && onBack(it, c)) { const z = [it.x - c.w / 2, it.x + c.w / 2]; zones.push(z); tallZones.push(z); }
     }
     for (const o of (room.openings || [])) {
       if ((o.wall || 'back') !== 'back' || o.type !== 'window') continue;
@@ -916,17 +917,20 @@ export class Wizard {
     const g = features.glazed;
     free.forEach(([a, b], i) => {
       if (b - a < 20) return;
-      const counter = style === 'counter' ? true : (style === 'wall' || style === 'shelf') ? false : (i % 2 === 1);
+      const counter = style === 'counter' ? true : style === 'wall' ? false : (i % 2 === 1);
       // 36" double preferred, then singles — subset-sum packs the stretch tight.
-      // 'shelf' style hangs floating oak shelves instead of cabinets.
-      const units = style === 'shelf'
-        ? [{ c: 'SH3', w: 48 }, { c: 'SH2', w: 36 }, { c: 'SH1', w: 24 }]
-        : counter
-          ? [{ c: g ? 'C5' : 'C3', w: 36 }, { c: g ? 'C2' : 'C1', w: 24 }]
-          : [{ c: g ? 'W7' : 'W5', w: 36 }, { c: g ? 'W4' : 'W2', w: 24 }, { c: 'W1', w: 20 }];
+      const units = counter
+        ? [{ c: g ? 'C5' : 'C3', w: 36 }, { c: g ? 'C2' : 'C1', w: 24 }]
+        : [{ c: g ? 'W7' : 'W5', w: 36 }, { c: g ? 'W4' : 'W2', w: 24 }, { c: 'W1', w: 20 }];
       const codes = this._packStretch(b - a, units);
       const packedW = codes.reduce((t, c) => t + getCab(c).w, 0);
-      let x = a + (b - a - packedW) / 2;                 // centre the group for proportion
+      // a stretch bounded by a TALL cabinet butts TIGHT against it (no dead
+      // sliver beside a tall); otherwise the group centres for proportion
+      const tallAtL = tallZones.some(([, zb]) => Math.abs(zb - a) < 0.6);
+      const tallAtR = tallZones.some(([za]) => Math.abs(za - b) < 0.6);
+      let x = tallAtL && !tallAtR ? a
+        : tallAtR && !tallAtL ? b - packedW
+        : a + (b - a - packedW) / 2;
       for (const c of codes) { const cb = getCab(c), w = cb.w; this.store.addItem(c, { x: x + w / 2, z: minZ + cb.d / 2 + 0.25, rotDeg: 0 }); x += w; }
     });
   }

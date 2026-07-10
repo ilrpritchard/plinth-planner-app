@@ -47,7 +47,7 @@ export function cabChipHTML(cab) {
   return `${draw}<span class="pick-chip-txt"><strong>${esc(cab.code)}</strong> · ${esc(cab.desc)}${cab.w > 0 ? ` (${fmtIn(cab.w)})` : ''}</span>`;
 }
 
-const CHIP_FAMS = ['', 'FLOOR', 'WALL', 'SHELF', 'COUNTER', 'TALL', 'ACCESSORIES'];
+const CHIP_FAMS = ['', 'FLOOR', 'WALL', 'COUNTER', 'TALL', 'ACCESSORIES'];
 
 /**
  * Open the modal. opts: { selected, onPick(code) }.

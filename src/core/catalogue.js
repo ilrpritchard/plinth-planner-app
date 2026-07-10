@@ -125,9 +125,9 @@ const BASE_CATALOGUE = RAW.map((it) => ({
   notSupplied: false,
 }));
 
-export const FAMILY_ORDER = ['FLOOR', 'WALL', 'SHELF', 'COUNTER', 'TALL', 'APPLIANCES', 'ACCESSORIES'];
+export const FAMILY_ORDER = ['FLOOR', 'WALL', 'COUNTER', 'TALL', 'APPLIANCES', 'ACCESSORIES'];
 export const FAMILY_LABEL = {
-  FLOOR: 'Floor', WALL: 'Wall', SHELF: 'Shelves', COUNTER: 'Counter', TALL: 'Tall',
+  FLOOR: 'Floor', WALL: 'Wall', COUNTER: 'Counter', TALL: 'Tall',
   APPLIANCES: 'Appliances', ACCESSORIES: 'Accessories',
 };
 
@@ -146,19 +146,12 @@ const APPLIANCES = [
   { code: 'AP9', appliance: 'fridge', desc: 'Refrigerator (Freestanding)', w: 36, d: 28, h: 70, mountY: 0 },
 ];
 
-// ----- floating wall shelves (Plinth accessory) -----
-const SHELVES = [
-  { code: 'SH1', desc: 'Floating Shelf 24"', w: 24, d: 10, h: 1.75, mountY: 54, gbp: 300 },
-  { code: 'SH2', desc: 'Floating Shelf 36"', w: 36, d: 10, h: 1.75, mountY: 54, gbp: 300 },
-  { code: 'SH3', desc: 'Floating Shelf 48"', w: 48, d: 10, h: 1.75, mountY: 54, gbp: 300 },
-];
+// (Solid-oak floating shelves were dropped from the range 2026-07: Plinth only
+// sells painted cabinetry — open-shelf CABINETS like F23/W11/C7 are the shelf
+// offer. getCab() on an old saved 'SH*' code returns undefined; every consumer
+// already guards for that.)
 
 export const CATALOGUE = BASE_CATALOGUE
-  .concat(SHELVES.map((s) => ({
-    ...s, type: 'SHELF', hinge: 'n/a', notes: 'Floating wall shelf, oak',
-    halfDepth: false, glazed: false, corner: false, form: 'shelf',
-    placeable: true, notSupplied: false, shelf: true,
-  })))
   .concat(APPLIANCES.map((a) => ({
     ...a, type: 'APPLIANCES', hinge: 'n/a', notes: 'Not supplied by Plinth — shown for layout only',
     gbp: 0, halfDepth: false, glazed: false, corner: false, form: 'appliance',
@@ -222,7 +215,7 @@ export function orderableAccessories() {
 // (or glazed ↔ plain uppers) trade places without moving anything.
 export function swapAlternatives(code) {
   const cur = getCab(code);
-  if (!cur || !cur.placeable || cur.type === 'APPLIANCES' || cur.type === 'SHELF') return [];
+  if (!cur || !cur.placeable || cur.type === 'APPLIANCES') return [];
   return CATALOGUE.filter((c) =>
     c.placeable && c.code !== cur.code &&
     c.type === cur.type &&

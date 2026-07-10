@@ -65,7 +65,12 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   for (const o of others) {
     const oc = getCab(o.code);
     if (!oc) continue;
-    if ((oc.type === 'WALL') !== (cab.type === 'WALL')) continue;  // hung cabinets butt hung cabinets, floor butts floor
+    // hung cabinets butt hung cabinets, floor butts floor — EXCEPT a hung WALL
+    // cabinet and a TALL cabinet, which meet side-to-side in the same run (a
+    // wall cabinet dragged near a tall snaps to touch its side, no dead sliver)
+    const kindsDiffer = (oc.type === 'WALL') !== (cab.type === 'WALL');
+    const wallMeetsTall = (cab.type === 'WALL' && oc.type === 'TALL') || (cab.type === 'TALL' && oc.type === 'WALL');
+    if (kindsDiffer && !wallMeetsTall) continue;
     if (((o.rotDeg || 0) % 180) !== (rotDeg % 180)) continue;      // same orientation
     const oLock = freeAxis === 'x' ? o.z : o.x;
     if (Math.abs(oLock - lockVal) > LOCK_TOL) continue;            // same run line
