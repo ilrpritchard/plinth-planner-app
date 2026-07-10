@@ -10,6 +10,7 @@ import { summarizeState, deliveryEstimate } from '../core/cost.js';
 import { computeWarnings } from '../core/warnings.js';
 import { openingWallLen, openingNearEdge } from '../core/openings.js';
 import { buildOrderEmail } from '../core/order.js';
+import { isCloud, submitOrder } from '../core/cloud.js';
 import { exportJSON, importJSON } from '../core/persistence.js';
 import { TEMPLATES, applyTemplate, planWallInfill } from '../core/templates.js';
 import { cabinetSVG } from './icon.js';
@@ -645,11 +646,27 @@ export class UI {
       this._refreshBudget();
     });
 
-    document.getElementById('placeOrder').addEventListener('click', () => {
+    document.getElementById('placeOrder').addEventListener('click', async () => {
       const s = this.store.state;
       if (!s.items.length) return this._toast('Add some cabinets first.');
       if (!s.customer.name || !s.customer.email) return this._toast('Add your name and email so we can reach you.');
       const mail = buildOrderEmail(s);
+      // send the order DIRECTLY (no email client); mailto only as a fallback
+      const btn = document.getElementById('placeOrder');
+      if (isCloud()) {
+        btn.disabled = true;
+        try {
+          const sum = summarizeState(s);
+          await submitOrder({
+            name: s.customer.name, email: s.customer.email, zip: s.customer.zip,
+            notes: s.customer.notes, orderText: mail.body, design: this.store.serialize(),
+            cabinets: sum.totalCabs, subtotal: sum.subtotal,
+          });
+          btn.disabled = false;
+          this._toast('Order received ✓ — an Order Advisor will check it and email your fixed quote.');
+          return;
+        } catch (err) { btn.disabled = false; /* fall through to email */ }
+      }
       window.location.href = mail.href;
       this._toast('Opening your email to send the order…');
     });

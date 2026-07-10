@@ -9,7 +9,7 @@ import { measureRun } from '../core/measure.js';
 import { fmtIn } from '../core/units.js';
 
 export class PointerControls {
-  constructor({ scene, cabinetLayer, room, store, onCommit, onSelect, onWallClick }) {
+  constructor({ scene, cabinetLayer, room, store, onCommit, onSelect, onWallClick, onOpeningClick }) {
     this.s = scene;
     this.layer = cabinetLayer;
     this.room = room;
@@ -17,6 +17,7 @@ export class PointerControls {
     this.onCommit = onCommit || (() => {});
     this.onSelect = onSelect || (() => {});
     this.onWallClick = onWallClick || (() => {});
+    this.onOpeningClick = onOpeningClick || (() => {});
 
     this.ray = new THREE.Raycaster();
     this.ndc = new THREE.Vector2();
@@ -84,8 +85,21 @@ export class PointerControls {
     } else {
       this.layer.select(null);
       this.onSelect(null);
+      // a placed window/door/doorway is clickable: edit its position or delete
+      const op = this._pickOpening();
+      if (op != null) { this.onOpeningClick({ id: op, clientX: e.clientX, clientY: e.clientY }); return; }
       this._pickWall(e);   // clicking a bare wall offers to add an opening there
     }
+  }
+
+  _pickOpening() {
+    const groups = this.room?.openingPickables ? this.room.openingPickables() : [];
+    if (!groups.length) return null;
+    const hits = this.ray.intersectObjects(groups, true);
+    if (!hits.length) return null;
+    let o = hits[0].object;
+    while (o) { if (o.userData?.openingId != null) return o.userData.openingId; o = o.parent; }
+    return null;
   }
 
   _pickWall(e) {

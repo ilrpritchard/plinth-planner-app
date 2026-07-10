@@ -133,6 +133,15 @@ export class Room {
   }
 
   // ---- wall visibility ----
+  /** Every opening group (window/door/doorway) that can be clicked. */
+  openingPickables() {
+    const out = [];
+    for (const arr of Object.values(this.wallAttached || {})) {
+      for (const g of arr || []) if (g.userData?.openingId != null && g.visible) out.push(g);
+    }
+    return out;
+  }
+
   /** Manually hide/show a wall; persists across auto-hide. */
   setWallHidden(name, hidden) {
     if (hidden) this._hidden.add(name); else this._hidden.delete(name);
@@ -202,6 +211,8 @@ export class Room {
     const centerY = sill + h / 2;
 
     const g = this._buildOpening(o.type, w, h);
+    g.userData.openingId = o.id;              // clickable: edit / delete popup
+    g.userData.openingType = o.type;
     const OFF = 1.0; // clear of the wall plane
     if (wall === 'back') { g.position.set(along, centerY, -depth / 2 + OFF); }
     else if (wall === 'front') { g.rotation.y = Math.PI; g.position.set(along, centerY, depth / 2 - OFF); }

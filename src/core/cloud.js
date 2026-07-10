@@ -98,6 +98,21 @@ export async function deleteDesign(id) {
   if (error) throw error;
 }
 
+// ----- orders (table: public.orders, INSERT-only for visitors) --------------
+/** Place an order: the design + full block list lands with PL/NTH directly —
+ *  no email client involved. Works signed in or out. */
+export async function submitOrder({ name, email, zip, notes, orderText, design, cabinets, subtotal }) {
+  const c = await client(); if (!c) throw new Error('Cloud not configured');
+  const user = await currentUser().catch(() => null);
+  const { error } = await c.from('orders').insert({
+    name: name || null, email, zip: zip || null, notes: notes || null,
+    order_text: orderText || null, design: design || null,
+    cabinets: cabinets ?? null, subtotal: subtotal ?? null,
+    user_id: user?.id || null,
+  });
+  if (error) throw error;
+}
+
 // ----- order checks (table: public.order_checks, INSERT-only for visitors) ---
 /** Submit a design for a free Order Advisor check. Works signed in or out. */
 export async function requestOrderCheck({ name, email, note, design, cabinets, subtotal }) {
