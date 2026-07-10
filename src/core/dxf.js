@@ -6,9 +6,11 @@
 //     polyface-mesh boxes, carcass panels on layer BODY in modelspace, the
 //     shaker front as a named BLOCK '<CODE>_FRONT_FACE' on layer FRONT,
 //     and a centred TEXT code on layer LABEL.
-//   buildPlanDXF(state)      — the current kitchen as a 2D plan (inches):
-//     double-line walls with openings as gaps, cabinet footprints with
-//     centred code TEXT.
+//   buildPlanDXF(state)      — the current kitchen as a 3D model (millimetres):
+//     double-line wall plan on the floor, every placed cabinet INSERTed as its
+//     '<CODE>_FRONT_FACE' block (rotated + lifted to its mount height) with its
+//     carcass meshes, appliances as plain boxes — top view reads as the plan,
+//     orbit shows the whole kitchen in 3D.
 //
 // R12 ASCII only: LINE, TEXT, INSERT and POLYLINE polyface meshes (all R12
 // citizens — LWPOLYLINE is R14+ so it is never used). No DOM, no Three.js —
@@ -41,9 +43,11 @@ function text(x, y, h, str, { align = 'left', rot = 0, layer = '0' } = {}) {
   return out;
 }
 
-function insert(name, x, y) {
-  return ['0', 'INSERT', '8', '0', '2', name,
-    '10', num(x), '20', num(y), '30', 0];
+function insert(name, x, y, { z = 0, rot = 0 } = {}) {
+  const out = ['0', 'INSERT', '8', '0', '2', name,
+    '10', num(x), '20', num(y), '30', num(z)];
+  if (rot) out.push('50', num(rot));
+  return out;
 }
 
 // A 3D polyface mesh (POLYLINE flags 70=64 + VERTEX records + SEQEND).
@@ -322,18 +326,26 @@ function frontEntities(cab) {
   return out;
 }
 
+/** Carcass panels as LOCAL boxes [x0,x1,y0,y1,z0,z1] (mm) — five 18mm panels. */
+function bodyBoxes(cab) {
+  if (cab.form === 'shelf' || cab.form === 'dishwasher') return [];
+  const W = cab.w * IN, H = cab.h * IN, D = cab.d * IN;
+  const P = M.PANEL, F = M.FRONT;
+  return [
+    [0, P, F, D, 0, H],                   // left side
+    [W - P, W, F, D, 0, H],               // right side
+    [0, W, D - P, D, 0, H],               // back
+    [P, W - P, F, D - P, H - P, H],       // top
+    [P, W - P, F, D - P, 0, P],           // bottom
+  ];
+}
+
 /** Carcass panels (layer BODY, modelspace) at offset ox/oy — five 18mm boxes. */
 function bodyEntities(cab, ox, oy) {
   const out = [];
-  if (cab.form === 'shelf' || cab.form === 'dishwasher') return out;
-  const W = cab.w * IN, H = cab.h * IN, D = cab.d * IN;
-  const P = M.PANEL, F = M.FRONT;
-  const b = (x0, x1, y0, y1, z0, z1) => out.push(...box(ox + x0, ox + x1, oy + y0, oy + y1, z0, z1, 'BODY'));
-  b(0, P, F, D, 0, H);                    // left side
-  b(W - P, W, F, D, 0, H);                // right side
-  b(0, W, D - P, D, 0, H);                // back
-  b(P, W - P, F, D - P, H - P, H);        // top
-  b(P, W - P, F, D - P, 0, P);            // bottom
+  for (const [x0, x1, y0, y1, z0, z1] of bodyBoxes(cab)) {
+    out.push(...box(ox + x0, ox + x1, oy + y0, oy + y1, z0, z1, 'BODY'));
+  }
   return out;
 }
 
@@ -365,16 +377,23 @@ export function buildCabinetLibraryDXF() {
   return dxfDoc(blocks, ents, { units: 4, layers: ['0', 'BODY', 'FRONT', 'LABEL'] });
 }
 
-// ---- kitchen plan ----------------------------------------------------------
-// Same geometry as the SVG floor plan: room centred on the origin, plan z
-// mapped to DXF −y (so the drawing reads the same way up in AutoCAD).
+// ---- kitchen 3D model -------------------------------------------------------
+// Same layout as the SVG floor plan — room centred on the origin, plan z
+// mapped to DXF −y (top view reads the same way up in AutoCAD) — but drawn in
+// MILLIMETRES with every cabinet as its full 3D model, so orbiting the drawing
+// shows the kitchen in 3D exactly like the cabinet library file.
+
+// mount heights (inches, z of the unit's underside) — mirrors models/cabinet.js
+// MOUNT (not imported: dxf.js stays free of Three.js so it runs in plain node)
+const MOUNT_IN = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5 };
 
 export function buildPlanDXF(state) {
   const r = (state && state.room) || {};
   const W = Number(r.width) || 144, D = Number(r.depth) || 120, T = 4;
   const ents = [];
 
-  // walls: double line, broken at openings, jamb lines closing each gap
+  // wall plan on the floor: double line (mm), broken at openings, jambs closing
+  // each gap — kept 2D so the top view still reads as a clean floor plan
   const walls = [
     { wall: 'back', horiz: true, fixed: -D / 2, out: -D / 2 - T, len: W },
     { wall: 'front', horiz: true, fixed: D / 2, out: D / 2 + T, len: W },
@@ -382,7 +401,8 @@ export function buildPlanDXF(state) {
     { wall: 'right', horiz: false, fixed: W / 2, out: W / 2 + T, len: D },
   ];
   // a wall-run line at offset `fix` from a..b along the wall (horiz: along=x)
-  const wallLine = (horiz, fix, a, b) => horiz ? line(a, -fix, b, -fix) : line(fix, -a, fix, -b);
+  const wallLine = (horiz, fix, a, b) =>
+    horiz ? line(a * IN, -fix * IN, b * IN, -fix * IN) : line(fix * IN, -a * IN, fix * IN, -b * IN);
   for (const wd of walls) {
     const room = { width: W, depth: D };
     const gaps = (r.openings || [])
@@ -401,32 +421,55 @@ export function buildPlanDXF(state) {
     }
     for (const [a, b] of gaps) {
       for (const e of [a, b]) {
-        ents.push(...(wd.horiz ? line(e, -wd.fixed, e, -wd.out) : line(wd.fixed, -e, wd.out, -e)));
+        ents.push(...(wd.horiz
+          ? line(e * IN, -wd.fixed * IN, e * IN, -wd.out * IN)
+          : line(wd.fixed * IN, -e * IN, wd.out * IN, -e * IN)));
       }
     }
   }
 
-  // cabinet footprints (rotation-aware) + centred code TEXT
+  // one '<CODE>_FRONT_FACE' block per DISTINCT supplied cabinet in the design
+  const used = new Map();
+  for (const it of (state && state.items) || []) {
+    const cab = getCab(it.code);
+    if (cab && cab.placeable && !cab.notSupplied) used.set(cab.code, cab);
+  }
+  const blocks = [...used.values()].map((cab) => ({ name: cab.code + '_FRONT_FACE', lines: frontEntities(cab) }));
+
+  // place every item: block INSERT (rotated, lifted to mount height) + carcass
   for (const it of (state && state.items) || []) {
     const cab = getCab(it.code);
     if (!cab || !cab.placeable) continue;
     const th = (it.rotDeg || 0) * Math.PI / 180;
-    const fx = Math.sin(th), fz = Math.cos(th);   // front (into the room)
-    const wx = Math.cos(th), wz = -Math.sin(th);  // width axis
-    const w = cab.w, d = cab.d;
-    const corner = (sw, sd) => [
-      it.x + wx * (sw * w / 2) + fx * (sd * d / 2),
-      -(it.z + wz * (sw * w / 2) + fz * (sd * d / 2)),   // plan z → DXF −y
-    ];
-    const pts = [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)];
-    for (let i = 0; i < 4; i++) {
-      const p = pts[i], q = pts[(i + 1) % 4];
-      ents.push(...line(p[0], p[1], q[0], q[1]));
+    const fx = Math.sin(th), fz = Math.cos(th);        // front (into the room), plan coords
+    // block axes in DXF coords (plan z → −y): local +X runs across the front,
+    // local +Y runs from the front plane into the cabinet
+    const v = [-fx, fz];                               // block +Y (front → back)
+    const u = [fz, fx];                                // block +X (right-handed with z-up)
+    const Wmm = cab.w * IN, Dmm = cab.d * IN;
+    const zOff = (typeof cab.mountY === 'number' ? cab.mountY : (MOUNT_IN[cab.type] ?? 0)) * IN;
+    const cx = it.x * IN, cy = -it.z * IN;             // footprint centre, mm
+    const ox = cx - u[0] * Wmm / 2 - v[0] * Dmm / 2;   // block origin = front-left corner
+    const oy = cy - u[1] * Wmm / 2 - v[1] * Dmm / 2;
+    const rotDXF = Math.atan2(u[1], u[0]) * 180 / Math.PI;
+    const xf = (lx, ly, lz) => [ox + u[0] * lx + v[0] * ly, oy + u[1] * lx + v[1] * ly, zOff + lz];
+    const placedBox = (x0, x1, y0, y1, z0, z1, layer) => pface([
+      xf(x0, y0, z0), xf(x1, y0, z0), xf(x1, y1, z0), xf(x0, y1, z0),
+      xf(x0, y0, z1), xf(x1, y0, z1), xf(x1, y1, z1), xf(x0, y1, z1),
+    ], BOXF, layer);
+    if (cab.notSupplied) {
+      // appliance: a plain box at its mount height so the 3D reads complete
+      ents.push(...placedBox(0, Wmm, 0, Dmm, 0, cab.h * IN, 'BODY'));
+    } else {
+      ents.push(...insert(cab.code + '_FRONT_FACE', ox, oy, { z: zOff, rot: rotDXF }));
+      for (const [x0, x1, y0, y1, z0, z1] of bodyBoxes(cab)) {
+        ents.push(...placedBox(x0, x1, y0, y1, z0, z1, 'BODY'));
+      }
     }
     const rot = (((it.rotDeg || 0) % 180) + 180) % 180;
-    ents.push(...text(it.x, -it.z, 3, cab.baseCode || cab.code,
-      { align: 'center', rot: Math.abs(rot - 90) < 1 ? 90 : 0 }));
+    ents.push(...text(cx, cy, 76.2, cab.baseCode || cab.code,
+      { align: 'center', rot: Math.abs(rot - 90) < 1 ? 90 : 0, layer: 'LABEL' }));
   }
 
-  return dxfDoc([], ents, { units: 1 });
+  return dxfDoc(blocks, ents, { units: 4, layers: ['0', 'BODY', 'FRONT', 'LABEL'] });
 }
