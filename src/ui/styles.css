@@ -2,9 +2,9 @@
 :root {
   /* Brand palette — light editorial chrome: paper #f7f5eb + green #645b3d.
      Depth comes from opacity/tints of these, never from a third accent hue. */
-  --brown: #f7f5eb;        /* panel chrome (now paper) */
-  --brown-deep: #f1eedf;   /* topbar / deepest (cream tint) */
-  --brown-soft: #efebdb;   /* cards / inputs (cream tint) */
+  --brown: #fbfaf4;        /* panel chrome (now paper) */
+  --brown-deep: #f7f5eb;   /* topbar / deepest (cream tint) */
+  --brown-soft: #ffffff;   /* cards / inputs (cream tint) */
   --charcoal: #f7f5eb;
   --cream: #645b3d;        /* body text / accent (now green) */
   --cream-hi: #574f35;     /* headings (deep olive) */
@@ -17,7 +17,7 @@
   --red: #b1493d;
   --green: #5c7d46;
   --amber: #645b3d;
-  --offwhite: #fffdf4;     /* panel surface (genuinely off-white now) */
+  --offwhite: #ffffff;     /* panel surface (genuinely off-white now) */
   --serif: "Playfair Display", "Hoefler Text", Georgia, "Times New Roman", serif;
   --panel-w: 322px;
 }
@@ -51,7 +51,7 @@ body {
 .brand .slash { color: var(--brass); font-weight: 600; margin: 0 0.01em; }
 .brand .sub { font-size: 9.5px; letter-spacing: 0.22em; color: var(--dim); text-transform: uppercase; margin-left: 16px; font-weight: 500; }
 /* the product wordmark — PL/NNER, sister mark to PL/NTH */
-.brand .sub.brandmark { color: var(--cream); font-weight: 800; font-size: 23px; letter-spacing: 0.14em; opacity: 0.85; margin-left: 18px; }
+.brand .sub.brandmark { color: var(--cream); font-weight: 800; font-size: 23px; letter-spacing: 0.14em; opacity: 0.85; margin-left: 2px; }
 .brand .sub.brandmark .slash { opacity: 0.5; }
 .topbar-actions { display: flex; gap: 8px; align-items: center; }
 .topbar-actions button { text-transform: uppercase; letter-spacing: 0.09em; font-size: 10.5px; }
@@ -354,7 +354,7 @@ kbd {
   max-width: calc(100% - 2 * var(--panel-w) - 32px);
   bottom: 16px; z-index: 14;
   display: flex; gap: 0; align-items: stretch; flex-wrap: wrap;
-  background: rgba(247,244,233,0.94); border: 1px solid var(--line-strong);
+  background: rgba(255,255,255,0.94); border: 1px solid var(--line-strong);
   border-radius: 12px; padding: 7px 6px 8px;
   backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0,0,0,0.35);
 }
@@ -366,7 +366,7 @@ kbd {
 }
 .vc-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .vc-btn {
-  background: rgba(247,244,233,0.94); color: var(--cream); border: 1px solid var(--line-strong);
+  background: rgba(255,255,255,0.94); color: var(--cream); border: 1px solid var(--line-strong);
   padding: 8px 12px; border-radius: 7px; font-size: 12px;
 }
 #viewControls .vc-btn {
@@ -383,7 +383,7 @@ kbd {
 /* live dimensions chip while dragging a cabinet */
 #dimChip {
   position: fixed; z-index: 60; display: none; pointer-events: none;
-  background: rgba(247,244,233,0.94); color: var(--cream);
+  background: rgba(255,255,255,0.94); color: var(--cream);
   border: 1px solid var(--line-strong); border-radius: 7px;
   padding: 6px 10px; font-size: 12px; white-space: nowrap;
   box-shadow: 0 4px 14px rgba(0,0,0,0.35);
@@ -434,7 +434,7 @@ kbd {
 
 /* segmented view switch */
 .view-switch {
-  display: inline-flex; background: rgba(247,244,233,0.94); border: 1px solid var(--line-strong);
+  display: inline-flex; background: rgba(255,255,255,0.94); border: 1px solid var(--line-strong);
   border-radius: 8px; padding: 3px; gap: 2px; backdrop-filter: blur(6px);
   box-shadow: 0 4px 14px rgba(0,0,0,0.3);
 }
