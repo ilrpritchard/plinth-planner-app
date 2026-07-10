@@ -317,6 +317,24 @@
 
     <!-- cloud account / save modal (only active when Supabase is configured) -->
     <div id="cloudModal"></div>
+
+    <!-- order-check request: submit the design, an Order Advisor follows up -->
+    <div id="orderCheckModal">
+      <div class="cloud-card">
+        <h3>Book a free order check</h3>
+        <p class="cloud-sub">Submit your design and an Order Advisor will look it over — making sure
+          nothing's missing or forgotten before it goes to the workshop — and be in touch.
+          It isn't a design service.</p>
+        <form id="ocForm">
+          <label>Name<input id="ocName" autocomplete="name" placeholder="Your name"></label>
+          <label>Email<input id="ocEmail" type="email" required autocomplete="email" placeholder="you@email.com"></label>
+          <label>Anything we should know? <span style="text-transform:none">(optional)</span><input id="ocNote" placeholder="Optional"></label>
+          <button class="cta" id="ocSubmit" type="submit">Submit my design →</button>
+          <div class="cloud-msg" id="ocMsg"></div>
+        </form>
+        <button class="cloud-x" id="ocClose">×</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="./src/main.js"></script>

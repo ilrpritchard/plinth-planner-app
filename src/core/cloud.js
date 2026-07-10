@@ -97,3 +97,16 @@ export async function deleteDesign(id) {
   const { error } = await c.from('designs').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ----- order checks (table: public.order_checks, INSERT-only for visitors) ---
+/** Submit a design for a free Order Advisor check. Works signed in or out. */
+export async function requestOrderCheck({ name, email, note, design, cabinets, subtotal }) {
+  const c = await client(); if (!c) throw new Error('Cloud not configured');
+  const user = await currentUser().catch(() => null);
+  const { error } = await c.from('order_checks').insert({
+    name: name || null, email, note: note || null,
+    design: design || null, cabinets: cabinets ?? null, subtotal: subtotal ?? null,
+    user_id: user?.id || null,
+  });
+  if (error) throw error;
+}

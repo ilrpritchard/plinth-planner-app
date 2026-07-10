@@ -7,7 +7,6 @@ import { computeFillers } from './core/fillers.js';
 import { planWallInfill } from './core/templates.js';
 import { parseLength, fmtFeetIn } from './core/units.js';
 import { autosave, loadSaved, loadFromHash, buildShareURL } from './core/persistence.js';
-import { BOOKING_URL } from './core/config.js';
 import { Scene } from './scene/Scene.js';
 import { Room } from './scene/Room.js';
 import { Worktop } from './models/worktop.js';
@@ -24,7 +23,7 @@ import { buildQuoteHTML } from './ui/quote.js';
 import { TradeUI } from './ui/trade.js';
 import { CloudUI } from './ui/cloudUI.js';
 import { Wizard } from './ui/wizard.js';
-import { isCloud } from './core/cloud.js';
+import { isCloud, requestOrderCheck } from './core/cloud.js';
 import { fetchSharedProject } from './core/tradecloud.js';
 
 // Build stamp — bump on each change so you can confirm the browser is running
@@ -450,8 +449,50 @@ document.getElementById('btnEmailMe')?.addEventListener('click', () => {
   const body = `Here's my kitchen design — open this link to pick up where I left off:\n\n${url}\n\n— Designed in PL/NNER, the PL/NTH kitchen planner`;
   window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 });
+// "Book a free order check" → an in-planner popup: submit the design and an
+// Order Advisor follows up. Falls back to email when the cloud is off or the
+// submit fails (BOOKING_URL kept in config for a future scheduling link).
 const bookBtn = document.getElementById('btnBook');
-if (bookBtn) { if (BOOKING_URL) bookBtn.href = BOOKING_URL; else bookBtn.href = 'mailto:hello@plinthmade.com?subject=' + encodeURIComponent('Book a free order check'); }
+const ocModal = document.getElementById('orderCheckModal');
+if (bookBtn && ocModal) {
+  const ocMsg = (t, ok) => { const el = document.getElementById('ocMsg'); el.textContent = t; el.className = 'cloud-msg' + (ok ? ' ok' : t ? ' err' : ''); };
+  const mailtoFallback = () => {
+    location.href = 'mailto:hello@plinthmade.com?subject=' + encodeURIComponent('Book a free order check') +
+      '&body=' + encodeURIComponent('Hi PL/NTH — please give my kitchen design a once-over.\n\nMy design link:\n' + buildShareURL(store));
+  };
+  bookBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!isCloud()) { mailtoFallback(); return; }
+    document.getElementById('ocName').value = store.state.customer.name || '';
+    document.getElementById('ocEmail').value = store.state.customer.email || '';
+    ocMsg('');
+    document.getElementById('ocSubmit').disabled = false;
+    ocModal.classList.add('show');
+  });
+  document.getElementById('ocClose').addEventListener('click', () => ocModal.classList.remove('show'));
+  ocModal.addEventListener('click', (e) => { if (e.target === ocModal) ocModal.classList.remove('show'); });
+  document.getElementById('ocForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('ocSubmit');
+    btn.disabled = true; ocMsg('Sending…', true);
+    try {
+      const sum = summarizeState(store.state);
+      await requestOrderCheck({
+        name: document.getElementById('ocName').value.trim(),
+        email: document.getElementById('ocEmail').value.trim(),
+        note: document.getElementById('ocNote').value.trim(),
+        design: store.serialize(),
+        cabinets: sum.totalCabs,
+        subtotal: sum.subtotal,
+      });
+      ocMsg('Design received — an Order Advisor will be in touch. ✓', true);
+    } catch (err) {
+      btn.disabled = false;
+      ocMsg((err?.message || 'Could not send') + ' — opening email instead…');
+      setTimeout(mailtoFallback, 1200);
+    }
+  });
+}
 
 // expose a tiny mount API so the planner can drop onto a page if desired —
 // loadState is the same rebuild sequence the compare tray uses, and is what
