@@ -31,10 +31,10 @@ export class CabinetLayer {
 
   _onChange(state, change) {
     switch (change.type) {
-      case 'add': this._addOrUpdate(this.store.getItem(change.id)); break;
+      case 'add': this._addOrUpdate(this.store.getItem(change.id)); this._syncSinkBases(); break;
       case 'swap': this._dispose(change.id); this._addOrUpdate(this.store.getItem(change.id)); this.select(change.id); break;
-      case 'update': this._reposition(change.id); break;
-      case 'remove': this._dispose(change.id); break;
+      case 'update': this._reposition(change.id); this._syncSinkBases(); break;
+      case 'remove': this._dispose(change.id); this._syncSinkBases(); break;
       case 'finish': this.rebuildAll(); break;
       // room resized → a corner cabinet's drawn return may need to reach a
       // wall that moved; re-check every corner unit
@@ -59,11 +59,44 @@ export class CabinetLayer {
     if (this.selectedId != null) this.select(this.selectedId);
   }
 
+  /** Is a sink appliance sitting over this floor cabinet's footprint? */
+  _sinkOver(item, cab) {
+    const half = (c, r) => {
+      const th = ((r || 0) * Math.PI) / 180;
+      return {
+        x: Math.abs(Math.cos(th)) * c.w / 2 + Math.abs(Math.sin(th)) * c.d / 2,
+        z: Math.abs(Math.sin(th)) * c.w / 2 + Math.abs(Math.cos(th)) * c.d / 2,
+      };
+    };
+    const a = half(cab, item.rotDeg);
+    return this.store.state.items.some((o) => {
+      if (o.id === item.id) return false;
+      const oc = getCab(o.code);
+      if (!oc || oc.appliance !== 'sink') return false;
+      const b = half(oc, o.rotDeg);
+      // require REAL overlap (2" past mere adjacency) before dropping the top
+      return Math.abs(o.x - item.x) < a.x + b.x - 2 && Math.abs(o.z - item.z) < a.z + b.z - 2;
+    });
+  }
+
+  /** Rebuild any floor cabinet whose sink-over state flipped (top panel on/off). */
+  _syncSinkBases() {
+    for (const it of this.store.state.items) {
+      const cab = getCab(it.code);
+      if (!cab || cab.type !== 'FLOOR') continue;
+      const rec = this.map.get(it.id);
+      if (!rec) continue;
+      if (!!rec.sinkOver !== this._sinkOver(it, cab)) { this._dispose(it.id); this._addOrUpdate(it); }
+    }
+  }
+
   _build(cab, item) {
     if (cab.type === 'APPLIANCES') return buildAppliance(cab);
     if (cab.type === 'SHELF') return buildFloatingShelf(cab);
     // hardware is not user-choosable: every Plinth cabinet ships with knobs
     const opts = { hinge: item.hinge, handle: 'knob', backPanel: !!item.backPanel };
+    this._lastSinkOver = cab.type === 'FLOOR' && this._sinkOver(item, cab);
+    opts.sinkOver = this._lastSinkOver;
     // corner units: draw the blank return long enough to meet the adjacent
     // wall flush (sized from the actual distance — see cornerReturnLength)
     if (cab.corner) opts.returnLen = cornerReturnLength(cab, item, this.store.state.room);
@@ -77,7 +110,7 @@ export class CabinetLayer {
     const g = this._build(cab, item);
     g.userData.itemId = item.id;
     this.group.add(g);
-    const rec = { group: g, code: item.code };
+    const rec = { group: g, code: item.code, sinkOver: this._lastSinkOver };
     if (cab.corner) rec.returnLen = cornerReturnLength(cab, item, this.store.state.room);
     this.map.set(item.id, rec);
     this._reposition(item.id);

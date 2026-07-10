@@ -153,6 +153,11 @@ export class Room {
       left: drawing || camPos.x >= -d.width / 2,
       right: drawing || camPos.x <= d.width / 2,
     };
+    // an ELEVATION looks at its wall from outside the room — the opposite wall
+    // sits between the camera and the kitchen and must hide, or the view is a
+    // blank plane. (Plan looks straight down, so all four can stay.)
+    const THROUGH = { back: 'front', front: 'back', left: 'right', right: 'left' };
+    if (drawing && THROUGH[view]) auto[THROUGH[view]] = false;
     for (const name of ['back', 'front', 'left', 'right']) {
       const vis = auto[name] && !this._hidden.has(name);
       for (const m of (this.walls[name] || [])) m.visible = vis;

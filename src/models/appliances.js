@@ -15,7 +15,7 @@ const CHROME = () => mat(0xe2e6ea, 0.95, 0.12, 1.2);
 const ENAMEL = () => mat(0xf3f3f0, 0.1, 0.45, 0.7);
 const CAST = () => mat(0x1c1d1f, 0.2, 0.6, 0.4);
 const RED = () => mat(0x9e1b21, 0.35, 0.4, 0.8);      // pro-range signature knob red
-const BASIN = () => mat(0xaeb3b8, 0.9, 0.28, 1.0);    // brushed basin interior
+const BASIN = () => mat(0xb4b9be, 0.5, 0.45, 1.2);    // brushed basin steel — low metalness so it never reads black in shadow
 
 function box(w, h, d, m, r = 0) {
   const g = r > 0 ? new THREE.BoxGeometry(w, h, d) : new THREE.BoxGeometry(w, h, d);
@@ -131,21 +131,37 @@ export function buildAppliance(cab) {
       break;
     }
     case 'sink': {
-      // UNDERMOUNT stainless: no proud rim. The worktop slab is continuous, so
-      // the bowl is FAKED from above: a hairline steel cutout edge sits 0.05"
-      // proud, each bowl is a darker brushed pan 0.13" proud (reading as the
-      // basin in shadow) with a chromed drain ring on it — convincing at every
-      // real viewing angle without cutting the worktop mesh.
+      // UNDERMOUNT stainless with REAL depth: the worktop plan cuts a matching
+      // hole (core/worktop-plan.js subtractSinkCutouts uses the same numbers),
+      // so each bowl is a true open-top basin recessed 7" below the surface —
+      // BackSide walls you look down into, a brushed floor, and a drain.
       const double = /double/i.test(cab.desc);
-      const cutW = w - 2.4, cutD = d - 4.5;
-      const edge = box(cutW + 0.6, 0.1, cutD + 0.6, STEEL_DK()); edge.position.y = 0.05; edge.castShadow = false; g.add(edge);
-      const bowlMat = () => mat(0x565c61, 0.85, 0.38, 0.9);   // basin-in-shadow steel
+      const cutW = cab.w - 2.4, cutD = d - 4.5, bowlDepth = 7;
       const bowls = double ? [[-cutW / 4 - 0.25, cutW / 2 - 0.5], [cutW / 4 + 0.25, cutW / 2 - 0.5]] : [[0, cutW]];
       for (const [x, bw] of bowls) {
-        const pan = box(bw, 0.14, cutD, bowlMat()); pan.position.set(x, 0.13, 0); pan.castShadow = false; g.add(pan);
-        const drain = cyl(0.8, 0.8, 0.1, DARK()); drain.position.set(x, 0.22, 1.4); drain.castShadow = false; g.add(drain);
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.82, 0.1, 8, 24), CHROME());
-        ring.rotation.x = Math.PI / 2; ring.position.set(x, 0.23, 1.4); ring.castShadow = false; g.add(ring);
+        // four REAL thin walls + a floor — solid geometry so the bowl reads
+        // correctly from every angle (a flipped-normals box sees through its
+        // near wall when viewed from the front)
+        const t = 0.18, yMid = -bowlDepth / 2;
+        const mkWall = (ww, dd, px, pz) => {
+          const m = box(ww, bowlDepth, dd, BASIN());
+          m.position.set(px, yMid, pz); g.add(m);         // walls CAST shadow into the bowl — that's the depth cue
+        };
+        mkWall(bw, t, x, -cutD / 2 + t / 2);              // back
+        mkWall(bw, t, x, cutD / 2 - t / 2);               // front
+        mkWall(t, cutD, x - bw / 2 + t / 2, 0);           // left
+        mkWall(t, cutD, x + bw / 2 - t / 2, 0);           // right
+        // the floor sits in the bowl's own shade — drawn decisively darker than
+        // the worktop or the scene's flat lighting washes the recess out
+        const floor = box(bw, 0.2, cutD, mat(0x7e848a, 0.5, 0.52, 0.7));
+        floor.position.set(x, -bowlDepth + 0.1, 0); floor.castShadow = false; g.add(floor);
+        const drain = cyl(0.8, 0.8, 0.12, DARK()); drain.position.set(x, -bowlDepth + 0.26, 1.4); drain.castShadow = false; g.add(drain);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.82, 0.09, 8, 24), CHROME());
+        ring.rotation.x = Math.PI / 2; ring.position.set(x, -bowlDepth + 0.3, 1.4); ring.castShadow = false; g.add(ring);
+      }
+      if (double) {                                       // divider crests just below the rim
+        const div = box(0.7, bowlDepth - 0.8, cutD, BASIN());
+        div.position.set(0, -(bowlDepth - 0.8) / 2 - 0.8, 0); g.add(div);
       }
       gooseneck(g, 0, -d / 2 + 1.6);
       // single lever handle beside the column

@@ -194,8 +194,14 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   const left = box(PANEL, bodyH, d, mat); left.position.set(-shellW / 2 + PANEL / 2, bodyY0 + bodyH / 2, 0);
   const right = box(PANEL, bodyH, d, mat); right.position.set(shellW / 2 - PANEL / 2, bodyY0 + bodyH / 2, 0);
   const bottom = box(shellW, PANEL, d, mat); bottom.position.set(0, bodyY0 + PANEL / 2, 0);
-  const top = box(shellW, PANEL, d, mat); top.position.set(0, h - PANEL / 2, 0);
-  g.add(left, right, bottom, top);
+  g.add(left, right, bottom);
+  // a SINK BASE loses its top panel — an undermount bowl drops straight
+  // through where it would sit (otherwise the panel shows as a white plane
+  // an inch below the worktop cutout)
+  if (!opts.sinkOver) {
+    const top = box(shellW, PANEL, d, mat); top.position.set(0, h - PANEL / 2, 0);
+    g.add(top);
+  }
 
   // ----- oak-veneer interior (always lined; visible when doors open) -----
   // A single-depth island's exposed back gets a PAINTED finished panel instead

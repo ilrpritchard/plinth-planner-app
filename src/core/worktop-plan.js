@@ -216,3 +216,38 @@ export function planWorktopSlabs(items, getCab, defaultMat = 'marble', room = nu
 
   return slabs.filter((s) => s.x1 - s.x0 > 0.05 && s.z1 - s.z0 > 0.05);
 }
+
+// ---- sink cutouts --------------------------------------------------------
+// Subtract each sink's basin opening from the slabs so an UNDERMOUNT bowl is
+// genuinely recessed — the slab is split into up to four rectangles around
+// the hole. Pure rectangle arithmetic; opening sizes mirror the sink model
+// in models/appliances.js (cut = footprint − rim allowance).
+export function subtractSinkCutouts(slabs, items, getCab) {
+  const holes = [];
+  for (const it of items || []) {
+    const cab = getCab(it.code);
+    if (!cab || cab.appliance !== 'sink') continue;
+    const cutW = cab.w - 2.4, cutD = cab.d - 4.5;        // basin opening, local
+    const th = ((it.rotDeg || 0) * Math.PI) / 180;
+    const hx = Math.abs(Math.cos(th)) * cutW / 2 + Math.abs(Math.sin(th)) * cutD / 2;
+    const hz = Math.abs(Math.sin(th)) * cutW / 2 + Math.abs(Math.cos(th)) * cutD / 2;
+    holes.push({ x0: it.x - hx, x1: it.x + hx, z0: it.z - hz, z1: it.z + hz });
+  }
+  if (!holes.length) return slabs;
+  let rects = slabs;
+  for (const h of holes) {
+    const next = [];
+    for (const s of rects) {
+      const ix0 = Math.max(s.x0, h.x0), ix1 = Math.min(s.x1, h.x1);
+      const iz0 = Math.max(s.z0, h.z0), iz1 = Math.min(s.z1, h.z1);
+      if (ix1 - ix0 <= 0.01 || iz1 - iz0 <= 0.01) { next.push(s); continue; }
+      // four pieces around the hole (any zero-width piece is filtered below)
+      next.push({ ...s, x1: ix0 });                       // left strip
+      next.push({ ...s, x0: ix1 });                       // right strip
+      next.push({ ...s, x0: ix0, x1: ix1, z1: iz0 });     // back strip
+      next.push({ ...s, x0: ix0, x1: ix1, z0: iz1 });     // front strip
+    }
+    rects = next;
+  }
+  return rects.filter((s) => s.x1 - s.x0 > 0.05 && s.z1 - s.z0 > 0.05);
+}
