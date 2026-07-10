@@ -17,6 +17,7 @@ import {
 } from '../core/submittal.js';
 import { buildFloorplanSVG, PLAN_STYLE as P, svgLine, svgDimH, svgDimV, svgN as n } from './floorplan.js';
 import { drawFront, frontParts } from './frontdraw.js';
+import { uiAlert } from './dialog.js';
 
 const DISCLAIMER = 'Please note: all room dimensions, openings and services shown are as entered by the client. The client is responsible for checking and confirming every measurement on site before ordering — PL/NTH does not survey or verify site dimensions.';
 const HANDLE_LABEL = { knob: 'Brushed steel knob' };  // fixed — Plinth hardware is knobs only
@@ -439,7 +440,7 @@ export function buildSubmittalPackHTML(trade, date) {
 /** Same print mechanism as the plan sheet: new window → write → print(). */
 export function openPrintWindow(html) {
   const w = window.open('', '_blank');
-  if (!w) { alert('Allow pop-ups to export the PDF.'); return; }
+  if (!w) { uiAlert('Allow pop-ups for this site, then try again.', { title: 'Pop-up blocked' }); return; }
   w.document.write(html);
   w.document.close();
   w.focus();

@@ -10,6 +10,7 @@ import { buildCabinetLibraryDXF, buildPlanDXF } from '../core/dxf.js';
 import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
 import { bumpRev, unitRev } from '../core/submittal.js';
+import { uiConfirm } from './dialog.js';
 import { buildSubmittalHTML, buildSubmittalPackHTML, openPrintWindow } from './submittal.js';
 import { checkOrder, checkDesign } from '../core/speccheck.js';
 import { planPhases, batchWindow, DEFAULT_MAX_PER_BATCH } from '../core/phasing.js';
@@ -679,7 +680,10 @@ export class TradeUI {
       for (const f of this.unitFindings(u) || []) all.push(`• [${unitName(u)}] ${f.level.toUpperCase()} — ${f.msg}`);
     }
     if (all.length) {
-      const go = window.confirm(`Spec check found ${all.length} item${all.length === 1 ? '' : 's'}:\n\n${all.join('\n\n')}\n\nPlace the trade order anyway?`);
+      const go = await uiConfirm(all.join('\n\n'), {
+        title: `Spec check found ${all.length} item${all.length === 1 ? '' : 's'}`,
+        confirmLabel: 'Place order anyway', cancelLabel: 'Go back',
+      });
       if (!go) return;
     }
 
@@ -947,7 +951,9 @@ export class TradeUI {
       const btn = e.target.closest('[data-act="o-cancel"]'); if (!btn) return;
       const id = btn.closest('[data-oid]')?.dataset.oid; if (!id) return;
       const row = rowById.get(id);
-      if (!window.confirm(`Cancel order ${row ? row.order_no : ''}? This can't be undone.`)) return;
+      if (!(await uiConfirm("This can't be undone.", {
+        title: `Cancel order ${row ? row.order_no : ''}?`, confirmLabel: 'Cancel order', cancelLabel: 'Keep it', danger: true,
+      }))) return;
       btn.disabled = true;
       try { await cancelOrder(id); toast('Order cancelled.'); this.renderOrders(); }
       catch (err) { btn.disabled = false; toast(`Could not cancel — ${err.message || 'are you online?'}`); }

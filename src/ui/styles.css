@@ -874,6 +874,7 @@ body.wz-reviewing #viewControls, body.wz-reviewing #selbar {
 #cloudModal form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); margin-bottom: 12px; }
 #cloudModal input { font-family: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--brown-soft); color: var(--cream); }
 #cloudModal .cta { width: 100%; padding: 11px; }
+.cloud-foot { text-align: right; margin-top: 8px; }
 .cloud-msg { font-size: 12px; margin-top: 10px; color: var(--muted); }
 .cloud-msg.err { color: var(--red); }
 .cloud-msg.ok { color: var(--green); }
@@ -884,6 +885,20 @@ body.wz-reviewing #viewControls, body.wz-reviewing #selbar {
 .design-row em { color: var(--muted); font-style: normal; font-size: 11px; }
 .linkbtn { background: none; border: none; color: var(--green); cursor: pointer; font-size: 12px; padding: 2px 4px; }
 .linkbtn.danger { color: var(--red); }
+
+/* on-brand confirm/alert dialogs (dialog.js) — same paper card as the modal */
+#uiDialog { position: fixed; inset: 0; z-index: 80; background: rgba(70,63,42,0.42); display: none; align-items: center; justify-content: center; }
+#uiDialog.show { display: flex; }
+.dlg-card { width: 340px; }
+.dlg-msg { margin-bottom: 18px; line-height: 1.5; white-space: pre-line; max-height: 40vh; overflow-y: auto; }
+.dlg-btns { display: flex; gap: 10px; justify-content: flex-end; }
+.dlg-btns .cta { padding: 10px 22px; }
+.dlg-btns .dlg-cancel {
+  background: none; border: 1px solid var(--line-strong); color: var(--cream);
+  border-radius: 7px; padding: 10px 18px; font-size: 13px; cursor: pointer; font-family: inherit;
+}
+.dlg-btns .dlg-cancel:hover { border-color: var(--cream); }
+.dlg-btns .dlg-danger { background: var(--red); border-color: var(--red); color: #fff; }
 
 /* ---- Trade spec-sheet ---- */
 .trade-wrap { max-width: 1080px; margin: 0 auto; padding: 24px 24px 60px; }

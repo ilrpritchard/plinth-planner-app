@@ -13,6 +13,7 @@ import { buildOrderEmail } from '../core/order.js';
 import { exportJSON, importJSON } from '../core/persistence.js';
 import { TEMPLATES, applyTemplate, planWallInfill } from '../core/templates.js';
 import { cabinetSVG } from './icon.js';
+import { uiConfirm, uiAlert } from './dialog.js';
 import { FLOORS, WALLS } from '../scene/Room.js';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
@@ -235,9 +236,11 @@ export class UI {
          <span class="qs-name">${t.name}</span>
          <span class="qs-desc">${t.desc}</span>
        </button>`).join('');
-    grid.addEventListener('click', (e) => {
+    grid.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-tpl]'); if (!b) return;
-      if (this.store.state.items.length && !confirm('Start from this layout? It replaces what you have now.')) return;
+      if (this.store.state.items.length && !(await uiConfirm('It replaces what you have on the walls now.', {
+        title: 'Start from this layout?', confirmLabel: 'Start fresh',
+      }))) return;
       const n = applyTemplate(this.store, (code, wall) => this.controls.placeNew(code, wall), b.dataset.tpl);
       this.controls?.layer?.select(null); this.showSelbar(null);
       this._toast(`Placed a starting layout (${n} cabinets). Drag to adjust.`);
@@ -664,8 +667,10 @@ export class UI {
       });
       e.target.value = '';
     });
-    document.getElementById('btnClear').addEventListener('click', () => {
-      if (confirm('Clear all cabinets from the plan?')) this.store.clear();
+    document.getElementById('btnClear').addEventListener('click', async () => {
+      if (await uiConfirm('Every cabinet comes off the plan. You can undo this.', {
+        title: 'Clear the whole plan?', confirmLabel: 'Clear it',
+      })) this.store.clear();
     });
   }
 

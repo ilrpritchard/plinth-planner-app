@@ -19,6 +19,7 @@ import { PointerControls } from './interaction/controls.js';
 import { UI } from './ui/ui.js';
 import { buildFloorplanSVG, buildPlanSheetHTML } from './ui/floorplan.js';
 import { buildPlanDXF } from './core/dxf.js';
+import { uiAlert } from './ui/dialog.js';
 import { buildQuoteHTML } from './ui/quote.js';
 import { TradeUI } from './ui/trade.js';
 import { CloudUI } from './ui/cloudUI.js';
@@ -248,7 +249,7 @@ document.getElementById('planPrint')?.addEventListener('click', () => window.pri
 // branded sheet in a new window → the browser's Print dialog saves it as PDF
 document.getElementById('planPDF')?.addEventListener('click', () => {
   const w = window.open('', '_blank');
-  if (!w) { alert('Allow pop-ups to export the PDF sheet.'); return; }
+  if (!w) { uiAlert('Allow pop-ups for this site, then try again.', { title: 'Pop-up blocked' }); return; }
   w.document.write(buildPlanSheetHTML(store.serialize(), underlay));
   w.document.close();
   w.focus();
@@ -294,7 +295,7 @@ function toggleQuote(on) {
   }
 }
 document.getElementById('btnQuote')?.addEventListener('click', () => {
-  if (!store.state.items.length) { alert('Add some cabinets first — then your quote will have something to show.'); return; }
+  if (!store.state.items.length) { uiAlert('Add some cabinets first — then your quote will have something to show.', { title: 'Nothing to quote yet' }); return; }
   toggleQuote(!quoteOverlay.classList.contains('show'));
 });
 document.getElementById('quoteClose')?.addEventListener('click', () => toggleQuote(false));

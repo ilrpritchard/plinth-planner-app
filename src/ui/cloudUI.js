@@ -2,15 +2,18 @@
 // cloud. Only active when Supabase is configured (src/core/config.js).
 
 import {
-  isCloud, signUp, signIn, signOut, currentUser, onAuthChange,
+  isCloud, signUp, signIn, signOut, currentUser, onAuthChange, onPasswordRecovery,
+  resetPassword, updatePassword,
   saveDesign, listDesigns, loadDesign, deleteDesign,
 } from '../core/cloud.js';
+import { uiConfirm } from './dialog.js';
 
 export class CloudUI {
   constructor({ store, onLoaded }) {
     this.store = store;
     this.onLoaded = onLoaded || (() => {});
     this.user = null;
+    this.view = null;            // null | 'reset' — 'reset' = choose-a-new-password
     this.btn = document.getElementById('btnAccount');
     this.modal = document.getElementById('cloudModal');
     if (!isCloud() || !this.btn || !this.modal) { if (this.btn) this.btn.style.display = 'none'; return; }
@@ -19,17 +22,38 @@ export class CloudUI {
     this.modal.addEventListener('click', (e) => { if (e.target === this.modal) this.close(); });
     onAuthChange((u) => { this.user = u; this._syncBtn(); });
     currentUser().then((u) => { this.user = u; this._syncBtn(); });
+    // arrived from a password-reset email → collect the new password
+    onPasswordRecovery(() => this.openReset());
+    if (/type=recovery/.test(location.hash)) setTimeout(() => this.openReset(), 900);
+    // arrived from a sign-up confirmation email → welcome them in
+    if (/type=signup/.test(location.hash)) {
+      setTimeout(async () => {
+        this.user = await currentUser();
+        this._syncBtn();
+        if (this.user) { this.open(); this._note = 'Email confirmed — welcome to PL/NTH.'; this.render(); }
+      }, 900);
+    }
   }
 
   _syncBtn() { if (this.btn) this.btn.textContent = this.user ? 'My designs' : 'Sign in'; }
   open() { this.modal.classList.add('show'); this.render(); }
-  close() { this.modal.classList.remove('show'); }
+  close() { this.modal.classList.remove('show'); this.view = null; }
+  openReset() {
+    if (this.view === 'reset') return;
+    this.view = 'reset';
+    this.modal.classList.add('show');
+    this.render();
+  }
 
   async render() {
-    this.modal.innerHTML = `<div class="cloud-card">${this.user ? this._loggedInHTML() : this._authHTML()}
+    const body = this.view === 'reset' ? this._resetHTML()
+      : this.user ? this._loggedInHTML() : this._authHTML();
+    this.modal.innerHTML = `<div class="cloud-card">${body}
       <button class="cloud-x" id="cloudClose">×</button></div>`;
     this.modal.querySelector('#cloudClose').addEventListener('click', () => this.close());
-    if (this.user) this._wireLoggedIn(); else this._wireAuth();
+    if (this.view === 'reset') this._wireReset();
+    else if (this.user) this._wireLoggedIn();
+    else this._wireAuth();
   }
 
   // ----- signed out -----
@@ -50,6 +74,7 @@ export class CloudUI {
         <label>Email<input id="authEmail" type="email" required autocomplete="email"></label>
         <label>Password<input id="authPw" type="password" required minlength="6" autocomplete="current-password"></label>
         <button class="cta" id="authSubmit" type="submit">Sign in</button>
+        <div class="cloud-foot signin-only"><button type="button" class="linkbtn" id="forgotPw">Forgot your password?</button></div>
         <div class="cloud-msg" id="authMsg"></div>
       </form>`;
   }
@@ -61,7 +86,19 @@ export class CloudUI {
       this.modal.querySelectorAll('.cloud-tabs button').forEach((x) => x.classList.toggle('active', x === b));
       this.modal.querySelector('#authSubmit').textContent = mode === 'in' ? 'Sign in' : 'Create account';
       this.modal.querySelector('.signup-only').style.display = mode === 'up' ? '' : 'none';
+      this.modal.querySelector('.signin-only').style.display = mode === 'in' ? '' : 'none';
     }));
+    // FORGOT PASSWORD: send the reset email; the link comes back to the
+    // planner, where openReset() collects a new password.
+    this.modal.querySelector('#forgotPw').addEventListener('click', async () => {
+      const email = this.modal.querySelector('#authEmail').value.trim();
+      if (!email) { msg('Type your email above first, then tap the link again.'); return; }
+      try {
+        msg('Sending…');
+        await resetPassword(email);
+        msg(`Reset link sent to ${email} — open it on this device and you can choose a new password.`, true);
+      } catch (err) { msg(err.message || 'Could not send the reset email'); }
+    });
     this.modal.querySelector('#authForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = this.modal.querySelector('#authEmail').value.trim();
@@ -74,12 +111,43 @@ export class CloudUI {
             delivery_address: this.modal.querySelector('#suDelivery').value.trim(),
             billing_address: this.modal.querySelector('#suBilling').value.trim(),
           };
-          await signUp(email, pw, meta);
+          const res = await signUp(email, pw, meta);
           // prefill the order details from what they entered
           this.store.setCustomer({ name: meta.full_name, email });
-          msg('Account created — check your email if confirmation is on, then sign in.', true);
+          if (res?.session) {
+            // email confirmation is off — they're signed in right away
+            this.user = res.session.user; this._syncBtn(); this._note = 'Welcome to PL/NTH.'; this.render();
+          } else {
+            msg(`Almost there — we've emailed a confirmation link to ${email}. Tap it, then come back and sign in.`, true);
+          }
         } else { await signIn(email, pw); this.user = await currentUser(); this._syncBtn(); this.render(); }
       } catch (err) { msg(err.message || 'Something went wrong'); }
+    });
+  }
+
+  // ----- choose a new password (arrived from the reset email) -----
+  _resetHTML() {
+    return `<h3>Choose a new password</h3>
+      <p class="cloud-sub">You followed a reset link — set a new password below and you'll be signed straight in.</p>
+      <form id="resetForm">
+        <label>New password<input id="newPw" type="password" required minlength="6" autocomplete="new-password"></label>
+        <button class="cta" type="submit">Set new password</button>
+        <div class="cloud-msg" id="resetMsg"></div>
+      </form>`;
+  }
+  _wireReset() {
+    const msg = (t, ok) => { const m = this.modal.querySelector('#resetMsg'); m.textContent = t; m.className = 'cloud-msg ' + (ok ? 'ok' : 'err'); };
+    this.modal.querySelector('#resetForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        msg('Saving…');
+        await updatePassword(this.modal.querySelector('#newPw').value);
+        this.user = await currentUser();
+        this.view = null;
+        this._syncBtn();
+        this._note = 'Password updated — you\'re signed in.';
+        this.render();
+      } catch (err) { msg(err.message || 'Could not update the password'); }
     });
   }
 
@@ -100,7 +168,8 @@ export class CloudUI {
       try { await saveDesign(name, this.store.serialize()); this._refreshList('Saved ✓'); }
       catch (err) { this._refreshList(err.message, true); }
     });
-    this._refreshList();
+    this._refreshList(this._note);
+    this._note = null;
   }
   async _refreshList(note, isErr) {
     const el = this.modal.querySelector('#designList'); if (!el) return;
@@ -117,7 +186,10 @@ export class CloudUI {
           const data = await loadDesign(id); if (data && this.store.replace(data)) { this.onLoaded(); this.close(); }
         });
         row.querySelector('[data-act="del"]').addEventListener('click', async () => {
-          if (confirm('Delete this design?')) { await deleteDesign(id); this._refreshList('Deleted'); }
+          const name = row.querySelector('span')?.textContent?.trim() || 'this design';
+          if (await uiConfirm(`"${name}" will be gone for good.`, {
+            title: 'Delete this design?', confirmLabel: 'Delete', danger: true,
+          })) { await deleteDesign(id); this._refreshList('Deleted'); }
         });
       });
     } catch (err) { el.innerHTML = `<div class="cloud-msg err">${esc(err.message)}</div>`; }

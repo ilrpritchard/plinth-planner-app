@@ -34,6 +34,26 @@ export async function signOut() {
   const c = await client(); if (!c) return;
   await c.auth.signOut();
 }
+/** Email a password-reset link. The link returns to THIS page, where
+ *  onPasswordRecovery() fires and the UI collects a new password. */
+export async function resetPassword(email) {
+  const c = await client(); if (!c) throw new Error('Cloud not configured');
+  const { error } = await c.auth.resetPasswordForEmail(email, {
+    redirectTo: location.origin + location.pathname,
+  });
+  if (error) throw error;
+}
+/** Set a new password for the currently-authenticated user (recovery session). */
+export async function updatePassword(password) {
+  const c = await client(); if (!c) throw new Error('Cloud not configured');
+  const { data, error } = await c.auth.updateUser({ password });
+  if (error) throw error; return data;
+}
+/** Fires when the page was opened from a password-reset email link. */
+export async function onPasswordRecovery(cb) {
+  const c = await client(); if (!c) return;
+  c.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY') cb(); });
+}
 export async function currentUser() {
   const c = await client(); if (!c) return null;
   const { data } = await c.auth.getUser();
