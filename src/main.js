@@ -18,6 +18,7 @@ import { PointerControls } from './interaction/controls.js';
 import { UI } from './ui/ui.js';
 import { buildFloorplanSVG, buildPlanSheetHTML } from './ui/floorplan.js';
 import { buildPlanDXF } from './core/dxf.js';
+import { ensureDxfEmail } from './ui/dxfgate.js';
 import { uiAlert } from './ui/dialog.js';
 import { buildQuoteHTML } from './ui/quote.js';
 import { TradeUI } from './ui/trade.js';
@@ -313,7 +314,8 @@ document.getElementById('planExport')?.addEventListener('click', () => {
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 100);
 });
 // the same plan as AutoCAD DXF (R12: walls, footprints, code labels)
-document.getElementById('planDXF')?.addEventListener('click', () => {
+document.getElementById('planDXF')?.addEventListener('click', async () => {
+  if (!(await ensureDxfEmail('plan-dxf'))) return;
   const blob = new Blob([buildPlanDXF(store.serialize())], { type: 'application/dxf' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

@@ -890,8 +890,10 @@ body.wz-reviewing #viewControls, body.wz-reviewing #selbar {
 .linkbtn.danger { color: var(--red); }
 
 /* on-brand confirm/alert dialogs (dialog.js) — same paper card as the modal */
-#uiDialog { position: fixed; inset: 0; z-index: 80; background: rgba(70,63,42,0.42); display: none; align-items: center; justify-content: center; }
-#uiDialog.show { display: flex; }
+#uiDialog, #dxfGate { position: fixed; inset: 0; z-index: 80; background: rgba(70,63,42,0.42); display: none; align-items: center; justify-content: center; }
+#uiDialog.show, #dxfGate.show { display: flex; }
+#dxfGate input { font-family: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--brown-soft); color: var(--cream); width: 100%; margin: 2px 0 4px; }
+#dxfGate .gate-err { font-size: 12px; color: var(--red); min-height: 16px; margin: 0 0 8px; }
 .dlg-card { width: 340px; }
 .dlg-msg { margin-bottom: 18px; line-height: 1.5; white-space: pre-line; max-height: 40vh; overflow-y: auto; }
 .dlg-btns { display: flex; gap: 10px; justify-content: flex-end; }

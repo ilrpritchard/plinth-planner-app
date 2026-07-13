@@ -7,6 +7,7 @@ import { openCabinetPicker, cabChipHTML } from './picker.js';
 import { tradeSummary, unitQty, unitName, rowsFromDesign } from '../core/cost.js';
 import { buildTradeOrderEmail } from '../core/order.js';
 import { buildCabinetLibraryDXF, buildPlanDXF } from '../core/dxf.js';
+import { ensureDxfEmail } from './dxfgate.js';
 import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
 import { bumpRev, unitRev } from '../core/submittal.js';
@@ -277,7 +278,8 @@ export class TradeUI {
     $('tcEmail').addEventListener('input', (e) => this.store.setCustomer({ email: e.target.value }));
     $('tcNotes').addEventListener('input', (e) => this.store.setCustomer({ notes: e.target.value }));
     $('tPlaceOrder').addEventListener('click', () => this.placeOrder());
-    $('tDxfLib')?.addEventListener('click', () => {
+    $('tDxfLib')?.addEventListener('click', async () => {
+      if (!(await ensureDxfEmail('cabinet-library'))) return;
       download('PLINTH_cabinet_library.dxf', buildCabinetLibraryDXF(), 'application/dxf');
       toast('Cabinet library DXF downloaded — insert the PLNTH_* blocks in AutoCAD.');
     });
@@ -298,9 +300,10 @@ export class TradeUI {
       openPrintWindow(buildSubmittalPackHTML(this.t));
       toast('Submittal pack opened — use the print dialog to save it as a PDF.');
     });
-    $('tUnitPlans')?.addEventListener('click', () => {
+    $('tUnitPlans')?.addEventListener('click', async () => {
       const designed = this.t.units.filter((u) => u.design);
       if (!designed.length) return toast('No designed units yet — hit “✎ Design this unit” first.');
+      if (!(await ensureDxfEmail('unit-plans'))) return;
       for (const u of designed) download(`PLINTH_${unitName(u).replace(/\s+/g, '_')}.dxf`, buildPlanDXF(u.design), 'application/dxf');
       toast(`${designed.length} unit plan DXF${designed.length === 1 ? '' : 's'} downloaded.`);
     });
@@ -349,7 +352,15 @@ export class TradeUI {
       this.render();
       toast(`Revision bumped to ${rev} — recorded on the unit's history.`);
     }
-    else if (act === 'u-dxf') { if (u.design) { download(`PLINTH_${unitName(u).replace(/\s+/g, '_')}.dxf`, buildPlanDXF(u.design), 'application/dxf'); toast('Unit plan DXF downloaded.'); } }
+    else if (act === 'u-dxf') {
+      if (u.design) {
+        ensureDxfEmail('unit-dxf').then((ok) => {
+          if (!ok) return;
+          download(`PLINTH_${unitName(u).replace(/\s+/g, '_')}.dxf`, buildPlanDXF(u.design), 'application/dxf');
+          toast('Unit plan DXF downloaded.');
+        });
+      }
+    }
     else if (act === 'r-pick') {
       const r = this.rowFor(el, u); if (!r) return;
       openCabinetPicker({
