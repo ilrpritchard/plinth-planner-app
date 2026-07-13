@@ -4,6 +4,7 @@
 
 import { getCab } from './catalogue.js';
 import { fmtIn } from './units.js';
+import { openingCenter, openingWidth } from './openings.js';
 
 // axis-aligned footprint extents (x half, z half) for an item, accounting for
 // 90°/270° rotation. Returns center + half-sizes in inches.
@@ -23,12 +24,45 @@ const isFloorStanding = (cab) =>
 const isWorktopAppliance = (cab) =>
   cab.type === 'APPLIANCES' && (cab.mountY ?? 0) > 0 && (cab.mountY ?? 0) < 50; // hob / sink
 
+/** Ranges / hobs sitting in front of a window on their wall (hard rule: a
+ *  cooker never goes in front of a window). Pure geometry, shared by the
+ *  warnings panel and the wizard (which rerolls a layout that lands one). */
+export function cookerWindowClashes(state) {
+  const r = state.room || {};
+  const out = [];
+  const boxes = (state.items || []).map(aabb).filter(Boolean);
+  for (const b of boxes) {
+    if (!(b.cab.type === 'APPLIANCES' && (b.cab.appliance === 'range' || b.cab.appliance === 'hob'))) continue;
+    const horiz = ((b.it.rotDeg || 0) % 180) === 0;
+    for (const o of (r.openings || [])) {
+      if (o.type !== 'window') continue;
+      const wall = o.wall || 'back';
+      const backish = wall === 'back' || wall === 'front';
+      if (backish !== horiz) continue;                     // cooker faces a different axis
+      const line = { back: -r.depth / 2, front: r.depth / 2, left: -r.width / 2, right: r.width / 2 }[wall];
+      const perp = backish ? b.z : b.x;
+      const perpHalf = backish ? b.hz : b.hx;
+      if (Math.abs(perp - (line - Math.sign(line) * perpHalf)) > 8) continue; // not against this wall
+      const c = openingCenter(r, o), w = openingWidth(o, r);
+      const along = backish ? b.x : b.z;
+      const alongHalf = backish ? b.hx : b.hz;
+      if ((alongHalf + w / 2) - Math.abs(along - c) > 2) out.push({ box: b, opening: o });
+    }
+  }
+  return out;
+}
+
 /** Compute design warnings for the current home-mode layout. */
 export function computeWarnings(state) {
   const out = [];
   const r = state.room;
   const items = state.items || [];
   const boxes = items.map(aabb).filter(Boolean);
+
+  // ---- 0. cooker in front of a window (hard rule) ----
+  for (const k of cookerWindowClashes(state)) {
+    out.push({ level: 'error', msg: `${k.box.cab.desc} sits in front of a window — a cooker never goes there. Slide it along the wall.` });
+  }
 
   // ---- 1. floor-standing cabinets overlapping each other ----
   const floor = boxes.filter((b) => isFloorStanding(b.cab));

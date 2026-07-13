@@ -10,6 +10,7 @@ import { parseLength, fmtFeetIn, fmtIn } from '../core/units.js';
 import { getMountY } from '../models/cabinet.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
 import { planBudgetSwaps } from '../core/budget.js';
+import { cookerWindowClashes } from '../core/warnings.js';
 import { designRationale } from '../core/rationale.js';
 
 // ---- voice: the same wizard, two registers ---------------------------------
@@ -778,6 +779,16 @@ export class Wizard {
     this._canIsland = shape === 'l-shape' && this._roomFitsIsland();
     if (getFinish(this.finish)) this.store.setFinish(this.finish);
     this.controls?.layer?.select(null);
+    // HARD RULE: the cooker never sits in front of a window. The generator
+    // lays out runs blind to windows, so a layout that lands the range on one
+    // is rerolled with the next seed (_generateInner fully resets first).
+    // After 10 tries a truly forced room is accepted and the warnings panel
+    // flags it instead of looping forever.
+    if (cookerWindowClashes(this.store.state).length && (this._winReroll = (this._winReroll || 0) + 1) <= 10) {
+      this.seed = (this.seed + 1) | 0;
+      return this._generateInner(roomPatch);
+    }
+    this._winReroll = 0;
     this.onBuilt();
   }
 
