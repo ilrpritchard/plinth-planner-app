@@ -241,21 +241,21 @@ export function halfDepthPartner(code) {
 
 // ----- finishes (15 Plinth paint colours, exact hexes) ------------------
 export const FINISHES = [
-  { group: 'Whites', name: 'Bare', hex: '#FBF8F4', desc: 'Nothing added, nothing hidden.' },
-  { group: 'Whites', name: 'Ghost', hex: '#F7F4EB', desc: 'White, but with something going on underneath.' },
-  { group: 'Whites', name: 'Butter', hex: '#F0E8CE', desc: 'The good stuff.' },
-  { group: 'Pinks & Neutrals', name: 'Pinky', hex: '#EDD9CC', desc: 'Not actually pink. More of a blush.' },
-  { group: 'Pinks & Neutrals', name: 'Dough', hex: '#D3C9B8', desc: 'Warm, soft, about to become something great.' },
-  { group: 'Pinks & Neutrals', name: 'Greige', hex: '#CCC5BC', desc: 'Gray tried, beige tried, this is what happened.' },
-  { group: 'Grays & Blues', name: 'Spoon', hex: '#A3A8A8', desc: 'Dependable. Always in the drawer.' },
-  { group: 'Grays & Blues', name: 'Capri', hex: '#A2B5B8', desc: 'The sea between the rocks on an overcast afternoon.' },
-  { group: 'Grays & Blues', name: 'Hudson', hex: '#434C56', desc: 'Dark, cold, moves fast.' },
-  { group: 'Greens', name: 'Nettle', hex: '#B4B296', desc: 'Stings a little. In a good way.' },
-  { group: 'Greens', name: 'Swamp', hex: '#6B6148', desc: 'Deep, murky, looks like trouble.' },
-  { group: 'Greens', name: 'Kale', hex: '#4C4A3E', desc: 'Dark, slightly bitter, very good for you.' },
-  { group: 'Browns & Darks', name: 'Leo', hex: '#B89878', desc: 'Named after a dog of indeterminate breed.' },
-  { group: 'Browns & Darks', name: 'Marmite', hex: '#352C2B', desc: 'Love it or leave it.' },
-  { group: 'Browns & Darks', name: 'Villain', hex: '#303536', desc: 'The one in all black at the back of the room.' },
+  { group: 'Whites', name: 'Bare', hex: '#FBF8F4', desc: 'Nothing added, nothing hidden. The cleanest white we could find without tipping into clinical.' },
+  { group: 'Whites', name: 'Ghost', hex: '#F7F4EB', desc: 'White, but with something going on underneath. A presence without a fuss.' },
+  { group: 'Whites', name: 'Butter', hex: '#F0E8CE', desc: 'The good stuff. The kind that comes in a paper wrapper with a little too much salt.' },
+  { group: 'Pinks & Neutrals', name: 'Pinky', hex: '#EDD9CC', desc: 'Not actually pink. More of a blush. The kind you get after a long Sunday lunch.' },
+  { group: 'Pinks & Neutrals', name: 'Dough', hex: '#D3C9B8', desc: 'Warm, soft, and just about to become something great. A neutral that earns its keep.' },
+  { group: 'Pinks & Neutrals', name: 'Greige', hex: '#CCC5BC', desc: 'Gray tried, beige tried, this is what happened. Better than both.' },
+  { group: 'Grays & Blues', name: 'Spoon', hex: '#A3A8A8', desc: 'Dependable. Always in the drawer. The color of things that just work.' },
+  { group: 'Grays & Blues', name: 'Capri', hex: '#A2B5B8', desc: 'The sea between the rocks on a slightly overcast afternoon. Still worth it.' },
+  { group: 'Grays & Blues', name: 'Hudson', hex: '#434C56', desc: 'Dark, cold, moves fast. Named after the river nobody swims in.' },
+  { group: 'Greens', name: 'Nettle', hex: '#B4B296', desc: 'Stings a little. In a good way. The green you didn\'t know you needed.' },
+  { group: 'Greens', name: 'Swamp', hex: '#6B6148', desc: 'Deep, murky, looks like trouble. In all the right ways.' },
+  { group: 'Greens', name: 'Kale', hex: '#4C4A3E', desc: 'Dark, slightly bitter, very good for you. The vegetable that became a kitchen.' },
+  { group: 'Browns & Darks', name: 'Leo', hex: '#B89878', desc: 'Named after a dog of indeterminate breed. Gingery, warm, impossible not to love. Part corgi, part lab, part dachshund, and about eleven other things. So is this color.' },
+  { group: 'Browns & Darks', name: 'Marmite', hex: '#352C2B', desc: 'Love it or leave it. No in between.' },
+  { group: 'Browns & Darks', name: 'Villain', hex: '#303536', desc: 'The one in all black at the back of the room. Doesn\'t need to explain itself.' },
 ];
 export const DEFAULT_FINISH = 'Ghost';
 export function getFinish(name) { return FINISHES.find((f) => f.name === name) || FINISHES[1]; }
