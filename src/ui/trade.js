@@ -107,7 +107,7 @@ export class TradeUI {
             <label>Notes<input id="tcNotes" value="${esc(this.store.state.customer.notes)}"></label>
           </div>
           <button class="cta" id="tPlaceOrder">Place trade order →</button>
-          <div class="trade-note">Opens an email to trade@plinthmade.com with your full spec. Trade pricing is confirmed per order on quote.</div>
+          <div class="trade-note">Opens an email to imogen@plinthmade.com with your full spec. Trade pricing is confirmed per order on quote.</div>
         </section>
       </div>`;
     this.wire();
@@ -704,7 +704,7 @@ export class TradeUI {
     }
   }
 
-  /** The always-available path: a pre-filled email to trade@plinthmade.com. */
+  /** The always-available path: a pre-filled email to imogen@plinthmade.com. */
   emailOrder() {
     window.location.href = buildTradeOrderEmail(this.store.state).href;
     toast('Opening your email to send the trade order…');

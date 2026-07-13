@@ -507,7 +507,7 @@ const ocModal = document.getElementById('orderCheckModal');
 if (bookBtn && ocModal) {
   const ocMsg = (t, ok) => { const el = document.getElementById('ocMsg'); el.textContent = t; el.className = 'cloud-msg' + (ok ? ' ok' : t ? ' err' : ''); };
   const mailtoFallback = () => {
-    location.href = 'mailto:hello@plinthmade.com?subject=' + encodeURIComponent('Book a free order check') +
+    location.href = 'mailto:imogen@plinthmade.com?subject=' + encodeURIComponent('Book a free order check') +
       '&body=' + encodeURIComponent('Hi PL/NTH — please give my kitchen design a once-over.\n\nMy design link:\n' + buildShareURL(store));
   };
   bookBtn.addEventListener('click', (e) => {

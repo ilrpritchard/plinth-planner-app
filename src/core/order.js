@@ -6,8 +6,8 @@ import { summarizeState, tradeSummary, unitName, unitQty, deliveryEstimate } fro
 import { fmtUSD, getCab } from './catalogue.js';
 import { fmtFeetIn } from './units.js';
 
-export const ORDER_TO = 'hello@plinthmade.com';
-export const TRADE_TO = 'trade@plinthmade.com';
+export const ORDER_TO = 'imogen@plinthmade.com';
+export const TRADE_TO = 'imogen@plinthmade.com';
 
 export function buildOrderEmail(state) {
   const { lines, totalCabs, subtotal } = summarizeState(state);

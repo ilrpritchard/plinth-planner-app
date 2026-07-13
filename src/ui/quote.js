@@ -80,7 +80,7 @@ export function buildQuoteHTML(state, heroDataURL = null) {
 
     <footer class="q-foot">
       Customer price for cabinets only; shipping &amp; tax confirmed on your order. Countertops shown are representative
-      and not supplied by Plinth. Prices held 30 days. Questions? hello@plinthmade.com<br><br>
+      and not supplied by Plinth. Prices held 30 days. Questions? imogen@plinthmade.com<br><br>
       <strong>Dimensions:</strong> all room sizes, openings and services are as entered by the client. The client is
       responsible for checking and confirming every measurement on site before ordering — PL/NTH does not survey
       or verify site dimensions.
