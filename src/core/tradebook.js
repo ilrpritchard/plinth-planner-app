@@ -41,7 +41,11 @@ function summarySheet(trade, s, dateStr) {
     [B('PL/NTH — Trade project workbook')],
     [],
     ['Project', trade.project || 'Untitled project'],
-    ['Finish', trade.finish || ''],
+    ...(trade.address ? [['Address', trade.address]] : []),
+    ...(trade.architect ? [['Architect', trade.architect]] : []),
+    ...(trade.gc ? [['General contractor', trade.gc]] : []),
+    ...(trade.owner ? [['Owner / developer', trade.owner]] : []),
+    ['Finish', (trade.finish || '') + (trade.finish === 'Custom RAL' && trade.finishRal ? ` (RAL ${trade.finishRal})` : '')],
     ['Date', dateStr],
     [],
     [B('Unit type'), B('Cab/unit'), B('Units'), B('Cabinets'), B('Sub-total')],
@@ -52,6 +56,7 @@ function summarySheet(trade, s, dateStr) {
   rows.push(['Cabinets', s.totalCabs]);
   rows.push(['Containers', s.containers]);
   rows.push(['Cabinets subtotal', C(s.subtotal)]);
+  if (s.tier) rows.push([`Volume tier ${s.tier.label} (indicative -${s.tier.pct}%)`, C(-s.discount)]);
   rows.push(['Shipping', C(s.shipping)]);
   rows.push([B('Order total (incl. shipping)'), BC(s.grand)]);
   return { name: 'Summary', rows, widths: [30, 12, 10, 12, 16] };
@@ -99,6 +104,7 @@ function orderSheet(trade, s, orderNo) {
   }
   rows.push([]);
   rows.push([B('CABINETS SUBTOTAL'), '', '', '', '', '', '', '', '', s.totalCabs, '', BC(s.subtotal)]);
+  if (s.tier) rows.push([`VOLUME TIER ${s.tier.label} (indicative -${s.tier.pct}%)`, '', '', '', '', '', '', '', '', '', '', C(-s.discount)]);
   rows.push(['CONTAINERS', '', '', '', '', '', '', '', '', s.containers, '', '']);
   rows.push(['SHIPPING', '', '', '', '', '', '', '', '', '', '', C(s.shipping)]);
   rows.push([B('ORDER TOTAL'), '', '', '', '', '', '', '', '', '', '', BC(s.grand)]);
@@ -118,7 +124,7 @@ function orderSheet(trade, s, orderNo) {
 }
 
 function phasingSheet(trade, now) {
-  const plan = planPhases(trade, { maxUnitsPerBatch: trade.phasing && trade.phasing.maxPerBatch });
+  const plan = planPhases(trade, { maxUnitsPerBatch: trade.phasing && trade.phasing.maxPerBatch, showKitchenFirst: !!(trade.phasing && trade.phasing.showFirst) });
   const rows = [
     [B('Delivery phasing'), `max ${plan.maxPerBatch} units/batch`],
     [],

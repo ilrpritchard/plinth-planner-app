@@ -3,7 +3,7 @@
 // base cabinets solid / upper cabinets dashed, door-swing arcs, and tiered
 // dimensions: individual cabinet widths → overall cabinet run → wall length.
 
-import { getCab, FAMILY_LABEL } from '../core/catalogue.js';
+import { getCab, FAMILY_LABEL, familyOf } from '../core/catalogue.js';
 import { fmtFeetIn, fmtIn, SPEC, mmToIn } from '../core/units.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
 import { computeFillers } from '../core/fillers.js';
@@ -116,7 +116,7 @@ function drawKey(out, state, x0, y0) {
   out.push(line(x0, y, x0 + TBL_W, y, W_DIM, INK));
   y += 4.6;
   for (const r of rows) {
-    const fam = r.cab.type === 'APPLIANCES' ? 'Appliance' : FAMILY_LABEL[r.cab.type];
+    const fam = r.cab.type === 'APPLIANCES' ? 'Appliance' : (FAMILY_LABEL[familyOf(r.cab)] || FAMILY_LABEL[r.cab.type]);
     const td = (dx, t, opts = '') => `<tspan x="${n(x0 + dx)}"${opts}>${t}</tspan>`;
     out.push(`<text y="${n(y)}" font-size="3" fill="#333">${td(COL.qty, r.qty)}${td(COL.code, r.cab.baseCode || r.code, ' font-weight="bold"')}${td(COL.type, fam + (r.cab.notSupplied ? ' *' : ''))}${td(COL.desc, esc(r.cab.desc))}${r.cab.h ? `${td(COL.w + 6, fmtIn(r.cab.w), ' text-anchor="end"')}${td(COL.d + 6, fmtIn(r.cab.d), ' text-anchor="end"')}${td(COL.h + 6, fmtIn(r.cab.h), ' text-anchor="end"')}` : ''}</text>`);
     y += 1.8;

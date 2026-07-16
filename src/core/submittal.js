@@ -9,7 +9,7 @@
 // All lengths in INCHES. Elevations are drawn as seen from INSIDE the room
 // facing the wall, so `s` runs left→right in the viewer's frame.
 
-import { getCab, sellUSD } from './catalogue.js';
+import { getCab, sellUSD, familyOf } from './catalogue.js';
 import { rowsFromDesign } from './cost.js';
 import { computeFillers } from './fillers.js';
 import { openingCenter, openingWidth } from './openings.js';
@@ -234,7 +234,7 @@ export function scheduleRows(design) {
     const cab = getCab(r.code);
     const each = sellUSD(cab);
     return {
-      code: cab.code, desc: cab.desc, type: cab.type,
+      code: cab.code, desc: cab.desc, type: familyOf(cab),   // display family (stackers get their own)
       w: cab.w, d: cab.d, h: cab.h,
       qty: r.qty, each, line: each * r.qty,
     };
@@ -278,8 +278,12 @@ export function drawingIndex(design) {
   const pages = Math.max(1, Math.ceil(distinctSkus(design).length / 3));
   for (let i = 0; i < pages; i++) idx.push({ no: `A-4${String(i + 1).padStart(2, '0')}`, title: `CABINET CUT SHEETS ${i + 1}/${pages}` });
   roughInWalls(design).forEach((w, i) => idx.push({ no: `A-5${String(i).padStart(2, '0')}`, title: `MEP ROUGH-IN — ${wallTitle(w)}` }));
+  idx.push({ no: 'A-600', title: 'COMPLIANCE & PRODUCT DATA' });
   return idx;
 }
+
+// CSI MasterFormat section this submittal set is logged against.
+export const SPEC_SECTION = '06 41 00 — ARCHITECTURAL WOOD CASEWORK';
 
 // ---- MEP rough-in points (sheet A-500) ---------------------------------------
 // Every plumbing / electrical / duct point the trades need before the cabinets

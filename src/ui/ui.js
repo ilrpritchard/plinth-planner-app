@@ -1,7 +1,7 @@
 // ui.js — builds the brand-matched panels and wires them to the store.
 
 import {
-  CATALOGUE, FAMILY_ORDER, FAMILY_LABEL, FINISHES, getCab, sellUSD, fmtUSD, getFinish, WORKTOP_OPTIONS,
+  CATALOGUE, FAMILY_ORDER, FAMILY_LABEL, familyOf, FINISHES, getCab, sellUSD, fmtUSD, getFinish, WORKTOP_OPTIONS,
   CORNICE_OPTIONS, corniceOption, orderableAccessories, swapAlternatives,
 } from '../core/catalogue.js';
 import { planCornice } from '../core/cornice.js';
@@ -449,7 +449,8 @@ export class UI {
       // an island is built from base cabinets only — wall/counter/tall units
       // and appliances need a wall, so the Island tab shows just FLOOR
       if (this.activeWall === 'island' && fam !== 'FLOOR') continue;
-      const all = CATALOGUE.filter((c) => c.type === fam && c.placeable);
+      // stackers group under their own section (familyOf), not under WALL
+      const all = CATALOGUE.filter((c) => familyOf(c) === fam && c.placeable);
       // base-run cabinets wider than the remaining wall length are hidden
       const items = all.filter((c) => {
         if (!this._isBaseRun(c)) return true;

@@ -6,7 +6,7 @@
 // filterCabinets() is pure and node-tested: every query token must match the
 // code, the description, or (numeric tokens) the cabinet width in inches.
 
-import { CATALOGUE, FAMILY_ORDER, FAMILY_LABEL, sellUSD, fmtUSD } from '../core/catalogue.js';
+import { CATALOGUE, FAMILY_ORDER, FAMILY_LABEL, familyOf, sellUSD, fmtUSD } from '../core/catalogue.js';
 import { fmtIn } from '../core/units.js';
 import { frontSVG } from './frontdraw.js';
 
@@ -14,7 +14,7 @@ import { frontSVG } from './frontdraw.js';
 export function orderableCabs() {
   return FAMILY_ORDER
     .filter((f) => f !== 'APPLIANCES')
-    .flatMap((fam) => CATALOGUE.filter((c) => c.type === fam && c.gbp > 0));
+    .flatMap((fam) => CATALOGUE.filter((c) => familyOf(c) === fam && c.gbp > 0));
 }
 
 /**
@@ -25,7 +25,7 @@ export function orderableCabs() {
  * when it equals the cabinet's width in inches ('36' → every 36-wide SKU).
  */
 export function filterCabinets(list, query = '', fam = '') {
-  let out = fam ? list.filter((c) => c.type === fam) : list.slice();
+  let out = fam ? list.filter((c) => familyOf(c) === fam) : list.slice();
   const tokens = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
   for (const t of tokens) {
     const isNum = /^\d+(\.\d+)?$/.test(t);
@@ -47,7 +47,7 @@ export function cabChipHTML(cab) {
   return `${draw}<span class="pick-chip-txt"><strong>${esc(cab.code)}</strong> · ${esc(cab.desc)}${cab.w > 0 ? ` (${fmtIn(cab.w)})` : ''}</span>`;
 }
 
-const CHIP_FAMS = ['', 'FLOOR', 'WALL', 'COUNTER', 'TALL', 'ACCESSORIES'];
+const CHIP_FAMS = ['', 'FLOOR', 'WALL', 'COUNTER', 'TALL', 'STACKER', 'ACCESSORIES'];
 
 /**
  * Open the modal. opts: { selected, onPick(code) }.
@@ -83,7 +83,7 @@ export function openCabinetPicker({ selected = '', onPick } = {}) {
     const dims = c.w > 0 ? `${fmtIn(c.w)} W × ${fmtIn(c.d)} D × ${fmtIn(c.h)} H` : '&nbsp;';
     return `<button type="button" class="pick-item${c.code === selected ? ' sel' : ''}" data-code="${esc(c.code)}">
       ${draw}
-      <span class="pi-code">${esc(c.code)} <em>${esc(FAMILY_LABEL[c.type] || c.type)}</em></span>
+      <span class="pi-code">${esc(c.code)} <em>${esc(FAMILY_LABEL[familyOf(c)] || c.type)}</em></span>
       <span class="pi-desc">${esc(c.desc)}</span>
       <span class="pi-dims">${dims}</span>
       <span class="pi-price">${fmtUSD(sellUSD(c))}</span>

@@ -26,7 +26,7 @@ export function buildOrderEmail(state) {
   L.push('');
   L.push(`Room:   ${fmtFeetIn(r.width)} W × ${fmtFeetIn(r.depth)} D × ${fmtFeetIn(r.height)} ceiling`);
   L.push(`Finish: ${state.finish} (all cabinets)`);
-  L.push('Handles: knob');
+  L.push('Hardware: by others — cabinets supplied undrilled');
   if (c.budget) L.push(`Budget: $${Number(c.budget).toLocaleString('en-US')}`);
   L.push('');
   L.push('CABINETS');
@@ -71,8 +71,13 @@ export function buildTradeOrderEmail(state) {
   L.push('======================');
   L.push('');
   L.push(`Project:  ${t.project || '—'}`);
+  if (t.address) L.push(`Address:  ${t.address}`);
+  if (t.architect) L.push(`Architect: ${t.architect}`);
+  if (t.gc) L.push(`GC:       ${t.gc}`);
+  if (t.owner) L.push(`Owner:    ${t.owner}`);
   L.push(`Contact:  ${c.name || '—'}  ${c.email || ''}`);
-  L.push(`Finish:   ${t.finish} (all units)`);
+  L.push(`Finish:   ${t.finish}${t.finish === 'Custom RAL' && t.finishRal ? ` (RAL ${t.finishRal})` : ''} (all units)`);
+  L.push('Hardware: by others — cabinets supplied undrilled');
   L.push('');
   for (const u of t.units || []) {
     L.push(`— ${unitName(u)}  ×${unitQty(u)} units`);
@@ -92,6 +97,7 @@ export function buildTradeOrderEmail(state) {
   L.push(`Total units: ${s.totalUnits}`);
   L.push(`Total cabinets: ${s.totalCabs}  (~${s.containers} container${s.containers === 1 ? '' : 's'})`);
   L.push(`Cabinets sub-total: ${fmtUSD(s.subtotal)}`);
+  if (s.tier) L.push(`Volume tier ${s.tier.label} (indicative -${s.tier.pct}%): -${fmtUSD(s.discount)}`);
   L.push(`Shipping (per container): ${fmtUSD(s.shipping)}`);
   L.push(`Order total (excl. tax): ${fmtUSD(s.grand)}`);
   if (c.notes) { L.push(''); L.push('Notes:'); L.push(c.notes); }

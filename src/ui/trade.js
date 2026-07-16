@@ -7,6 +7,7 @@ import { openCabinetPicker, cabChipHTML } from './picker.js';
 import { tradeSummary, unitQty, unitName, rowsFromDesign } from '../core/cost.js';
 import { buildTradeOrderEmail } from '../core/order.js';
 import { buildCabinetLibraryDXF, buildPlanDXF } from '../core/dxf.js';
+import { buildUnitIFC } from '../core/ifc.js';
 import { ensureDxfEmail } from './dxfgate.js';
 import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
@@ -77,21 +78,27 @@ export class TradeUI {
               <span class="ts"><em>3</em> Submittals, pricing &amp; order</span>
             </div>
             <div class="trade-exports">
-              <button class="ghost sm" id="tDxfLib" title="Every PL/NTH SKU as a named AutoCAD block (front elevations, DXF R12)">⤓ DXF cabinet library</button>
-              <button class="ghost sm" id="tOrderCsv" title="The full order as a spreadsheet — lines, totals, containers &amp; shipping">⤓ Order CSV</button>
-              <button class="ghost sm" id="tWorkbook" title="One Excel workbook: summary, a sheet per designed unit, the full order with a PO field, and delivery phasing">⬇ Project workbook (.xlsx)</button>
-              <button class="ghost sm" id="tUnitPlans" title="One plan DXF per designed unit type">⤓ Unit plans DXF</button>
-              <button class="ghost sm" id="tSubmittalPack" title="One architect-ready submittal PDF: project cover + cover, plan, elevations, schedule &amp; cut sheets for every designed unit type">📄 Submittal pack (all units)</button>
+              <button class="ghost sm" id="tDxfLib" title="Every PL/NTH SKU as a named AutoCAD block (front elevations, DXF R12)">DXF cabinet library</button>
+              <button class="ghost sm" id="tOrderCsv" title="The full order as a spreadsheet — lines, totals, containers &amp; shipping">Order CSV</button>
+              <button class="ghost sm" id="tWorkbook" title="One Excel workbook: summary, a sheet per designed unit, the full order with a PO field, and delivery phasing">Project workbook (.xlsx)</button>
+              <button class="ghost sm" id="tUnitPlans" title="One plan DXF per designed unit type">Unit plans DXF</button>
+              <button class="ghost sm" id="tUnitIFC" title="Every designed unit type as an IFC4 model — link or import it straight into Revit">Revit / IFC (unit models)</button>
+              <button class="ghost sm" id="tSubmittalPack" title="One architect-ready submittal PDF: project cover + cover, plan, elevations, schedule, cut sheets &amp; compliance for every designed unit type">Submittal pack (all units)</button>
             </div>
           </div>
           <div class="trade-meta">
             <label>Project<input id="tProject" value="${esc(t.project)}" placeholder="e.g. Hudson Yards Tower"></label>
+            <label>Project address<input id="tAddress" value="${esc(t.address)}" placeholder="street · city · state"></label>
+            <label>Architect of record<input id="tArchitect" value="${esc(t.architect)}" placeholder="firm name"></label>
+            <label>General contractor<input id="tGc" value="${esc(t.gc)}" placeholder="firm name"></label>
+            <label>Owner / developer<input id="tOwner" value="${esc(t.owner)}" placeholder="entity name"></label>
             <label>Finish<select id="tFinish">${FINISHES.map((f) => `<option ${f.name === t.finish ? 'selected' : ''}>${f.name}</option>`).join('')}</select></label>
+            ${t.finish === 'Custom RAL' ? `<label>RAL code<input id="tFinishRal" value="${esc(t.finishRal)}" placeholder="e.g. 9010"></label>` : ''}
             ${isCloud() ? `<div class="trade-cloud">
-              <button class="ghost sm" id="tCloudSave" title="Save this project to your PL/NTH account (sign-in required)">☁ Save project</button>
-              <button class="ghost sm" id="tCloudOpen" title="Open one of your saved trade projects">📂 Open project</button>
-              <button class="ghost sm" id="tCloudShare" title="Copy a read-only link — the architect or client reviews &amp; approves the spec, no account needed">🔗 Share</button>
-              <button class="ghost sm" id="tOrders" title="Your placed orders with live status — submitted, confirmed, in production, shipped, delivered">📦 Orders</button>
+              <button class="ghost sm" id="tCloudSave" title="Save this project to your PL/NTH account (sign-in required)">Save project</button>
+              <button class="ghost sm" id="tCloudOpen" title="Open one of your saved trade projects">Open project</button>
+              <button class="ghost sm" id="tCloudShare" title="Copy a read-only link — the architect or client reviews &amp; approves the spec, no account needed">Share</button>
+              <button class="ghost sm" id="tOrders" title="Your placed orders with live status — submitted, confirmed, in production, shipped, delivered">Orders</button>
             </div>` : ''}
           </div>
         </header>
@@ -101,6 +108,8 @@ export class TradeUI {
 
         <div id="tTotals">${this.totalsHTML()}</div>
 
+        ${this.whyHTML()}
+
         <section class="trade-order">
           <div class="trade-fields">
             <label>Your name<input id="tcName" value="${esc(this.store.state.customer.name)}"></label>
@@ -108,7 +117,7 @@ export class TradeUI {
             <label>Notes<input id="tcNotes" value="${esc(this.store.state.customer.notes)}"></label>
           </div>
           <button class="cta" id="tPlaceOrder">Place trade order →</button>
-          <div class="trade-note">Opens an email to imogen@plinthmade.com with your full spec. Trade pricing is confirmed per order on quote.</div>
+          <div class="trade-note">Placing the order logs it with PL/NTH under a PL- order number with live status tracking. A trade manager confirms final pricing and reserves your production slot by email within one business day. Volume pricing shown is indicative until confirmed on quote.</div>
         </section>
       </div>`;
     this.wire();
@@ -129,7 +138,7 @@ export class TradeUI {
           <label class="sm">Units${useFloors ? ' (auto)' : ''}<input data-act="u-qty" type="number" value="${q}" ${useFloors ? 'disabled' : ''}></label>
         </div>
         <div class="unit-head-btns">
-          ${u.design ? `<button class="sm" data-act="u-submittal" title="Architect-ready submittal PDF: cover, plan, elevations, schedule &amp; cut sheets">📄 Submittal PDF</button>
+          ${u.design ? `<button class="sm" data-act="u-submittal" title="Architect-ready submittal PDF: cover, plan, elevations, schedule, cut sheets &amp; compliance">Submittal PDF</button>
           <button class="ghost sm" data-act="u-rev" title="Bump the revision letter (records the date on this unit's revision history)">Rev ${esc(unitRev(u))} +</button>` : ''}
           <button class="danger sm" data-act="u-del">Remove</button>
         </div>
@@ -191,7 +200,7 @@ export class TradeUI {
         <span>${count} item${count === 1 ? '' : 's'} placed · cabinet rows derived from the design</span>
         <div class="unit-design-btns">
           <button class="sm" data-act="u-design" title="Reopen this unit's kitchen in the 3D designer">✎ Edit layout in 3D</button>
-          <button class="ghost sm" data-act="u-dxf" title="This unit's kitchen plan as AutoCAD DXF">⤓ DXF plan</button>
+          <button class="ghost sm" data-act="u-dxf" title="This unit's kitchen plan as AutoCAD DXF">DXF plan</button>
         </div>
       </div>
     </div>`;
@@ -228,11 +237,16 @@ export class TradeUI {
         <div><span class="l">Cabinets</span><span class="v">${s.totalCabs}</span></div>
         <div><span class="l">Containers</span><span class="v">${s.containers}</span></div>
         <div><span class="l">Cabinets</span><span class="v">${fmtUSD(s.subtotal)}</span></div>
+        ${s.tier ? `<div><span class="l">Volume tier · ${esc(s.tier.label)}</span><span class="v">−${fmtUSD(s.discount)} (${s.tier.pct}%)</span></div>` : ''}
         <div><span class="l">Shipping</span><span class="v">${fmtUSD(s.shipping)}</span></div>
         <div class="hi"><span class="l">Order total</span><span class="v">${fmtUSD(s.grand)}</span></div>
       </div>
+      ${s.tier
+        ? `<div class="ph-note">Volume tier applied at ${s.totalUnits} units (${esc(s.tier.label)}, −${s.tier.pct}%). Indicative — final project pricing is confirmed on quote.</div>`
+        : (s.totalUnits > 0 ? `<div class="ph-note">Volume pricing starts at 10 units — 100+ unit projects earn the top tier. Final project pricing is confirmed on quote.</div>` : '')}
     </section>
-    ${this.phasingHTML()}`;
+    ${this.phasingHTML()}
+    ${this.deliveryInfoHTML()}`;
   }
 
   // ---- delivery phasing -----------------------------------------------------
@@ -248,15 +262,16 @@ export class TradeUI {
       <h3>Delivery phasing</h3>
       <div class="ph-controls">
         <label class="ph-check"><input type="checkbox" id="phOn" ${ph.on ? 'checked' : ''}> Phase deliveries by floor band</label>
+        <label class="ph-check"><input type="checkbox" id="phShow" ${ph.showFirst ? 'checked' : ''} ${ph.on ? '' : 'disabled'}> Deliver a show kitchen first</label>
         <label class="ph-max">Max units per batch <input type="number" id="phMax" min="1" value="${Number(ph.maxPerBatch) || DEFAULT_MAX_PER_BATCH}" ${ph.on ? '' : 'disabled'}></label>
       </div>
-      <div id="phBatches">${ph.on ? this.phasingTableHTML() : `<div class="ph-note">Off — the whole order ships as one delivery. Turn on to batch floors so each delivery stays manageable; batches feed a phase column into the order CSV.</div>`}</div>
+      <div id="phBatches">${ph.on ? this.phasingTableHTML() : `<div class="ph-note">Off — the whole order ships as one delivery. Turn on to batch floors so each delivery stays manageable — and to send a single show kitchen ahead of the production run for your sales gallery or model unit.</div>`}</div>
     </section>`;
   }
 
   phasingTableHTML() {
     const ph = this.phasing;
-    const plan = planPhases(this.t, { maxUnitsPerBatch: ph.maxPerBatch });
+    const plan = planPhases(this.t, { maxUnitsPerBatch: ph.maxPerBatch, showKitchenFirst: !!ph.showFirst });
     if (!plan.batches.length) return `<div class="ph-note">Add unit types (with floors and cabinets) to see the delivery batches.</div>`;
     const rows = plan.batches.map((b) => {
       const w = batchWindow(b);
@@ -265,14 +280,51 @@ export class TradeUI {
     }).join('');
     return `<table class="breakdown"><thead><tr><th>Phase</th><th>Floors</th><th>Unit types</th><th class="num">Units</th><th class="num">Cabinets</th><th>Est. delivery window</th></tr></thead>
       <tbody>${rows}</tbody></table>
-      <div class="ph-note">First batch on the standard ${plan.base.weeksLo}–${plan.base.weeksHi} week lead time; each later batch ships ~2 weeks after the one before. The phase column is added to the order CSV while phasing is on.</div>`;
+      <div class="ph-note">Your production slot is reserved at order confirmation. Phase 1 lands ${plan.base.weeksLo}–${plan.base.weeksHi} weeks from drawing sign-off; each later phase follows ~2 weeks after, sequenced to your construction schedule. The phase column is added to the order CSV while phasing is on.</div>`;
+  }
+
+  // ---- why PL/NTH (certainty-at-scale positioning — bespoke millwork can't
+  // do any of this; never pitch on prestige) ----------------------------------
+  whyHTML() {
+    return `<section class="trade-totals trade-why">
+      <h3>Certainty at scale — why developers spec PL/NTH</h3>
+      <div class="ph-note" style="margin-top:2px">
+        <p><strong>One approved design, five hundred perfect copies.</strong> The submittal you sign is the frozen spec every unit is built from — and every deviation after that is a numbered, countersigned change order with a cents-exact price delta. Millwork shops manage this with binders and months; you just did it in a browser.</p>
+        <p><strong>Price certainty on day one.</strong> Live, itemized per-unit pricing before you've had a single meeting — no drifting quotes, no re-pricing at rev C. Custom millwork runs 2–3× the cost and quotes in weeks.</p>
+        <p><strong>Documents in minutes, not weeks.</strong> Submittal packs, cabinet schedules, MEP rough-in sheets, compliance data, DXF and Revit models — regenerated on demand from the frozen order, every issue logged. Faster than the design team's own consultants.</p>
+        <p><strong>Delivery phased to your construction schedule.</strong> Floor-band batching feeds straight into the order paperwork, so cabinets arrive as floors are ready — never one un-storable dump.</p>
+        <p><strong>The forever English kitchen.</strong> Proper painted shaker with inset-look face frames, colour-matched to any RAL in our own workshop — quiet-luxury cabinetry with revision control behind it.</p>
+      </div>
+    </section>`;
+  }
+
+  // ---- how delivery works (trade logistics explainer) -----------------------
+  deliveryInfoHTML() {
+    return `<section class="trade-totals delivery-info">
+      <h3>How delivery works</h3>
+      <div class="ph-note" style="margin-top:2px">
+        <p><strong>Sequenced to your build.</strong> Cabinets ship in flat-packed, labelled container loads (~60 cabinets per container). Deliver the whole order at once, or phase it by floor band above so each delivery matches the floors your fit-out crews are actually working.</p>
+        <p><strong>Show kitchen first.</strong> Tick the option above to pull one unit ahead of the production run — a finished kitchen for your sales gallery or model unit while the balance is still in production.</p>
+        <p><strong>Your building's rules, handled.</strong> Certificates of insurance, freight-elevator bookings, union-building requirements and delivery windows are coordinated with your GC or site team before each phase ships — note your building's requirements when you place the order.</p>
+        <p><strong>Site verification.</strong> PL/NTH does not survey — dimensions are confirmed by your team before ordering. A laser-measured field-verification option for multi-unit projects is available on request.</p>
+      </div>
+    </section>`;
   }
 
   // ---- events ----
   wire() {
     const $ = (id) => document.getElementById(id);
     $('tProject').addEventListener('input', (e) => { this.t.project = e.target.value; this.store.touchTrade({ quiet: true }); });
-    $('tFinish').addEventListener('change', (e) => { this.t.finish = e.target.value; this.store.touchTrade({ quiet: true }); });
+    $('tAddress')?.addEventListener('input', (e) => { this.t.address = e.target.value; this.store.touchTrade({ quiet: true }); });
+    $('tArchitect')?.addEventListener('input', (e) => { this.t.architect = e.target.value; this.store.touchTrade({ quiet: true }); });
+    $('tGc')?.addEventListener('input', (e) => { this.t.gc = e.target.value; this.store.touchTrade({ quiet: true }); });
+    $('tOwner')?.addEventListener('input', (e) => { this.t.owner = e.target.value; this.store.touchTrade({ quiet: true }); });
+    $('tFinishRal')?.addEventListener('input', (e) => { this.t.finishRal = e.target.value; this.store.touchTrade({ quiet: true }); });
+    $('tFinish').addEventListener('change', (e) => {
+      this.t.finish = e.target.value;
+      this.store.touchTrade({ quiet: true });
+      this.render();                        // shows/hides the RAL-code field
+    });
     $('tAddUnit').addEventListener('click', () => { this.t.units.push(this.newUnit()); this.store.touchTrade(); this.render(); });
     $('tcName').addEventListener('input', (e) => this.store.setCustomer({ name: e.target.value }));
     $('tcEmail').addEventListener('input', (e) => this.store.setCustomer({ email: e.target.value }));
@@ -296,16 +348,26 @@ export class TradeUI {
     $('tCloudShare')?.addEventListener('click', () => this.cloudShare());
     $('tSubmittalPack')?.addEventListener('click', () => {
       const designed = this.t.units.filter((u) => u.design);
-      if (!designed.length) return toast('No designed units yet — hit “✎ Design this unit” first.');
+      if (!designed.length) return toast('No designed units yet — hit “✎ Lay out this unit in 3D” first.');
       openPrintWindow(buildSubmittalPackHTML(this.t));
-      toast('Submittal pack opened — use the print dialog to save it as a PDF.');
+      toast('Submittal pack ready — save it as a PDF from the print dialog.');
     });
     $('tUnitPlans')?.addEventListener('click', async () => {
       const designed = this.t.units.filter((u) => u.design);
-      if (!designed.length) return toast('No designed units yet — hit “✎ Design this unit” first.');
+      if (!designed.length) return toast('No designed units yet — hit “✎ Lay out this unit in 3D” first.');
       if (!(await ensureDxfEmail('unit-plans'))) return;
       for (const u of designed) download(`PLINTH_${unitName(u).replace(/\s+/g, '_')}.dxf`, buildPlanDXF(u.design), 'application/dxf');
       toast(`${designed.length} unit plan DXF${designed.length === 1 ? '' : 's'} downloaded.`);
+    });
+    $('tUnitIFC')?.addEventListener('click', async () => {
+      const designed = this.t.units.filter((u) => u.design);
+      if (!designed.length) return toast('No designed units yet — hit “✎ Lay out this unit in 3D” first.');
+      if (!(await ensureDxfEmail('unit-ifc'))) return;
+      const ifc = buildUnitIFC(designed.map((u) => ({ name: unitName(u), state: u.design })),
+        { timestamp: new Date().toISOString() });
+      const name = (this.t.project || 'PLINTH_project').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_').slice(0, 60) || 'PLINTH_project';
+      download(`${name}_units.ifc`, ifc, 'application/x-step');
+      toast('IFC model downloaded — in Revit use Insert → Link IFC (one storey per unit type).');
     });
 
     // delegation for unit/row controls
@@ -317,8 +379,9 @@ export class TradeUI {
     // innerHTML swaps don't orphan the listeners)
     const tot = $('tTotals');
     tot.addEventListener('change', (e) => {
-      if (e.target.id !== 'phOn') return;
-      this.phasing.on = e.target.checked;
+      if (e.target.id === 'phOn') this.phasing.on = e.target.checked;
+      else if (e.target.id === 'phShow') this.phasing.showFirst = e.target.checked;
+      else return;
       this.store.touchTrade({ quiet: true });
       tot.innerHTML = this.totalsHTML();
     });
@@ -343,8 +406,8 @@ export class TradeUI {
     else if (act === 'u-design') { this.enterDesign(u); }
     else if (act === 'u-submittal') {
       if (!u.design) return toast('Design this unit first — the submittal is built from its layout.');
-      openPrintWindow(buildSubmittalHTML({ project: this.t.project, unit: u }));
-      toast('Submittal opened — use the print dialog to save it as a PDF.');
+      openPrintWindow(buildSubmittalHTML({ project: this.t.project, unit: u, trade: this.t }));
+      toast('Submittal ready — save it as a PDF from the print dialog.');
     }
     else if (act === 'u-rev') {
       const rev = bumpRev(u);
@@ -566,7 +629,7 @@ export class TradeUI {
         <div class="design-row" data-id="${r.id}">
           <span>${esc(r.name || 'Untitled project')} <em>${r.share_token ? '· shared' : ''}</em></span>
           <span><button class="linkbtn" data-open="${r.id}">Open</button></span>
-        </div>`).join('') : '<div class="cloud-msg">No saved trade projects yet — hit ☁ Save project.</div>'}</div>
+        </div>`).join('') : '<div class="cloud-msg">No saved trade projects yet — hit Save project.</div>'}</div>
       <button class="cloud-x" id="tcloudClose">×</button></div>`;
     document.body.appendChild(m);
     m.addEventListener('click', (e) => { if (e.target === m) m.remove(); });
@@ -623,7 +686,7 @@ export class TradeUI {
     const revs = t.units.length ? t.units.map((u) => `${unitName(u)} · Rev ${unitRev(u)}`).join('  ·  ') : 'Rev A';
     this.root.innerHTML = `
       <div class="trade-wrap approval">
-        <div class="approval-banner"><span class="ab-lock">🔒</span>
+        <div class="approval-banner">
           <span><strong>Read-only — shared for approval</strong> · ${esc(revs)}</span>
           <span class="ab-sub">Review the spec below, then approve it with your name &amp; email.</span>
         </div>
@@ -735,7 +798,7 @@ export class TradeUI {
         : `The order could not reach PL/NTH's cloud${detail ? ` (${esc(detail)})` : ''} — your spec is safe on this device.`}</p>
       <div class="order-modal-btns">
         ${signin ? `<button class="cta" id="omSignin">Sign in, then order</button>` : ''}
-        <button class="ghost" id="omEmail">✉ Send order by email instead</button>
+        <button class="ghost" id="omEmail">Send order by email instead</button>
       </div>
       <button class="cloud-x" id="omClose">×</button></div>`;
     document.body.appendChild(m);
@@ -754,11 +817,12 @@ export class TradeUI {
       <div class="order-no-big">${esc(snapshot.orderNo)}</div>
       <p class="cloud-sub">Your trade order for <strong>${esc(snapshot.project)}</strong>
         (${snapshot.totals.cabinets} cabinets · ${fmtUSD(snapshot.totals.grand)}) is with PL/NTH —
-        we'll confirm by email. Track it any time under 📦 Orders.</p>
+        a trade manager confirms pricing and your production slot by email within one business day.
+        Track it any time under Orders.</p>
       <div class="order-modal-btns">
-        <button class="ghost" id="osCsv">⤓ Download CSV</button>
-        <button class="ghost" id="osXlsx">⬇ Download workbook</button>
-        <button class="cta" id="osView">📦 View orders</button>
+        <button class="ghost" id="osCsv">Download CSV</button>
+        <button class="ghost" id="osXlsx">Download workbook</button>
+        <button class="cta" id="osView">View orders</button>
       </div>
       <button class="linkbtn order-email-alt" id="osEmail">Send order by email instead</button>
       <button class="cloud-x" id="osClose">×</button></div>`;
@@ -873,12 +937,12 @@ export class TradeUI {
     return `<details class="order-docs">
       <summary>DOCUMENTS — regenerated from this order's snapshot</summary>
       <div class="doc-btns">
-        ${btn('submittal', '📄 Submittal pack', hasDesigns ? 'Architect-ready submittal PDF for every designed unit type, as ordered' : 'This order has no stored unit designs — the submittal pack needs designed layouts', !hasDesigns)}
-        ${btn('workbook', '⬇ Workbook .xlsx', 'The order as an Excel workbook — summary, unit sheets, order lines &amp; PO field')}
-        ${btn('csv', '⤓ Order CSV', 'The order lines &amp; totals as a spreadsheet-ready CSV')}
-        ${btn('invoice_deposit', '🧾 Deposit invoice', 'Pro-forma deposit invoice — 50% due on confirmation', cancelled)}
-        ${btn('invoice_balance', '🧾 Balance invoice', 'Pro-forma balance invoice — 50% due before first shipment', cancelled)}
-        ${btn('change_order', '⇄ Change order', 'Diff this frozen order against your CURRENT working spec — rev-to-rev changes, price delta &amp; sign-off sheet, print to PDF', cancelled)}
+        ${btn('submittal', 'Submittal pack', hasDesigns ? 'Architect-ready submittal PDF for every designed unit type, as ordered' : 'This order has no stored unit designs — the submittal pack needs designed layouts', !hasDesigns)}
+        ${btn('workbook', 'Workbook .xlsx', 'The order as an Excel workbook — summary, unit sheets, order lines &amp; PO field')}
+        ${btn('csv', 'Order CSV', 'The order lines &amp; totals as a spreadsheet-ready CSV')}
+        ${btn('invoice_deposit', 'Deposit invoice', 'Pro-forma deposit invoice — 50% due on confirmation', cancelled)}
+        ${btn('invoice_balance', 'Balance invoice', 'Pro-forma balance invoice — 50% due before first shipment', cancelled)}
+        ${btn('change_order', 'Change order', 'Diff this frozen order against your CURRENT working spec — rev-to-rev changes, price delta &amp; sign-off sheet, print to PDF', cancelled)}
       </div>
       <div class="doc-log" data-doclog><div class="doc-log-empty">Loading the issued log…</div></div>
     </details>`;

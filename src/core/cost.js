@@ -1,7 +1,7 @@
 // cost.js — customer-facing estimate + unit list. Shows SELL dollars only;
 // never exposes workshop GBP, margin, or container maths.
 
-import { getCab, sellUSD, TRADE, FILLER_SELL, corniceOption } from './catalogue.js';
+import { getCab, sellUSD, TRADE, FILLER_SELL, corniceOption, volumeTier } from './catalogue.js';
 import { fmtIn } from './units.js';
 import { computeFillers } from './fillers.js';
 import { planCornice } from './cornice.js';
@@ -54,7 +54,14 @@ export function tradeSummary(trade) {
   }
   const containers = totalCabs > 0 ? Math.ceil(totalCabs / TRADE.capPerContainer) : 0;
   const shipping = containers * TRADE.shipPerContainerUSD;
-  return { lines, totalUnits, totalCabs, containers, shipping, subtotal, grand: subtotal + shipping };
+  // indicative volume tier by total unit count — always confirmed on quote.
+  // Rounded to exact cents so invoice / change-order cents maths reconciles.
+  const tier = volumeTier(totalUnits);
+  const discount = tier ? Math.round(subtotal * tier.pct) / 100 : 0;
+  return {
+    lines, totalUnits, totalCabs, containers, shipping, subtotal,
+    tier, discount, grand: subtotal - discount + shipping,
+  };
 }
 
 /**

@@ -195,12 +195,26 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   const right = box(PANEL, bodyH, d, mat); right.position.set(shellW / 2 - PANEL / 2, bodyY0 + bodyH / 2, 0);
   const bottom = box(shellW, PANEL, d, mat); bottom.position.set(0, bodyY0 + PANEL / 2, 0);
   g.add(left, right, bottom);
-  // a SINK BASE loses its top panel — an undermount bowl drops straight
-  // through where it would sit (otherwise the panel shows as a white plane
-  // an inch below the worktop cutout)
+  // a SINK BASE opens its top for the undermount bowl — but only the MIDDLE.
+  // A full panel shows as a white plane an inch below the worktop cutout; NO
+  // panel leaves a see-through slot between the door top and the worktop
+  // underside (you look straight into the carcass from the front). So the top
+  // becomes a perimeter RING: front/back rails + side strips, middle open
+  // where the bowl drops through (bowl cut margins are >= 2.25" front/back,
+  // >= 1.2" sides — models/appliances.js — so the ring never shows under the
+  // worktop cutout).
   if (!opts.sinkOver) {
     const top = box(shellW, PANEL, d, mat); top.position.set(0, h - PANEL / 2, 0);
     g.add(top);
+  } else {
+    const FB = 1.75, SIDE = 0.75, topY = h - PANEL / 2;
+    const rail = (bw, bd, x, z) => {
+      const s = box(bw, PANEL, bd, mat); s.position.set(x, topY, z); g.add(s);
+    };
+    rail(shellW, FB, 0, d / 2 - FB / 2);               // front — closes the slot
+    rail(shellW, FB, 0, -d / 2 + FB / 2);              // back
+    rail(SIDE, d - 2 * FB, -shellW / 2 + SIDE / 2, 0); // left
+    rail(SIDE, d - 2 * FB, shellW / 2 - SIDE / 2, 0);  // right
   }
 
   // ----- oak-veneer interior (always lined; visible when doors open) -----

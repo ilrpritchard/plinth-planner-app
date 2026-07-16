@@ -16,7 +16,7 @@
 // netDeltaCents always equals the sum of its per-unit-type deltas plus the
 // shipping delta, to the cent, by construction.
 
-import { getCab, sellUSD } from './catalogue.js';
+import { getCab, sellUSD, volumeTier } from './catalogue.js';
 import { unitQty, unitName } from './cost.js';
 import { unitRev } from './submittal.js';
 import { toCents } from './invoice.js';
@@ -156,8 +156,15 @@ export function buildChangeOrderModel(order, liveTrade, opts = {}) {
   const oldShippingCents = d.totals ? toCents(d.totals.shipping) : cShip(oldCabinets);
   const newShippingCents = cShip(newCabinets);
 
-  const oldGrandCents = oldSubtotalCents + oldShippingCents;
-  const newGrandCents = newSubtotalCents + newShippingCents;
+  // indicative volume tier re-derived from the revised unit count (same maths
+  // as tradeSummary — cent-rounded); the old side comes off the frozen snapshot
+  const oldDiscountCents = d.totals ? toCents(d.totals.discount || 0) : 0;
+  const newTotalUnits = (t.units || []).reduce((x, u) => x + unitQty(u), 0);
+  const newTier = volumeTier(newTotalUnits);
+  const newDiscountCents = newTier ? Math.round(newSubtotalCents * newTier.pct / 100) : 0;
+
+  const oldGrandCents = oldSubtotalCents - oldDiscountCents + oldShippingCents;
+  const newGrandCents = newSubtotalCents - newDiscountCents + newShippingCents;
 
   return {
     coNo, seq, orderNo,
@@ -177,6 +184,9 @@ export function buildChangeOrderModel(order, liveTrade, opts = {}) {
       oldSubtotalCents, newSubtotalCents,
       oldShippingCents, newShippingCents,
       shippingDeltaCents: newShippingCents - oldShippingCents,
+      oldDiscountCents, newDiscountCents,
+      discountDeltaCents: newDiscountCents - oldDiscountCents,
+      newTier: newTier ? { pct: newTier.pct, label: newTier.label } : null,
       oldGrandCents, newGrandCents,
       netDeltaCents: newGrandCents - oldGrandCents,
     },

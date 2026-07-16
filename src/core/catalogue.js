@@ -44,6 +44,8 @@ const RAW = [
   { code: 'F26', type: 'FLOOR', desc: 'Open Shelves (Half Depth)', w: 20, d: 14, h: 35, hinge: 'n/a', gbp: 470 },
   { code: 'F27', type: 'FLOOR', desc: 'Open Shelves (Half Depth)', w: 24, d: 14, h: 35, hinge: 'n/a', gbp: 477 },
   { code: 'F28', type: 'FLOOR', desc: 'Open Shelves (Half Depth)', w: 28, d: 14, h: 35, hinge: 'n/a', gbp: 519 },
+  // FLOOR — panel-ready undercounter appliance front (wine / beverage / drawers)
+  { code: 'F29', type: 'FLOOR', desc: 'Undercounter Appliance Door & Plinth', w: 24, d: 24, h: 35, hinge: 'n/a', gbp: 292, notes: 'Door panel + plinth for a 24" panel-ready undercounter unit (wine, beverage, refrigerator drawers) — appliance not supplied. Panel supplied undrilled.' },
 
   // WALL
   { code: 'W1', type: 'WALL', desc: 'Single', w: 20, d: 14, h: 30, hinge: 'L&R', gbp: 598 },
@@ -59,6 +61,49 @@ const RAW = [
   { code: 'W11', type: 'WALL', desc: 'Open Shelves', w: 20, d: 14, h: 30, hinge: 'n/a', gbp: 440 },
   { code: 'W12', type: 'WALL', desc: 'Open Shelves', w: 24, d: 14, h: 30, hinge: 'n/a', gbp: 447 },
   { code: 'W13', type: 'WALL', desc: 'Open Shelves', w: 28, d: 14, h: 30, hinge: 'n/a', gbp: 489 },
+  // WALL — S-series STACKERS: boxes that sit ON TOP of an existing run for
+  // tall ceilings, matched per family so every wall/tall/counter cabinet has
+  // a stacker with the SAME width, the right depth, and its mountY exactly at
+  // the host's top (talls top 86" and stand 30mm proud → d 25.25" lands the
+  // stacker face flush; wall runs top 84" and counters 86.5" at d 14").
+  // Two heights: 15" (9'+ ceilings) and 21" (10'). stacker: true marks them.
+  // Enforced by test/trade-upgrades.test.js: every non-corner W/T/C cabinet
+  // must have a matching stacker — extend this list with any new width.
+  // fits the TALL run (24/27/28/30/33/39/44 wide, d 25.25, mount 86)
+  { code: 'S1', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T1, T3)', w: 24, d: 25.25, h: 15, hinge: 'L&R', gbp: 520, mountY: 86, notes: 'Sits on the 86" tall run — face flush with the tall below. For 9\'+ ceilings.' },
+  { code: 'S2', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T10)', w: 27, d: 25.25, h: 15, hinge: 'L&R', gbp: 545, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 9\'+ ceilings.' },
+  { code: 'S3', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T2, T5, T6)', w: 28, d: 25.25, h: 15, hinge: 'L&R', gbp: 555, mountY: 86, notes: 'Sits on the 86" tall run — face flush with the tall below. For 9\'+ ceilings.' },
+  { code: 'S4', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T4, T9)', w: 30, d: 25.25, h: 15, hinge: 'n/a', gbp: 610, mountY: 86, notes: 'Sits on the 86" tall run — face flush with the tall below. For 9\'+ ceilings.' },
+  { code: 'S5', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T11)', w: 33, d: 25.25, h: 15, hinge: 'n/a', gbp: 645, mountY: 86, notes: 'Sits on the T11 panel-ready housing. For 9\'+ ceilings.' },
+  { code: 'S6', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T12)', w: 39, d: 25.25, h: 15, hinge: 'n/a', gbp: 700, mountY: 86, notes: 'Sits on the T12 panel-ready housing. For 9\'+ ceilings.' },
+  { code: 'S7', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T7, T8)', w: 44, d: 25.25, h: 15, hinge: 'n/a', gbp: 745, mountY: 86, notes: 'Sits on the 44" double larder. For 9\'+ ceilings.' },
+  { code: 'S8', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T1, T3)', w: 24, d: 25.25, h: 21, hinge: 'L&R', gbp: 575, mountY: 86, notes: 'Sits on the 86" tall run — face flush with the tall below. For 10\'+ ceilings.' },
+  { code: 'S9', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T10)', w: 27, d: 25.25, h: 21, hinge: 'L&R', gbp: 600, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 10\'+ ceilings.' },
+  { code: 'S10', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T2, T5, T6)', w: 28, d: 25.25, h: 21, hinge: 'L&R', gbp: 610, mountY: 86, notes: 'Sits on the 86" tall run — face flush with the tall below. For 10\'+ ceilings.' },
+  { code: 'S11', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T4, T9)', w: 30, d: 25.25, h: 21, hinge: 'n/a', gbp: 665, mountY: 86, notes: 'Sits on the 86" tall run — face flush with the tall below. For 10\'+ ceilings.' },
+  { code: 'S12', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T11)', w: 33, d: 25.25, h: 21, hinge: 'n/a', gbp: 700, mountY: 86, notes: 'Sits on the T11 panel-ready housing. For 10\'+ ceilings.' },
+  { code: 'S13', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T12)', w: 39, d: 25.25, h: 21, hinge: 'n/a', gbp: 755, mountY: 86, notes: 'Sits on the T12 panel-ready housing. For 10\'+ ceilings.' },
+  { code: 'S14', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T7, T8)', w: 44, d: 25.25, h: 21, hinge: 'n/a', gbp: 800, mountY: 86, notes: 'Sits on the 44" double larder. For 10\'+ ceilings.' },
+  // fits the WALL run (20/24/28/36/42 wide, d 14, mount 84 — stacked uppers)
+  { code: 'S15', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W1, W3, W11)', w: 20, d: 14, h: 15, hinge: 'L&R', gbp: 450, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84") — stacked uppers to the ceiling.' },
+  { code: 'S16', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W2, W4, W12)', w: 24, d: 14, h: 15, hinge: 'L&R', gbp: 475, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84") — stacked uppers to the ceiling.' },
+  { code: 'S17', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W13)', w: 28, d: 14, h: 15, hinge: 'L&R', gbp: 510, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84") — stacked uppers to the ceiling.' },
+  { code: 'S18', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W5, W7)', w: 36, d: 14, h: 15, hinge: 'n/a', gbp: 635, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84") — stacked uppers to the ceiling.' },
+  { code: 'S19', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W6, W8)', w: 42, d: 14, h: 15, hinge: 'n/a', gbp: 690, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84") — stacked uppers to the ceiling.' },
+  { code: 'S20', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W1, W3, W11)', w: 20, d: 14, h: 21, hinge: 'L&R', gbp: 505, mountY: 84, notes: 'Stacked uppers, the taller size — wall run + 21" reaches 105".' },
+  { code: 'S21', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W2, W4, W12)', w: 24, d: 14, h: 21, hinge: 'L&R', gbp: 530, mountY: 84, notes: 'Stacked uppers, the taller size — wall run + 21" reaches 105".' },
+  { code: 'S22', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W13)', w: 28, d: 14, h: 21, hinge: 'L&R', gbp: 565, mountY: 84, notes: 'Stacked uppers, the taller size — wall run + 21" reaches 105".' },
+  { code: 'S23', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W5, W7)', w: 36, d: 14, h: 21, hinge: 'n/a', gbp: 690, mountY: 84, notes: 'Stacked uppers, the taller size — wall run + 21" reaches 105".' },
+  { code: 'S24', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W6, W8)', w: 42, d: 14, h: 21, hinge: 'n/a', gbp: 745, mountY: 84, notes: 'Stacked uppers, the taller size — wall run + 21" reaches 105".' },
+  // fits the COUNTER dresser run (24/28/36/42 wide, d 14, mount 86.5)
+  { code: 'S25', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C1, C2)', w: 24, d: 14, h: 15, hinge: 'L&R', gbp: 475, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S26', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C7)', w: 28, d: 14, h: 15, hinge: 'L&R', gbp: 510, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S27', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits C3, C5, C8)', w: 36, d: 14, h: 15, hinge: 'n/a', gbp: 635, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S28', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits C4, C6, C9)', w: 42, d: 14, h: 15, hinge: 'n/a', gbp: 690, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S29', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits C1, C2)', w: 24, d: 14, h: 21, hinge: 'L&R', gbp: 530, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size — reaches 107½". For 10\'+ ceilings.' },
+  { code: 'S30', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits C7)', w: 28, d: 14, h: 21, hinge: 'L&R', gbp: 565, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size — reaches 107½". For 10\'+ ceilings.' },
+  { code: 'S31', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits C3, C5, C8)', w: 36, d: 14, h: 21, hinge: 'n/a', gbp: 690, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size — reaches 107½". For 10\'+ ceilings.' },
+  { code: 'S32', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits C4, C6, C9)', w: 42, d: 14, h: 21, hinge: 'n/a', gbp: 745, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size — reaches 107½". For 10\'+ ceilings.' },
 
   // COUNTER (50" tall, 14" deep — counter-to-ceiling dressers)
   { code: 'C1', type: 'COUNTER', desc: 'Single', w: 24, d: 14, h: 50, hinge: 'L&R', gbp: 758 },
@@ -81,6 +126,10 @@ const RAW = [
   { code: 'T7', type: 'TALL', desc: 'Double Larder', w: 44, d: 24, h: 86, hinge: 'n/a', gbp: 1719 },
   { code: 'T8', type: 'TALL', desc: 'Double Larder (Drawers)', w: 44, d: 24, h: 86, hinge: 'n/a', gbp: 2246 },
   { code: 'T9', type: 'TALL', desc: 'Oven Housing', w: 30, d: 24, h: 86, hinge: 'n/a', gbp: 1400, notes: 'Housing for a single 24" wall oven (oven not supplied)' },
+  // TALL — panel-ready column housings (refrigeration columns by others)
+  { code: 'T10', type: 'TALL', desc: 'Panel-Ready Column Housing (24")', w: 27, d: 24, h: 86, hinge: 'n/a', gbp: 1395, notes: 'Fits 24" panel-ready refrigeration columns (Sub-Zero, Thermador, Miele, Bosch — confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
+  { code: 'T11', type: 'TALL', desc: 'Panel-Ready Column Housing (30")', w: 33, d: 24, h: 86, hinge: 'n/a', gbp: 1440, notes: 'Fits 30" panel-ready refrigeration columns (Sub-Zero, Thermador, Miele — confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
+  { code: 'T12', type: 'TALL', desc: 'Panel-Ready Column Housing (36")', w: 39, d: 24, h: 86, hinge: 'n/a', gbp: 1490, notes: 'Fits 36" panel-ready French-door / column refrigeration (Sub-Zero, Thermador, Miele — confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
 
   // ACCESSORIES (no 3D geometry placed; listed in cut list only)
   { code: 'A2', type: 'ACCESSORIES', desc: 'End Panel (Floor)', w: 0, d: 0, h: 0, hinge: '', gbp: 105 },
@@ -105,6 +154,7 @@ function classify(it) {
   if (d.includes('larder')) return 'larder';
   if (d.includes('oven housing')) return 'ovenHousing';
   if (d.includes('housing')) return 'housing';
+  if (d.includes('undercounter appliance')) return 'dishwasher'; // legless panel front, same rules as F7
   if (d.includes('dishwasher')) return 'dishwasher';
   if (d.includes('tray')) return 'tray';
   if (d.includes('bin')) return 'bin';
@@ -125,11 +175,17 @@ const BASE_CATALOGUE = RAW.map((it) => ({
   notSupplied: false,
 }));
 
-export const FAMILY_ORDER = ['FLOOR', 'WALL', 'COUNTER', 'TALL', 'APPLIANCES', 'ACCESSORIES'];
+export const FAMILY_ORDER = ['FLOOR', 'WALL', 'COUNTER', 'TALL', 'STACKER', 'APPLIANCES', 'ACCESSORIES'];
 export const FAMILY_LABEL = {
   FLOOR: 'Floor', WALL: 'Wall', COUNTER: 'Counter', TALL: 'Tall',
-  APPLIANCES: 'Appliances', ACCESSORIES: 'Accessories',
+  STACKER: 'Stackers', APPLIANCES: 'Appliances', ACCESSORIES: 'Accessories',
 };
+
+/** DISPLAY family for grouping/labels: stackers get their own section even
+ *  though their behavioural type stays 'WALL' (hung, wall-attached). */
+export function familyOf(cab) {
+  return cab && cab.stacker ? 'STACKER' : cab && cab.type;
+}
 
 // ----- appliances (NOT Plinth products — visual placeholders, unpriced) ----
 // Each sits at its own mount height: ranges/fridges on the floor, hobs & sinks
@@ -222,7 +278,11 @@ export function swapAlternatives(code) {
     c.type === cur.type &&
     Math.abs(c.w - cur.w) < 0.5 &&
     c.halfDepth === cur.halfDepth &&
-    !!c.corner === !!cur.corner);
+    !!c.corner === !!cur.corner &&
+    // stackers only swap with stackers at the SAME mount (tall/wall/counter
+    // hosts differ) — and never with ordinary hung cabinets
+    !!c.stacker === !!cur.stacker &&
+    (c.mountY ?? null) === (cur.mountY ?? null));
 }
 
 // For a double-sided island: given a front (standard-depth) floor cabinet,
@@ -256,6 +316,7 @@ export const FINISHES = [
   { group: 'Browns & Darks', name: 'Leo', hex: '#B89878', desc: 'Named after a dog of indeterminate breed. Gingery, warm, impossible not to love. Part corgi, part lab, part dachshund, and about eleven other things. So is this color.' },
   { group: 'Browns & Darks', name: 'Marmite', hex: '#352C2B', desc: 'Love it or leave it. No in between.' },
   { group: 'Browns & Darks', name: 'Villain', hex: '#303536', desc: 'The one in all black at the back of the room. Doesn\'t need to explain itself.' },
+  { group: 'Custom', name: 'Custom RAL', hex: '#b7b1a4', desc: 'Any RAL shade, matched in the PL/NTH workshop. Give us the RAL code and we take it from there.', custom: true },
 ];
 export const DEFAULT_FINISH = 'Ghost';
 export function getFinish(name) { return FINISHES.find((f) => f.name === name) || FINISHES[1]; }
@@ -280,6 +341,19 @@ export const TRADE = {
   capPerContainer: 60,                       // cabinets per shipping container
   shipPerContainerUSD: 2000 * PRICING.fx * PRICING.margin, // £2,000 → sell $
 };
+
+// Indicative volume pricing tiers, applied to the trade cabinet subtotal by
+// TOTAL UNIT COUNT and shown in the spec breakdown. Always labelled
+// "indicative — confirmed on quote"; tune the percentages here.
+export const VOLUME_TIERS = [
+  { min: 100, pct: 10, label: '100+ units' },
+  { min: 50, pct: 8, label: '50–99 units' },
+  { min: 25, pct: 5, label: '25–49 units' },
+  { min: 10, pct: 3, label: '10–24 units' },
+];
+export function volumeTier(totalUnits) {
+  return VOLUME_TIERS.find((t) => totalUnits >= t.min) || null;
+}
 
 // GBP workshop cost → customer sell $ (same FX × margin as cabinets; the per-
 // cabinet wrap doesn't apply to trim/accessories).

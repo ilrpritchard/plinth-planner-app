@@ -21,6 +21,7 @@ import { buildPlanDXF } from './core/dxf.js';
 import { ensureDxfEmail } from './ui/dxfgate.js';
 import { uiAlert } from './ui/dialog.js';
 import { buildQuoteHTML } from './ui/quote.js';
+import { openPrintWindow } from './ui/submittal.js';
 import { TradeUI } from './ui/trade.js';
 import { CloudUI } from './ui/cloudUI.js';
 import { Wizard } from './ui/wizard.js';
@@ -30,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-61 · glazed doors match plain doors';
+const BUILD = 'W2W-62 · trade upgrades: compliance sheet, panel-ready, stackers, tiers, IFC';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -296,14 +297,9 @@ function togglePlan(on) {
 btnTechnical?.addEventListener('click', () => togglePlan(!planActive));
 document.getElementById('planClose')?.addEventListener('click', () => togglePlan(false));
 document.getElementById('planPrint')?.addEventListener('click', () => window.print());
-// branded sheet in a new window → the browser's Print dialog saves it as PDF
+// branded sheet → hidden-iframe print dialog (popup-free) → save as PDF
 document.getElementById('planPDF')?.addEventListener('click', () => {
-  const w = window.open('', '_blank');
-  if (!w) { uiAlert('Allow pop-ups for this site, then try again.', { title: 'Pop-up blocked' }); return; }
-  w.document.write(buildPlanSheetHTML(store.serialize(), underlay));
-  w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 350);
+  openPrintWindow(buildPlanSheetHTML(store.serialize(), underlay));
 });
 document.getElementById('planExport')?.addEventListener('click', () => {
   const blob = new Blob([buildFloorplanSVG(store.serialize())], { type: 'image/svg+xml' });

@@ -64,6 +64,20 @@ export function computeWarnings(state) {
     out.push({ level: 'error', msg: `${k.box.cab.desc} sits in front of a window — a cooker never goes there. Slide it along the wall.` });
   }
 
+  // ---- 0b. cabinets standing taller than the ceiling ----
+  // (stackers on top of the 86" tall run only fit under 9'+ ceilings)
+  {
+    const MOUNT = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5 }; // matches models/cabinet.js
+    const H = (r && r.height) || 96;
+    for (const b of boxes) {
+      const y0 = typeof b.cab.mountY === 'number' ? b.cab.mountY : (MOUNT[b.cab.type] ?? 0);
+      const top = y0 + (b.cab.h || 0);
+      if (top > H + 0.5) {
+        out.push({ level: 'error', msg: `${b.cab.code} reaches ${fmtIn(top)} but the ceiling is ${fmtIn(H)} — raise the ceiling height (ROOM tab) or choose a shorter unit.` });
+      }
+    }
+  }
+
   // ---- 1. floor-standing cabinets overlapping each other ----
   const floor = boxes.filter((b) => isFloorStanding(b.cab));
   const OVL = 1.0; // ignore <1" touch/snap slack
@@ -199,7 +213,7 @@ export function computeWarnings(state) {
         if (side) left = true; else right = true;
       }
       if (!left || !right) {
-        out.push({ level: 'warn', msg: `${dwb.cab.code} dishwasher panel has no cabinet on ${left ? 'one side' : right ? 'one side' : 'either side'} — it is legless and must sit between two cabinets, borrowing their legs.` });
+        out.push({ level: 'warn', msg: `${dwb.cab.code} appliance panel has no cabinet on ${left ? 'one side' : right ? 'one side' : 'either side'} — it is legless and must sit between two cabinets, borrowing their legs.` });
       }
     }
   }

@@ -93,6 +93,29 @@ export function planPhases(trade, opts = {}) {
     }
   }
 
+  // ---- show kitchen first: pull ONE unit out of the first batch into its own
+  // early phase, so a sales-gallery / model-unit kitchen lands before the
+  // production run. Only when there's something left to follow it.
+  if (opts.showKitchenFirst && batches.length) {
+    const first = batches[0];
+    const entry = first.byType.find((t) => t.qty > 0);
+    if (entry && (first.units > 1 || batches.length > 1)) {
+      const cabsByName = new Map(units.map((u) => [unitName(u), cabsPerUnit(u)]));
+      const cabs = cabsByName.get(entry.name) || 0;
+      entry.qty -= 1;
+      first.units -= 1;
+      first.cabinets -= cabs;
+      if (entry.qty === 0) first.byType = first.byType.filter((t) => t !== entry);
+      batches.unshift({
+        floors: null,
+        label: 'Show kitchen — first delivery',
+        units: 1, cabinets: cabs,
+        byType: [{ name: entry.name, qty: 1 }],
+        showKitchen: true,
+      });
+    }
+  }
+
   batches.forEach((b, i) => {
     b.n = i + 1;
     b.weeksLo = base.weeksLo + i * WEEKS_BETWEEN_BATCHES;

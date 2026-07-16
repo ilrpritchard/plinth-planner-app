@@ -97,7 +97,9 @@ export function buildInvoiceModel(order, opts = {}) {
   const subtotalCents = t.subtotal != null ? toCents(t.subtotal)
     : lines.reduce((x, l) => x + l.subtotalCents, 0);
   const shippingCents = toCents(t.shipping);
-  const grandCents = t.grand != null ? toCents(t.grand) : subtotalCents + shippingCents;
+  const discountCents = toCents(t.discount);          // indicative volume tier
+  const grandCents = t.grand != null ? toCents(t.grand)
+    : subtotalCents - discountCents + shippingCents;
 
   const { deposit, balance } = splitDeposit(grandCents, depositPct);
   const balDue = balanceDue(d);
@@ -137,10 +139,13 @@ export function buildInvoiceModel(order, opts = {}) {
       dueLabel,
     },
     lines,
-    charges: [{ label: 'Shipping & containers', amountCents: shippingCents }],
+    charges: [
+      ...(discountCents ? [{ label: `Volume tier${t.tier ? ` ${String(t.tier.label).replace(/–/g, '-')} (-${t.tier.pct}%)` : ''} - confirmed on quote`, amountCents: -discountCents }] : []),
+      { label: 'Shipping & containers', amountCents: shippingCents },
+    ],
     totals: {
       cabinets: Number(t.cabinets) || lines.reduce((x, l) => x + l.cabinets, 0),
-      subtotalCents, shippingCents, grandCents,
+      subtotalCents, shippingCents, discountCents, grandCents,
     },
     schedule,
     depositPct,

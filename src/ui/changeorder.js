@@ -134,6 +134,7 @@ export function buildChangeOrderHTML(m) {
       <table class="tot">
         <tr><td class="l">Original order total</td><td class="num">${fmtCents(t.oldGrandCents)}</td></tr>
         <tr><td class="l">Cabinet changes</td><td class="num ${dcls(t.newSubtotalCents - t.oldSubtotalCents)}">${fmtDelta(t.newSubtotalCents - t.oldSubtotalCents)}</td></tr>
+        ${(t.discountDeltaCents || t.oldDiscountCents || t.newDiscountCents) ? `<tr><td class="l">Volume tier${t.newTier ? ` (indicative -${t.newTier.pct}%)` : ''} (${fmtCents(t.oldDiscountCents)} &rarr; ${fmtCents(t.newDiscountCents)} credit)</td><td class="num ${dcls(-t.discountDeltaCents)}">${fmtDelta(-t.discountDeltaCents)}</td></tr>` : ''}
         <tr><td class="l">Shipping &amp; containers (${fmtCents(t.oldShippingCents)} &rarr; ${fmtCents(t.newShippingCents)})</td><td class="num ${dcls(t.shippingDeltaCents)}">${fmtDelta(t.shippingDeltaCents)}</td></tr>
         <tr class="hi"><td class="l">Revised order total</td><td class="num">${fmtCents(t.newGrandCents)}</td></tr>
       </table>

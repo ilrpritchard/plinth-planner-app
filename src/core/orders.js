@@ -91,7 +91,7 @@ export function buildOrderSnapshot(trade, opts = {}) {
   // delivery phases (only when phasing is on) — each gets an id + a status
   let phases = [];
   if (t.phasing && t.phasing.on) {
-    const plan = planPhases(t, { maxUnitsPerBatch: t.phasing.maxPerBatch });
+    const plan = planPhases(t, { maxUnitsPerBatch: t.phasing.maxPerBatch, showKitchenFirst: !!t.phasing.showFirst });
     phases = plan.batches.map((b) => {
       const w = batchWindow(b, now);
       return {
@@ -116,13 +116,21 @@ export function buildOrderSnapshot(trade, opts = {}) {
     orderNo: opts.orderNo || genOrderNo(new Date(now)),
     placedAt: new Date(now).toISOString(),
     project: t.project || 'Untitled project',
+    projectMeta: {
+      address: t.address || '', architect: t.architect || '',
+      gc: t.gc || '', owner: t.owner || '',
+    },
     finish: t.finish || '',
+    finishRal: t.finishRal || '',
     customer: opts.customer
       ? { name: opts.customer.name || '', email: opts.customer.email || '', notes: opts.customer.notes || '' }
       : null,
     unitTypes,
     phases,
-    totals: { cabinets: s.totalCabs, subtotal: s.subtotal, shipping: s.shipping, grand: s.grand },
+    totals: {
+      cabinets: s.totalCabs, subtotal: s.subtotal, shipping: s.shipping, grand: s.grand,
+      discount: s.discount || 0, tier: s.tier ? { pct: s.tier.pct, label: s.tier.label } : null,
+    },
     specFindings,
   };
 }
@@ -159,7 +167,12 @@ export function snapshotToTrade(order) {
   });
   return {
     project: d.project || 'Untitled project',
+    address: (d.projectMeta && d.projectMeta.address) || '',
+    architect: (d.projectMeta && d.projectMeta.architect) || '',
+    gc: (d.projectMeta && d.projectMeta.gc) || '',
+    owner: (d.projectMeta && d.projectMeta.owner) || '',
     finish: d.finish || '',
+    finishRal: d.finishRal || '',
     units,
     phasing: { on: false },                // frozen plan lives on snapshot.phases
     nextUnitId: units.length + 1,

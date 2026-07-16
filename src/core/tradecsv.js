@@ -27,7 +27,7 @@ function floorsLabel(u, q) {
  *  (existing columns untouched) plus a DELIVERY PHASING block after the totals. */
 export function buildTradeOrderCSV(trade, now = Date.now()) {
   const phasing = trade && trade.phasing && trade.phasing.on
-    ? planPhases(trade, { maxUnitsPerBatch: trade.phasing.maxPerBatch })
+    ? planPhases(trade, { maxUnitsPerBatch: trade.phasing.maxPerBatch, showKitchenFirst: !!trade.phasing.showFirst })
     : null;
   const rows = [phasing ? HEADER.concat(['Delivery phase']) : HEADER];
   for (const u of (trade && trade.units) || []) {
@@ -48,6 +48,7 @@ export function buildTradeOrderCSV(trade, now = Date.now()) {
   const s = tradeSummary(trade || { units: [] });
   rows.push([]);
   rows.push(['CABINETS SUBTOTAL', '', '', '', '', '', '', '', s.totalCabs, '', s.subtotal.toFixed(2)]);
+  if (s.tier) rows.push([`VOLUME TIER ${s.tier.label} (indicative -${s.tier.pct}%)`, '', '', '', '', '', '', '', '', '', (-s.discount).toFixed(2)]);
   rows.push(['CONTAINERS', '', '', '', '', '', '', '', s.containers, '', '']);
   rows.push(['SHIPPING', '', '', '', '', '', '', '', '', '', s.shipping.toFixed(2)]);
   rows.push(['GRAND TOTAL', '', '', '', '', '', '', '', '', '', s.grand.toFixed(2)]);
