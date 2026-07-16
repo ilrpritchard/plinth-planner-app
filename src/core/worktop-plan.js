@@ -195,26 +195,43 @@ export function planWorktopSlabs(items, getCab, defaultMat = 'marble', room = nu
     const hd = (horiz ? cab.d : cab.w) / 2;
     blocks.push({ x0: it.x - hw, x1: it.x + hw, z0: it.z - hd, z1: it.z + hd });
   }
+  // SUBTRACT the appliance rectangle (splitting into up to 4 pieces around
+  // it) rather than shaving a whole slab edge: a corner-turning slab that
+  // clips a range near the corner must only lose the NOTCH that collides —
+  // an L-joint against the range's side. The old edge-shave stripped the
+  // front inches off the ENTIRE run (the "worktop not deep enough" bug).
+  // Cut pieces at overhang-lip thickness are dropped: the 1" lip stops dead
+  // at the appliance and resumes on the other side — never across its front.
+  let out = slabs;
   if (blocks.length) {
+    const LIP = OVERHANG + 0.05;
+    out = [];
     for (const s of slabs) {
+      let pieces = [s];
       for (const b of blocks) {
-        const iw = Math.min(s.x1, b.x1) - Math.max(s.x0, b.x0);
-        const id = Math.min(s.z1, b.z1) - Math.max(s.z0, b.z0);
-        if (iw <= 0.01 || id <= 0.01) continue;          // no real overlap
-        // trim the edge that loses the least surface — that's the thin strip
-        // hanging over the appliance (1" lip / a wall extension gone too far)
-        const cutL = b.x1 - s.x0, cutR = s.x1 - b.x0;    // shave slab's left / right
-        const cutB = b.z1 - s.z0, cutF = s.z1 - b.z0;    // shave slab's back / front
-        const m = Math.min(cutL, cutR, cutB, cutF);
-        if (m === cutL) s.x0 = b.x1;
-        else if (m === cutR) s.x1 = b.x0;
-        else if (m === cutB) s.z0 = b.z1;
-        else s.z1 = b.z0;
+        const next = [];
+        for (const p of pieces) {
+          const ix0 = Math.max(p.x0, b.x0), ix1 = Math.min(p.x1, b.x1);
+          const iz0 = Math.max(p.z0, b.z0), iz1 = Math.min(p.z1, b.z1);
+          if (ix1 - ix0 <= 0.01 || iz1 - iz0 <= 0.01) { next.push(p); continue; }
+          const cand = [
+            { ...p, x1: ix0 },                       // left of the appliance
+            { ...p, x0: ix1 },                       // right of it
+            { ...p, x0: ix0, x1: ix1, z1: iz0 },     // behind it
+            { ...p, x0: ix0, x1: ix1, z0: iz1 },     // in front of it
+          ];
+          for (const c of cand) {
+            if (c.x1 - c.x0 <= LIP || c.z1 - c.z0 <= LIP) continue;
+            next.push(c);
+          }
+        }
+        pieces = next;
       }
+      out.push(...pieces);
     }
   }
 
-  return slabs.filter((s) => s.x1 - s.x0 > 0.05 && s.z1 - s.z0 > 0.05);
+  return out.filter((s) => s.x1 - s.x0 > 0.05 && s.z1 - s.z0 > 0.05);
 }
 
 // ---- sink cutouts --------------------------------------------------------
