@@ -179,6 +179,41 @@ export function buildAppliance(cab) {
       break;
     }
     case 'fridge': {
+      if (cab.integrated) {
+        // INTEGRATED fridge-freezer (AP11): reads as painted cabinetry, not
+        // stainless — flush panel-ready fronts with shaker fields, a hairline
+        // reveal between the two french doors, one full-width freezer drawer
+        // below, and Plinth knobs (hardware is knobs-only). 84" install height.
+        const PANEL = () => mat(0xe9e6dd, 0.05, 0.55, 0.6);    // painted panel, Ghost-adjacent
+        const FIELD = () => mat(0xdfdcd2, 0.05, 0.6, 0.5);     // recessed shaker field, a step darker
+        const body = box(w, h, d, PANEL()); body.position.y = h / 2; g.add(body);
+        const kick = box(w - 1.0, 2.2, d - 1.0, DARK()); kick.position.set(0, 1.1, -0.5); g.add(kick);
+        const splitY = 31;                                     // freezer drawer line (real FF drawer height)
+        const leafT = 0.8, stile = 3.1, gap = 0.35;            // leaf + shaker proportions match cabinet fronts
+        const leaf = (x0, wL, y0, hL) => {
+          const L = box(wL, hL, leafT, PANEL()); L.position.set(x0, y0, fz + leafT / 2); g.add(L);
+          if (wL > stile * 2.6 && hL > stile * 2.6) {          // sunk shaker field
+            const F = box(wL - stile * 2, hL - stile * 2, 0.3, FIELD());
+            F.position.set(x0, y0, fz + leafT - 0.42); F.castShadow = false; g.add(F);
+          }
+        };
+        // two french doors above the drawer line
+        const doorH = h - splitY - 0.9, doorY = splitY + 0.45 + doorH / 2;
+        const doorW = (w - 1.0 - gap) / 2;
+        leaf(-(doorW + gap) / 2, doorW, doorY, doorH);
+        leaf((doorW + gap) / 2, doorW, doorY, doorH);
+        // full-width freezer drawer below
+        const drwH = splitY - 2.2 - 0.9, drwY = 2.2 + 0.45 + drwH / 2;
+        leaf(0, w - 1.0, drwY, drwH);
+        // knobs: one per door on the meeting stiles, two across the drawer
+        const knob = (x, y) => {
+          const k = cyl(0.5, 0.62, 0.9, CHROME()); k.rotation.x = Math.PI / 2;
+          k.position.set(x, y, fz + leafT + 0.45); g.add(k);
+        };
+        knob(-(gap / 2 + 1.7), 45); knob(gap / 2 + 1.7, 45);
+        knob(-w / 4, splitY - 3.6); knob(w / 4, splitY - 3.6);
+        break;
+      }
       // all features derive from w/d/h so USER-SIZED boxes (AP9:WxDxH) read
       // right: the freezer split stays proportionate, handles scale with h,
       // and a wide (≥40") box splits into french doors above the freezer.

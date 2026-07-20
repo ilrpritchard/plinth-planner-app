@@ -446,13 +446,16 @@ export class UI {
     let html = '';
     let hiddenAny = false;
     for (const fam of FAMILY_ORDER) {
-      // an island is built from base cabinets only — wall/counter/tall units
-      // and appliances need a wall, so the Island tab shows just FLOOR
-      if (this.activeWall === 'island' && fam !== 'FLOOR') continue;
+      // an island is built from base cabinets plus the appliances that really
+      // live in one — ranges, cooktops and sinks (Rockledge-style island
+      // cooking). Wall/counter/tall units and hoods/fridges still need a wall.
+      if (this.activeWall === 'island' && fam !== 'FLOOR' && fam !== 'APPLIANCES') continue;
       // stackers group under their own section (familyOf), not under WALL
       const all = CATALOGUE.filter((c) => familyOf(c) === fam && c.placeable);
       // base-run cabinets wider than the remaining wall length are hidden
       const items = all.filter((c) => {
+        if (this.activeWall === 'island' && c.type === 'APPLIANCES' &&
+            !['range', 'hob', 'sink'].includes(c.appliance)) return false;
         if (!this._isBaseRun(c)) return true;
         const fits = c.w <= remaining + TOL;
         if (!fits) hiddenAny = true;

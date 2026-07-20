@@ -46,6 +46,11 @@ const RAW = [
   { code: 'F28', type: 'FLOOR', desc: 'Open Shelves (Half Depth)', w: 28, d: 14, h: 35, hinge: 'n/a', gbp: 519 },
   // FLOOR — panel-ready undercounter appliance front (wine / beverage / drawers)
   { code: 'F29', type: 'FLOOR', desc: 'Undercounter Appliance Door & Plinth', w: 24, d: 24, h: 35, hinge: 'n/a', gbp: 292, notes: 'Door panel + plinth for a 24" panel-ready undercounter unit (wine, beverage, refrigerator drawers) — appliance not supplied. Panel supplied undrilled.' },
+  // FLOOR — cooktop bases (36" — the standard rangetop width on multi-unit
+  // work). Fronts are IDENTICAL to F20 / F10; the difference is inside: the
+  // cooktop body drops into the top of the carcass.
+  { code: 'F30', type: 'FLOOR', desc: 'Cooktop Drawers (3)', w: 36, d: 24, h: 35, hinge: 'n/a', gbp: 1200, notes: 'Drawer bank prepped for a 36" cooktop over. Fronts identical to F20 — the top front is FALSE (fixed in the workshop) so the cooktop body drops in; lower two drawers work as normal. Cooktop not supplied.' },
+  { code: 'F31', type: 'FLOOR', desc: 'Cooktop Double', w: 36, d: 24, h: 35, hinge: 'n/a', gbp: 1040, notes: 'Double door base prepped for a 36" cooktop over — top of the carcass is cut back for the cooktop body. Cooktop not supplied.' },
 
   // WALL
   { code: 'W1', type: 'WALL', desc: 'Single', w: 20, d: 14, h: 30, hinge: 'L&R', gbp: 598 },
@@ -201,6 +206,12 @@ const APPLIANCES = [
   { code: 'AP10', appliance: 'sink', desc: 'Sink (Prep) 15"', w: 15, d: 18, h: 8, mountY: 36.5 },
   { code: 'AP8', appliance: 'hood', desc: 'Range Hood 36"', w: 36, d: 20, h: 28, mountY: 58 },
   { code: 'AP9', appliance: 'fridge', desc: 'Refrigerator (Freestanding)', w: 36, d: 28, h: 70, mountY: 0 },
+  // integrated fridge-freezer: 84" nominal install height (Sub-Zero / Thermador
+  // / Miele french-door integrateds all land at 84"), 24" counter depth so it
+  // finishes flush with the base runs and slips under the 86" tall line.
+  // Panel-ready — pair with T12 (36" panel-ready housing) when Plinth supplies
+  // the surround and door panels.
+  { code: 'AP11', appliance: 'fridge', integrated: true, desc: 'Integrated Fridge-Freezer 36" (french doors + freezer drawer)', w: 36, d: 24, h: 84, mountY: 0 },
 ];
 
 // (Solid-oak floating shelves were dropped from the range 2026-07: Plinth only

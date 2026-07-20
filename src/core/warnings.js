@@ -118,6 +118,21 @@ export function computeWarnings(state) {
     if (!supported) {
       out.push({ level: 'warn', msg: `${b.cab.desc} isn’t over a base cabinet — sit it on a sink/cooktop base so it has support.` });
     }
+    // a COOKTOP body drops into the cabinet below — a working top drawer or a
+    // plain double can't take it. Point at the cooktop-prepped bases (F30/F31).
+    if (b.cab.appliance === 'hob') {
+      for (const f of floor) {
+        if (f.cab.type !== 'FLOOR') continue;
+        const overlaps = (f.hx + b.hx) - Math.abs(f.x - b.x) > 2 &&
+                         (f.hz + b.hz) - Math.abs(f.z - b.z) > 2;
+        if (!overlaps) continue;
+        if (f.cab.form === 'drawers' && f.cab.code !== 'F30') {
+          out.push({ level: 'warn', msg: `${b.cab.desc} sits over ${f.cab.code} — a working top drawer can't live under a cooktop. Use F30 (cooktop drawer base: identical fronts, top front false).` });
+        } else if (f.cab.form === 'double' && f.cab.code !== 'F31' && !f.cab.corner) {
+          out.push({ level: 'warn', msg: `${b.cab.desc} sits over ${f.cab.code} — use F31 (cooktop double base, carcass prepped for the cooktop body).` });
+        }
+      }
+    }
   }
 
   // ---- 4. range / cooktop with no worktop landing on either side ----
