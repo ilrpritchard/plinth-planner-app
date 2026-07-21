@@ -135,6 +135,7 @@ const RAW = [
   { code: 'T10', type: 'TALL', desc: 'Panel-Ready Column Housing (24")', w: 27, d: 24, h: 86, hinge: 'n/a', gbp: 1395, notes: 'Fits 24" panel-ready refrigeration columns (Sub-Zero, Thermador, Miele, Bosch — confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
   { code: 'T11', type: 'TALL', desc: 'Panel-Ready Column Housing (30")', w: 33, d: 24, h: 86, hinge: 'n/a', gbp: 1440, notes: 'Fits 30" panel-ready refrigeration columns (Sub-Zero, Thermador, Miele — confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
   { code: 'T12', type: 'TALL', desc: 'Panel-Ready Column Housing (36")', w: 39, d: 24, h: 86, hinge: 'n/a', gbp: 1490, notes: 'Fits 36" panel-ready French-door / column refrigeration (Sub-Zero, Thermador, Miele — confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
+  { code: 'T13', type: 'TALL', desc: 'Double', w: 44, d: 24, h: 86, hinge: 'n/a', gbp: 1650, notes: 'Full-height double doors — left and right hinged pair. Adjustable shelves.' },
 
   // ACCESSORIES (no 3D geometry placed; listed in cut list only)
   { code: 'A2', type: 'ACCESSORIES', desc: 'End Panel (Floor)', w: 0, d: 0, h: 0, hinge: '', gbp: 105 },
@@ -212,6 +213,12 @@ const APPLIANCES = [
   // Panel-ready — pair with T12 (36" panel-ready housing) when Plinth supplies
   // the surround and door panels.
   { code: 'AP11', appliance: 'fridge', integrated: true, desc: 'Integrated Fridge-Freezer 36" (french doors + freezer drawer)', w: 36, d: 24, h: 84, mountY: 0 },
+  // 72"-tall integrated french door (Fisher & Paykel RS36A72 and similar
+  // under-72 integrateds) — same look as AP11, a foot shorter.
+  { code: 'AP12', appliance: 'fridge', integrated: true, desc: 'Integrated French-Door Fridge-Freezer 36" × 72" (fits F&P RS36A72)', w: 36, d: 25, h: 72, mountY: 0 },
+  // over-and-under: ONE door above, freezer drawer below (Sub-Zero DET50
+  // designer series and similar 30" panel-ready over-unders).
+  { code: 'AP13', appliance: 'fridge', integrated: true, overUnder: true, desc: 'Integrated Over-Under Fridge-Freezer 30" (door + freezer drawer, fits Sub-Zero DET50)', w: 30, d: 24, h: 84, mountY: 0 },
 ];
 
 // (Solid-oak floating shelves were dropped from the range 2026-07: Plinth only

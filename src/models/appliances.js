@@ -197,11 +197,16 @@ export function buildAppliance(cab) {
             F.position.set(x0, y0, fz + leafT - 0.42); F.castShadow = false; g.add(F);
           }
         };
-        // two french doors above the drawer line
+        // door(s) above the drawer line: french pair, or ONE full-width door
+        // for an over-and-under (Sub-Zero DET idiom)
         const doorH = h - splitY - 0.9, doorY = splitY + 0.45 + doorH / 2;
-        const doorW = (w - 1.0 - gap) / 2;
-        leaf(-(doorW + gap) / 2, doorW, doorY, doorH);
-        leaf((doorW + gap) / 2, doorW, doorY, doorH);
+        if (cab.overUnder) {
+          leaf(0, w - 1.0, doorY, doorH);
+        } else {
+          const doorW = (w - 1.0 - gap) / 2;
+          leaf(-(doorW + gap) / 2, doorW, doorY, doorH);
+          leaf((doorW + gap) / 2, doorW, doorY, doorH);
+        }
         // full-width freezer drawer below
         const drwH = splitY - 2.2 - 0.9, drwY = 2.2 + 0.45 + drwH / 2;
         leaf(0, w - 1.0, drwY, drwH);
@@ -210,7 +215,8 @@ export function buildAppliance(cab) {
           const k = cyl(0.5, 0.62, 0.9, CHROME()); k.rotation.x = Math.PI / 2;
           k.position.set(x, y, fz + leafT + 0.45); g.add(k);
         };
-        knob(-(gap / 2 + 1.7), 45); knob(gap / 2 + 1.7, 45);
+        if (cab.overUnder) knob(-(w / 2 - 3.4), 45);   // hinge right, knob left
+        else { knob(-(gap / 2 + 1.7), 45); knob(gap / 2 + 1.7, 45); }
         knob(-w / 4, splitY - 3.6); knob(w / 4, splitY - 3.6);
         break;
       }
