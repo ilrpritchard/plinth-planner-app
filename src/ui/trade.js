@@ -51,7 +51,31 @@ export class TradeUI {
     store.subscribe((s, c) => {
       if (['mode', 'load', 'reset'].includes(c.type)) this.render();
     });
+    this._recoverOrphanStash();
     this.render();
+  }
+
+  /** A reload mid-"Edit layout in 3D" used to LOSE the whole trade project —
+   *  the stash only lived in memory. If a persisted stash exists on boot, the
+   *  previous design session died: fold the current (autosaved) unit design
+   *  back onto its unit, restore the stashed project, and carry on. */
+  _recoverOrphanStash() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('plnr-trade-stash') || 'null'); } catch { saved = null; }
+    if (!saved || !saved.stash || !saved.stash.trade) return;
+    try {
+      const cur = this.store.serialize();
+      const t = saved.stash.trade;
+      const u = (t.units || []).find((x) => x.id === saved.unitId);
+      if (u && cur.mode === 'home' && Array.isArray(cur.items) && cur.items.length) {
+        const design = cur; design.mode = 'home'; delete design.trade;
+        u.design = design;
+        u.rows = rowsFromDesign(design.items).map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
+      }
+      this.store.replace(saved.stash);
+      toast('Recovered your trade project after an interrupted design session ✓');
+    } catch { /* leave state as-is */ }
+    try { localStorage.removeItem('plnr-trade-stash'); } catch { /* ignore */ }
   }
 
   get t() { return this.store.state.trade; }
@@ -449,6 +473,9 @@ export class TradeUI {
     if (this._stash) return;                       // already designing
     this._stash = this.store.serialize();
     this._designUnitId = u.id;
+    // the stash holds the ENTIRE trade project — persist it so a reload
+    // mid-design can never lose the project (recovered on next boot)
+    try { localStorage.setItem('plnr-trade-stash', JSON.stringify({ stash: this._stash, unitId: u.id })); } catch { /* storage full */ }
     let d;
     if (u.design) d = JSON.parse(JSON.stringify(u.design));
     else { d = this.store.serialize(); d.items = []; d.accessories = {}; }
@@ -479,6 +506,7 @@ export class TradeUI {
     }
     this._stash = null;
     this._designUnitId = null;
+    try { localStorage.removeItem('plnr-trade-stash'); } catch { /* ignore */ }
     document.getElementById('designBanner')?.remove();
     // the wizard's post-generate bar dies with the design session — it must
     // never linger over the TRADE panel
