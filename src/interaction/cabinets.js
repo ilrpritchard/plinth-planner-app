@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { buildCabinet, buildFloatingShelf, getMountY } from '../models/cabinet.js';
 import { buildAppliance } from '../models/appliances.js';
+import { exposedBackIds } from '../core/endpanels.js';
 import { getCab, getFinish } from '../core/catalogue.js';
 import { cornerReturnLength } from './snapping.js';
 
@@ -94,7 +95,10 @@ export class CabinetLayer {
     if (cab.type === 'APPLIANCES') return buildAppliance(cab, this.finishHexFor(item, this.store.state));
     if (cab.type === 'SHELF') return buildFloatingShelf(cab);
     // hardware is not user-choosable: every Plinth cabinet ships with knobs
-    const opts = { hinge: item.hinge, handle: 'knob', backPanel: !!item.backPanel };
+    // an exposed island back is a FINISHED (painted) panel — the cost side
+    // already prices it (endpanels.js); the render must match.
+    const finishedBack = !!item.backPanel || exposedBackIds(this.store.state).has(item.id);
+    const opts = { hinge: item.hinge, handle: 'knob', backPanel: finishedBack };
     this._lastSinkOver = cab.type === 'FLOOR' && this._sinkOver(item, cab);
     opts.sinkOver = this._lastSinkOver;
     // corner units: draw the blank return long enough to meet the adjacent

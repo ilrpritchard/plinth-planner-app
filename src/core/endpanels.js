@@ -21,6 +21,29 @@ function inside(px, pz, self, list) {
   return false;
 }
 
+/** The item ids of free-standing floor cabinets whose BACK is exposed —
+ *  these get a finished (painted) back in 3D and a priced panel in the cost. */
+export function exposedBackIds(state) {
+  const r = state.room;
+  const minX = -r.width / 2, maxX = r.width / 2, minZ = -r.depth / 2, maxZ = r.depth / 2;
+  const floors = (state.items || [])
+    .map((it) => ({ it, cab: getCab(it.code) }))
+    .filter((x) => x.cab && x.cab.type === 'FLOOR');
+  const seated = (it, cab) =>
+    Math.abs(it.z - (minZ + cab.d / 2)) < WALL_TOL || Math.abs(it.z - (maxZ - cab.d / 2)) < WALL_TOL ||
+    Math.abs(it.x - (minX + cab.d / 2)) < WALL_TOL || Math.abs(it.x - (maxX - cab.d / 2)) < WALL_TOL;
+  const ids = new Set();
+  for (const { it, cab } of floors) {
+    if (seated(it, cab)) continue;
+    const rad = (it.rotDeg || 0) * Math.PI / 180;
+    const fx = Math.sin(rad), fz = Math.cos(rad);
+    const bx = it.x - fx * (cab.d / 2 + 1.5);
+    const bz = it.z - fz * (cab.d / 2 + 1.5);
+    if (!inside(bx, bz, it, floors)) ids.add(it.id);
+  }
+  return ids;
+}
+
 /** @returns {{count:number}} how many exposed-back end panels the layout needs. */
 export function computeEndPanels(state) {
   const r = state.room;
@@ -40,19 +63,12 @@ export function computeEndPanels(state) {
   const nearWall = (px, pz) =>
     px <= minX + WALL_TOL || px >= maxX - WALL_TOL || pz <= minZ + WALL_TOL || pz >= maxZ - WALL_TOL;
 
-  let count = 0;
+  const backIds = exposedBackIds(state);
+  let count = backIds.size;
   for (const f of floors) {
     const { it, cab } = f;
     const rad = (it.rotDeg || 0) * Math.PI / 180;
-    if (!seated(it, cab)) {
-      // ISLAND back: a free-standing cabinet with nothing butted behind it needs
-      // a finished end panel on its exposed back (double-sided island → none).
-      const fx = Math.sin(rad), fz = Math.cos(rad);
-      const bx = it.x - fx * (cab.d / 2 + 1.5);
-      const bz = it.z - fz * (cab.d / 2 + 1.5);
-      if (!inside(bx, bz, it, floors)) count += 1;
-      continue;
-    }
+    if (!seated(it, cab)) continue;   // island backs counted above (backIds)
     // WALL RUN: cap each exposed END of the run. A side that meets a side wall
     // (filler/scribe) or butts a neighbouring unit needs no panel; an open end
     // does — "when the run finishes, always put an end panel."
