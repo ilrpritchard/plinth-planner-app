@@ -244,22 +244,31 @@ export class Store {
 
   clear() {
     this._record();
+    // "Clear" means "take the cabinets off THIS plan" — it must never destroy
+    // the trade project (units/designs) or kick the user out of their mode.
     const room = { ...this.state.room };
+    const trade = this.state.trade;
+    const mode = this.state.mode;
     this.state = defaultState();
     this.state.room = room;
+    this.state.trade = trade;
+    this.state.mode = mode;
     this._emit({ type: 'reset' });
   }
 
   // ----- serialise -----
   serialize() { return JSON.parse(JSON.stringify(this.state)); }
 
-  replace(data) {
+  replace(data, { preserveTrade = false } = {}) {
     if (!data || data.schema !== SCHEMA) return false;
     this._record();
     const base = defaultState();
     // migrate the old boolean cornice flag → named profile
     const inRoom = { ...(data.room || {}) };
     if (typeof inRoom.cornice === 'boolean') inRoom.cornice = inRoom.cornice ? 'plain' : 'none';
+    // preserveTrade: a shared #d= design carries no trade key — loading one
+    // must never wipe a trade project that lives in this browser
+    const keptTrade = preserveTrade && !data.trade ? this.state.trade : null;
     this.state = {
       ...base,
       ...data,
@@ -268,7 +277,7 @@ export class Store {
       items: Array.isArray(data.items) ? data.items : [],
       accessories: (data.accessories && typeof data.accessories === 'object') ? data.accessories : {},
       mode: data.mode === 'trade' ? 'trade' : 'home',
-      trade: { ...base.trade, ...(data.trade || {}), units: Array.isArray(data.trade?.units) ? data.trade.units : [] },
+      trade: keptTrade || { ...base.trade, ...(data.trade || {}), units: Array.isArray(data.trade?.units) ? data.trade.units : [] },
     };
     // migrate legacy single window/door booleans → openings array
     const room = this.state.room;

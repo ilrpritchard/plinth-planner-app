@@ -26,6 +26,14 @@ export function clearSaved() {
   try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
 }
 
+/** Write the current state to the autosave slot RIGHT NOW (no debounce).
+ *  Used at moments where losing the 250ms debounce window would lose real
+ *  work — e.g. the instant a trade design session hands the project back. */
+export function saveNow(store) {
+  try { localStorage.setItem(KEY, JSON.stringify(store.serialize())); }
+  catch (e) { /* storage full / disabled — ignore */ }
+}
+
 // ----- shareable link: the whole design encoded into the URL (no server) -----
 const utf8ToB64 = (s) => btoa(unescape(encodeURIComponent(s)));
 const b64ToUtf8 = (s) => decodeURIComponent(escape(atob(s)));
@@ -38,14 +46,19 @@ export function buildShareURL(store) {
   return `${base}#d=${code}`;
 }
 
-/** If the URL hash carries a shared design, load it. Returns true if it did. */
+/** If the URL hash carries a shared design, load it. Returns true if it did.
+ *  The hash is consumed: it's stripped from the URL after a successful load,
+ *  so RELOADING the tab later boots from the autosave — a stale share link
+ *  must not keep replacing the user's real work (or their trade project,
+ *  which shared designs never carry — hence preserveTrade). */
 export function loadFromHash(store) {
   try {
     const m = (location.hash || '').match(/[#&]d=([^&]+)/);
     if (!m) return false;
     let code = m[1].replace(/-/g, '+').replace(/_/g, '/');
     while (code.length % 4) code += '=';
-    const ok = store.replace(JSON.parse(b64ToUtf8(code)));
+    const ok = store.replace(JSON.parse(b64ToUtf8(code)), { preserveTrade: true });
+    if (ok) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ } }
     return ok;
   } catch (e) { return false; }
 }

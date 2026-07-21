@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-71 · design-session stash persisted (reload can no longer lose the trade project)';
+const BUILD = 'W2W-72 · Clear + share links + Done can no longer touch the trade project';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -39,9 +39,13 @@ const store = new Store();
 // ?tshare=<token> → read-only trade approval view (never autosaved, so a
 // shared project can't clobber the viewer's own local work)
 const TSHARE = new URLSearchParams(location.search).get('tshare');
-// a shared design in the URL takes priority over the last local session
+// Load the last local session FIRST, then let a shared #d= design replace the
+// visible design on top of it. Order matters: the saved trade project must be
+// in the store before the hash load so preserveTrade can keep it — a share
+// link opened in a working browser must never wipe a trade project. The hash
+// is consumed on load, so a later reload boots straight from the autosave.
+const fromSave = loadSaved(store);
 const fromHash = loadFromHash(store);
-const fromSave = fromHash ? false : loadSaved(store);
 if (!TSHARE) autosave(store);      // persist going forward
 
 const scene = new Scene(document.getElementById('stage'));

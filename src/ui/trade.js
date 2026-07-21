@@ -12,6 +12,7 @@ import { ensureDxfEmail } from './dxfgate.js';
 import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
 import { bumpRev, unitRev } from '../core/submittal.js';
+import { saveNow } from '../core/persistence.js';
 import { uiConfirm } from './dialog.js';
 import { buildSubmittalHTML, buildSubmittalPackHTML, openPrintWindow } from './submittal.js';
 import { checkOrder, checkDesign } from '../core/speccheck.js';
@@ -73,6 +74,7 @@ export class TradeUI {
         u.rows = rowsFromDesign(design.items).map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
       }
       this.store.replace(saved.stash);
+      saveNow(this.store);            // on disk before the stash is dropped
       toast('Recovered your trade project after an interrupted design session ✓');
     } catch { /* leave state as-is */ }
     try { localStorage.removeItem('plnr-trade-stash'); } catch { /* ignore */ }
@@ -506,7 +508,6 @@ export class TradeUI {
     }
     this._stash = null;
     this._designUnitId = null;
-    try { localStorage.removeItem('plnr-trade-stash'); } catch { /* ignore */ }
     document.getElementById('designBanner')?.remove();
     // the wizard's post-generate bar dies with the design session — it must
     // never linger over the TRADE panel
@@ -515,6 +516,11 @@ export class TradeUI {
     document.body.classList.remove('wz-reviewing');
     this._restoreDesignChrome();
     this.store.replace(stash);                     // back to Trade, home restored
+    // persist the restored project NOW, then drop the safety stash — in that
+    // order, so there is no instant where neither copy is on disk (the
+    // debounced autosave leaves a ~250ms window a reload could fall into)
+    saveNow(this.store);
+    try { localStorage.removeItem('plnr-trade-stash'); } catch { /* ignore */ }
     this.onDesignLoad?.();
     if (save) toast('Design saved — cabinet rows updated from the layout.');
   }
