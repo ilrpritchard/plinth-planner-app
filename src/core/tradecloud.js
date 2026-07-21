@@ -73,6 +73,19 @@ export function genShareToken(len = 26) {
  */
 export async function saveTradeProject(trade) {
   const token = await authed();
+  // ADOPT-BY-NAME: the cloudId only lives in this browser's autosave — if that
+  // was lost (cleared storage, new device, mid-update reload) a plain save
+  // would quietly create a DUPLICATE project. So with no id in hand, look for
+  // the newest existing project with the same name and update THAT row —
+  // "Save project" always means "save THIS project", never "save a copy".
+  if (!trade.cloudId) {
+    try {
+      const existing = await listTradeProjects();
+      const name = trade.project || 'Untitled project';
+      const match = (existing || []).find((r) => (r.name || 'Untitled project') === name);
+      if (match) trade.cloudId = match.id;   // list is newest-first
+    } catch { /* offline / listing failed — fall through to insert */ }
+  }
   const body = JSON.stringify({
     name: trade.project || 'Untitled project',
     data: trade,
