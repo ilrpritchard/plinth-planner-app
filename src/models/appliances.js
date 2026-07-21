@@ -3,6 +3,7 @@
 // Authored front +Z, base at y=0 (lifted to mount height by placement code).
 
 import * as THREE from 'three';
+import { buildIntegratedFridge } from './cabinet.js';
 
 function mat(color, metalness, roughness, env = 0.8) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), metalness, roughness, envMapIntensity: env });
@@ -62,7 +63,7 @@ function gooseneck(g, x, z) {
   const spout = cyl(0.34, 0.4, 2.6, CHROME()); spout.position.set(x, 7.9, z + 4.8); g.add(spout);
 }
 
-export function buildAppliance(cab) {
+export function buildAppliance(cab, finishHex = '#efece3') {
   const g = new THREE.Group();
   g.name = `appliance-${cab.code}`;
   // hairline setback (matches SKIN in cabinet.js): an appliance butted against
@@ -180,45 +181,10 @@ export function buildAppliance(cab) {
     }
     case 'fridge': {
       if (cab.integrated) {
-        // INTEGRATED fridge-freezer (AP11): reads as painted cabinetry, not
-        // stainless — flush panel-ready fronts with shaker fields, a hairline
-        // reveal between the two french doors, one full-width freezer drawer
-        // below, and Plinth knobs (hardware is knobs-only). 84" install height.
-        const PANEL = () => mat(0xe9e6dd, 0.05, 0.55, 0.6);    // painted panel, Ghost-adjacent
-        const FIELD = () => mat(0xdfdcd2, 0.05, 0.6, 0.5);     // recessed shaker field, a step darker
-        const body = box(w, h, d, PANEL()); body.position.y = h / 2; g.add(body);
-        const kick = box(w - 1.0, 2.2, d - 1.0, DARK()); kick.position.set(0, 1.1, -0.5); g.add(kick);
-        const splitY = 31;                                     // freezer drawer line (real FF drawer height)
-        const leafT = 0.8, stile = 3.1, gap = 0.35;            // leaf + shaker proportions match cabinet fronts
-        const leaf = (x0, wL, y0, hL) => {
-          const L = box(wL, hL, leafT, PANEL()); L.position.set(x0, y0, fz + leafT / 2); g.add(L);
-          if (wL > stile * 2.6 && hL > stile * 2.6) {          // sunk shaker field
-            const F = box(wL - stile * 2, hL - stile * 2, 0.3, FIELD());
-            F.position.set(x0, y0, fz + leafT - 0.42); F.castShadow = false; g.add(F);
-          }
-        };
-        // door(s) above the drawer line: french pair, or ONE full-width door
-        // for an over-and-under (Sub-Zero DET idiom)
-        const doorH = h - splitY - 0.9, doorY = splitY + 0.45 + doorH / 2;
-        if (cab.overUnder) {
-          leaf(0, w - 1.0, doorY, doorH);
-        } else {
-          const doorW = (w - 1.0 - gap) / 2;
-          leaf(-(doorW + gap) / 2, doorW, doorY, doorH);
-          leaf((doorW + gap) / 2, doorW, doorY, doorH);
-        }
-        // full-width freezer drawer below
-        const drwH = splitY - 2.2 - 0.9, drwY = 2.2 + 0.45 + drwH / 2;
-        leaf(0, w - 1.0, drwY, drwH);
-        // knobs: one per door on the meeting stiles, two across the drawer
-        const knob = (x, y) => {
-          const k = cyl(0.5, 0.62, 0.9, CHROME()); k.rotation.x = Math.PI / 2;
-          k.position.set(x, y, fz + leafT + 0.45); g.add(k);
-        };
-        if (cab.overUnder) knob(-(w / 2 - 3.4), 45);   // hinge right, knob left
-        else { knob(-(gap / 2 + 1.7), 45); knob(gap / 2 + 1.7, 45); }
-        knob(-w / 4, splitY - 3.6); knob(w / 4, splitY - 3.6);
-        break;
+        // panel-ready integrateds are CABINETRY to the eye — built by the
+        // cabinet factory itself (same shaker leaves, legs, plinth, finish)
+        // so they can never drift from the product language.
+        return buildIntegratedFridge(cab, finishHex);
       }
       // all features derive from w/d/h so USER-SIZED boxes (AP9:WxDxH) read
       // right: the freezer split stays proportionate, handles scale with h,

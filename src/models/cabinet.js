@@ -302,6 +302,73 @@ export function buildCabinet(cab, finishHex, opts = {}) {
 }
 
 /** Floating wall shelf — a solid oak board mounted on the wall. */
+// ----- integrated (panel-ready) fridge-freezers --------------------------
+// AP11/12/13 read as CABINETRY, not appliances: the same painted shell, flush
+// 115mm plinth, 22mm legs and recessed shaker leaves as every Plinth tall.
+// Fronts are static appliance panels (no pivots). splitY is the freezer line.
+export function buildIntegratedFridge(cab, finishHex) {
+  const g = new THREE.Group();
+  g.name = `appliance-${cab.code}`;
+  const mat = paintMat(finishHex);
+  const w = cab.w - 0.04, d = cab.d, h = cab.h;
+  const frontZ = d / 2;
+  const SKIN = 0.02;
+  const shellW = w - 2 * SKIN;
+
+  // painted shell + flush plinth, exactly the cabinet recipe
+  const bodyY0 = PLINTH, bodyH = h - PLINTH;
+  const left = box(PANEL, bodyH, d, mat); left.position.set(-shellW / 2 + PANEL / 2, bodyY0 + bodyH / 2, 0);
+  const right = box(PANEL, bodyH, d, mat); right.position.set(shellW / 2 - PANEL / 2, bodyY0 + bodyH / 2, 0);
+  const top = box(shellW, PANEL, d, mat); top.position.set(0, h - PANEL / 2, 0);
+  const back = box(shellW - 2 * PANEL, bodyH, PANEL, mat); back.position.set(0, bodyY0 + bodyH / 2, -d / 2 + PANEL / 2);
+  const plinth = box(shellW, PLINTH, d, mat); plinth.position.set(0, PLINTH / 2, 0);
+  g.add(left, right, top, back, plinth);
+
+  // front composition: doors above the freezer line, one drawer front below —
+  // every front is a true shaker leaf recessed behind the 22mm legs
+  const faceW = w - 2 * LEG - 2 * REVEAL;
+  const doorFrontZ = frontZ - 0.18;
+  const splitY = Math.min(31, h * 0.4);            // freezer drawer line AFF
+  const leafZ = doorFrontZ - DOOR_T / 2;
+
+  const drawerY0 = PLINTH + HAIR, drawerY1 = splitY - REVEAL / 2;
+  const drawerH = drawerY1 - drawerY0;
+  const doorY0 = splitY + REVEAL / 2, doorY1 = h - PANEL;
+  const doorH = doorY1 - doorY0;
+
+  // door(s): french pair, or ONE full-width leaf for an over-and-under
+  if (cab.overUnder) {
+    const leaf = shakerLeaf(faceW, doorH, mat, false, doorH > 62 ? 2 : 1);
+    leaf.position.set(0, doorY0 + doorH / 2, leafZ);
+    const k = makeKnob(mat); k.position.set(-(faceW / 2 - STILE / 2), 0, DOOR_T / 2); leaf.add(k);
+    g.add(leaf);
+    revealRing(g, 0, doorY0 + doorH / 2, faceW, doorH, doorFrontZ);
+  } else {
+    const dw = (faceW - REVEAL) / 2;
+    for (const sgn of [-1, 1]) {
+      const cx = sgn * (dw / 2 + REVEAL / 2);
+      const leaf = shakerLeaf(dw, doorH, mat, false, doorH > 62 ? 2 : 1);
+      leaf.position.set(cx, doorY0 + doorH / 2, leafZ);
+      // knobs meet in the middle like a proper pair
+      const k = makeKnob(mat); k.position.set(-sgn * (dw / 2 - STILE / 2), 0, DOOR_T / 2); leaf.add(k);
+      g.add(leaf);
+      revealRing(g, cx, doorY0 + doorH / 2, dw, doorH, doorFrontZ);
+    }
+  }
+
+  // freezer drawer front: same shaker leaf, two knobs on the top rail
+  const drawer = shakerLeaf(faceW, drawerH, mat, false, 1);
+  drawer.position.set(0, drawerY0 + drawerH / 2, leafZ);
+  for (const sgn of [-1, 1]) {
+    const k = makeKnob(mat); k.position.set(sgn * faceW / 4, drawerH / 2 - STILE / 2, DOOR_T / 2); drawer.add(k);
+  }
+  g.add(drawer);
+  revealRing(g, 0, drawerY0 + drawerH / 2, faceW, drawerH, doorFrontZ);
+
+  g.userData = { code: cab.code, type: 'APPLIANCES', footprint: { w, d, returnLeg: 0 }, mountY: cab.mountY ?? 0, doors: [] };
+  return g;
+}
+
 export function buildFloatingShelf(cab) {
   const g = new THREE.Group();
   g.name = `shelf-${cab.code}`;

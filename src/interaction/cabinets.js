@@ -91,7 +91,7 @@ export class CabinetLayer {
   }
 
   _build(cab, item) {
-    if (cab.type === 'APPLIANCES') return buildAppliance(cab);
+    if (cab.type === 'APPLIANCES') return buildAppliance(cab, this.finishHexFor(item, this.store.state));
     if (cab.type === 'SHELF') return buildFloatingShelf(cab);
     // hardware is not user-choosable: every Plinth cabinet ships with knobs
     const opts = { hinge: item.hinge, handle: 'knob', backPanel: !!item.backPanel };
