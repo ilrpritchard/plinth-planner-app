@@ -22,6 +22,7 @@ const STILE = SPEC.FRAME_IN;     // 80mm shaker stiles & rails
 const SHELF = SPEC.SHELF_IN;     // 18mm oak shelf
 const RECESS = mmToIn(8);        // shaker centre panel sits back 8mm from stiles/rails
 const DOOR_T = 0.75;
+const TOPRAIL = mmToIn(35);   // top rail per the master library drawings (35mm — NOT the 22mm panel)
 const FRAME_T = 0.14;
 const KNOB_INSET = 2.2;
 export const OPEN_ANGLE = THREE.MathUtils.degToRad(105);
@@ -165,7 +166,12 @@ function flatDrawer(w, h, mat, frontZ, centerY, handle = 'knob') {
   const g = new THREE.Group();
   g.add(box(w, h, DOOR_T, mat));         // flat front, no shaker panel
   flushRing(g, 0, 0, w, h, DOOR_T / 2);  // hairline reveal so each face reads separate
-  if (handle === 'knob') { const k = makeKnob(mat); k.position.set(0, 0, DOOR_T / 2); g.add(k); }
+  if (handle === 'knob') {
+    if (w >= 30) {                       // 36" banks (F20/F30): a knob pair, 1/9 in from each end
+      const inset = w / 9;
+      for (const sgn of [-1, 1]) { const k = makeKnob(mat); k.position.set(sgn * (w / 2 - inset), 0, DOOR_T / 2); g.add(k); }
+    } else { const k = makeKnob(mat); k.position.set(0, 0, DOOR_T / 2); g.add(k); }
+  }
   else if (handle === 'bar') { const b = barPull(mat, false, w); b.position.set(0, 0, DOOR_T / 2 - 0.1); g.add(b); }
   g.position.set(0, centerY, frontZ - DOOR_T / 2);
   return g;
@@ -245,7 +251,9 @@ export function buildCabinet(cab, finishHex, opts = {}) {
 
   // ----- opening -----
   const openY0 = bodyY0 + PANEL;
-  const openH = bodyH - 2 * PANEL;
+  // doors/drawers stop a full 35mm top rail below the cabinet top (master
+  // library spec — frontdraw.js FD.TOP) with the recessed shadow gap under it
+  const openH = (h - TOPRAIL) - openY0;
   const openCenterY = openY0 + openH / 2;
   const faceW = w - 2 * LEG - 2 * REVEAL;     // door spans between the legs
   const doorFrontZ = frontZ - 0.18;           // doors recessed behind the legs
@@ -333,7 +341,12 @@ export function buildIntegratedFridge(cab, finishHex) {
 
   const drawerY0 = PLINTH + HAIR, drawerY1 = splitY - REVEAL / 2;
   const drawerH = drawerY1 - drawerY0;
-  const doorY0 = splitY + REVEAL / 2, doorY1 = h - PANEL;
+  const doorY0 = splitY + REVEAL / 2, doorY1 = h - TOPRAIL;
+  // painted 35mm top rail at the front plane — the recessed leaves below it
+  // leave the same shadow line the door sides get
+  const railBar = box(shellW, TOPRAIL, PANEL, mat);
+  railBar.position.set(0, h - TOPRAIL / 2, d / 2 - PANEL / 2);
+  g.add(railBar);
   const doorH = doorY1 - doorY0;
 
   // door(s): french pair, or ONE full-width leaf for an over-and-under
@@ -359,8 +372,8 @@ export function buildIntegratedFridge(cab, finishHex) {
   // freezer drawer front: same shaker leaf, two knobs on the top rail
   const drawer = shakerLeaf(faceW, drawerH, mat, false, 1);
   drawer.position.set(0, drawerY0 + drawerH / 2, leafZ);
-  for (const sgn of [-1, 1]) {
-    const k = makeKnob(mat); k.position.set(sgn * faceW / 4, drawerH / 2 - STILE / 2, DOOR_T / 2); drawer.add(k);
+  for (const sgn of [-1, 1]) {          // knob pair, 1/9 of the front width in from each end
+    const k = makeKnob(mat); k.position.set(sgn * (faceW / 2 - faceW / 9), drawerH / 2 - STILE / 2, DOOR_T / 2); drawer.add(k);
   }
   g.add(drawer);
   revealRing(g, 0, drawerY0 + drawerH / 2, faceW, drawerH, doorFrontZ);

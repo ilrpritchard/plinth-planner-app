@@ -87,7 +87,9 @@ function drawFront(p, cab, a) {
   };
   const drawerFront = (x, y, w, h) => {
     p.push(rect(x, y, w, h, 1)); // flat front, no shaker panel
-    knob(p, x + w / 2, y + h / 2); // centred knob — Plinth hardware is knobs only
+    if (cab.w >= 36) {                 // 36" banks (F20/F30): knob pair, 1/9 in from each end
+      knob(p, x + w / 9, y + h / 2); knob(p, x + w - w / 9, y + h / 2);
+    } else knob(p, x + w / 2, y + h / 2); // centred knob — Plinth hardware is knobs only
   };
 
   const isTall = cab.type === 'TALL';
@@ -100,9 +102,16 @@ function drawFront(p, cab, a) {
     }
   };
   switch (form) {
-    case 'door': case 'bin': {
+    case 'door': {
       if (isTall) tallDoor(ox + rev, oy + rev, ow - 2 * rev, oh - 2 * rev, +1);
       else doorPanel(ox + rev, oy + rev, ow - 2 * rev, oh - 2 * rev, +1);
+      break;
+    }
+    case 'bin': {
+      // PULL-OUT: it slides, it never hinges — knob centred on the top rail
+      // (same as the 3D builder), never on the hinge edge like a door
+      doorPanel(ox + rev, oy + rev, ow - 2 * rev, oh - 2 * rev, 0);
+      knob(p, ox + ow / 2, oy + rev + frame * 0.55);
       break;
     }
     case 'corner': {
