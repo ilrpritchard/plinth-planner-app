@@ -124,13 +124,21 @@ export async function submitOrder({ name, email, zip, notes, orderText, design, 
 
 // ----- order checks (table: public.order_checks, INSERT-only for visitors) ---
 /** Submit a design for a free Order Advisor check. Works signed in or out. */
-export async function requestOrderCheck({ name, email, note, design, cabinets, subtotal }) {
+export async function requestOrderCheck({ name, email, note, callTimes, design, cabinets, subtotal }) {
   const c = await client(); if (!c) throw new Error('Cloud not configured');
   const user = await currentUser().catch(() => null);
-  const { error } = await c.from('order_checks').insert({
+  const row = {
     name: name || null, email, note: note || null,
     design: design || null, cabinets: cabinets ?? null, subtotal: subtotal ?? null,
     user_id: user?.id || null,
-  });
+    ...(callTimes ? { call_times: callTimes } : {}),
+  };
+  let { error } = await c.from('order_checks').insert(row);
+  // schema-tolerant: keep the request alive if the call_times column is missing
+  if (error && callTimes && /call_times/.test(error.message || '')) {
+    row.note = [row.note, `Best times to call: ${callTimes}`].filter(Boolean).join(' · ');
+    delete row.call_times;
+    ({ error } = await c.from('order_checks').insert(row));
+  }
   if (error) throw error;
 }

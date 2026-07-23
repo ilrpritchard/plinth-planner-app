@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-75 · order confirmation modal + ref numbers + copyable email fallbacks';
+const BUILD = 'W2W-76 · concierge Order Advisor booking: call-times field + ?book=1 deep link';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -39,6 +39,8 @@ const store = new Store();
 // ?tshare=<token> → read-only trade approval view (never autosaved, so a
 // shared project can't clobber the viewer's own local work)
 const TSHARE = new URLSearchParams(location.search).get('tshare');
+// ?book=1 — site links land straight in the order-check flow (see below)
+const BOOK = new URLSearchParams(location.search).get('book') === '1';
 // Load the last local session FIRST, then let a shared #d= design replace the
 // visible design on top of it. Order matters: the saved trade project must be
 // in the store before the hash load so preserveTrade can keep it — a share
@@ -530,7 +532,7 @@ document.getElementById('wzAgain')?.addEventListener('click', () => { if (wizard
 // first-time visitor (nothing restored, empty room) → open the guided wizard
 // (skipped when the site's trade CTAs land here with ?mode=trade — pros go
 // straight to the TRADE workspace, not the homeowner drawing board)
-if (!TSHARE && !fromHash && !fromSave && store.state.items.length === 0 && store.state.mode !== 'trade') {
+if (!TSHARE && !BOOK && !fromHash && !fromSave && store.state.items.length === 0 && store.state.mode !== 'trade') {
   setTimeout(() => wizard.open(), 400);
 }
 
@@ -586,21 +588,38 @@ if (bookBtn && ocModal) {
   });
   document.getElementById('ocClose').addEventListener('click', () => ocModal.classList.remove('show'));
   ocModal.addEventListener('click', (e) => { if (e.target === ocModal) ocModal.classList.remove('show'); });
+  // ?book=1 → the site's "Book a free Order Advisor call" links land straight
+  // in this flow (concierge booking — no external scheduler). The hint is
+  // consumed from the URL so a reload doesn't re-open the modal.
+  if (BOOK && store.state.mode !== 'trade') {
+    setTimeout(() => bookBtn.click(), 600);
+    const url = new URL(location.href); url.searchParams.delete('book');
+    history.replaceState(null, '', url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '') + url.hash);
+  }
   document.getElementById('ocForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('ocSubmit');
     btn.disabled = true; ocMsg('Sending…', true);
     try {
       const sum = summarizeState(store.state);
+      const callTimes = document.getElementById('ocTimes')?.value.trim() || '';
+      // call times ride in BOTH the structured column and the note — the note
+      // is what the currently deployed notify-email formatter prints, so the
+      // windows reach the inbox even before the fn redeploy lands
+      const note = [document.getElementById('ocNote').value.trim(),
+        callTimes ? `Best times to call: ${callTimes}` : ''].filter(Boolean).join(' · ');
       await requestOrderCheck({
         name: document.getElementById('ocName').value.trim(),
         email: document.getElementById('ocEmail').value.trim(),
-        note: document.getElementById('ocNote').value.trim(),
+        note,
+        callTimes,
         design: store.serialize(),
         cabinets: sum.totalCabs,
         subtotal: sum.subtotal,
       });
-      ocMsg('Design received — an Order Advisor will be in touch. ✓', true);
+      ocMsg(callTimes
+        ? 'Design received — an Order Advisor will call in one of your windows, or reply within one business day. ✓'
+        : 'Design received — an Order Advisor will reply within one business day. ✓', true);
     } catch (err) {
       btn.disabled = false;
       ocMsg((err?.message || 'Could not send') + ' — opening email instead…');
