@@ -18,7 +18,7 @@ import { PointerControls } from './interaction/controls.js';
 import { UI } from './ui/ui.js';
 import { buildFloorplanSVG, buildPlanSheetHTML } from './ui/floorplan.js';
 import { buildPlanDXF } from './core/dxf.js';
-import { ensureDxfEmail, ensureEmailGate, capturedEmail } from './ui/dxfgate.js';
+import { ensureDxfEmail, ensureEmailGate, capturedEmail, setLeadContext } from './ui/dxfgate.js';
 import { uiAlert } from './ui/dialog.js';
 import { buildQuoteHTML } from './ui/quote.js';
 import { openPrintWindow } from './ui/submittal.js';
@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-73 · email gates on take-aways + painted top rail closes the tall door gap';
+const BUILD = 'W2W-74 · gate leads carry design value/cabinets/zip for notification emails';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -300,6 +300,18 @@ function togglePlan(on) {
 }
 btnTechnical?.addEventListener('click', () => togglePlan(!planActive));
 document.getElementById('planClose')?.addEventListener('click', () => togglePlan(false));
+// every recorded gate lead carries what the visitor was designing, so the
+// notification email reads "$28,400 kitchen, 12550" instead of a bare address
+setLeadContext(() => {
+  const sum = summarizeState(store.state);
+  return {
+    design_value: Math.round(sum.subtotal || 0),
+    cabinets: sum.totalCabs || 0,
+    zip: store.state.customer.zip || null,
+    mode: store.state.mode || 'home',
+  };
+});
+
 // every plan take-away (print/PDF/SVG/DXF) sits behind the one-time email gate
 const PLAN_GATE = {
   title: 'Get your floor plan.',

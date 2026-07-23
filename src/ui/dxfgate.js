@@ -14,8 +14,16 @@ export function capturedEmail() {
   return localStorage.getItem(KEY) || '';
 }
 
+// main.js registers a provider so every recorded lead carries what the visitor
+// was designing (design_value/cabinets/zip/mode) — a lead that reads
+// "$28,400 L-shape, 12550" instead of a bare address.
+let leadContext = null;
+export function setLeadContext(fn) { leadContext = fn; }
+
 async function recordLead(email, source) {
   if (!cloudEnabled()) return;
+  let ctx = {};
+  try { ctx = leadContext ? (leadContext() || {}) : {}; } catch { /* lead still records */ }
   const headers = {
     'Content-Type': 'application/json',
     apikey: SUPABASE_ANON_KEY,
@@ -24,7 +32,7 @@ async function recordLead(email, source) {
   };
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/dxf_leads`, {
-      method: 'POST', headers, body: JSON.stringify({ email, source }),
+      method: 'POST', headers, body: JSON.stringify({ email, source, ...ctx }),
     });
     if (!r.ok) throw new Error(String(r.status));
   } catch {
