@@ -580,8 +580,8 @@ export class TradeUI {
     const el = e.target.closest('[data-act]'); if (!el) return;
     const u = this.unitFor(el); if (!u) return;
     const act = el.dataset.act;
-    if (act === 'u-beds') { u.beds = el.value; this.render(); }
-    else if (act === 'u-letter') { u.letter = el.value; this.render(); }
+    if (act === 'u-beds') { u.beds = el.value; this.store.touchTrade(); this.render(); }
+    else if (act === 'u-letter') { u.letter = el.value; this.store.touchTrade(); this.render(); }
   }
 
   onInput(e) {

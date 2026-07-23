@@ -380,14 +380,20 @@ export class UI {
     const selCab = sel ? getCab(sel.code) : null;
     if (sel && selCab && selCab.type === 'FLOOR') {
       const horiz = ((sel.rotDeg || 0) % 180) === 0;
+      const run = [];
       for (const o of this.store.state.items) {
         const c = getCab(o.code);
         if (!c || c.type !== 'FLOOR') continue;
         const oh = ((o.rotDeg || 0) % 180) === 0;
         if (oh !== horiz) continue;
         const same = horiz ? Math.abs(o.z - sel.z) < 8 : Math.abs(o.x - sel.x) < 8;
-        if (same) o.worktop = material;
+        if (same) run.push(o.id);
       }
+      // through the store, never direct mutation — direct writes fired no
+      // event, so the choice never autosaved and undo couldn't see it. The
+      // first update records the full pre-change state = one undo step for
+      // the whole run; the rest are quiet.
+      run.forEach((oid, i) => this.store.updateItem(oid, { worktop: material }, { quiet: i > 0 }));
       this._toast(`Countertop set to ${WORKTOP_OPTIONS[material].label} on this run.`);
     } else {
       this.store.setRoom({ worktop: material });
