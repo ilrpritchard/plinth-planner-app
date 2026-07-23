@@ -1212,10 +1212,29 @@ body.approval-mode .trade-meta input:disabled,
 body.approval-mode .trade-meta select:disabled { opacity: 0.85; }
 
 /* ---- W2W-43: real trade orders + status tracking ---- */
-#tOrderModal {
+#tOrderModal, #homeOrderModal {
   position: fixed; inset: 0; z-index: 72; background: rgba(70,63,42,0.42);
   display: flex; align-items: center; justify-content: center;
 }
+
+/* W2W-75: copyable email-fallback card (dialog.js mailFallback) */
+.dlg-mail { width: 420px; max-width: calc(100vw - 32px); }
+.dlg-mailbody {
+  width: 100%; box-sizing: border-box; height: 180px; resize: vertical;
+  margin-top: 10px; padding: 10px 12px;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #2e2a18; background: #fffdf6;
+  border: 1px solid rgba(100,91,61,0.35); border-radius: 8px;
+}
+.dlg-mail .dlg-btns { align-items: center; }
+/* the mailto is an <a>, so button.cta styles don't reach it — restyle to match */
+.dlg-maillink {
+  text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--brass); color: var(--brown-deep);
+  padding: 10px 22px; border-radius: 8px; font: inherit; font-weight: 600;
+  white-space: nowrap; cursor: pointer;
+}
+.dlg-maillink:hover { background: var(--cream-hi); }
 .order-modal { width: 440px; text-align: center; }
 .order-modal .cloud-sub { line-height: 1.5; }
 .order-modal-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }

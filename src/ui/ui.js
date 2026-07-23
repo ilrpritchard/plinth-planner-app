@@ -14,7 +14,8 @@ import { isCloud, submitOrder } from '../core/cloud.js';
 import { exportJSON, importJSON } from '../core/persistence.js';
 import { TEMPLATES, applyTemplate, planWallInfill } from '../core/templates.js';
 import { cabinetSVG } from './icon.js';
-import { uiConfirm, uiAlert } from './dialog.js';
+import { uiConfirm, uiAlert, mailFallback } from './dialog.js';
+import { genOrderNo } from '../core/orders.js';
 import { FLOORS, WALLS } from '../scene/Room.js';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
@@ -655,25 +656,63 @@ export class UI {
       if (!s.items.length) return this._toast('Add some cabinets first.');
       if (!s.customer.name || !s.customer.email) return this._toast('Add your name and email so we can reach you.');
       const mail = buildOrderEmail(s);
-      // send the order DIRECTLY (no email client); mailto only as a fallback
+      // every homeowner order gets a reference the customer can quote back —
+      // it rides at the top of the order text AND in orders.order_no
+      const orderNo = genOrderNo();
+      const orderText = `Order ref: ${orderNo}\n\n${mail.body}`;
+      const sum = summarizeState(s);
+      // send the order DIRECTLY (no email client); on ANY failure show the
+      // composed order in a copyable modal — never a bare location.href, which
+      // does nothing visible when no mail app is configured
       const btn = document.getElementById('placeOrder');
       if (isCloud()) {
         btn.disabled = true;
         try {
-          const sum = summarizeState(s);
           await submitOrder({
             name: s.customer.name, email: s.customer.email, zip: s.customer.zip,
-            notes: s.customer.notes, orderText: mail.body, design: this.store.serialize(),
-            cabinets: sum.totalCabs, subtotal: sum.subtotal,
+            notes: s.customer.notes, orderText, design: this.store.serialize(),
+            cabinets: sum.totalCabs, subtotal: sum.subtotal, orderNo,
           });
           btn.disabled = false;
-          this._toast('Order received ✓ — an Order Advisor will check it and email your fixed quote.');
+          this._showOrderSuccess(orderNo, sum, s);
           return;
-        } catch (err) { btn.disabled = false; /* fall through to email */ }
+        } catch (err) { btn.disabled = false; /* fall through to the email modal */ }
       }
-      window.location.href = mail.href;
-      this._toast('Opening your email to send the order…');
+      mailFallback({
+        title: 'Send your order by email',
+        sub: 'The order could not reach PL/NTH directly — nothing is lost. Copy the message below, or open it in your email app.',
+        subject: `PL/NTH order ${orderNo}`,
+        body: orderText,
+        href: mail.href,
+      });
     });
+  }
+
+  // "Order received" — the confirmation a five-figure purchase deserves:
+  // a reference number to quote, what happens next, and a record on screen
+  // (the old 2.6-second toast left nothing behind).
+  _showOrderSuccess(orderNo, sum, s) {
+    document.getElementById('homeOrderModal')?.remove();
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const m = document.createElement('div');
+    m.id = 'homeOrderModal';
+    m.innerHTML = `<div class="cloud-card order-modal order-success">
+      <h3>Order received ✓</h3>
+      <div class="order-no-big">${esc(orderNo)}</div>
+      <p class="cloud-sub">Thank you${s.customer.name ? `, ${esc(s.customer.name.split(' ')[0])}` : ''} — your kitchen
+        (${sum.totalCabs} cabinets · ${fmtUSD(sum.subtotal)}) is with PL/NTH.
+        An Order Advisor gives it a once-over and emails your fixed quote to
+        <strong>${esc(s.customer.email)}</strong> within one business day.
+        Keep the reference above — it identifies your order in any conversation.</p>
+      <div class="order-modal-btns">
+        <button class="cta" id="hosDone">Done</button>
+      </div>
+      <button class="cloud-x" id="hosClose">×</button></div>`;
+    document.body.appendChild(m);
+    const close = () => m.remove();
+    m.addEventListener('click', (e) => { if (e.target === m) close(); });
+    m.querySelector('#hosClose').addEventListener('click', close);
+    m.querySelector('#hosDone').addEventListener('click', close);
   }
 
   // ---------- toolbar ----------

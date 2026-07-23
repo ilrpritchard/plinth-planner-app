@@ -19,7 +19,7 @@ import { UI } from './ui/ui.js';
 import { buildFloorplanSVG, buildPlanSheetHTML } from './ui/floorplan.js';
 import { buildPlanDXF } from './core/dxf.js';
 import { ensureDxfEmail, ensureEmailGate, capturedEmail, setLeadContext } from './ui/dxfgate.js';
-import { uiAlert } from './ui/dialog.js';
+import { uiAlert, mailFallback } from './ui/dialog.js';
 import { buildQuoteHTML } from './ui/quote.js';
 import { openPrintWindow } from './ui/submittal.js';
 import { TradeUI } from './ui/trade.js';
@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-74 · gate leads carry design value/cabinets/zip for notification emails';
+const BUILD = 'W2W-75 · order confirmation modal + ref numbers + copyable email fallbacks';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -565,9 +565,15 @@ const bookBtn = document.getElementById('btnBook');
 const ocModal = document.getElementById('orderCheckModal');
 if (bookBtn && ocModal) {
   const ocMsg = (t, ok) => { const el = document.getElementById('ocMsg'); el.textContent = t; el.className = 'cloud-msg' + (ok ? ' ok' : t ? ' err' : ''); };
+  // never a bare location.href=mailto — invisible no-op without a mail app
   const mailtoFallback = () => {
-    location.href = 'mailto:imogen@plinthmade.com?subject=' + encodeURIComponent('Book a free order check') +
-      '&body=' + encodeURIComponent('Hi PL/NTH — please give my kitchen design a once-over.\n\nMy design link:\n' + buildShareURL(store));
+    ocModal.classList.remove('show');
+    mailFallback({
+      title: 'Book your order check by email',
+      sub: 'The request could not reach PL/NTH directly — nothing is lost. Copy the message below, or open it in your email app.',
+      subject: 'Book a free order check',
+      body: 'Hi PL/NTH — please give my kitchen design a once-over.\n\nMy design link:\n' + buildShareURL(store),
+    });
   };
   bookBtn.addEventListener('click', (e) => {
     e.preventDefault();

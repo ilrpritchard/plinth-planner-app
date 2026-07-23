@@ -13,7 +13,7 @@ import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
 import { bumpRev, unitRev } from '../core/submittal.js';
 import { saveNow } from '../core/persistence.js';
-import { uiConfirm } from './dialog.js';
+import { uiConfirm, mailFallback } from './dialog.js';
 import { buildSubmittalHTML, buildSubmittalPackHTML, openPrintWindow } from './submittal.js';
 import { checkOrder, checkDesign } from '../core/speccheck.js';
 import { planPhases, batchWindow, DEFAULT_MAX_PER_BATCH } from '../core/phasing.js';
@@ -812,10 +812,18 @@ export class TradeUI {
     }
   }
 
-  /** The always-available path: a pre-filled email to imogen@plinthmade.com. */
+  /** The always-available path: the composed order in a copyable modal with
+   *  the pre-filled email as one option — a bare location.href=mailto does
+   *  nothing visible on machines without a mail app. */
   emailOrder() {
-    window.location.href = buildTradeOrderEmail(this.store.state).href;
-    toast('Opening your email to send the trade order…');
+    const mail = buildTradeOrderEmail(this.store.state);
+    mailFallback({
+      title: 'Send your trade order by email',
+      sub: 'Copy the order below, or open it in your email app.',
+      subject: mail.subject || 'PL/NTH trade order',
+      body: mail.body || '',
+      href: mail.href,
+    });
   }
 
   /** Cloud ordering isn't available (signed out / unreachable) — never block:

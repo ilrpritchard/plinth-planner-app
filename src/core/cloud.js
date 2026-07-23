@@ -101,15 +101,24 @@ export async function deleteDesign(id) {
 // ----- orders (table: public.orders, INSERT-only for visitors) --------------
 /** Place an order: the design + full block list lands with PL/NTH directly —
  *  no email client involved. Works signed in or out. */
-export async function submitOrder({ name, email, zip, notes, orderText, design, cabinets, subtotal }) {
+export async function submitOrder({ name, email, zip, notes, orderText, design, cabinets, subtotal, orderNo }) {
   const c = await client(); if (!c) throw new Error('Cloud not configured');
   const user = await currentUser().catch(() => null);
-  const { error } = await c.from('orders').insert({
+  const row = {
     name: name || null, email, zip: zip || null, notes: notes || null,
     order_text: orderText || null, design: design || null,
     cabinets: cabinets ?? null, subtotal: subtotal ?? null,
     user_id: user?.id || null,
-  });
+    ...(orderNo ? { order_no: orderNo } : {}),
+  };
+  let { error } = await c.from('orders').insert(row);
+  // schema-tolerant: if the order_no column hasn't been added yet, the ref
+  // still rides at the top of order_text — retry without the column rather
+  // than failing a real order over a missing nicety
+  if (error && orderNo && /order_no/.test(error.message || '')) {
+    delete row.order_no;
+    ({ error } = await c.from('orders').insert(row));
+  }
   if (error) throw error;
 }
 
