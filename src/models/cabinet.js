@@ -165,7 +165,11 @@ function hingedDoor(parent, doors, { w, h, mat, glazed, frontZ, hingeX, centerY,
 function flatDrawer(w, h, mat, frontZ, centerY, handle = 'knob') {
   const g = new THREE.Group();
   g.add(box(w, h, DOOR_T, mat));         // flat front, no shaker panel
-  flushRing(g, 0, 0, w, h, DOOR_T / 2);  // hairline reveal so each face reads separate
+  // hairline reveal so each face reads separate. ADJACENT faces both lay a ring
+  // across their shared 2mm gap, so the visible band is gap + lw and the ring
+  // is unlit black on a lit flush face — at 0.11 it read far heavier than a
+  // door reveal (her catch 2026-07-23); 0.055 lands the band at door weight.
+  flushRing(g, 0, 0, w, h, DOOR_T / 2, 0.055);
   if (handle === 'knob') {
     if (w >= 30) {                       // 36" banks (F20/F30): a knob pair, 1/9 in from each end
       const inset = w / 9;
@@ -254,6 +258,21 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // doors/drawers stop a full 35mm top rail below the cabinet top (master
   // library spec — frontdraw.js FD.TOP) with the recessed shadow gap under it
   const openH = (h - TOPRAIL) - openY0;
+
+  // ----- painted top rail (front) -----
+  // the 35mm top rail is REAL painted wood at the front. The top panel is only
+  // 22mm, so without this bar the last 13mm above the door top is an open slot
+  // into the carcass — plus the recessed door shadow it read as one huge dark
+  // gap over every tall door (her catch 2026-07-23; the integrated fridge got
+  // its explicit rail bar in W2W-68, ordinary cabinets never did). The bar sits
+  // BETWEEN the side panels and BELOW the top panel's front edge — butted, not
+  // overlapped, so nothing z-fights. Drawer banks and the dishwasher panel run
+  // their flush faces past the rail line to the carcass top — no bar there.
+  if (cab.form !== 'drawers' && cab.form !== 'dishwasher') {
+    const railBar = box(shellW - 2 * PANEL, TOPRAIL - PANEL, PANEL, mat);
+    railBar.position.set(0, h - PANEL - (TOPRAIL - PANEL) / 2, d / 2 - PANEL / 2);
+    g.add(railBar);
+  }
   const openCenterY = openY0 + openH / 2;
   const faceW = w - 2 * LEG - 2 * REVEAL;     // door spans between the legs
   const doorFrontZ = frontZ - 0.18;           // doors recessed behind the legs

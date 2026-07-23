@@ -18,7 +18,7 @@ import { PointerControls } from './interaction/controls.js';
 import { UI } from './ui/ui.js';
 import { buildFloorplanSVG, buildPlanSheetHTML } from './ui/floorplan.js';
 import { buildPlanDXF } from './core/dxf.js';
-import { ensureDxfEmail } from './ui/dxfgate.js';
+import { ensureDxfEmail, ensureEmailGate, capturedEmail } from './ui/dxfgate.js';
 import { uiAlert } from './ui/dialog.js';
 import { buildQuoteHTML } from './ui/quote.js';
 import { openPrintWindow } from './ui/submittal.js';
@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-72 · Clear + share links + Done can no longer touch the trade project';
+const BUILD = 'W2W-73 · email gates on take-aways + painted top rail closes the tall door gap';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -300,12 +300,23 @@ function togglePlan(on) {
 }
 btnTechnical?.addEventListener('click', () => togglePlan(!planActive));
 document.getElementById('planClose')?.addEventListener('click', () => togglePlan(false));
-document.getElementById('planPrint')?.addEventListener('click', () => window.print());
+// every plan take-away (print/PDF/SVG/DXF) sits behind the one-time email gate
+const PLAN_GATE = {
+  title: 'Get your floor plan.',
+  sub: 'Leave your email and your drawings are ready right away.',
+  cta: 'Continue',
+};
+document.getElementById('planPrint')?.addEventListener('click', async () => {
+  if (!(await ensureEmailGate('plan-print', PLAN_GATE))) return;
+  window.print();
+});
 // branded sheet → hidden-iframe print dialog (popup-free) → save as PDF
-document.getElementById('planPDF')?.addEventListener('click', () => {
+document.getElementById('planPDF')?.addEventListener('click', async () => {
+  if (!(await ensureEmailGate('plan-pdf', PLAN_GATE))) return;
   openPrintWindow(buildPlanSheetHTML(store.serialize(), underlay));
 });
-document.getElementById('planExport')?.addEventListener('click', () => {
+document.getElementById('planExport')?.addEventListener('click', async () => {
+  if (!(await ensureEmailGate('plan-svg', PLAN_GATE))) return;
   const blob = new Blob([buildFloorplanSVG(store.serialize())], { type: 'image/svg+xml' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -350,7 +361,15 @@ document.getElementById('btnQuote')?.addEventListener('click', () => {
   toggleQuote(!quoteOverlay.classList.contains('show'));
 });
 document.getElementById('quoteClose')?.addEventListener('click', () => toggleQuote(false));
-document.getElementById('quotePrint')?.addEventListener('click', () => window.print());
+// browsing the quote on screen is free — taking it away as a PDF leaves an email
+document.getElementById('quotePrint')?.addEventListener('click', async () => {
+  if (!(await ensureEmailGate('quote-pdf', {
+    title: 'Get your quote.',
+    sub: 'Leave your email and your PDF quote is ready right away.',
+    cta: 'Continue',
+  }))) return;
+  window.print();
+});
 
 // ----- Home / Trade mode -----
 const tradeUI = document.getElementById('tradePanel') ? new TradeUI({
@@ -375,15 +394,34 @@ function applyMode() {
   }
   if (!trade) scene._onResize(); // canvas was hidden; re-fit
 }
-document.getElementById('modeSwitch')?.addEventListener('click', (e) => {
+// the TRADE workspace asks for an email on the way in — trade visitors are the
+// highest-value leads and registration is normal in that world. Internal
+// setMode calls (unit design, ?tshare approval views) are never gated.
+const TRADE_GATE = {
+  title: 'Enter the trade workspace.',
+  sub: 'Live pricing, submittal packs and real orders. Leave your email and you’re in.',
+  cta: 'Enter',
+};
+document.getElementById('modeSwitch')?.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-mode]');
   if (!b) return;
+  if (b.dataset.mode === 'trade' && store.state.mode !== 'trade'
+      && !(await ensureEmailGate('trade-entry', TRADE_GATE))) return;
   store.setMode(b.dataset.mode);
 });
 store.subscribe((s, c) => { if (c.type === 'mode' || c.type === 'load' || c.type === 'reset') applyMode(); });
 applyMode();
-// ?mode=trade → open straight into the TRADE workspace (used by plinthmade.com CTAs)
-if (new URLSearchParams(location.search).get('mode') === 'trade') store.setMode('trade');
+// ?mode=trade → open straight into the TRADE workspace (used by plinthmade.com
+// CTAs). The workspace shows immediately; the email gate sits over it, and
+// bailing drops back to the homeowner side.
+if (new URLSearchParams(location.search).get('mode') === 'trade' && !TSHARE) {
+  store.setMode('trade');
+  ensureEmailGate('trade-entry', TRADE_GATE).then((ok) => {
+    if (ok) return;
+    store.setMode('home');
+    if (store.state.items.length === 0) wizard.open();
+  });
+}
 void tradeUI;
 
 // cloud accounts + save/load (only active when Supabase is configured)
@@ -489,12 +527,19 @@ function toast(msg) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
   document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
 }
+const SHARE_GATE = {
+  title: 'Get your share link.',
+  sub: 'Leave your email and your link is ready to copy.',
+  cta: 'Continue',
+};
 document.getElementById('btnShare')?.addEventListener('click', async () => {
+  if (!(await ensureEmailGate('share-link', SHARE_GATE))) return;
   const url = buildShareURL(store);
   try { await navigator.clipboard.writeText(url); toast('Share link copied — paste it anywhere.'); }
   catch { prompt('Copy your share link:', url); }
 });
-document.getElementById('btnEmailMe')?.addEventListener('click', () => {
+document.getElementById('btnEmailMe')?.addEventListener('click', async () => {
+  if (!(await ensureEmailGate('share-email', SHARE_GATE))) return;
   const url = buildShareURL(store);
   const to = store.state.customer.email || '';
   const subject = 'My PL/NTH kitchen design';
@@ -516,7 +561,7 @@ if (bookBtn && ocModal) {
     e.preventDefault();
     if (!isCloud()) { mailtoFallback(); return; }
     document.getElementById('ocName').value = store.state.customer.name || '';
-    document.getElementById('ocEmail').value = store.state.customer.email || '';
+    document.getElementById('ocEmail').value = store.state.customer.email || capturedEmail();
     ocMsg('');
     document.getElementById('ocSubmit').disabled = false;
     ocModal.classList.add('show');
