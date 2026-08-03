@@ -1,0 +1,18 @@
+{
+  "name": "plinth-kitchen-planner",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "PL/NTH 3D kitchen planner \u2014 self-contained, offline, procedural Three.js.",
+  "scripts": {
+    "dev": "python3 -m http.server 8080",
+    "test": "node test/units.test.js && node test/integration.test.js && node test/build.test.js && node test/trade.test.js && node test/fillers.test.js && node test/improvements.test.js && node test/generator-rules.test.js && node test/appliance-options.test.js && node test/wizard-uppers.test.js && node test/history.test.js && node test/floorplan.test.js && node test/design.test.js && node test/wall-infill.test.js && node test/trade-export.test.js && node test/threeD-fixes.test.js && node test/double-island.test.js && node test/submittal.test.js && node test/frontdraw.test.js && node test/speccheck.test.js && node test/roughin.test.js && node test/phasing.test.js && node test/xlsx.test.js && node test/orders.test.js && node test/invoice.test.js && node test/changeorder.test.js && node test/corner-rules.test.js && node test/tradevoice.test.js && node test/ifc.test.js && node test/trade-upgrades.test.js && node test/cooker-window.test.js && node test/data-safety.test.js"
+  },
+  "devDependencies": {
+    "three": "^0.160.0"
+  },
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "jsdom": "^29.1.1",
+    "puppeteer": "^25.2.1"
+  }
+}
