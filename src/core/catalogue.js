@@ -333,7 +333,7 @@ export const FINISHES = [
   { group: 'Greens', name: 'Kale', hex: '#4C4A3E', desc: 'Dark, slightly bitter, very good for you. The vegetable that became a kitchen.' },
   { group: 'Browns & Darks', name: 'Leo', hex: '#B89878', desc: 'Named after a dog of indeterminate breed. Gingery, warm, impossible not to love. Part corgi, part lab, part dachshund, and about eleven other things. So is this color.' },
   { group: 'Browns & Darks', name: 'Marmite', hex: '#352C2B', desc: 'Love it or leave it. No in between.' },
-  { group: 'Browns & Darks', name: 'Villain', hex: '#303536', desc: 'The one in all black at the back of the room. Doesn\'t need to explain itself.' },
+  { group: 'Browns & Darks', name: 'Skillet', hex: '#303536', desc: 'Cast iron, seasoned dark, and heavier than it looks. The one you never replace.' },
   { group: 'Custom', name: 'Custom RAL', hex: '#b7b1a4', desc: 'Any RAL shade, matched in the PL/NTH workshop. Give us the RAL code and we take it from there.', custom: true },
 ];
 export const DEFAULT_FINISH = 'Ghost';
