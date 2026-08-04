@@ -1,3 +1,6 @@
 node_modules/
 .DS_Store
 *.log
+CLAUDE.md
+SUPABASE_*.sql
+SUPABASE_SETUP.md
