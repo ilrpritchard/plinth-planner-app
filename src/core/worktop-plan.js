@@ -14,7 +14,12 @@
 const OVERHANG = 1.0;   // proud of a door front / island edge
 const SEATING = 12;     // breakfast-bar overhang past an island back (300mm)
 const CONNECT = 9.6;    // cabinets within this gap (incl. a 9\" max filler) share a slab
-const WALL_NEAR = 7;    // a run end this close to a wall extends to it (fills)
+const WALL_NEAR = 9.6;  // a run end this close to a wall extends to it (fills).
+                        // MUST stay >= the filler rule's max end gap (MAX_GAP 9
+                        // in core/fillers.js): every gap that gets a painted
+                        // scribe filler gets worktop over it too. At 7 the
+                        // 7–9" end gaps grew a filler with a BARE top — the
+                        // counter stopped short of the wall.
 const CORNER_JOIN = 7;  // two perpendicular slabs this close join at the corner
 
 /**

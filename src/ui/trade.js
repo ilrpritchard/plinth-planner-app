@@ -13,7 +13,20 @@ import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
 import { bumpRev, unitRev } from '../core/submittal.js';
 import { saveNow } from '../core/persistence.js';
-import { uiConfirm, mailFallback } from './dialog.js';
+import { uiConfirm, uiChoice, mailFallback } from './dialog.js';
+
+/** Shared walls/cabinets-only chooser for every plan-DXF download. */
+function chooseDxfVariant() {
+  return uiChoice(
+    'Every cabinet is a single movable block either way. "Cabinets only" leaves the unit walls out so you can drop the blocks straight into your own drawing.',
+    {
+      title: 'Download DXF plan',
+      options: [
+        { label: 'Cabinets only', value: 'cabs' },
+        { label: 'Walls + cabinets', value: 'walls' },
+      ],
+    });
+}
 import { buildSubmittalHTML, buildSubmittalPackHTML, openPrintWindow } from './submittal.js';
 import { checkOrder, checkDesign } from '../core/speccheck.js';
 import { planPhases, batchWindow, DEFAULT_MAX_PER_BATCH } from '../core/phasing.js';
@@ -382,7 +395,9 @@ export class TradeUI {
       const designed = this.t.units.filter((u) => u.design);
       if (!designed.length) return toast('No designed units yet — hit “✎ Lay out this unit in 3D” first.');
       if (!(await ensureDxfEmail('unit-plans'))) return;
-      for (const u of designed) download(`PLINTH_${unitName(u).replace(/\s+/g, '_')}.dxf`, buildPlanDXF(u.design), 'application/dxf');
+      const variant = await chooseDxfVariant();
+      if (!variant) return;
+      for (const u of designed) download(`PLINTH_${unitName(u).replace(/\s+/g, '_')}.dxf`, buildPlanDXF(u.design, { walls: variant === 'walls' }), 'application/dxf');
       toast(`${designed.length} unit plan DXF${designed.length === 1 ? '' : 's'} downloaded.`);
     });
     $('tUnitIFC')?.addEventListener('click', async () => {
@@ -443,9 +458,11 @@ export class TradeUI {
     }
     else if (act === 'u-dxf') {
       if (u.design) {
-        ensureDxfEmail('unit-dxf').then((ok) => {
+        ensureDxfEmail('unit-dxf').then(async (ok) => {
           if (!ok) return;
-          download(`PLINTH_${unitName(u).replace(/\s+/g, '_')}.dxf`, buildPlanDXF(u.design), 'application/dxf');
+          const variant = await chooseDxfVariant();
+          if (!variant) return;
+          download(`PLINTH_${unitName(u).replace(/\s+/g, '_')}.dxf`, buildPlanDXF(u.design, { walls: variant === 'walls' }), 'application/dxf');
           toast('Unit plan DXF downloaded.');
         });
       }

@@ -19,7 +19,7 @@ import { UI } from './ui/ui.js';
 import { buildFloorplanSVG, buildPlanSheetHTML } from './ui/floorplan.js';
 import { buildPlanDXF } from './core/dxf.js';
 import { ensureDxfEmail, ensureEmailGate, capturedEmail, setLeadContext } from './ui/dxfgate.js';
-import { uiAlert, mailFallback } from './ui/dialog.js';
+import { uiAlert, uiChoice, mailFallback } from './ui/dialog.js';
 import { buildQuoteHTML } from './ui/quote.js';
 import { openPrintWindow } from './ui/submittal.js';
 import { TradeUI } from './ui/trade.js';
@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-77 · worktop choice persists through the store + trade bed/type edits autosave';
+const BUILD = 'W2W-79 · DXF cabinets are movable blocks + a cabinets-only download';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -338,13 +338,26 @@ document.getElementById('planExport')?.addEventListener('click', async () => {
   document.body.appendChild(a); a.click();
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 100);
 });
-// the same plan as AutoCAD DXF (R12: walls, footprints, code labels)
+// the same plan as AutoCAD DXF (R12; every cabinet one movable block).
+// Two variants (client-requested): full plan with walls, or cabinets only
+// for dropping straight into their own drawing.
 document.getElementById('planDXF')?.addEventListener('click', async () => {
   if (!(await ensureDxfEmail('plan-dxf'))) return;
-  const blob = new Blob([buildPlanDXF(store.serialize())], { type: 'application/dxf' });
+  const variant = await uiChoice(
+    'Every cabinet is a single movable block either way. "Cabinets only" leaves the room walls out so you can drop the blocks straight into your own drawing.',
+    {
+      title: 'Download DXF plan',
+      options: [
+        { label: 'Cabinets only', value: 'cabs' },
+        { label: 'Walls + cabinets', value: 'walls' },
+      ],
+    });
+  if (!variant) return;
+  const dxfStr = buildPlanDXF(store.serialize(), { walls: variant === 'walls' });
+  const blob = new Blob([dxfStr], { type: 'application/dxf' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'PLINTH_floor_plan.dxf';
+  a.href = url; a.download = variant === 'walls' ? 'PLINTH_floor_plan.dxf' : 'PLINTH_cabinets.dxf';
   document.body.appendChild(a); a.click();
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 100);
 });

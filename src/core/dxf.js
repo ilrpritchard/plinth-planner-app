@@ -6,12 +6,16 @@
 //     catalogue's own units): polyface-mesh boxes, carcass panels on layer
 //     BODY in modelspace, the shaker front as a named BLOCK '<CODE>_FRONT_FACE'
 //     on layer FRONT, and a centred TEXT code on layer LABEL.
-//   buildPlanDXF(state)      — the current kitchen as a 3D model (inches):
-//     double-line wall plan + cabinet footprints on the floor (PLAN layers,
-//     hung units dashed), every placed cabinet INSERTed as its
-//     '<CODE>_FRONT_FACE' block (rotated + lifted to its mount height) with
-//     its carcass meshes. Appliances/sinks are left as honest gaps. Top view
-//     reads as the plan, orbit shows the whole kitchen in 3D.
+//   buildPlanDXF(state, {walls}) — the current kitchen as a 3D model (inches):
+//     optional double-line wall plan (PLAN layer; pass walls:false for a
+//     cabinets-only file that drops into the client's own drawing), and every
+//     placed cabinet as ONE INSERT of its self-contained '<CODE>_UNIT' block
+//     (front faces + carcass + floor-plan footprint + label all inside the
+//     block), rotated + lifted to its mount height. One insert per cabinet
+//     means CAD users can select and MOVE a whole cabinet as a single object
+//     — in Revit, Partial Explode the import and each cabinet is movable.
+//     Appliances/sinks are left as honest gaps. Top view reads as the plan,
+//     orbit shows the whole kitchen in 3D.
 //
 // R12 ASCII only: LINE, TEXT, INSERT and POLYLINE polyface meshes (all R12
 // citizens — LWPOLYLINE is R14+ so it is never used). No DOM, no Three.js —
@@ -36,18 +40,18 @@ function num(v) {
   return isFinite(n) ? Math.round(n * 1000) / 1000 : 0; // never emit NaN/Inf
 }
 
-function line(x1, y1, x2, y2, layer = '0') {
+function line(x1, y1, x2, y2, layer = '0', z = 0) {
   return ['0', 'LINE', '8', layer,
-    '10', num(x1 * K), '20', num(y1 * K), '30', 0,
-    '11', num(x2 * K), '21', num(y2 * K), '31', 0];
+    '10', num(x1 * K), '20', num(y1 * K), '30', num(z * K),
+    '11', num(x2 * K), '21', num(y2 * K), '31', num(z * K)];
 }
 
-function text(x, y, h, str, { align = 'left', rot = 0, layer = '0' } = {}) {
+function text(x, y, h, str, { align = 'left', rot = 0, layer = '0', z = 0 } = {}) {
   const out = ['0', 'TEXT', '8', layer,
-    '10', num(x * K), '20', num(y * K), '30', 0,
+    '10', num(x * K), '20', num(y * K), '30', num(z * K),
     '40', num(h * K), '1', String(str ?? '')];
   if (rot) out.push('50', num(rot));
-  if (align === 'center') out.push('72', '1', '11', num(x * K), '21', num(y * K), '31', 0);
+  if (align === 'center') out.push('72', '1', '11', num(x * K), '21', num(y * K), '31', num(z * K));
   return out;
 }
 
@@ -400,14 +404,46 @@ export function buildCabinetLibraryDXF() {
 // MOUNT (not imported: dxf.js stays free of Three.js so it runs in plain node)
 const MOUNT_IN = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5 };
 
-export function buildPlanDXF(state) {
+/** Mount height (mm) of a cabinet's underside — mirrors models/cabinet.js. */
+function mountMM(cab) {
+  return (typeof cab.mountY === 'number' ? cab.mountY : (MOUNT_IN[cab.type] ?? 0)) * IN;
+}
+
+/** EVERYTHING that makes up one placed cabinet, in block-local mm: front
+ *  faces, carcass panels, the floor-plan footprint (dropped to the floor
+ *  plane, dashed for hung units) and the code label. One self-contained
+ *  block per SKU means ONE insert per cabinet in modelspace, so CAD users
+ *  can select and move a whole cabinet as a single object — the point of
+ *  handing them a DXF (client-reported: Revit/AutoCAD cabinets must move). */
+function unitEntities(cab) {
+  const out = frontEntities(cab);
+  for (const [x0, x1, y0, y1, z0, z1] of bodyBoxes(cab)) {
+    out.push(...box(x0, x1, y0, y1, z0, z1, 'BODY'));
+  }
+  const W = cab.w * IN, D = cab.d * IN, zOff = mountMM(cab);
+  const hung = cab.type === 'WALL' || cab.type === 'COUNTER';
+  const fpLayer = hung ? 'PLAN-UPPER' : 'PLAN';
+  const pts = [[0, 0], [W, 0], [W, D], [0, D]];
+  for (let i = 0; i < 4; i++) {
+    const p = pts[i], q = pts[(i + 1) % 4];
+    out.push(...line(p[0], p[1], q[0], q[1], fpLayer, -zOff));
+  }
+  // label on the floor plane; hung units read at their back quarter so the
+  // two label rows never collide where uppers hang over a base run
+  out.push(...text(W / 2, hung ? D * 0.75 : D / 2, 63.5, cab.baseCode || cab.code,
+    { align: 'center', layer: 'LABEL', z: -zOff }));
+  return out;
+}
+
+export function buildPlanDXF(state, { walls = true } = {}) {
   const r = (state && state.room) || {};
   const W = Number(r.width) || 144, D = Number(r.depth) || 120, T = 4;
   const ents = [];
 
   // wall plan on the floor: double line (mm), broken at openings, jambs closing
-  // each gap — kept 2D so the top view still reads as a clean floor plan
-  const walls = [
+  // each gap — kept 2D so the top view still reads as a clean floor plan.
+  // Skipped entirely for the cabinets-only variant (walls: false).
+  const wallDefs = !walls ? [] : [
     { wall: 'back', horiz: true, fixed: -D / 2, out: -D / 2 - T, len: W },
     { wall: 'front', horiz: true, fixed: D / 2, out: D / 2 + T, len: W },
     { wall: 'left', horiz: false, fixed: -W / 2, out: -W / 2 - T, len: D },
@@ -416,7 +452,7 @@ export function buildPlanDXF(state) {
   // a wall-run line at offset `fix` from a..b along the wall (horiz: along=x)
   const wallLine = (horiz, fix, a, b) =>
     horiz ? line(a * IN, -fix * IN, b * IN, -fix * IN, 'PLAN') : line(fix * IN, -a * IN, fix * IN, -b * IN, 'PLAN');
-  for (const wd of walls) {
+  for (const wd of wallDefs) {
     const room = { width: W, depth: D };
     const gaps = (r.openings || [])
       .filter((o) => (o.wall || 'back') === wd.wall)
@@ -441,7 +477,9 @@ export function buildPlanDXF(state) {
     }
   }
 
-  // one '<CODE>_FRONT_FACE' block per DISTINCT supplied cabinet in the design.
+  // one self-contained '<CODE>_UNIT' block per DISTINCT supplied cabinet in
+  // the design — front faces, carcass, footprint and label all live INSIDE
+  // the block, so each placed cabinet below is a single movable INSERT.
   // Appliances and sinks are NOT Plinth products — they are left out entirely,
   // so the model shows honest GAPS where the client's own appliances go.
   const used = new Map();
@@ -449,10 +487,9 @@ export function buildPlanDXF(state) {
     const cab = getCab(it.code);
     if (cab && cab.placeable && !cab.notSupplied) used.set(cab.code, cab);
   }
-  const blocks = [...used.values()].map((cab) => ({ name: cab.code + '_FRONT_FACE', lines: frontEntities(cab) }));
+  const blocks = [...used.values()].map((cab) => ({ name: cab.code + '_UNIT', lines: unitEntities(cab) }));
 
-  // place every cabinet: block INSERT (rotated, lifted to mount height),
-  // carcass meshes, a clean plan footprint (dashed for hung units) + label
+  // place every cabinet: ONE block INSERT, rotated + lifted to mount height
   for (const it of (state && state.items) || []) {
     const cab = getCab(it.code);
     if (!cab || !cab.placeable || cab.notSupplied) continue;
@@ -463,36 +500,11 @@ export function buildPlanDXF(state) {
     const v = [-fx, fz];                               // block +Y (front → back)
     const u = [fz, fx];                                // block +X (right-handed with z-up)
     const Wmm = cab.w * IN, Dmm = cab.d * IN;
-    const zOff = (typeof cab.mountY === 'number' ? cab.mountY : (MOUNT_IN[cab.type] ?? 0)) * IN;
     const cx = it.x * IN, cy = -it.z * IN;             // footprint centre, mm
     const ox = cx - u[0] * Wmm / 2 - v[0] * Dmm / 2;   // block origin = front-left corner
     const oy = cy - u[1] * Wmm / 2 - v[1] * Dmm / 2;
     const rotDXF = Math.atan2(u[1], u[0]) * 180 / Math.PI;
-    const xf = (lx, ly, lz) => [ox + u[0] * lx + v[0] * ly, oy + u[1] * lx + v[1] * ly, zOff + lz];
-    ents.push(...insert(cab.code + '_FRONT_FACE', ox, oy, { z: zOff, rot: rotDXF }));
-    for (const [x0, x1, y0, y1, z0, z1] of bodyBoxes(cab)) {
-      ents.push(...pface([
-        xf(x0, y0, z0), xf(x1, y0, z0), xf(x1, y1, z0), xf(x0, y1, z0),
-        xf(x0, y0, z1), xf(x1, y0, z1), xf(x1, y1, z1), xf(x0, y1, z1),
-      ], BOXF, 'BODY'));
-    }
-    // plan footprint on the floor: solid for floor-standing, dashed for hung
-    // (standard kitchen-plan convention), on its own layer so the plan reads
-    // clean with the 3D layers frozen
-    const hung = cab.type === 'WALL' || cab.type === 'COUNTER';
-    const fpLayer = hung ? 'PLAN-UPPER' : 'PLAN';
-    const fpts = [xf(0, 0, 0), xf(Wmm, 0, 0), xf(Wmm, Dmm, 0), xf(0, Dmm, 0)];
-    for (let i = 0; i < 4; i++) {
-      const p = fpts[i], q = fpts[(i + 1) % 4];
-      ents.push(...line(p[0], p[1], q[0], q[1], fpLayer));
-    }
-    // label: floor units at centre; hung units shifted to their back quarter
-    // so the two rows never collide where uppers hang over a base run
-    const lx = cx + (hung ? v[0] * Dmm * 0.25 : 0);
-    const ly = cy + (hung ? v[1] * Dmm * 0.25 : 0);
-    const rot = (((it.rotDeg || 0) % 180) + 180) % 180;
-    ents.push(...text(lx, ly, 63.5, cab.baseCode || cab.code,
-      { align: 'center', rot: Math.abs(rot - 90) < 1 ? 90 : 0, layer: 'LABEL' }));
+    ents.push(...insert(cab.code + '_UNIT', ox, oy, { z: mountMM(cab), rot: rotDXF }));
   }
 
   return dxfDoc(blocks, ents, {

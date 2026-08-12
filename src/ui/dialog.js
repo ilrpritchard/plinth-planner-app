@@ -58,6 +58,21 @@ export function uiAlert(message, { title = 'Just so you know', okLabel = 'OK' } 
   return show({ title, message, buttons: [{ label: okLabel, value: true, cls: 'cta' }] });
 }
 
+/** Await-able multi-way choice. Resolves an option's value, or null on
+ *  cancel/Escape/backdrop. The LAST option is the primary (Enter, cta look). */
+export function uiChoice(message, { title = 'Choose', options = [], cancelLabel = 'Not now' } = {}) {
+  return show({
+    title, message,
+    buttons: [
+      { label: cancelLabel, value: null, cls: 'dlg-cancel' },
+      ...options.map((o, i) => ({
+        label: o.label, value: o.value,
+        cls: o.cls || (i === options.length - 1 ? 'cta' : 'ghost'),
+      })),
+    ],
+  });
+}
+
 /**
  * Email fallback that can never silently fail. A bare `location.href = mailto:`
  * does NOTHING VISIBLE on machines with no mail app configured (most
