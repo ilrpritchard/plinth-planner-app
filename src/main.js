@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-79 · DXF cabinets are movable blocks + a cabinets-only download';
+const BUILD = 'W2W-80 · order-check modal collects a phone number';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -616,16 +616,19 @@ if (bookBtn && ocModal) {
     try {
       const sum = summarizeState(store.state);
       const callTimes = document.getElementById('ocTimes')?.value.trim() || '';
-      // call times ride in BOTH the structured column and the note — the note
-      // is what the currently deployed notify-email formatter prints, so the
-      // windows reach the inbox even before the fn redeploy lands
+      const phone = document.getElementById('ocPhone')?.value.trim() || '';
+      // phone + call times ride in BOTH the structured columns and the note —
+      // the note is what an older deployed notify-email formatter prints, so
+      // the details reach the inbox even before the fn redeploy lands
       const note = [document.getElementById('ocNote').value.trim(),
+        phone ? `Phone: ${phone}` : '',
         callTimes ? `Best times to call: ${callTimes}` : ''].filter(Boolean).join(' · ');
       await requestOrderCheck({
         name: document.getElementById('ocName').value.trim(),
         email: document.getElementById('ocEmail').value.trim(),
         note,
         callTimes,
+        phone,
         design: store.serialize(),
         cabinets: sum.totalCabs,
         subtotal: sum.subtotal,
