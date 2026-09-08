@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-80 · order-check modal collects a phone number';
+const BUILD = 'W2W-81 · mobile visitors get a best-on-desktop heads-up';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -643,6 +643,20 @@ if (bookBtn && ocModal) {
     }
   });
 }
+
+// ----- mobile notice: the planner is a desktop tool -----
+// Small touch screens get one on-brand heads-up per session (not a wall):
+// they can still look around, but laying out and pricing wants a big screen.
+(function mobileNotice() {
+  const small = window.innerWidth < 900;
+  const touch = (navigator.maxTouchPoints || 0) > 0;
+  if (!(small && touch)) return;
+  try { if (sessionStorage.getItem('plnr-mobile-notice')) return; sessionStorage.setItem('plnr-mobile-notice', '1'); } catch (e) { /* private mode */ }
+  setTimeout(() => uiAlert(
+    'The PL/NNER is built for a laptop or desktop screen. You are welcome to look around here, but for laying out and pricing a kitchen, come back on a bigger screen.',
+    { title: 'Best on a bigger screen', okLabel: 'Look around anyway' }
+  ), 900);
+})();
 
 // expose a tiny mount API so the planner can drop onto a page if desired —
 // loadState is the same rebuild sequence the compare tray uses, and is what
