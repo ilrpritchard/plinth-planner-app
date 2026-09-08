@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-81 · mobile visitors get a best-on-desktop heads-up';
+const BUILD = 'W2W-82 · mobile: notice before the wizard, top bar fits a phone';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -441,12 +441,32 @@ applyMode();
 // ?mode=trade → open straight into the TRADE workspace (used by plinthmade.com
 // CTAs). The workspace shows immediately; the email gate sits over it, and
 // bailing drops back to the homeowner side.
+// ----- mobile notice: the planner is a desktop tool -----
+// Small touch screens get one on-brand heads-up per session, shown BEFORE
+// anything else opens (the wizard waits for it, so it is never a pop-up on
+// a pop-up). Deliberately a notice, not a wall: entry stays open.
+const mobileHold = (() => {
+  const small = window.innerWidth < 900;
+  const touch = (navigator.maxTouchPoints || 0) > 0;
+  if (!(small && touch)) return Promise.resolve();
+  try {
+    if (sessionStorage.getItem('plnr-mobile-notice')) return Promise.resolve();
+    sessionStorage.setItem('plnr-mobile-notice', '1');
+  } catch (e) { /* private mode */ }
+  // nothing else shows underneath the notice (welcome card / wizard wait)
+  document.body.classList.add('notice-up');
+  return uiAlert(
+    'The PL/NNER is built for a laptop or desktop screen. You are welcome to look around here, but for laying out and pricing a kitchen, come back on a bigger screen.',
+    { title: 'Best on a bigger screen', okLabel: 'Look around anyway' }
+  ).then(() => document.body.classList.remove('notice-up'));
+})();
+
 if (new URLSearchParams(location.search).get('mode') === 'trade' && !TSHARE) {
   store.setMode('trade');
   ensureEmailGate('trade-entry', TRADE_GATE).then((ok) => {
     if (ok) return;
     store.setMode('home');
-    if (store.state.items.length === 0) wizard.open();
+    if (store.state.items.length === 0) mobileHold.then(() => wizard.open());
   });
 }
 void tradeUI;
@@ -546,7 +566,7 @@ document.getElementById('wzAgain')?.addEventListener('click', () => { if (wizard
 // (skipped when the site's trade CTAs land here with ?mode=trade — pros go
 // straight to the TRADE workspace, not the homeowner drawing board)
 if (!TSHARE && !BOOK && !fromHash && !fromSave && store.state.items.length === 0 && store.state.mode !== 'trade') {
-  setTimeout(() => wizard.open(), 400);
+  mobileHold.then(() => setTimeout(() => wizard.open(), 400));
 }
 
 // ----- share + lead-capture -----
@@ -643,20 +663,6 @@ if (bookBtn && ocModal) {
     }
   });
 }
-
-// ----- mobile notice: the planner is a desktop tool -----
-// Small touch screens get one on-brand heads-up per session (not a wall):
-// they can still look around, but laying out and pricing wants a big screen.
-(function mobileNotice() {
-  const small = window.innerWidth < 900;
-  const touch = (navigator.maxTouchPoints || 0) > 0;
-  if (!(small && touch)) return;
-  try { if (sessionStorage.getItem('plnr-mobile-notice')) return; sessionStorage.setItem('plnr-mobile-notice', '1'); } catch (e) { /* private mode */ }
-  setTimeout(() => uiAlert(
-    'The PL/NNER is built for a laptop or desktop screen. You are welcome to look around here, but for laying out and pricing a kitchen, come back on a bigger screen.',
-    { title: 'Best on a bigger screen', okLabel: 'Look around anyway' }
-  ), 900);
-})();
 
 // expose a tiny mount API so the planner can drop onto a page if desired —
 // loadState is the same rebuild sequence the compare tray uses, and is what

@@ -995,7 +995,9 @@ body.wz-reviewing #viewControls, body.wz-reviewing #selbar {
   #stage { top: 52px; bottom: 0; }
 
   /* compact top bar; actions scroll horizontally instead of wrapping */
-  #topbar { height: 52px; padding: 0 10px; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  /* justify-content:flex-start is the fix for the clipped brand: a CENTERED
+     flex row that overflows clips its start and no scroll can reach it */
+  #topbar { height: 52px; padding: 0 10px; gap: 8px; overflow-x: auto; scrollbar-width: none; justify-content: flex-start; }
   #topbar::-webkit-scrollbar { display: none; }
   #topbar .brand { font-size: 16px; flex: 0 0 auto; }
   #topbar .brand .sub:not(.brandmark), #buildTag { display: none !important; }
@@ -1325,3 +1327,16 @@ body.approval-mode .trade-meta select:disabled { opacity: 0.85; }
 .op-menu .om-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; }
 .op-menu .om-row input { width: 88px; font-family: inherit; font-size: 13px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--brown-soft); color: var(--cream); text-align: right; }
 .op-menu #omDelete { color: #c86a5a; }
+
+/* phones: the brand shrinks to the product mark and actions tighten so the
+   whole top bar fits 375px without any horizontal scroll */
+@media (max-width: 480px) {
+  #topbar { gap: 6px; padding: 0 8px; }
+  #topbar .brand { font-size: 14px; letter-spacing: 0.1em; }
+  #topbar .brand .sub.brandmark { display: none !important; }
+  .mode-switch button { padding: 6px 9px; font-size: 10px; }
+  .topbar-actions button { padding: 6px 7px; font-size: 10px; }
+  #viewControls { bottom: 44px; }
+}
+/* while the mobile heads-up is showing, nothing else is on stage */
+body.notice-up #emptyState { visibility: hidden; }
