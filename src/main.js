@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-82 · mobile: notice before the wizard, top bar fits a phone';
+const BUILD = 'W2W-83 · no em dashes in the tab title or tooltips';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -384,7 +384,7 @@ function toggleQuote(on) {
   }
 }
 document.getElementById('btnQuote')?.addEventListener('click', () => {
-  if (!store.state.items.length) { uiAlert('Add some cabinets first — then your quote will have something to show.', { title: 'Nothing to quote yet' }); return; }
+  if (!store.state.items.length) { uiAlert('Add some cabinets first, then your quote will have something to show.', { title: 'Nothing to quote yet' }); return; }
   toggleQuote(!quoteOverlay.classList.contains('show'));
 });
 document.getElementById('quoteClose')?.addEventListener('click', () => toggleQuote(false));
@@ -495,7 +495,7 @@ setInterval(() => {
   if (isCloud() && !cloudUI.user && store.state.items.length > 0) {
     const t = document.createElement('div');
     t.className = 'toast';
-    t.innerHTML = 'Don’t lose your kitchen — <strong>sign in to save it.</strong>';
+    t.innerHTML = 'Don’t lose your kitchen, <strong>sign in to save it.</strong>';
     t.style.cursor = 'pointer';
     t.addEventListener('click', () => { cloudUI.open(); t.remove(); });
     document.body.appendChild(t);
@@ -515,7 +515,7 @@ function renderIdeaTray() {
     const idea = ideas[Number(b.dataset.i)];
     store.replace(JSON.parse(JSON.stringify(idea.json)));
     buildRoom(true); rebuildWorktop(); rebuildFillers(); rebuildCornice(); layer.rebuildAll(); ui.refresh(); applyMode();
-    toast('Idea restored — carry on designing.');
+    toast('Idea restored, carry on designing.');
   }));
 }
 function keepIdeaForCompare() {
@@ -527,7 +527,7 @@ function keepIdeaForCompare() {
     ideas.unshift({ json: store.serialize(), thumb, label: fmtUSD(summarizeState(store.state).subtotal) });
     if (ideas.length > 3) ideas.pop();
     renderIdeaTray();
-    toast(`Kept — ${ideas.length} of 3 ideas in your compare tray.`);
+    toast(`Kept, ${ideas.length} of 3 ideas in your compare tray.`);
   } catch { room.setGridVisible(true); }
 }
 
@@ -536,12 +536,12 @@ if (TSHARE && tradeUI) {
   fetchSharedProject(TSHARE).then((data) => {
     if (data && typeof data === 'object') {
       tradeUI.enterApproval(data);
-      toast('Shared project loaded — read-only approval view.');
+      toast('Shared project loaded, read-only approval view.');
     } else {
       toast('This share link is invalid or has been revoked.');
     }
   }).catch(() => {
-    toast('Could not load the shared project — check your connection and reload.');
+    toast('Could not load the shared project, check your connection and reload.');
   });
 }
 
@@ -582,7 +582,7 @@ const SHARE_GATE = {
 document.getElementById('btnShare')?.addEventListener('click', async () => {
   if (!(await ensureEmailGate('share-link', SHARE_GATE))) return;
   const url = buildShareURL(store);
-  try { await navigator.clipboard.writeText(url); toast('Share link copied — paste it anywhere.'); }
+  try { await navigator.clipboard.writeText(url); toast('Share link copied, paste it anywhere.'); }
   catch { prompt('Copy your share link:', url); }
 });
 document.getElementById('btnEmailMe')?.addEventListener('click', async () => {
@@ -590,7 +590,7 @@ document.getElementById('btnEmailMe')?.addEventListener('click', async () => {
   const url = buildShareURL(store);
   const to = store.state.customer.email || '';
   const subject = 'My PL/NTH kitchen design';
-  const body = `Here's my kitchen design — open this link to pick up where I left off:\n\n${url}\n\n— Designed in PL/NNER, the PL/NTH kitchen planner`;
+  const body = `Here's my kitchen design, open this link to pick up where I left off:\n\n${url}\n\nDesigned in PL/NNER, the PL/NTH kitchen planner`;
   window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 });
 // "Book a free order check" → an in-planner popup: submit the design and an
@@ -605,9 +605,9 @@ if (bookBtn && ocModal) {
     ocModal.classList.remove('show');
     mailFallback({
       title: 'Book your order check by email',
-      sub: 'The request could not reach PL/NTH directly — nothing is lost. Copy the message below, or open it in your email app.',
+      sub: 'The request could not reach PL/NTH directly, nothing is lost. Copy the message below, or open it in your email app.',
       subject: 'Book a free order check',
-      body: 'Hi PL/NTH — please give my kitchen design a once-over.\n\nMy design link:\n' + buildShareURL(store),
+      body: 'Hi PL/NTH, please give my kitchen design a once-over.\n\nMy design link:\n' + buildShareURL(store),
     });
   };
   bookBtn.addEventListener('click', (e) => {
@@ -654,11 +654,11 @@ if (bookBtn && ocModal) {
         subtotal: sum.subtotal,
       });
       ocMsg(callTimes
-        ? 'Design received — an Order Advisor will call in one of your windows, or reply within one business day. ✓'
-        : 'Design received — an Order Advisor will reply within one business day. ✓', true);
+        ? 'Design received, an Order Advisor will call in one of your windows, or reply within one business day. ✓'
+        : 'Design received, an Order Advisor will reply within one business day. ✓', true);
     } catch (err) {
       btn.disabled = false;
-      ocMsg((err?.message || 'Could not send') + ' — opening email instead…');
+      ocMsg((err?.message || 'Could not send') + ', opening email instead…');
       setTimeout(mailtoFallback, 1200);
     }
   });
