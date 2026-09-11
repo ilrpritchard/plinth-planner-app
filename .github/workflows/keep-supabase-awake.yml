@@ -1,0 +1,27 @@
+# Supabase pauses free-tier projects after 7 days without any API activity.
+# This pings the PL/NTH project every 2 days so the planner's cloud features
+# (order checks, contact form, DXF gates, sign-in, saved designs) never go dark.
+# The key it uses is the public "anon" key already served to every visitor in
+# src/core/config.js, so nothing secret lives here.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '17 9 */2 * *'   # every 2 days at 09:17 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the PL/NTH database
+        run: |
+          set -e
+          KEY=$(curl -fsS https://planner.plinthmade.com/src/core/config.js | grep -o 'eyJ[A-Za-z0-9._-]*' | head -1)
+          [ -n "$KEY" ] || { echo "could not read the public key from config.js"; exit 1; }
+          BASE=https://quzjzgllwjrkynapeuzi.supabase.co
+          # a real database query through the API (RLS may return an empty list; that still counts as activity)
+          code=$(curl -s -o /tmp/r.json -w '%{http_code}' "$BASE/rest/v1/order_checks?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+          echo "rest $code $(head -c 200 /tmp/r.json)"
+          case "$code" in 2*|401|403) ;; *) echo "database not reachable (paused?)"; exit 1;; esac
+          curl -fsS "$BASE/auth/v1/health" -H "apikey: $KEY" >/dev/null && echo "auth ok"
