@@ -30,7 +30,7 @@ export class CloudUI {
       setTimeout(async () => {
         this.user = await currentUser();
         this._syncBtn();
-        if (this.user) { this.open(); this._note = 'Email confirmed — welcome to PL/NTH.'; this.render(); }
+        if (this.user) { this.open(); this._note = 'Email confirmed. Welcome to PL/NTH.'; this.render(); }
       }, 900);
     }
   }
@@ -96,7 +96,7 @@ export class CloudUI {
       try {
         msg('Sending…');
         await resetPassword(email);
-        msg(`Reset link sent to ${email} — open it on this device and you can choose a new password.`, true);
+        msg(`Reset link sent to ${email}. Open it on this device and you can choose a new password.`, true);
       } catch (err) { msg(err.message || 'Could not send the reset email'); }
     });
     this.modal.querySelector('#authForm').addEventListener('submit', async (e) => {
@@ -118,7 +118,7 @@ export class CloudUI {
             // email confirmation is off — they're signed in right away
             this.user = res.session.user; this._syncBtn(); this._note = 'Welcome to PL/NTH.'; this.render();
           } else {
-            msg(`Almost there — we've emailed a confirmation link to ${email}. Tap it, then come back and sign in.`, true);
+            msg(`Almost there: we've emailed a confirmation link to ${email}. Tap it, then come back and sign in.`, true);
           }
         } else { await signIn(email, pw); this.user = await currentUser(); this._syncBtn(); this.render(); }
       } catch (err) { msg(err.message || 'Something went wrong'); }
@@ -128,7 +128,7 @@ export class CloudUI {
   // ----- choose a new password (arrived from the reset email) -----
   _resetHTML() {
     return `<h3>Choose a new password</h3>
-      <p class="cloud-sub">You followed a reset link — set a new password below and you'll be signed straight in.</p>
+      <p class="cloud-sub">You followed a reset link. Set a new password below and you'll be signed straight in.</p>
       <form id="resetForm">
         <label>New password<input id="newPw" type="password" required minlength="6" autocomplete="new-password"></label>
         <button class="cta" type="submit">Set new password</button>
@@ -145,7 +145,7 @@ export class CloudUI {
         this.user = await currentUser();
         this.view = null;
         this._syncBtn();
-        this._note = 'Password updated — you\'re signed in.';
+        this._note = 'Password updated. You\'re signed in.';
         this.render();
       } catch (err) { msg(err.message || 'Could not update the password'); }
     });

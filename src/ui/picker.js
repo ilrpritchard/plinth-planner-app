@@ -40,7 +40,7 @@ export function filterCabinets(list, query = '', fam = '') {
 
 /** The row chip: mini front drawing + 'CODE · desc (W")'. */
 export function cabChipHTML(cab) {
-  if (!cab) return '<span class="pick-empty">— select cabinet —</span>';
+  if (!cab) return '<span class="pick-empty">select a cabinet</span>';
   const draw = cab.w > 0 && cab.h > 0
     ? `<span class="pick-glyph">${frontSVG(cab, 30)}</span>`
     : '<span class="pick-glyph pick-acc">TRIM</span>';
@@ -64,7 +64,7 @@ export function openCabinetPicker({ selected = '', onPick } = {}) {
   overlay.innerHTML = `
     <div class="pick-panel" role="dialog" aria-label="Choose a cabinet">
       <div class="pick-top">
-        <input id="pickSearch" type="search" placeholder="Search code, name or width — e.g. 36, drawer, F10…" autocomplete="off">
+        <input id="pickSearch" type="search" placeholder="Search code, name or width, e.g. 36, drawer, F10…" autocomplete="off">
         <button type="button" class="pick-x" title="Close (Esc)">✕</button>
       </div>
       <div class="pick-chips">${CHIP_FAMS.map((f) =>
@@ -94,7 +94,7 @@ export function openCabinetPicker({ selected = '', onPick } = {}) {
     const hits = filterCabinets(all, query, fam);
     overlay.querySelector('#pickGrid').innerHTML = hits.length
       ? hits.map(cardHTML).join('')
-      : '<div class="pick-none">No cabinets match — try a width (e.g. 24) or a type (drawer, glazed, larder).</div>';
+      : '<div class="pick-none">No cabinets match: try a width (e.g. 24) or a type (drawer, glazed, larder).</div>';
   };
 
   const onKey = (e) => {

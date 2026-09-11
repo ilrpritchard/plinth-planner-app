@@ -125,7 +125,7 @@ function drawKey(out, state, x0, y0) {
   }
   if (rows.some((r) => r.cab.notSupplied)) {
     y += 1;
-    out.push(`<text x="${n(x0)}" y="${n(y)}" font-size="2.6" fill="${DIM}">* appliance shown for layout only — not supplied by PL/NTH</text>`);
+    out.push(`<text x="${n(x0)}" y="${n(y)}" font-size="2.6" fill="${DIM}">* appliance shown for layout only, not supplied by PL/NTH</text>`);
   }
   return TBL_W + 18;
 }
@@ -391,7 +391,7 @@ export function buildPlanSheetHTML(state, underlay = null) {
   const r = state.room;
   const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const cabCount = (state.items || []).filter((it) => { const c = getCab(it.code); return c && c.placeable && !c.notSupplied; }).length;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>PL/NTH — Floor plan</title><style>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>PL/NTH · Floor plan</title><style>
     @page { size: letter landscape; margin: 10mm; }
     * { box-sizing: border-box; }
     body { font-family: ui-sans-serif, -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #645b3d; margin: 0; }
@@ -415,8 +415,8 @@ export function buildPlanSheetHTML(state, underlay = null) {
     <div class="plan">${svg}</div>
     <footer>
       <span style="max-width:70%">All dimensions in inches (chain shows unit widths; italic figures are site gaps closed by scribe fillers). Cabinet sizes are nominal carcass sizes.<br>
-      <strong>Please note:</strong> all room dimensions, openings and services shown are as entered by the client. The client is responsible for checking and confirming every measurement on site before ordering — PL/NTH does not survey or verify site dimensions.</span>
-      <span>Made with PL/NNER — the PL/NTH kitchen planner · plinthmade.com</span>
+      <strong>Please note:</strong> all room dimensions, openings and services shown are as entered by the client. The client is responsible for checking and confirming every measurement on site before ordering. PL/NTH does not survey or verify site dimensions.</span>
+      <span>Made with PL/NNER, the PL/NTH kitchen planner · plinthmade.com</span>
     </footer>
   </body></html>`;
 }

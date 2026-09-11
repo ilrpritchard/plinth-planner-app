@@ -68,21 +68,21 @@ export function buildQuoteHTML(state, heroDataURL = null) {
         <thead><tr><th>Code</th><th>Description</th><th>W × D × H</th><th class="q-num">Qty</th><th class="q-num">Price</th></tr></thead>
         <tbody>${supplied.map(row).join('')}</tbody>
       </table>
-      ${appliances.length ? `<h3 class="q-appl">Appliances <span>— supplied by you, shown for layout</span></h3>
+      ${appliances.length ? `<h3 class="q-appl">Appliances <span>(supplied by you, shown for layout)</span></h3>
         <table><tbody>${appliances.map(row).join('')}</tbody></table>` : ''}
     </section>
 
     <section class="q-totals">
       <div class="q-tline"><span>${totalCabs} cabinet${totalCabs === 1 ? '' : 's'}, finished in ${esc(fin.name)}</span><span>${fmtUSD(subtotal)}</span></div>
       <div class="q-tline q-grand"><span>Estimate, cabinets only</span><span>${fmtUSD(subtotal)}</span></div>
-      <div class="q-delivery">Estimated delivery <strong>${del.weeksLo}–${del.weeksHi} weeks</strong> — around ${esc(del.from)} – ${esc(del.to)}</div>
+      <div class="q-delivery">Estimated delivery <strong>${del.weeksLo}–${del.weeksHi} weeks</strong>, around ${esc(del.from)} – ${esc(del.to)}</div>
     </section>
 
     <footer class="q-foot">
       Customer price for cabinets only; shipping &amp; tax confirmed on your order. Countertops shown are representative
-      and not supplied by Plinth. Prices held 30 days. Questions? imogen@plinthmade.com<br><br>
+      and not supplied by PL/NTH. Prices held 30 days. Questions? imogen@plinthmade.com<br><br>
       <strong>Dimensions:</strong> all room sizes, openings and services are as entered by the client. The client is
-      responsible for checking and confirming every measurement on site before ordering — PL/NTH does not survey
+      responsible for checking and confirming every measurement on site before ordering. PL/NTH does not survey
       or verify site dimensions.
     </footer>
   </div>`;

@@ -23,16 +23,16 @@ export function wizardVoice(unit) {
     return {
       eyebrow: 'The drawing board',
       title: "Let's dream up your kitchen",
-      sub: "A few quick choices and we'll spark a design to start from — keep the one you love, then change anything.",
+      sub: "A few quick choices and we'll spark a design to start from. Keep the one you love, then change anything.",
       roomLead: 'Your room, wall to wall',
       applLead: 'Your appliances',
       budgetLead: 'Your budget',
       finishLead: 'Your finish',
-      windowNote: 'Your window: we place the sink beneath the back-wall window automatically — drag it later if yours differs.',
+      windowNote: 'Your window: we place the sink beneath the back-wall window automatically. Drag it later if yours differs.',
       buildCta: 'Build my kitchen →',
       building: 'Sketching your kitchen…',
       rerolling: 'Back to the drawing board…',
-      resultMsg: "Here's a starting idea — make it yours.",
+      resultMsg: "Here's a starting idea. Make it yours.",
       rerollBtn: '↻ Try another',
       rerollTitle: 'Generate a different idea for the same room',
       keepBtn: 'Start editing →',
@@ -42,12 +42,12 @@ export function wizardVoice(unit) {
   return {
     eyebrow: 'Unit setup',
     title: `Lay out ${unit}`,
-    sub: 'Room dimensions, openings and the appliance spec — we generate a starting layout you refine once, and it repeats across every floor.',
+    sub: 'Room dimensions, openings and the appliance spec. We generate a starting layout you refine once, and it repeats across every floor.',
     roomLead: 'Room dimensions, wall to wall',
     applLead: 'Appliance spec',
     budgetLead: 'Target budget per unit',
     finishLead: 'Finish',
-    windowNote: 'Window: the sink is placed beneath the back-wall window automatically — drag it later if the unit differs.',
+    windowNote: 'Window: the sink is placed beneath the back-wall window automatically. Drag it later if the unit differs.',
     buildCta: 'Generate unit layout →',
     building: 'Generating the unit layout…',
     rerolling: 'Generating an alternative…',
@@ -75,12 +75,13 @@ function shapeGlyph(id) {
 }
 
 export class Wizard {
-  constructor({ store, controls, onBuilt, onSave, onCompare, tradeUnit }) {
+  constructor({ store, controls, onBuilt, onSave, onCompare, tradeUnit, onEdit }) {
     this.store = store;
     this.controls = controls;
     this.onBuilt = onBuilt || (() => {});
     this.onSave = onSave || (() => {});
     this.onCompare = onCompare || null;
+    this.onEdit = onEdit || null;
     this.tradeUnit = tradeUnit || null;  // () => unit-type name while designing from TRADE, else null
     this.el = document.getElementById('wizard');
     this.shape = TEMPLATES[0].id;
@@ -153,7 +154,7 @@ export class Wizard {
         </section>
 
         <section class="wz-sec">
-          <div class="wz-step"><span class="wz-n">4</span><span class="wz-lead">${escV(v.applLead)}</span> <span class="wz-hint">we plan around them — appliances aren't supplied by Plinth</span></div>
+          <div class="wz-step"><span class="wz-n">4</span><span class="wz-lead">${escV(v.applLead)}</span> <span class="wz-hint">we plan around them, appliances aren't supplied by PL/NTH</span></div>
           <div class="wz-appl">
             <div class="wz-appl-row"><span class="wz-appl-lab">Cooking</span>
               <div class="wz-seg" id="wzCook">
@@ -182,16 +183,16 @@ export class Wizard {
         </section>
 
         <section class="wz-sec">
-          <div class="wz-step"><span class="wz-n">5</span><span class="wz-lead">${escV(v.budgetLead)}</span> <span class="wz-hint">optional — we design TO it, trading glazing and drawer banks before anything you'd miss</span></div>
+          <div class="wz-step"><span class="wz-n">5</span><span class="wz-lead">${escV(v.budgetLead)}</span> <span class="wz-hint">optional. We design to it, trading glazing and drawer banks before anything you'd miss</span></div>
           <div class="wz-sizes">
             <label>Max spend<input id="wzBudget" placeholder="no limit" value="${this.budget ? '$' + this.budget.toLocaleString('en-US') : ''}"></label>
           </div>
         </section>
 
         <section class="wz-sec">
-          <div class="wz-step"><span class="wz-n">6</span><span class="wz-lead">${escV(v.finishLead)}</span> <span class="wz-hint">hand-painted — change it any time</span></div>
+          <div class="wz-step"><span class="wz-n">6</span><span class="wz-lead">${escV(v.finishLead)}</span> <span class="wz-hint">hand-painted, change it any time</span></div>
           <div class="wz-finishes" id="wzFinishes">
-            ${FINISHES.map((f) => `<button type="button" class="wz-fin${f.name === this.finish ? ' on' : ''}" data-finish="${f.name}" title="${f.name} — ${f.desc}"><span style="background:${f.hex}"></span>${f.name}</button>`).join('')}
+            ${FINISHES.map((f) => `<button type="button" class="wz-fin${f.name === this.finish ? ' on' : ''}" data-finish="${f.name}" title="${f.name}: ${f.desc}"><span style="background:${f.hex}"></span>${f.name}</button>`).join('')}
           </div>
         </section>
         </div>
@@ -281,7 +282,7 @@ export class Wizard {
       const on = this.door === name ? ' on' : '';
       el.push(`<text class="g-lab${on}" x="${x}" y="${y}" text-anchor="${anchor}"${rot ? ` transform="rotate(${rot} ${x} ${y})"` : ''}>${txt}</text>`);
     };
-    lab('back', 'Back — cabinets', (x0 + x1) / 2, y0 - 6, 'middle');
+    lab('back', 'Back (cabinets)', (x0 + x1) / 2, y0 - 6, 'middle');
     lab('front', 'Front', (x0 + x1) / 2, y1 + 13, 'middle');
     lab('left', 'Left', x0 - 6, (y0 + y1) / 2, 'middle', -90);
     lab('right', 'Right', x1 + 6, (y0 + y1) / 2, 'middle', 90);
@@ -432,22 +433,22 @@ export class Wizard {
       document.body.appendChild(bar);
     }
     const v = this.voice;
-    const msg = this._canIsland ? "Big room — want an island?" : v.resultMsg;
+    const msg = this._canIsland ? "Big room. Want an island?" : v.resultMsg;
     // budget outcome — honest either way
     const $ = (n) => '$' + Math.round(n).toLocaleString('en-US');
     let budgetLine = '';
     const bp = this._budgetPlan;
     if (bp) {
-      if (bp.met && bp.swaps.length) budgetLine = `<div class="wz-budgetline ok">Designed to your ${$(this.budget)} budget — estimate ${$(bp.total)}. Simplified: ${bp.stages.join(' · ')}.</div>`;
-      else if (bp.met) budgetLine = `<div class="wz-budgetline ok">Comfortably inside your ${$(this.budget)} budget — estimate ${$(bp.total)}.</div>`;
-      else budgetLine = `<div class="wz-budgetline over">Closest we can get is ${$(bp.total)} (budget ${$(this.budget)}) — try a shorter run, or fewer tall cabinets.</div>`;
+      if (bp.met && bp.swaps.length) budgetLine = `<div class="wz-budgetline ok">Designed to your ${$(this.budget)} budget: estimate ${$(bp.total)}. Simplified: ${bp.stages.join(' · ')}.</div>`;
+      else if (bp.met) budgetLine = `<div class="wz-budgetline ok">Comfortably inside your ${$(this.budget)} budget: estimate ${$(bp.total)}.</div>`;
+      else budgetLine = `<div class="wz-budgetline over">Closest we can get is ${$(bp.total)} (budget ${$(this.budget)}). Try a shorter run, or fewer tall cabinets.</div>`;
     }
     // the WHY — rationale chips, folded behind one quiet line until asked for
     const why = designRationale(this.store.serialize());
     this._why = why;
     const chips = why.length
-      ? `<details class="wz-whyd"><summary>✓ ${why.length} design rules checked — see why</summary>
-          <div class="wz-why">${why.map((n, i) => `<button class="wz-chip" data-why="${i}" title="${n.text} — tap to highlight">✓ ${n.short || n.text}</button>`).join('')}</div>
+      ? `<details class="wz-whyd"><summary>✓ ${why.length} design rules checked · see why</summary>
+          <div class="wz-why">${why.map((n, i) => `<button class="wz-chip" data-why="${i}" title="${n.text}. Tap to highlight">✓ ${n.short || n.text}</button>`).join('')}</div>
         </details>`
       : '';
     bar.innerHTML = `
@@ -455,7 +456,7 @@ export class Wizard {
         <span class="wz-result-msg">${msg}</span>
         ${this._canIsland ? '<button class="cta sm" id="wzIsland">＋ Add an island</button>' : ''}
         <button class="ghost sm" id="wzReroll" title="${escV(v.rerollTitle)}">${escV(v.rerollBtn)}</button>
-        ${this.onCompare ? '<button class="ghost sm" id="wzCompare" title="Keep a snapshot — compare up to three ideas side by side">⊞ Compare</button>' : ''}
+        ${this.onCompare ? '<button class="ghost sm" id="wzCompare" title="Keep a snapshot to compare up to three ideas side by side">⊞ Compare</button>' : ''}
         ${v.showSave ? '<button class="ghost sm" id="wzSave" title="Save this design to your account">♥ Save</button>' : ''}
         <button class="cta sm wz-result-go" id="wzKeep">${this._canIsland ? 'Start editing →' : escV(v.keepBtn)}</button>
       </div>
@@ -466,7 +467,7 @@ export class Wizard {
     bar.querySelector('#wzCompare')?.addEventListener('click', () => this.onCompare?.());
     const save = bar.querySelector('#wzSave');
     if (save) save.onclick = () => this.onSave();
-    bar.querySelector('#wzKeep').onclick = () => this._hideResultBar();
+    bar.querySelector('#wzKeep').onclick = () => { this._hideResultBar(); this.controls?.layer?.select(null); this.onEdit?.(); };
     bar.querySelector('#wzIsland')?.addEventListener('click', () => {
       this._addIslandToLShape(); this._canIsland = false; this.onBuilt(); this._showResultBar();
     });

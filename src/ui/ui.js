@@ -93,7 +93,7 @@ export class UI {
         <div class="wf-stats"><span>${fmtIn(used)} used</span><span><strong>${over ? 'over by ' + fmtIn(used - len) : fmtIn(rem) + ' left'}</strong></span></div>
         ${canFill ? `<button type="button" class="wf-fill" id="wfFill">Fill this wall →</button>` : ''}`;
     } else {
-      bar = `<div class="wf-stats" style="justify-content:flex-start"><span>Free-standing — no length limit</span></div>`;
+      bar = `<div class="wf-stats" style="justify-content:flex-start"><span>Free-standing: no length limit</span></div>`;
     }
     el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}`;
     el.querySelector('.wf-tabs').addEventListener('click', (e) => {
@@ -193,7 +193,7 @@ export class UI {
     const ft = totalIn / 12;
     if (ft < 0.1) { out.innerHTML = `<em>Add wall, tall or counter cabinets and the crown molding will run along their tops.</em>`; return; }
     const opt = corniceOption(cur);
-    out.innerHTML = `<strong>${ft.toFixed(1)} linear ft</strong> of ${opt.label.toLowerCase()} · <strong>${fmtUSD(opt.sellPerFt * ft)}</strong> — added to your estimate.`;
+    out.innerHTML = `<strong>${ft.toFixed(1)} linear ft</strong> of ${opt.label.toLowerCase()} · <strong>${fmtUSD(opt.sellPerFt * ft)}</strong>, added to your estimate.`;
   }
 
 
@@ -474,7 +474,7 @@ export class UI {
       html += `<details class="cat-group" ${open}><summary>${glyph}${FAMILY_LABEL[fam]}<span class="cat-count">${items.length}</span></summary><div class="cat-grid">`;
       for (const c of items) {
         const meta = c.notSupplied ? `${fmtIn(c.w)} &middot; <em>not supplied</em>` : `${fmtIn(c.w)} &middot; ${fmtUSD(sellUSD(c))}`;
-        html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}" data-code="${c.code}" title="Add ${c.code} · ${c.desc}${c.notes ? ' — ' + c.notes : ''}">
+        html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}" data-code="${c.code}" title="Add ${c.code} · ${c.desc}${c.notes ? ', ' + c.notes : ''}">
           <span class="cat-thumb">${cabinetSVG(c)}</span>
           <span class="ci-code">${c.code}</span>
           <span class="ci-desc">${c.desc}</span>
@@ -586,7 +586,7 @@ export class UI {
       sw.classList.toggle('active', sw.dataset.finish === cur);
     });
     const f = getFinish(cur);
-    document.getElementById('finishName').textContent = `${f.name} — ${f.desc}`;
+    document.getElementById('finishName').textContent = `${f.name}: ${f.desc}`;
   }
 
   // ---------- cost ----------
@@ -594,7 +594,7 @@ export class UI {
     const { lines, totalCabs, subtotal } = summarizeState(this.store.state);
     const body = document.getElementById('costLines');
     if (!totalCabs) {
-      body.innerHTML = `<div class="hint">No cabinets yet. Add blocks from the catalog, then drag them to a wall — they snap edge-to-edge into a run.</div>`;
+      body.innerHTML = `<div class="hint">No cabinets yet. Add blocks from the catalog, then drag them to a wall. They snap edge-to-edge into a run.</div>`;
     } else {
       body.innerHTML = lines.map((l) => `<div class="cost-line">
         <span><strong>${l.qty}×</strong> ${l.code} <span class="cl-desc">${l.desc}</span></span>
@@ -686,7 +686,7 @@ export class UI {
       }
       mailFallback({
         title: 'Send your order by email',
-        sub: 'The order could not reach PL/NTH directly — nothing is lost. Copy the message below, or open it in your email app.',
+        sub: 'The order could not reach PL/NTH directly. Nothing is lost. Copy the message below, or open it in your email app.',
         subject: `PL/NTH order ${orderNo}`,
         body: orderText,
         href: mail.href,
@@ -705,11 +705,11 @@ export class UI {
     m.innerHTML = `<div class="cloud-card order-modal order-success">
       <h3>Order received ✓</h3>
       <div class="order-no-big">${esc(orderNo)}</div>
-      <p class="cloud-sub">Thank you${s.customer.name ? `, ${esc(s.customer.name.split(' ')[0])}` : ''} — your kitchen
+      <p class="cloud-sub">Thank you${s.customer.name ? `, ${esc(s.customer.name.split(' ')[0])}` : ''}. Your kitchen
         (${sum.totalCabs} cabinets · ${fmtUSD(sum.subtotal)}) is with PL/NTH.
         An Order Advisor gives it a once-over and emails your fixed quote to
         <strong>${esc(s.customer.email)}</strong> within one business day.
-        Keep the reference above — it identifies your order in any conversation.</p>
+        Keep the reference above. It identifies your order in any conversation.</p>
       <div class="order-modal-btns">
         <button class="cta" id="hosDone">Done</button>
       </div>

@@ -19,10 +19,10 @@ import { buildFloorplanSVG, PLAN_STYLE as P, svgLine, svgDimH, svgDimV, svgN as 
 import { drawFront, frontParts } from './frontdraw.js';
 import { uiAlert } from './dialog.js';
 
-const DISCLAIMER = 'Please note: all room dimensions, openings and services shown are as entered by the client. The client is responsible for checking and confirming every measurement on site before ordering — PL/NTH does not survey or verify site dimensions.';
+const DISCLAIMER = 'Please note: all room dimensions, openings and services shown are as entered by the client. The client is responsible for checking and confirming every measurement on site before ordering. PL/NTH does not survey or verify site dimensions.';
 // Hardware is supply-only: cabinets ship undrilled, hardware and fitting by
 // others. Knobs drawn in the 3D view / elevations are for visualization only.
-const HARDWARE_LABEL = 'By others — cabinets supplied undrilled';
+const HARDWARE_LABEL = 'By others: cabinets supplied undrilled';
 const HARDWARE_NOTE = 'Knobs shown on drawings are for visualization only; no holes are drilled';
 
 // ---- scribe filler, hatched exactly like the plan --------------------------
@@ -189,7 +189,7 @@ function sheet(subtitle, metaHTML, bodyHTML, foot) {
     <div class="body">${bodyHTML}</div>
     <footer>
       <span class="disc"><strong>Please note:</strong> ${esc(DISCLAIMER.replace('Please note: ', ''))}</span>
-      <span class="stamp">${foot.rev === '-' ? '' : `Rev ${esc(foot.rev)} · `}${esc(foot.date)} · ${esc(foot.no)}<br>Made with PL/NNER — the PL/NTH kitchen planner · plinthmade.com</span>
+      <span class="stamp">${foot.rev === '-' ? '' : `Rev ${esc(foot.rev)} · `}${esc(foot.date)} · ${esc(foot.no)}<br>Made with PL/NNER, the PL/NTH kitchen planner · plinthmade.com</span>
     </footer>
   </section>`;
 }
@@ -209,7 +209,7 @@ function directoryHTML(pm = {}) {
       ${row('OWNER / DEVELOPER', pm.owner)}
       ${row('ARCHITECT OF RECORD', pm.architect)}
       ${row('GENERAL CONTRACTOR', pm.gc)}
-      ${row('CASEWORK VENDOR', 'PL/NTH — plinthmade.com')}
+      ${row('CASEWORK VENDOR', 'PL/NTH · plinthmade.com')}
       ${row('SPEC SECTION', SPEC_SECTION)}
     </table>`;
 }
@@ -231,29 +231,29 @@ function stampBoxHTML() {
 // test data are issued on request with the order confirmation package.
 function complianceBody(design, pm = {}) {
   const finishLabel = design.finish === 'Custom RAL' && pm.finishRal
-    ? `Custom — matched to RAL ${esc(pm.finishRal)}`
+    ? `Custom: matched to RAL ${esc(pm.finishRal)}`
     : `${esc(design.finish || '-')} (one of 15 PL/NTH standard colours)`;
   const prodRows = [
-    ['Casework type', 'Painted face-frame (shaker) cabinetry — floor, wall, counter &amp; tall units'],
+    ['Casework type', 'Painted face-frame (shaker) cabinetry: floor, wall, counter &amp; tall units'],
     ['Carcass construction', '18mm panel construction, oak-veneer interior; 22mm front-frame legs'],
     ['Doors &amp; faces', 'Painted shaker fronts, 80mm stiles &amp; rails; glazed doors clear glass'],
     ['Plinth', '115mm (4&#189;") painted plinth, flush to the cabinet face, site-scribed'],
-    ['Paint finish', `${finishLabel} — factory-applied in the PL/NTH workshop. Custom colour matched to any RAL on request.`],
+    ['Paint finish', `${finishLabel}, factory-applied in the PL/NTH workshop. Custom colour matched to any RAL on request.`],
     ['Hardware', `${esc(HARDWARE_LABEL)}. ${esc(HARDWARE_NOTE)}.`],
     ['Country of origin', 'Made in England; supplied to the US by PL/NTH'],
   ].map((r) => `<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join('');
   const compRows = [
     ['Formaldehyde emissions', 'Composite wood components supplied compliant with TSCA Title VI (40 CFR Part 770) / CARB Phase 2 emission limits. Supplier declarations held on file; certificates issued on request.'],
-    ['Surface burning', 'ASTM E84 surface-burning characteristics — panel product test data available on request.'],
+    ['Surface burning', 'ASTM E84 surface-burning characteristics: panel product test data available on request.'],
     ['Specification section', esc(SPEC_SECTION)],
-    ['Accessible units', 'ANSI A117.1 / ADA accessible-unit requirements — coordinate variants with the PL/NTH trade team at spec stage.'],
+    ['Accessible units', 'ANSI A117.1 / ADA accessible-unit requirements. Coordinate variants with the PL/NTH trade team at spec stage.'],
     ['Field verification', esc(DISCLAIMER.replace('Please note: ', ''))],
   ].map((r) => `<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join('');
   return `<div class="two-col">
       <div><h3>PRODUCT DATA</h3><table class="fin comp">${prodRows}</table></div>
       <div><h3>COMPLIANCE STATEMENTS</h3><table class="fin comp">${compRows}</table></div>
     </div>
-    <div class="fig-note">Statements on this sheet are provided for submittal coordination. Certificates, declarations and test data are issued with the order confirmation package on request — contact the PL/NTH trade team.</div>`;
+    <div class="fig-note">Statements on this sheet are provided for submittal coordination. Certificates, declarations and test data are issued with the order confirmation package on request. Contact the PL/NTH trade team.</div>`;
 }
 
 // ---- the per-unit sheet set --------------------------------------------------
@@ -279,12 +279,12 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
     : '';
   const finish = getFinish(design.finish);
   const finishBit = design.finish === 'Custom RAL' && pm.finishRal
-    ? `Custom — RAL ${esc(pm.finishRal)}` : esc(design.finish || '-');
+    ? `Custom: RAL ${esc(pm.finishRal)}` : esc(design.finish || '-');
   sheets.push(sheet('TRADE SUBMITTAL', m(`${uname} × ${qty}`, 'A-000', rev), `
     <div class="cover">
       <div class="cover-kicker">CABINETRY SUBMITTAL SET · ${esc(SPEC_SECTION)} · FOR APPROVAL</div>
       <h1>${esc(project || 'PL/NTH trade project')}</h1>
-      <h2>${esc(uname)} — ${qty} unit${qty === 1 ? '' : 's'}</h2>
+      <h2>${esc(uname)} · ${qty} unit${qty === 1 ? '' : 's'}</h2>
       <div class="cover-sub">Revision ${esc(rev)} · ${esc(date)} · Finish: ${finishBit} <span class="swatch" style="background:${finish.hex}"></span></div>
       <div class="cover-cols">
         <div>
@@ -310,7 +310,7 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
   for (const wall of wallsWithItems(design)) {
     const elev = computeElevation(design, wall);
     const dNo = no();
-    sheets.push(sheet(`ELEVATION — ${wallTitle(wall)}`, m(uname, dNo, rev), `
+    sheets.push(sheet(`ELEVATION: ${wallTitle(wall)}`, m(uname, dNo, rev), `
       <div class="fig">${buildElevationSVG(elev)}</div>
       <div class="fig-note">Interior elevation, viewed facing the ${esc(wall)} wall. Dimensions in inches. Hatched panels are site-scribed fillers; dashed outlines are openings and appliances (appliances not supplied by PL/NTH).</div>`,
       foot(dNo)));
@@ -322,7 +322,7 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
   const crown = corniceOption(design.room?.cornice || 'none');
   const finRows = [
     ['Paint finish', `${finishBit} <span class="swatch" style="background:${finish.hex}"></span> ${design.finish === 'Custom RAL' ? 'matched on order' : esc(finish.hex)}`, 'All exposed cabinet faces, painted in the PL/NTH workshop. Custom colour matched to any RAL on request.'],
-    ['Worktop', wtOpt ? esc(wtOpt.label) : '-', 'Shown for coordination only — worktop by others, not supplied by PL/NTH'],
+    ['Worktop', wtOpt ? esc(wtOpt.label) : '-', 'Shown for coordination only: worktop by others, not supplied by PL/NTH'],
     ['Hardware', esc(HARDWARE_LABEL), esc(HARDWARE_NOTE)],
     ['Crown molding', esc(crown.label), crown.label === 'No crown' ? '-' : 'Runs over wall, counter and tall cabinets incl. tall scribe fillers'],
     ['Plinth', '115mm (4&#189;") painted plinth', 'Flush to the cabinet face, site-scribed to the floor'],
@@ -345,7 +345,7 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
           <tr><th>Cabinets per unit</th><td class="num">${sched.rows.reduce((t, r) => t + r.qty, 0)}</td><td></td></tr>
           <tr><th>Cabinet total per unit</th><td class="num">${fmtUSD(sched.subtotal)}</td><td></td></tr>
           <tr><th>Unit count</th><td class="num">&times;${qty}</td><td class="mut">${esc(uname)}</td></tr>
-          <tr class="hi"><th>Cabinet total, all units</th><td class="num"><strong>${fmtUSD(sched.subtotal * qty)}</strong></td><td class="mut">excl. shipping — confirmed on order</td></tr>
+          <tr class="hi"><th>Cabinet total, all units</th><td class="num"><strong>${fmtUSD(sched.subtotal * qty)}</strong></td><td class="mut">excl. shipping, confirmed on order</td></tr>
         </table>
       </div>
     </div>
@@ -355,7 +355,7 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
       <tbody>${rowsHTML}</tbody>
       <tfoot><tr><td colspan="8" class="tr">Per-unit cabinet subtotal</td><td class="num"><strong>${fmtUSD(sched.subtotal)}</strong></td></tr></tfoot>
     </table>
-    <div class="fig-note">Scribe fillers, crown molding and end panels are quantified at order from the final site dimensions. Appliances shown on plan are not supplied by PL/NTH. Cabinets are supplied undrilled — hardware and fitting by others.</div>`,
+    <div class="fig-note">Scribe fillers, crown molding and end panels are quantified at order from the final site dimensions. Appliances shown on plan are not supplied by PL/NTH. Cabinets are supplied undrilled, hardware and fitting by others.</div>`,
     foot('A-300')));
 
   // ---- CUT SHEETS: 3 per page ----
@@ -378,9 +378,9 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
 
   // ---- MEP ROUGH-IN (A-5xx): one sheet per wall carrying utility points ----
   const KIND_LABEL = {
-    sink: 'Plumbing — waste + hot/cold supply', dishwasher: 'Electrical — dishwasher outlet',
-    range: 'Gas / electrical — range point', wallOven: 'Electrical — wall-oven point (T9)',
-    hood: 'Ventilation — hood duct centerline', fridge: 'Electrical — refrigerator receptacle',
+    sink: 'Plumbing: waste + hot/cold supply', dishwasher: 'Electrical: dishwasher outlet',
+    range: 'Gas / electrical: range point', wallOven: 'Electrical: wall-oven point (T9)',
+    hood: 'Ventilation: hood duct centerline', fridge: 'Electrical: refrigerator receptacle',
   };
   roughInWalls(design).forEach((wall, i) => {
     const pts = roughInPointsOnWall(design, wall);
@@ -390,13 +390,13 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
         <td class="num">${fmtIn(p.x)}</td>
         <td class="num">${p.height >= (design.room?.height || 96) ? 'at ceiling' : `${fmtIn(p.height)} AFF`}</td>
         <td class="mut">${esc(p.note || '')}</td></tr>`).join('');
-    sheets.push(sheet(`MEP ROUGH-IN — ${wallTitle(wall)}`, m(uname, dNo, rev), `
+    sheets.push(sheet(`MEP ROUGH-IN: ${wallTitle(wall)}`, m(uname, dNo, rev), `
       <div class="fig ri-fig">${buildRoughInSVG(design, wall, pts)}</div>
       <table class="cab ri-tab">
         <thead><tr><th>POINT</th><th>SERVICE</th><th class="num">FROM LEFT CORNER</th><th class="num">HEIGHT</th><th>NOTE</th></tr></thead>
         <tbody>${ptRows}</tbody>
       </table>
-      <div class="fig-note">Rough-in locations are measured from the LEFT wall corner (facing the ${esc(wall)} wall) to each point's centerline, heights above finished floor. Cabinets shown dashed for reference only. All rough-in work by others — verify locations, clearances and requirements with the appliance specifications and local code before installation.</div>`,
+      <div class="fig-note">Rough-in locations are measured from the LEFT wall corner (facing the ${esc(wall)} wall) to each point's centerline, heights above finished floor. Cabinets shown dashed for reference only. All rough-in work by others, verify locations, clearances and requirements with the appliance specifications and local code before installation.</div>`,
       foot(dNo)));
   });
 
@@ -493,7 +493,7 @@ function projectMeta(trade = {}) {
 export function buildSubmittalHTML({ project, unit, date, trade }) {
   date = date || new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const pm = projectMeta(trade || {});
-  return docWrap(`PL/NTH — Submittal — ${unitName(unit)}`, buildUnitSheets({ project: project ?? (trade && trade.project), unit, date, pm }));
+  return docWrap(`PL/NTH · Submittal · ${unitName(unit)}`, buildUnitSheets({ project: project ?? (trade && trade.project), unit, date, pm }));
 }
 
 /** Whole-project pack: one project cover + every designed unit type's set. */
@@ -509,19 +509,19 @@ export function buildSubmittalPackHTML(trade, date) {
   const grand = designed.reduce((t, u) => t + scheduleRows(u.design).subtotal * unitQty(u), 0);
   const pm = projectMeta(trade);
   const finishBit = trade.finish === 'Custom RAL' && pm.finishRal
-    ? `Custom — RAL ${esc(pm.finishRal)}` : esc(trade.finish || '-');
+    ? `Custom: RAL ${esc(pm.finishRal)}` : esc(trade.finish || '-');
   const cover = sheet('TRADE SUBMITTAL PACK', meta(trade.project, `${designed.length} unit type${designed.length === 1 ? '' : 's'} · ${totalUnits} units`, 'P-000', '-', date, pm.address), `
     <div class="cover">
       <div class="cover-kicker">CABINETRY SUBMITTAL PACK · ${esc(SPEC_SECTION)} · FOR APPROVAL</div>
       <h1>${esc(trade.project || 'PL/NTH trade project')}</h1>
-      <h2>${designed.length} unit type${designed.length === 1 ? '' : 's'} — ${totalUnits} units</h2>
+      <h2>${designed.length} unit type${designed.length === 1 ? '' : 's'} · ${totalUnits} units</h2>
       <div class="cover-sub">${esc(date)} · Finish: ${finishBit}</div>
       <div class="cover-cols">
         <div>
           ${directoryHTML(pm)}
           <h3>UNIT TYPES IN THIS PACK</h3>
           <table class="idx">${rows}</table>
-          <table class="fin" style="margin-top:6px"><tr class="hi"><th>Cabinet total, all unit types</th><td class="num"><strong>${fmtUSD(grand)}</strong></td><td class="mut">excl. shipping &amp; volume pricing — confirmed on order</td></tr></table>
+          <table class="fin" style="margin-top:6px"><tr class="hi"><th>Cabinet total, all unit types</th><td class="num"><strong>${fmtUSD(grand)}</strong></td><td class="mut">excl. shipping &amp; volume pricing, confirmed on order</td></tr></table>
         </div>
         <div>
           ${stampBoxHTML()}
@@ -531,7 +531,7 @@ export function buildSubmittalPackHTML(trade, date) {
       </div>
     </div>`, { rev: '-', date, no: 'P-000' });
   const body = designed.map((u) => buildUnitSheets({ project: trade.project, unit: u, date, pm })).join('\n');
-  return docWrap(`PL/NTH — Submittal pack — ${trade.project || 'project'}`, cover + '\n' + body);
+  return docWrap(`PL/NTH · Submittal pack · ${trade.project || 'project'}`, cover + '\n' + body);
 }
 
 /** Popup-free document printing: the document renders into a hidden same-page
@@ -551,9 +551,9 @@ export function openPrintWindow(html) {
     doc.close();
     setTimeout(() => {
       try { f.contentWindow.focus(); f.contentWindow.print(); }
-      catch { uiAlert('The print dialog could not open — try again, or use your browser’s Print command.', { title: 'Print' }); }
+      catch { uiAlert('The print dialog could not open. Try again, or use your browser’s Print command.', { title: 'Print' }); }
     }, 350);
   } catch {
-    uiAlert('The document could not be prepared for printing — try again.', { title: 'Print' });
+    uiAlert('The document could not be prepared for printing. Try again.', { title: 'Print' });
   }
 }
