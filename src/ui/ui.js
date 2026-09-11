@@ -596,8 +596,20 @@ export class UI {
     if (!totalCabs) {
       body.innerHTML = `<div class="hint">No cabinets yet. Add blocks from the catalog, then drag them to a wall. They snap edge-to-edge into a run.</div>`;
     } else {
+      // homeowners read the name first ("Floor cabinet · Single 24\"") with the
+      // code tucked after it; TRADE keeps the code-first list it works from
+      const home = this.store.state.mode !== 'trade';
+      const label = (l) => {
+        if (!home) return `${l.code} <span class="cl-desc">${l.desc}</span>`;
+        const fam = l.stacker ? 'Stacker' : FAMILY_LABEL[l.type];
+        const isCab = ['FLOOR', 'WALL', 'COUNTER', 'TALL'].includes(l.type);
+        const name = isCab
+          ? `${fam} cabinet <span class="cl-desc">${l.desc}${l.w ? ' ' + fmtIn(l.w) : ''}</span>`
+          : `<span class="cl-desc">${l.desc}</span>`;
+        return `${name} <span class="cl-code">${l.code}</span>`;
+      };
       body.innerHTML = lines.map((l) => `<div class="cost-line">
-        <span><strong>${l.qty}×</strong> ${l.code} <span class="cl-desc">${l.desc}</span></span>
+        <span><strong>${l.qty}×</strong> ${label(l)}</span>
         <span>${l.notSupplied ? '<em style="color:var(--muted)">supply your own</em>' : fmtUSD(l.line)}</span></div>`).join('');
     }
     document.getElementById('costTotal').innerHTML =

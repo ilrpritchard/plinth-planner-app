@@ -111,7 +111,7 @@ export function summarize(items, fillers = [], cornice = null, endPanels = 0, ac
     if (supplied) { totalCabs += qty; subtotal += line; }
     else applianceCount += qty;
     lines.push({
-      code: cab.code, type: cab.type, desc: cab.desc, qty,
+      code: cab.code, type: cab.type, desc: cab.desc, qty, w: cab.w, stacker: !!cab.stacker,
       dims: cab.h ? `${fmtIn(cab.w)} × ${fmtIn(cab.d)} × ${fmtIn(cab.h)}` : '—',
       each, line, notSupplied: !supplied,
     });
