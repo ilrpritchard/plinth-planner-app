@@ -456,7 +456,7 @@ export class Wizard {
     let doorLine = '';
     if ((this.lastShape || this.shape) === 'l-shape' && this.door === 'left') {
       const [sa, sb] = wallFreeSpan(this.store.state.room, 'left');
-      if (sb - sa < 60) doorLine = `<div class="wz-budgetline">Your door leaves a short return on the side wall, so we kept it light. Move the door in the sketch, or drag cabinets in, to change that.</div>`;
+      if (sb - sa < 40) doorLine = `<div class="wz-budgetline">Your door leaves a short return on the side wall, so we kept it light. Move the door in the sketch, or drag cabinets in, to change that.</div>`;
     }
     // the WHY — rationale chips, folded behind one quiet line until asked for
     const why = designRationale(this.store.serialize());
