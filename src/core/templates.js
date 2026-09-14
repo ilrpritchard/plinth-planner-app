@@ -14,7 +14,7 @@ export const TEMPLATES = [
   {
     id: 'one-wall',
     name: 'One-wall',
-    desc: 'Everything along the back wall — tall pantry, range, drawers.',
+    desc: 'Everything along the back wall: tall pantry, range, drawers.',
     steps: [
       { wall: 'back', code: 'T1' },   // tall larder (24)
       { wall: 'back', code: 'F18' },  // 3-drawer base (24)
@@ -40,7 +40,7 @@ export const TEMPLATES = [
   {
     id: 'u-shape',
     name: 'U-shape',
-    desc: 'Three connected runs — corners at both ends, legs down both side walls.',
+    desc: 'Three connected runs: corners at both ends, legs down both side walls.',
     steps: [
       { wall: 'back', code: 'F16' },   // left corner (+20" return)
       { wall: 'back', code: 'F18' },
@@ -56,7 +56,7 @@ export const TEMPLATES = [
   {
     id: 'galley',
     name: 'Galley',
-    desc: 'Two facing runs — the cook’s corridor. Working wall + fridge wall.',
+    desc: 'Two facing runs, the cook’s corridor. Working wall + fridge wall.',
     steps: [
       { wall: 'back', code: 'F18' },
       { wall: 'back', code: 'AP2' },

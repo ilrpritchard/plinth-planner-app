@@ -8,6 +8,9 @@ import { currentUser } from '../core/cloud.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, cloudEnabled } from '../core/config.js';
 
 const KEY = 'plinthDxfEmail';
+/** body.gated lets print CSS release the plan/quote once an email is on file. */
+function markGated() { document.body.classList.add('gated'); }
+try { if (localStorage.getItem(KEY)) markGated(); } catch { /* private mode */ }
 
 /** The email this visitor has already left at any gate ('' if none yet). */
 export function capturedEmail() {
@@ -51,10 +54,10 @@ async function recordLead(email, source) {
  */
 export async function ensureEmailGate(source, copy = {}) {
   const { title = 'Almost there.', sub = 'Leave your email and you can carry on right away.', cta = 'Continue' } = copy;
-  if (localStorage.getItem(KEY)) return true;
+  if (localStorage.getItem(KEY)) { markGated(); return true; }
   try {
     const u = await currentUser();
-    if (u && u.email) { localStorage.setItem(KEY, u.email); recordLead(u.email, `${source}:account`); return true; }
+    if (u && u.email) { localStorage.setItem(KEY, u.email); recordLead(u.email, `${source}:account`); markGated(); return true; }
   } catch { /* not signed in */ }
   return new Promise((resolve) => {
     let el = document.getElementById('dxfGate');
@@ -76,7 +79,7 @@ export async function ensureEmailGate(source, copy = {}) {
     const submit = () => {
       const email = input.value.trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = 'That email does not look right.'; input.focus(); return; }
-      localStorage.setItem(KEY, email);
+      localStorage.setItem(KEY, email); markGated();
       recordLead(email, source);
       done(true);
     };

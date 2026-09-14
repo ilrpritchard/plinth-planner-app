@@ -309,8 +309,17 @@ export class Wizard {
       if (pos) pos.style.display = this.door ? '' : 'none';
       const lab = q('#wzDoorDistLabel');
       if (lab) lab.textContent = this.door === 'front' ? 'Left wall → door edge' : 'Back wall → door edge';
+      // a side-wall door defaults to the FAR end of that wall (until the
+      // customer types a distance): a door 5' along a 10' wall left an L-shape
+      // with a 3' return, which read as a one-wall kitchen
+      if (this.door && this.door !== 'front' && !this._doorDistTouched) {
+        const rd = this._dim('#wzD', this.store.state.room.depth || 120);
+        this.doorDist = Math.max(36, Math.round(rd - this.doorW - 6));
+        const inp = q('#wzDoorDist'); if (inp) inp.value = fmtFeetIn(this.doorDist);
+      }
       this._renderMap();
     });
+    q('#wzDoorDist')?.addEventListener('input', () => { this._doorDistTouched = true; });
     // the little room diagram tracks the size + door inputs live
     for (const sel of ['#wzW', '#wzD', '#wzDoorDist', '#wzDoorW']) {
       q(sel)?.addEventListener('input', () => this._renderMap());
@@ -443,6 +452,12 @@ export class Wizard {
       else if (bp.met) budgetLine = `<div class="wz-budgetline ok">Comfortably inside your ${$(this.budget)} budget: estimate ${$(bp.total)}.</div>`;
       else budgetLine = `<div class="wz-budgetline over">Closest we can get is ${$(bp.total)} (budget ${$(this.budget)}). Try a shorter run, or fewer tall cabinets.</div>`;
     }
+    // a door that eats the side wall: say so, rather than let an "L" read as an "I"
+    let doorLine = '';
+    if ((this.lastShape || this.shape) === 'l-shape' && this.door === 'left') {
+      const [sa, sb] = wallFreeSpan(this.store.state.room, 'left');
+      if (sb - sa < 60) doorLine = `<div class="wz-budgetline">Your door leaves a short return on the side wall, so we kept it light. Move the door in the sketch, or drag cabinets in, to change that.</div>`;
+    }
     // the WHY — rationale chips, folded behind one quiet line until asked for
     const why = designRationale(this.store.serialize());
     this._why = why;
@@ -460,7 +475,7 @@ export class Wizard {
         ${v.showSave ? '<button class="ghost sm" id="wzSave" title="Save this design to your account">♥ Save</button>' : ''}
         <button class="cta sm wz-result-go" id="wzKeep">${this._canIsland ? 'Start editing →' : escV(v.keepBtn)}</button>
       </div>
-      ${budgetLine}${chips}`;
+      ${budgetLine}${doorLine}${chips}`;
     bar.classList.add('show');
     document.body.classList.add('wz-reviewing');   // clear the deck: view controls hide while reviewing
     bar.querySelector('#wzReroll').onclick = () => this.regenerate();

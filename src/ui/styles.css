@@ -818,6 +818,9 @@ kbd {
   #planOverlay.show, #planOverlay.show *,
   #quoteOverlay.show, #quoteOverlay.show * { visibility: visible !important; }
   #planOverlay.show, #quoteOverlay.show { position: fixed; inset: 0; display: flex !important; background: #fff; }
+  /* the browser's own Print command honours the email gate too (body.gated is set by dxfgate.js) */
+  body:not(.gated) #planOverlay.show, body:not(.gated) #planOverlay.show *,
+  body:not(.gated) #quoteOverlay.show, body:not(.gated) #quoteOverlay.show * { visibility: hidden !important; }
   .plan-toolbar { display: none !important; }
   .quote-host { overflow: visible !important; padding: 0 !important; }
   .quote-sheet { box-shadow: none !important; max-width: none !important; }
