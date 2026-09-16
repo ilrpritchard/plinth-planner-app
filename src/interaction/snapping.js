@@ -115,6 +115,41 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       if (err < bestErr) { bestErr = err; best = cand; bestN = { o, oc }; }
     }
   }
+  // ---- 2a. LEG-TO-LEG corner joint (her rule 2026-09-16: "on every corner it
+  // should automatically snap with another 22mm leg on a right angle"). A
+  // corner unit next to a PERPENDICULAR run snaps along its own wall so the
+  // door section's return-side edge lands exactly on that run's front plane:
+  // the run's first stile and the corner's door stile meet at 90°, and the
+  // blank return (20" + up to 10" drawn stretch) still reaches the wall.
+  // Wins over a same-run butt when both are in reach.
+  if (cab.corner && cab.type !== 'WALL') {
+    const CORNER_JOINT_SNAP = 12;
+    const dirR = cab.cornerSide === 'right' ? 1 : -1;
+    const radR = (rotDeg * Math.PI) / 180, ccR = Math.cos(radR), ssR = Math.sin(radR);
+    const meRaw = worldBox({ ...item, x: freeAxis === 'x' ? rawX : x, z: freeAxis === 'z' ? rawZ : z, rotDeg }, cab);
+    let jointTarget = null, jointErr = CORNER_JOINT_SNAP;
+    for (const o of others) {
+      const oc = getCab(o.code);
+      if (!oc || oc.corner || oc.notSupplied || oc.type === 'WALL') continue;
+      if ((((o.rotDeg || 0) - rotDeg) % 180 + 180) % 180 !== 90) continue;         // perpendicular run only
+      const ob = worldBox(o, oc);
+      const gapX = Math.max(0, Math.max(ob.x0 - meRaw.x1, meRaw.x0 - ob.x1));
+      const gapZ = Math.max(0, Math.max(ob.z0 - meRaw.z1, meRaw.z0 - ob.z1));
+      if (gapX > CORNER_JOINT_SNAP || gapZ > CORNER_JOINT_SNAP) continue;            // not near this corner
+      const oRad = ((o.rotDeg || 0) * Math.PI) / 180;
+      const od = getFootprint(oc).d;
+      // the neighbour's FRONT plane along MY run axis
+      const front = horizontal
+        ? (Math.sin(oRad) >= 0 ? o.x + od / 2 : o.x - od / 2)                        // rot 90 faces +x, 270 faces -x
+        : (Math.cos(oRad) >= 0 ? o.z + od / 2 : o.z - od / 2);                       // rot 0 faces +z, 180 faces -z
+      // my return-side door edge = centre + return direction * w/2
+      const target = horizontal ? front - dirR * ccR * (w / 2) : front + dirR * ssR * (w / 2);
+      const err = Math.abs(rawFree - target);
+      if (err < jointErr) { jointErr = err; jointTarget = target; }
+    }
+    if (jointTarget != null) { rawFree = jointTarget; best = null; bestN = null; }
+  }
+
   if (best != null) rawFree = best;
 
   if (freeAxis === 'x') x = rawFree; else z = rawFree;
