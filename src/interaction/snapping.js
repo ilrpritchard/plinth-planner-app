@@ -75,7 +75,8 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
         const near = horiz0 ? (sgn0 > 0 ? ob.z0 : ob.z1) : (sgn0 > 0 ? ob.x0 : ob.x1);
         const gap = (near - front) * sgn0;                       // my front face to its nearest edge
         const overlap = horiz0 ? Math.min(me0.x1, ob.x1) - Math.max(me0.x0, ob.x0) : Math.min(me0.z1, ob.z1) - Math.max(me0.z0, ob.z0);
-        if (overlap > 0.5 && gap > -1 && gap <= 8 && (bestGap == null || gap < bestGap)) bestGap = gap;
+        // an overshoot into the neighbour (up to a body depth) still lands on the butt joint
+        if (overlap > 0.5 && gap > -d && gap <= 8 && (bestGap == null || Math.abs(gap) < Math.abs(bestGap))) bestGap = gap;
       }
       if (bestGap != null) {
         const shift = sgn0 * (bestGap - WALL_GAP);
