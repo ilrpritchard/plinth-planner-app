@@ -359,7 +359,26 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       const gapZ = Math.max(ob.z0 - me2.z1, me2.z0 - ob.z1);
       return (gapX >= -0.5 && gapX <= TOUCH && gapZ < -0.5) || (gapZ >= -0.5 && gapZ <= TOUCH && gapX < -0.5);
     });
-    if (!(backOk && tipOk) && !(tipOk && buttsRun)) { x = item.x; z = item.z; rotDeg = item.rotDeg || 0; flag = 'corner'; }
+    // …OR sitting along its own wall butted to a cabinet on its DOOR side: the
+    // owner's second case (2026-09-16), a corner unit slid along the back wall
+    // to close up to the drawers while its return faces open wall.
+    const doorEdge = x - dir * cc * (w / 2);          // door-side edge of the BODY (not the return)
+    const doorEdgeZ = z + dir * ss * (w / 2);
+    const buttsDoorSide = others.some((o) => {
+      const oc = getCab(o.code);
+      if (!oc || oc.notSupplied || (oc.type === 'WALL') !== (cab.type === 'WALL')) return false;
+      if (((o.rotDeg || 0) % 180) !== (rotDeg % 180)) return false;          // same run
+      const ob = worldBox(o, oc);
+      if (horiz) {
+        const near = dir > 0 ? ob.x1 : ob.x0;                                     // its edge facing my door side
+        const zOverlap = Math.min(me2.z1, ob.z1) - Math.max(me2.z0, ob.z0);
+        return Math.abs(near - doorEdge) <= TOUCH && zOverlap > 0.5;
+      }
+      const near = dir > 0 ? ob.z0 : ob.z1;
+      const xOverlap = Math.min(me2.x1, ob.x1) - Math.max(me2.x0, ob.x0);
+      return Math.abs(near - doorEdgeZ) <= TOUCH && xOverlap > 0.5;
+    });
+    if (!(backOk && tipOk) && !(tipOk && buttsRun) && !(backOk && buttsDoorSide)) { x = item.x; z = item.z; rotDeg = item.rotDeg || 0; flag = 'corner'; }
   }
 
   return { x, z, rotDeg, flag };
