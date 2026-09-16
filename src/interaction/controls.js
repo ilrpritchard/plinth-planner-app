@@ -133,9 +133,9 @@ export class PointerControls {
     this.store.updateItem(this.drag.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg }, { quiet: true });
     const RULE_MSG = {
       window: '✕ Cabinets can’t cover a window',
-      sink: '✕ The sink sits in clear countertop — keep it off talls & uppers',
+      sink: '✕ The sink sits in clear countertop. Keep it off talls & uppers',
       offwall: '✕ Wall, counter & tall cabinets sit against a wall',
-      corner: '✕ Corner units live in corners — the blank return meets the adjoining run',
+      corner: '✕ Corner units live in corners: the blank return meets the adjoining run',
     };
     if (snapped.flag) this._showRuleFlag(RULE_MSG[snapped.flag] || '✕ Not allowed there', e);
     else this._hideRuleFlag();

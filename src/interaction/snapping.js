@@ -52,6 +52,39 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     else x = bounds.maxX - touch;
   }
 
+  // ---- 1b. a CORNER unit may be pulled off its wall to BUTT the adjoining
+  // run: when the drag has clearly left the wall and a base cabinet on the
+  // perpendicular run sits just beyond its front face, snap to touch that
+  // cabinet instead of back to the wall (her call 2026-09-16: a generated
+  // return that stopped short can be closed by hand).
+  if (cab.corner && cab.type !== 'WALL') {
+    const r0 = item.rotDeg || 0;
+    const horiz0 = (r0 % 180) === 0;
+    const rad0 = (r0 * Math.PI) / 180;
+    const sgn0 = horiz0 ? (Math.cos(rad0) >= 0 ? 1 : -1) : (Math.sin(rad0) >= 0 ? 1 : -1);   // into the room
+    const wallPos = horiz0 ? (sgn0 > 0 ? bounds.minZ + touch : bounds.maxZ - touch) : (sgn0 > 0 ? bounds.minX + touch : bounds.maxX - touch);
+    const rawLock = horiz0 ? rawZ : rawX;
+    if ((rawLock - wallPos) * sgn0 > 3) {
+      const me0 = worldBox({ ...item, x: rawX, z: rawZ, rotDeg: r0 }, cab);
+      const front = horiz0 ? (sgn0 > 0 ? me0.z1 : me0.z0) : (sgn0 > 0 ? me0.x1 : me0.x0);
+      let bestGap = null;
+      for (const o of others) {
+        const oc = getCab(o.code);
+        if (!oc || oc.corner || oc.notSupplied || oc.type === 'WALL') continue;
+        const ob = worldBox(o, oc);
+        const near = horiz0 ? (sgn0 > 0 ? ob.z0 : ob.z1) : (sgn0 > 0 ? ob.x0 : ob.x1);
+        const gap = (near - front) * sgn0;                       // my front face to its nearest edge
+        const overlap = horiz0 ? Math.min(me0.x1, ob.x1) - Math.max(me0.x0, ob.x0) : Math.min(me0.z1, ob.z1) - Math.max(me0.z0, ob.z0);
+        if (overlap > 0.5 && gap > -1 && gap <= 8 && (bestGap == null || gap < bestGap)) bestGap = gap;
+      }
+      if (bestGap != null) {
+        const shift = sgn0 * (bestGap - WALL_GAP);
+        if (horiz0) z = rawZ + shift; else x = rawX + shift;
+        rotDeg = r0; wall = null;
+      }
+    }
+  }
+
   // free axis: 'x' when facing into room off back wall (rot 0/180), else 'z'
   const horizontal = (rotDeg % 180) === 0;
   const freeAxis = horizontal ? 'x' : 'z';
@@ -311,7 +344,21 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     const tipOk = horiz
       ? Math.min(Math.abs(tipX - bounds.minX), Math.abs(tipX - bounds.maxX)) <= TIP_TOL
       : Math.min(Math.abs(tipZ - bounds.minZ), Math.abs(tipZ - bounds.maxZ)) <= TIP_TOL;
-    if (!backOk || !tipOk) { x = item.x; z = item.z; rotDeg = item.rotDeg || 0; flag = 'corner'; }
+    // …OR, with the return still meeting the side wall, the unit pulled off its
+    // own back wall until its body BUTTS a cabinet on the adjoining run (her
+    // call 2026-09-16: when the generated return stops short, the corner unit
+    // should be allowed to come forward to touch the drawers).
+    const TOUCH = 1.5;
+    const me2 = worldBox({ ...item, x, z, rotDeg }, cab);
+    const buttsRun = others.some((o) => {
+      const oc = getCab(o.code);
+      if (!oc || oc.corner || oc.notSupplied || ['WALL'].includes(oc.type) !== ['WALL'].includes(cab.type)) return false;
+      const ob = worldBox(o, oc);
+      const gapX = Math.max(ob.x0 - me2.x1, me2.x0 - ob.x1);   // < 0 means the boxes overlap on that axis
+      const gapZ = Math.max(ob.z0 - me2.z1, me2.z0 - ob.z1);
+      return (gapX >= -0.5 && gapX <= TOUCH && gapZ < -0.5) || (gapZ >= -0.5 && gapZ <= TOUCH && gapX < -0.5);
+    });
+    if (!(backOk && tipOk) && !(tipOk && buttsRun)) { x = item.x; z = item.z; rotDeg = item.rotDeg || 0; flag = 'corner'; }
   }
 
   return { x, z, rotDeg, flag };
