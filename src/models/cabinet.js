@@ -289,8 +289,9 @@ export function buildCabinet(cab, finishHex, opts = {}) {
 
   // ----- corner: a flat BLANK RETURN PANEL beside the door, sitting BEYOND the
   // cabinet toward the corner (per the PL/NTH spec). Floor return = 20", wall =
-  // 10". Same painted finish, flush front, no door detail and no knob. A run can
-  // then butt at 90° against it. -----
+  // 10". OAK, not painted: in real life the blank return that runs into the
+  // corner is oak-faced like the interiors (her call 2026-09-16). Flush front,
+  // no door detail and no knob. A run can then butt at 90° against it. -----
   if (cab.corner) {
     // DRAWN return length: sized from the actual distance to the adjacent
     // wall when known (opts.returnLen, see cornerReturnLength) so the panel
@@ -303,15 +304,15 @@ export function buildCabinet(cab, finishHex, opts = {}) {
     // carcass extension sits BEHIND the blank front face — never flush with it,
     // or the two coplanar fronts z-fight and the return renders as a streaky,
     // half-framed panel (the classic "corner cabinet looks wrong" artifact)
-    const carc = box(ret, bodyH, d - DOOR_T - HAIR, mat);
+    const carc = box(ret, bodyH, d - DOOR_T - HAIR, oakMat());
     carc.position.set(px, bodyY0 + bodyH / 2, -(DOOR_T + HAIR) / 2); g.add(carc);
     // flat blank front face — FULL body height (plinth top → carcass top), one
     // clean panel with no rail bands, per the blank-return spec
-    const face = box(Math.max(0.5, ret - HAIR), bodyH, DOOR_T, mat);
+    const face = box(Math.max(0.5, ret - HAIR), bodyH, DOOR_T, oakMat());
     face.position.set(px, bodyY0 + bodyH / 2, frontZ - DOOR_T / 2); g.add(face);
     flushRing(g, px, bodyY0 + bodyH / 2, Math.max(0.5, ret - HAIR), bodyH, frontZ);
     if (hasPlinth) {
-      const ap = box(ret, pH, d, mat); ap.position.set(px, pH / 2, 0); g.add(ap);
+      const ap = box(ret, pH, d, oakMat()); ap.position.set(px, pH / 2, 0); g.add(ap);
     }
   }
 
