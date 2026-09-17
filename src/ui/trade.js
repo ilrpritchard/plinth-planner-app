@@ -131,7 +131,7 @@ export class TradeUI {
             <button class="ghost sm" id="tOrders" title="Your quote requests and orders with live status">Orders</button>
           </div>` : ''}
         </header>
-        ${t.demo ? `<div class="trade-demo-note">This is a typical building, sixty-two units across three kitchen types, priced live. Change the quantities and cabinets to match your project, or <button class="linkish" id="tStartOver">start from an empty project</button>.</div>` : ''}
+        ${t.demo ? `<div class="trade-demo-note">This is an example building, sixty-two units across three kitchen types, priced live. Change the quantities and cabinets to match your project, or <button class="linkish" id="tStartOver">start from an empty project</button>.</div>` : ''}
 
         <div id="tUnits">${t.units.map((u) => this.unitCard(u)).join('')}</div>
         <button class="ghost" id="tAddUnit">+ Add unit type</button>
@@ -175,7 +175,7 @@ export class TradeUI {
   }
 
   // ---- first run: no unit types yet -------------------------------------------
-  // Three doors instead of an empty form: start from a typical building (the
+  // Three doors instead of an empty form: start from an example building (the
   // demo mix, priced live), enter a unit mix, or send us the floor plans.
   renderWelcome() {
     const n = demoUnitCount();
@@ -198,7 +198,7 @@ export class TradeUI {
           <p>Tell us the unit mix and the kitchen in each type. The price is live, per unit and for the whole project, with tariffs and delivery to our New York warehouse included.</p>
           <div class="tw-opts">
             <button class="tw-opt" id="twDemo">
-              <strong>Start from a typical building</strong>
+              <strong>Start from an example building</strong>
               <span>${n} units, three kitchen types, cabinets already chosen. Change the quantities and cabinets to match your project.</span>
             </button>
             <button class="tw-opt" id="twMix">
@@ -220,7 +220,7 @@ export class TradeUI {
     $('tOrders')?.addEventListener('click', () => { this.view = 'orders'; this.render(); });
   }
 
-  /** Replace an empty project with the typical building. */
+  /** Replace an empty project with the example building. */
   loadDemo() {
     const t = this.t;
     const built = buildDemoUnits(t.nextUnitId, t.nextRowId);
@@ -474,7 +474,7 @@ export class TradeUI {
       setTimeout(() => { const f = $('tcName'); if (f && !f.value) f.focus({ preventScroll: true }); }, 450);
     });
     $('tStartOver')?.addEventListener('click', async () => {
-      if (await uiConfirm('Clear the typical building and start from an empty project? Nothing you typed is kept.', { title: 'Start from empty', confirmLabel: 'Start from empty', cancelLabel: 'Keep it' })) this.startOver();
+      if (await uiConfirm('Clear the example building and start from an empty project? Nothing you typed is kept.', { title: 'Start from empty', confirmLabel: 'Start from empty', cancelLabel: 'Keep it' })) this.startOver();
     });
     $('tDetails')?.addEventListener('toggle', (e) => { this._detailsOpen = e.target.open; });
     $('tProject').addEventListener('input', () => { const b = $('tBar'); if (b) b.innerHTML = this.barHTML(); });

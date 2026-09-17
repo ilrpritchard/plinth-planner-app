@@ -1,9 +1,9 @@
-// tradedemo.js — the "typical building" the trade tab opens on for a first
+// tradedemo.js — the "example building" the trade tab opens on for a first
 // visit. A 62-unit mid-rise with three kitchen types, priced from the live
 // catalogue, so the first numbers a developer sees are the numbers they would
 // get. Pure data + a builder; no DOM.
 
-export const DEMO_PROJECT = 'Typical building';
+export const DEMO_PROJECT = 'Example building';
 
 // One entry per kitchen type: how many units it repeats across, and the
 // cabinets in each kitchen as [code, qty] pairs. Every code must exist in the

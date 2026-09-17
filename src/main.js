@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-98 · Kitchen / Project, one voice for developers';
+const BUILD = 'W2W-99 · open Project tab, example building';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -421,19 +421,12 @@ function applyMode() {
   }
   if (!trade) scene._onResize(); // canvas was hidden; re-fit
 }
-// the TRADE workspace asks for an email on the way in — trade visitors are the
-// highest-value leads and registration is normal in that world. Internal
-// setMode calls (unit design, ?tshare approval views) are never gated.
-const TRADE_GATE = {
-  title: 'Price a project.',
-  sub: 'Live per-unit pricing, submittal packs and a fixed quote. Leave your email and you’re in.',
-  cta: 'Enter',
-};
-document.getElementById('modeSwitch')?.addEventListener('click', async (e) => {
+// The Project workspace is open: prices are the hook, not the gate (decided
+// 17 Sep 2026). The email is asked for where it earns something: exports,
+// share links, saving a project, and the quote request.
+document.getElementById('modeSwitch')?.addEventListener('click', (e) => {
   const b = e.target.closest('[data-mode]');
   if (!b) return;
-  if (b.dataset.mode === 'trade' && store.state.mode !== 'trade'
-      && !(await ensureEmailGate('trade-entry', TRADE_GATE))) return;
   store.setMode(b.dataset.mode);
 });
 store.subscribe((s, c) => { if (c.type === 'mode' || c.type === 'load' || c.type === 'reset') applyMode(); });
@@ -463,11 +456,6 @@ const mobileHold = (() => {
 
 if (new URLSearchParams(location.search).get('mode') === 'trade' && !TSHARE) {
   store.setMode('trade');
-  ensureEmailGate('trade-entry', TRADE_GATE).then((ok) => {
-    if (ok) return;
-    store.setMode('home');
-    if (store.state.items.length === 0) mobileHold.then(() => wizard.open());
-  });
 }
 void tradeUI;
 

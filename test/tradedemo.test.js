@@ -1,4 +1,4 @@
-// The typical-building demo: every code real, ids unique, tier reached.
+// The example-building demo: every code real, ids unique, tier reached.
 import { DEMO_MIX, buildDemoUnits, demoUnitCount } from '../src/core/tradedemo.js';
 import { tradeSummary } from '../src/core/cost.js';
 import { getCab } from '../src/core/catalogue.js';
