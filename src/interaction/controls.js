@@ -79,6 +79,7 @@ export class PointerControls {
       const item = this.store.getItem(id);
       const p = this._floorPoint();
       this.drag = p ? { id, ox: item.x - p.x, oz: item.z - p.z } : { id, ox: 0, oz: 0 };
+      this.drag.start = { x: item.x, z: item.z, rotDeg: item.rotDeg || 0 };   // where it pings back to
       this.store.beginHistory();           // the whole drag = ONE undo step
       this.s.controls.enabled = false;     // suspend orbit while dragging
       this.el.setPointerCapture?.(e.pointerId);
@@ -131,8 +132,10 @@ export class PointerControls {
     const rawZ = p.z + this.drag.oz;
     const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds());
     this.store.updateItem(this.drag.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg }, { quiet: true });
+    this.drag.flag = snapped.flag || null;
     const RULE_MSG = {
       window: '✕ Cabinets can’t cover a window',
+      cooker: '✕ Nothing sits over the range',
       sink: '✕ The sink sits in clear countertop. Keep it off talls & uppers',
       offwall: '✕ Wall, counter & tall cabinets sit against a wall',
       corner: '✕ Corner units live in corners: the blank return meets the adjoining run',
@@ -145,13 +148,16 @@ export class PointerControls {
   _up() {
     if (!this.drag) return;
     const id = this.drag.id;
+    const { flag, start } = this.drag;
     this.drag = null;
     this._hideDims();
     this._hideRuleFlag();
     this.s.controls.enabled = true;
-    // commit (non-quiet) so worktop + cost refresh
+    // a drop that broke a rule pings back to where the drag started
     const it = this.store.getItem(id);
-    if (it) this.store.updateItem(id, {}, { quiet: false });
+    if (it && flag && start) this.store.updateItem(id, { x: start.x, z: start.z, rotDeg: start.rotDeg }, { quiet: false });
+    // commit (non-quiet) so worktop + cost refresh
+    else if (it) this.store.updateItem(id, {}, { quiet: false });
     this.store.endHistory();
     this.onCommit();
   }

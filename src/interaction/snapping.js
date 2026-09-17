@@ -270,6 +270,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // band). If the snapped spot collides, butt it against the blocker along the
   // run axis instead; if there's no clear spot, it stays where it was.
   let windowFlag = false;
+  let cookerFlag = false;
   {
     const TOL = 0.75;                                    // touching ≠ overlapping
     // WINDOWS are solid to anything mounted in their band — a cabinet NEVER
@@ -294,6 +295,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     // worktop-mounted appliances (sink, hob) belong IN FRONT of a window —
     // the classic sink-under-the-window — so the glass isn't solid to them
     const winSolid = cab.appliance !== 'sink' && cab.appliance !== 'hob';
+    const overCooker = cab.type === 'COUNTER' || (cab.type === 'WALL' && !cab.stacker);
     const hitAt = (px, pz) => {
       const me = worldBox({ x: px, z: pz, rotDeg }, cab);
       const test = (ob) =>
@@ -305,6 +307,14 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
         const oc = getCab(o.code);
         if (!oc || !oc.placeable) continue;
         const ob = worldBox(o, oc);
+        // RULE (17 Sep 2026): nothing sits over the cooker. A range or hob is
+        // solid through its whole column to a counter dresser or an upper, so a
+        // cabinet that is not in its height band still cannot be dropped on it.
+        if (overCooker && (oc.appliance === 'range' || oc.appliance === 'hob')) {
+          const col = { ...ob, y0: -1, y1: 999, cooker: true };
+          if (test(col)) return col;
+          continue;
+        }
         if (test(ob)) return ob;
       }
       return null;
@@ -312,6 +322,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     let hit = hitAt(x, z);
     for (let i = 0; i < 4 && hit; i++) {
       if (hit.win) windowFlag = true;
+      if (hit.cooker) cookerFlag = true;
       const me = worldBox({ x, z, rotDeg }, cab);
       if (freeAxis === 'x') {
         const dxL = hit.x0 - me.x1, dxR = hit.x1 - me.x0;    // butt to the blocker's near side
@@ -325,11 +336,12 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     }
     if (hit) {                                            // no clear spot → stay put
       if (hit.win) windowFlag = true;
+      if (hit.cooker) cookerFlag = true;
       x = item.x; z = item.z; rotDeg = item.rotDeg || 0;
     }
   }
 
-  let flag = windowFlag ? 'window' : undefined;
+  let flag = windowFlag ? 'window' : (cookerFlag ? 'cooker' : undefined);
 
   // RULE: the sink/hob lives IN the worktop — it never butts against a tall,
   // wall or counter cabinet body (plan-view check with a small clearance).
