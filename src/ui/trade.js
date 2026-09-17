@@ -210,7 +210,7 @@ export class TradeUI {
               <span>A plan per floor and the kitchen types. We lay out the kitchens and return a priced project within two working days.</span>
             </a>
           </div>
-          <div class="tw-foot">Under fifty units? Email anyway: <a href="mailto:imogen@plinthmade.com">imogen@plinthmade.com</a></div>
+          <div class="tw-foot">Less than a container, sixty cabinets? Email anyway: <a href="mailto:imogen@plinthmade.com">imogen@plinthmade.com</a></div>
         </section>
       </div>`;
     const $ = (id) => document.getElementById(id);

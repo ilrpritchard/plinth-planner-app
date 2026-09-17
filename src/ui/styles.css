@@ -1,4 +1,8 @@
 /* PL/NTH planner — high-end brand UI (dark editorial chrome, bright 3D view). */
+/* the site's two faces, so the planner and plinthmade.com read as one thing */
+@font-face { font-family: "TeX Gyre Termes"; src: url("../../fonts/texgyretermes-italic.otf") format("opentype"); font-style: italic; font-weight: 400; font-display: swap; }
+@font-face { font-family: "TeX Gyre Termes"; src: url("../../fonts/texgyretermes-bolditalic.otf") format("opentype"); font-style: italic; font-weight: 700; font-display: swap; }
+@font-face { font-family: "Noto Sans W"; src: url("../../fonts/notosans-1.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 :root {
   /* Brand palette — light editorial chrome: paper #f7f5eb + green #645b3d.
      Depth comes from opacity/tints of these, never from a third accent hue. */
@@ -18,7 +22,7 @@
   --green: #5c7d46;
   --amber: #645b3d;
   --offwhite: #ffffff;     /* panel surface (genuinely off-white now) */
-  --serif: "Playfair Display", "Hoefler Text", Georgia, "Times New Roman", serif;
+  --serif: "TeX Gyre Termes", "Tinos", "Times New Roman", Georgia, serif;
   --panel-w: 322px;
 }
 * { box-sizing: border-box; }
@@ -27,7 +31,7 @@ html, body { margin: 0; height: 100%; }
 :focus-visible { outline: 2px solid rgba(100,91,61,0.85); outline-offset: 2px; }
 .quote-sheet :focus-visible, #planOverlay :focus-visible { outline-color: rgba(100,91,61,0.7); }
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Noto Sans W", "Noto Sans", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   background: var(--brown);
   color: var(--cream);
   font-size: 14px;
