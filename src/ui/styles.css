@@ -1461,5 +1461,4 @@ details.trade-fold > .trade-exports { padding: 8px 18px 18px; display: flex; gap
 /* in Project mode the layout button belongs to the unit cards, not the top bar */
 body.mode-trade .topbar-guided { display: none; }
 
-/* square edges everywhere, like the site (decided 17 Sep 2026) */
-*, *::before, *::after { border-radius: 0 !important; }
+/* corners: the planner keeps its small radii (tried square on 17 Sep 2026, rounded reads better on a dense tool; the site stays square) */
