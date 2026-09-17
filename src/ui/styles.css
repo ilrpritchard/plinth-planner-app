@@ -53,6 +53,12 @@ body {
    brass slash, on the deep-brown chrome. */
 .brand { font-size: 23px; font-weight: 800; letter-spacing: 0.14em; color: var(--cream-hi); font-family: ui-sans-serif, "Helvetica Neue", Helvetica, Arial, sans-serif; }
 .brand .slash { color: var(--brass); font-weight: 600; margin: 0 0.01em; }
+.brand .brand-home { color: inherit; text-decoration: none; }
+.brand .brand-home:hover { color: var(--brass); }
+/* the way back to the website, first thing in the action row */
+.topbar-site { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--dim); text-decoration: none; margin-right: 6px; white-space: nowrap; }
+.topbar-site:hover { color: var(--cream); }
+@media (max-width: 900px) { .topbar-site { display: none; } }
 .brand .sub { font-size: 9.5px; letter-spacing: 0.22em; color: var(--dim); text-transform: uppercase; margin-left: 16px; font-weight: 500; }
 /* the product wordmark — PL/NNER, sister mark to PL/NTH */
 .brand .sub.brandmark { color: var(--cream); font-weight: 800; font-size: 23px; letter-spacing: 0.14em; opacity: 0.85; margin-left: 2px; }
