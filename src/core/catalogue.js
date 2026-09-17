@@ -1,71 +1,74 @@
 // catalogue.js — the Plinth block catalogue, finishes, and customer pricing.
 //
-// Cabinet dimensions (w/d/h, inches) and workshop GBP costs are taken from
-// Plinth's internal costing tool. Each item is given a `form` that tells the
-// procedural builder how to construct it. No external data, no images.
+// Cabinet dimensions (w/d/h, inches) and customer sell prices (usd, whole
+// dollars) come from Plinth's internal pricing sheet via
+// Sales_and_Pricing/sync_catalog.py — never hand-edit a `usd:` value here.
+// Workshop costs, tariff, FX and margin live in that sheet, NOT in this file
+// (this file ships to every visitor's browser). Each item is given a `form`
+// that tells the procedural builder how to construct it. No external data.
 
 // ----- raw catalogue (from costing tool) ---------------------------------
 // type: FLOOR | WALL | COUNTER | TALL | ACCESSORIES
 const RAW = [
   // FLOOR — singles
-  { code: 'F1', type: 'FLOOR', desc: 'Single', w: 20, d: 24, h: 35, hinge: 'L&R', gbp: 676 },
-  { code: 'F2', type: 'FLOOR', desc: 'Single', w: 24, d: 24, h: 35, hinge: 'L&R', gbp: 680 },
-  { code: 'F3', type: 'FLOOR', desc: 'Single', w: 28, d: 24, h: 35, hinge: 'L&R', gbp: 683 },
-  { code: 'F4', type: 'FLOOR', desc: 'Single (Half Depth)', w: 20, d: 14, h: 35, hinge: 'L&R', gbp: 662 },
-  { code: 'F5', type: 'FLOOR', desc: 'Single (Half Depth)', w: 24, d: 14, h: 35, hinge: 'L&R', gbp: 665 },
-  { code: 'F6', type: 'FLOOR', desc: 'Single (Half Depth)', w: 28, d: 14, h: 35, hinge: 'L&R', gbp: 669 },
+  { code: 'F1', type: 'FLOOR', desc: 'Single', w: 20, d: 24, h: 35, hinge: 'L&R', usd: 2105 },
+  { code: 'F2', type: 'FLOOR', desc: 'Single', w: 24, d: 24, h: 35, hinge: 'L&R', usd: 2117 },
+  { code: 'F3', type: 'FLOOR', desc: 'Single', w: 28, d: 24, h: 35, hinge: 'L&R', usd: 2126 },
+  { code: 'F4', type: 'FLOOR', desc: 'Single (Half Depth)', w: 20, d: 14, h: 35, hinge: 'L&R', usd: 2063 },
+  { code: 'F5', type: 'FLOOR', desc: 'Single (Half Depth)', w: 24, d: 14, h: 35, hinge: 'L&R', usd: 2072 },
+  { code: 'F6', type: 'FLOOR', desc: 'Single (Half Depth)', w: 28, d: 14, h: 35, hinge: 'L&R', usd: 2084 },
   // FLOOR — appliance / specials
-  { code: 'F7', type: 'FLOOR', desc: 'Dishwasher Door & Plinth', w: 24, d: 24, h: 35, hinge: 'n/a', gbp: 292, notes: 'Dishwasher door panel + plinth' },
-  { code: 'F8', type: 'FLOOR', desc: 'Tray Space (Adjustable)', w: 10, d: 24, h: 35, hinge: 'n/a', gbp: 557, notes: 'Open tray space, no door' },
+  { code: 'F7', type: 'FLOOR', desc: 'Dishwasher Door & Plinth', w: 24, d: 24, h: 35, hinge: 'n/a', usd: 939, notes: 'Dishwasher door panel + plinth' },
+  { code: 'F8', type: 'FLOOR', desc: 'Tray Space (Adjustable)', w: 10, d: 24, h: 35, hinge: 'n/a', usd: 1744, notes: 'Open tray space, no door' },
   // FLOOR — doubles
-  { code: 'F9', type: 'FLOOR', desc: 'Double', w: 28, d: 24, h: 35, hinge: 'n/a', gbp: 992 },
-  { code: 'F10', type: 'FLOOR', desc: 'Double', w: 36, d: 24, h: 35, hinge: 'n/a', gbp: 1040 },
-  { code: 'F11', type: 'FLOOR', desc: 'Double', w: 42, d: 24, h: 35, hinge: 'n/a', gbp: 1075 },
-  { code: 'F12', type: 'FLOOR', desc: 'Double (Half Depth)', w: 28, d: 14, h: 35, hinge: 'n/a', gbp: 977 },
-  { code: 'F13', type: 'FLOOR', desc: 'Double (Half Depth)', w: 36, d: 14, h: 35, hinge: 'n/a', gbp: 1026 },
-  { code: 'F14', type: 'FLOOR', desc: 'Double (Half Depth)', w: 42, d: 14, h: 35, hinge: 'n/a', gbp: 1061 },
+  { code: 'F9', type: 'FLOOR', desc: 'Double', w: 28, d: 24, h: 35, hinge: 'n/a', usd: 3065 },
+  { code: 'F10', type: 'FLOOR', desc: 'Double', w: 36, d: 24, h: 35, hinge: 'n/a', usd: 3210 },
+  { code: 'F11', type: 'FLOOR', desc: 'Double', w: 42, d: 24, h: 35, hinge: 'n/a', usd: 3316 },
+  { code: 'F12', type: 'FLOOR', desc: 'Double (Half Depth)', w: 28, d: 14, h: 35, hinge: 'n/a', usd: 3019 },
+  { code: 'F13', type: 'FLOOR', desc: 'Double (Half Depth)', w: 36, d: 14, h: 35, hinge: 'n/a', usd: 3168 },
+  { code: 'F14', type: 'FLOOR', desc: 'Double (Half Depth)', w: 42, d: 14, h: 35, hinge: 'n/a', usd: 3274 },
   // FLOOR — corner (with return)
-  { code: 'F15', type: 'FLOOR', desc: 'Corner (+20") · blank left', w: 20, d: 24, h: 35, hinge: 'L&R', gbp: 972, corner: true, cornerSide: 'left' },
-  { code: 'F15R', type: 'FLOOR', desc: 'Corner (+20") · blank right', w: 20, d: 24, h: 35, hinge: 'L&R', gbp: 972, corner: true, cornerSide: 'right' },
-  { code: 'F16', type: 'FLOOR', desc: 'Corner (+20") · blank left', w: 24, d: 24, h: 35, hinge: 'L&R', gbp: 993, corner: true, cornerSide: 'left' },
-  { code: 'F16R', type: 'FLOOR', desc: 'Corner (+20") · blank right', w: 24, d: 24, h: 35, hinge: 'L&R', gbp: 993, corner: true, cornerSide: 'right' },
+  { code: 'F15', type: 'FLOOR', desc: 'Corner (+20") · blank left', w: 20, d: 24, h: 35, hinge: 'L&R', usd: 3004, corner: true, cornerSide: 'left' },
+  { code: 'F15R', type: 'FLOOR', desc: 'Corner (+20") · blank right', w: 20, d: 24, h: 35, hinge: 'L&R', usd: 3004, corner: true, cornerSide: 'right' },
+  { code: 'F16', type: 'FLOOR', desc: 'Corner (+20") · blank left', w: 24, d: 24, h: 35, hinge: 'L&R', usd: 3068, corner: true, cornerSide: 'left' },
+  { code: 'F16R', type: 'FLOOR', desc: 'Corner (+20") · blank right', w: 24, d: 24, h: 35, hinge: 'L&R', usd: 3068, corner: true, cornerSide: 'right' },
   // FLOOR — drawers
-  { code: 'F17', type: 'FLOOR', desc: 'Drawers (3)', w: 20, d: 24, h: 35, hinge: 'n/a', gbp: 1102 },
-  { code: 'F18', type: 'FLOOR', desc: 'Drawers (3)', w: 24, d: 24, h: 35, hinge: 'n/a', gbp: 1109 },
-  { code: 'F19', type: 'FLOOR', desc: 'Drawers (3)', w: 28, d: 24, h: 35, hinge: 'n/a', gbp: 1151 },
-  { code: 'F20', type: 'FLOOR', desc: 'Drawers (3)', w: 36, d: 24, h: 35, hinge: 'n/a', gbp: 1200 },
+  { code: 'F17', type: 'FLOOR', desc: 'Drawers (3)', w: 20, d: 24, h: 35, hinge: 'n/a', usd: 3398 },
+  { code: 'F18', type: 'FLOOR', desc: 'Drawers (3)', w: 24, d: 24, h: 35, hinge: 'n/a', usd: 3420 },
+  { code: 'F19', type: 'FLOOR', desc: 'Drawers (3)', w: 28, d: 24, h: 35, hinge: 'n/a', usd: 3547 },
+  { code: 'F20', type: 'FLOOR', desc: 'Drawers (3)', w: 36, d: 24, h: 35, hinge: 'n/a', usd: 3696 },
   // FLOOR — bins
-  { code: 'F21', type: 'FLOOR', desc: 'Pull Out Bin', w: 20, d: 24, h: 35, hinge: 'n/a', gbp: 880, notes: 'Vauth Sagel bin insert' },
-  { code: 'F22', type: 'FLOOR', desc: 'Pull Out Bin', w: 26, d: 24, h: 35, hinge: 'n/a', gbp: 931, notes: 'Vauth Sagel bin insert' },
+  { code: 'F21', type: 'FLOOR', desc: 'Pull Out Bin', w: 20, d: 24, h: 35, hinge: 'n/a', usd: 2724, notes: 'Vauth Sagel bin insert' },
+  { code: 'F22', type: 'FLOOR', desc: 'Pull Out Bin', w: 26, d: 24, h: 35, hinge: 'n/a', usd: 2879, notes: 'Vauth Sagel bin insert' },
   // FLOOR — open shelves
-  { code: 'F23', type: 'FLOOR', desc: 'Open Shelves', w: 20, d: 24, h: 35, hinge: 'n/a', gbp: 484 },
-  { code: 'F24', type: 'FLOOR', desc: 'Open Shelves', w: 24, d: 24, h: 35, hinge: 'n/a', gbp: 491 },
-  { code: 'F25', type: 'FLOOR', desc: 'Open Shelves', w: 28, d: 24, h: 35, hinge: 'n/a', gbp: 533 },
-  { code: 'F26', type: 'FLOOR', desc: 'Open Shelves (Half Depth)', w: 20, d: 14, h: 35, hinge: 'n/a', gbp: 470 },
-  { code: 'F27', type: 'FLOOR', desc: 'Open Shelves (Half Depth)', w: 24, d: 14, h: 35, hinge: 'n/a', gbp: 477 },
-  { code: 'F28', type: 'FLOOR', desc: 'Open Shelves (Half Depth)', w: 28, d: 14, h: 35, hinge: 'n/a', gbp: 519 },
+  { code: 'F23', type: 'FLOOR', desc: 'Open Shelves', w: 20, d: 24, h: 35, hinge: 'n/a', usd: 1522 },
+  { code: 'F24', type: 'FLOOR', desc: 'Open Shelves', w: 24, d: 24, h: 35, hinge: 'n/a', usd: 1543 },
+  { code: 'F25', type: 'FLOOR', desc: 'Open Shelves', w: 28, d: 24, h: 35, hinge: 'n/a', usd: 1671 },
+  { code: 'F26', type: 'FLOOR', desc: 'Open Shelves (Half Depth)', w: 20, d: 14, h: 35, hinge: 'n/a', usd: 1480 },
+  { code: 'F27', type: 'FLOOR', desc: 'Open Shelves (Half Depth)', w: 24, d: 14, h: 35, hinge: 'n/a', usd: 1501 },
+  { code: 'F28', type: 'FLOOR', desc: 'Open Shelves (Half Depth)', w: 28, d: 14, h: 35, hinge: 'n/a', usd: 1628 },
   // FLOOR — panel-ready undercounter appliance front (wine / beverage / drawers)
-  { code: 'F29', type: 'FLOOR', desc: 'Undercounter Appliance Door & Plinth', w: 24, d: 24, h: 35, hinge: 'n/a', gbp: 292, notes: 'Door panel + plinth for a 24" panel-ready undercounter unit (wine, beverage, refrigerator drawers), appliance not supplied. Panel supplied undrilled.' },
+  { code: 'F29', type: 'FLOOR', desc: 'Undercounter Appliance Door & Plinth', w: 24, d: 24, h: 35, hinge: 'n/a', usd: 939, notes: 'Door panel + plinth for a 24" panel-ready undercounter unit (wine, beverage, refrigerator drawers), appliance not supplied. Panel supplied undrilled.' },
   // FLOOR — cooktop bases (36" — the standard rangetop width on multi-unit
   // work). Fronts are IDENTICAL to F20 / F10; the difference is inside: the
   // cooktop body drops into the top of the carcass.
-  { code: 'F30', type: 'FLOOR', desc: 'Cooktop Drawers (3)', w: 36, d: 24, h: 35, hinge: 'n/a', gbp: 1200, notes: 'Drawer bank prepped for a 36" cooktop over. Fronts identical to F20, the top front is FALSE (fixed in the workshop) so the cooktop body drops in; lower two drawers work as normal. Cooktop not supplied.' },
-  { code: 'F31', type: 'FLOOR', desc: 'Cooktop Double', w: 36, d: 24, h: 35, hinge: 'n/a', gbp: 1040, notes: 'Double door base prepped for a 36" cooktop over, top of the carcass is cut back for the cooktop body. Cooktop not supplied.' },
+  { code: 'F30', type: 'FLOOR', desc: 'Cooktop Drawers (3)', w: 36, d: 24, h: 35, hinge: 'n/a', usd: 3696, notes: 'Drawer bank prepped for a 36" cooktop over. Fronts identical to F20, the top front is FALSE (fixed in the workshop) so the cooktop body drops in; lower two drawers work as normal. Cooktop not supplied.' },
+  { code: 'F31', type: 'FLOOR', desc: 'Cooktop Double', w: 36, d: 24, h: 35, hinge: 'n/a', usd: 3210, notes: 'Double door base prepped for a 36" cooktop over, top of the carcass is cut back for the cooktop body. Cooktop not supplied.' },
 
   // WALL
-  { code: 'W1', type: 'WALL', desc: 'Single', w: 20, d: 14, h: 30, hinge: 'L&R', gbp: 598 },
-  { code: 'W2', type: 'WALL', desc: 'Single', w: 24, d: 14, h: 30, hinge: 'L&R', gbp: 605 },
-  { code: 'W3', type: 'WALL', desc: 'Single (Glazed)', w: 20, d: 14, h: 30, hinge: 'L&R', gbp: 659, glazed: true },
-  { code: 'W4', type: 'WALL', desc: 'Single (Glazed)', w: 24, d: 14, h: 30, hinge: 'L&R', gbp: 666, glazed: true },
-  { code: 'W5', type: 'WALL', desc: 'Double', w: 36, d: 14, h: 30, hinge: 'n/a', gbp: 823 },
-  { code: 'W6', type: 'WALL', desc: 'Double', w: 42, d: 14, h: 30, hinge: 'n/a', gbp: 858 },
-  { code: 'W7', type: 'WALL', desc: 'Double (Glazed)', w: 36, d: 14, h: 30, hinge: 'n/a', gbp: 1009, glazed: true },
-  { code: 'W8', type: 'WALL', desc: 'Double (Glazed)', w: 42, d: 14, h: 30, hinge: 'n/a', gbp: 1044, glazed: true },
-  { code: 'W9', type: 'WALL', desc: 'Corner (+10")', w: 20, d: 14, h: 30, hinge: 'L&R', gbp: 645, corner: true },
-  { code: 'W10', type: 'WALL', desc: 'Corner (+10")', w: 24, d: 14, h: 30, hinge: 'L&R', gbp: 694, corner: true },
-  { code: 'W11', type: 'WALL', desc: 'Open Shelves', w: 20, d: 14, h: 30, hinge: 'n/a', gbp: 440 },
-  { code: 'W12', type: 'WALL', desc: 'Open Shelves', w: 24, d: 14, h: 30, hinge: 'n/a', gbp: 447 },
-  { code: 'W13', type: 'WALL', desc: 'Open Shelves', w: 28, d: 14, h: 30, hinge: 'n/a', gbp: 489 },
+  { code: 'W1', type: 'WALL', desc: 'Single', w: 20, d: 14, h: 30, hinge: 'L&R', usd: 1868 },
+  { code: 'W2', type: 'WALL', desc: 'Single', w: 24, d: 14, h: 30, hinge: 'L&R', usd: 1890 },
+  { code: 'W3', type: 'WALL', desc: 'Single (Glazed)', w: 20, d: 14, h: 30, hinge: 'L&R', usd: 2054, glazed: true },
+  { code: 'W4', type: 'WALL', desc: 'Single (Glazed)', w: 24, d: 14, h: 30, hinge: 'L&R', usd: 2075, glazed: true },
+  { code: 'W5', type: 'WALL', desc: 'Double', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 2551 },
+  { code: 'W6', type: 'WALL', desc: 'Double', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 2658 },
+  { code: 'W7', type: 'WALL', desc: 'Double (Glazed)', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 3116, glazed: true },
+  { code: 'W8', type: 'WALL', desc: 'Double (Glazed)', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 3222, glazed: true },
+  { code: 'W9', type: 'WALL', desc: 'Corner (+10")', w: 20, d: 14, h: 30, hinge: 'L&R', usd: 2011, corner: true },
+  { code: 'W10', type: 'WALL', desc: 'Corner (+10")', w: 24, d: 14, h: 30, hinge: 'L&R', usd: 2160, corner: true },
+  { code: 'W11', type: 'WALL', desc: 'Open Shelves', w: 20, d: 14, h: 30, hinge: 'n/a', usd: 1389 },
+  { code: 'W12', type: 'WALL', desc: 'Open Shelves', w: 24, d: 14, h: 30, hinge: 'n/a', usd: 1410 },
+  { code: 'W13', type: 'WALL', desc: 'Open Shelves', w: 28, d: 14, h: 30, hinge: 'n/a', usd: 1537 },
   // WALL — S-series STACKERS: boxes that sit ON TOP of an existing run for
   // tall ceilings, matched per family so every wall/tall/counter cabinet has
   // a stacker with the SAME width, the right depth, and its mountY exactly at
@@ -75,77 +78,77 @@ const RAW = [
   // Enforced by test/trade-upgrades.test.js: every non-corner W/T/C cabinet
   // must have a matching stacker — extend this list with any new width.
   // fits the TALL run (24/27/28/30/33/39/44 wide, d 25.25, mount 86)
-  { code: 'S1', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T1, T3)', w: 24, d: 25.25, h: 15, hinge: 'L&R', gbp: 520, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
-  { code: 'S2', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T10)', w: 27, d: 25.25, h: 15, hinge: 'L&R', gbp: 545, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 9\'+ ceilings.' },
-  { code: 'S3', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T2, T5, T6)', w: 28, d: 25.25, h: 15, hinge: 'L&R', gbp: 555, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
-  { code: 'S4', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T4, T9)', w: 30, d: 25.25, h: 15, hinge: 'n/a', gbp: 610, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
-  { code: 'S5', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T11)', w: 33, d: 25.25, h: 15, hinge: 'n/a', gbp: 645, mountY: 86, notes: 'Sits on the T11 panel-ready housing. For 9\'+ ceilings.' },
-  { code: 'S6', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T12)', w: 39, d: 25.25, h: 15, hinge: 'n/a', gbp: 700, mountY: 86, notes: 'Sits on the T12 panel-ready housing. For 9\'+ ceilings.' },
-  { code: 'S7', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T7, T8, T13)', w: 44, d: 25.25, h: 15, hinge: 'n/a', gbp: 745, mountY: 86, notes: 'Sits on the 44" double larder. For 9\'+ ceilings.' },
-  { code: 'S8', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T1, T3)', w: 24, d: 25.25, h: 21, hinge: 'L&R', gbp: 575, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
-  { code: 'S9', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T10)', w: 27, d: 25.25, h: 21, hinge: 'L&R', gbp: 600, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 10\'+ ceilings.' },
-  { code: 'S10', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T2, T5, T6)', w: 28, d: 25.25, h: 21, hinge: 'L&R', gbp: 610, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
-  { code: 'S11', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T4, T9)', w: 30, d: 25.25, h: 21, hinge: 'n/a', gbp: 665, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
-  { code: 'S12', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T11)', w: 33, d: 25.25, h: 21, hinge: 'n/a', gbp: 700, mountY: 86, notes: 'Sits on the T11 panel-ready housing. For 10\'+ ceilings.' },
-  { code: 'S13', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T12)', w: 39, d: 25.25, h: 21, hinge: 'n/a', gbp: 755, mountY: 86, notes: 'Sits on the T12 panel-ready housing. For 10\'+ ceilings.' },
-  { code: 'S14', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T7, T8, T13)', w: 44, d: 25.25, h: 21, hinge: 'n/a', gbp: 800, mountY: 86, notes: 'Sits on the 44" double larder. For 10\'+ ceilings.' },
+  { code: 'S1', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T1, T3)', w: 24, d: 25.25, h: 15, hinge: 'L&R', usd: 1632, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
+  { code: 'S2', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T10)', w: 27, d: 25.25, h: 15, hinge: 'L&R', usd: 1707, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 9\'+ ceilings.' },
+  { code: 'S3', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T2, T5, T6)', w: 28, d: 25.25, h: 15, hinge: 'L&R', usd: 1738, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
+  { code: 'S4', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T4, T9)', w: 30, d: 25.25, h: 15, hinge: 'n/a', usd: 1905, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
+  { code: 'S5', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T11)', w: 33, d: 25.25, h: 15, hinge: 'n/a', usd: 2011, mountY: 86, notes: 'Sits on the T11 panel-ready housing. For 9\'+ ceilings.' },
+  { code: 'S6', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T12)', w: 39, d: 25.25, h: 15, hinge: 'n/a', usd: 2178, mountY: 86, notes: 'Sits on the T12 panel-ready housing. For 9\'+ ceilings.' },
+  { code: 'S7', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T7, T8, T13)', w: 44, d: 25.25, h: 15, hinge: 'n/a', usd: 2315, mountY: 86, notes: 'Sits on the 44" double larder. For 9\'+ ceilings.' },
+  { code: 'S8', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T1, T3)', w: 24, d: 25.25, h: 21, hinge: 'L&R', usd: 1798, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
+  { code: 'S9', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T10)', w: 27, d: 25.25, h: 21, hinge: 'L&R', usd: 1874, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 10\'+ ceilings.' },
+  { code: 'S10', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T2, T5, T6)', w: 28, d: 25.25, h: 21, hinge: 'L&R', usd: 1905, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
+  { code: 'S11', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T4, T9)', w: 30, d: 25.25, h: 21, hinge: 'n/a', usd: 2072, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
+  { code: 'S12', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T11)', w: 33, d: 25.25, h: 21, hinge: 'n/a', usd: 2178, mountY: 86, notes: 'Sits on the T11 panel-ready housing. For 10\'+ ceilings.' },
+  { code: 'S13', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T12)', w: 39, d: 25.25, h: 21, hinge: 'n/a', usd: 2345, mountY: 86, notes: 'Sits on the T12 panel-ready housing. For 10\'+ ceilings.' },
+  { code: 'S14', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T7, T8, T13)', w: 44, d: 25.25, h: 21, hinge: 'n/a', usd: 2482, mountY: 86, notes: 'Sits on the 44" double larder. For 10\'+ ceilings.' },
   // fits the WALL run (20/24/28/36/42 wide, d 14, mount 84 — stacked uppers)
-  { code: 'S15', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W1, W3, W11)', w: 20, d: 14, h: 15, hinge: 'L&R', gbp: 450, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
-  { code: 'S16', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W2, W4, W12)', w: 24, d: 14, h: 15, hinge: 'L&R', gbp: 475, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
-  { code: 'S17', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W13)', w: 28, d: 14, h: 15, hinge: 'L&R', gbp: 510, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
-  { code: 'S18', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W5, W7)', w: 36, d: 14, h: 15, hinge: 'n/a', gbp: 635, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
-  { code: 'S19', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W6, W8)', w: 42, d: 14, h: 15, hinge: 'n/a', gbp: 690, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
-  { code: 'S20', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W1, W3, W11)', w: 20, d: 14, h: 21, hinge: 'L&R', gbp: 505, mountY: 84, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
-  { code: 'S21', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W2, W4, W12)', w: 24, d: 14, h: 21, hinge: 'L&R', gbp: 530, mountY: 84, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
-  { code: 'S22', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W13)', w: 28, d: 14, h: 21, hinge: 'L&R', gbp: 565, mountY: 84, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
-  { code: 'S23', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W5, W7)', w: 36, d: 14, h: 21, hinge: 'n/a', gbp: 690, mountY: 84, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
-  { code: 'S24', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W6, W8)', w: 42, d: 14, h: 21, hinge: 'n/a', gbp: 745, mountY: 84, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
+  { code: 'S15', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W1, W3, W11)', w: 20, d: 14, h: 15, hinge: 'L&R', usd: 1419, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
+  { code: 'S16', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W2, W4, W12)', w: 24, d: 14, h: 15, hinge: 'L&R', usd: 1495, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
+  { code: 'S17', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W13)', w: 28, d: 14, h: 15, hinge: 'L&R', usd: 1601, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
+  { code: 'S18', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W5, W7)', w: 36, d: 14, h: 15, hinge: 'n/a', usd: 1981, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
+  { code: 'S19', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W6, W8)', w: 42, d: 14, h: 15, hinge: 'n/a', usd: 2148, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
+  { code: 'S20', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W1, W3, W11)', w: 20, d: 14, h: 21, hinge: 'L&R', usd: 1586, mountY: 84, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
+  { code: 'S21', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W2, W4, W12)', w: 24, d: 14, h: 21, hinge: 'L&R', usd: 1662, mountY: 84, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
+  { code: 'S22', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W13)', w: 28, d: 14, h: 21, hinge: 'L&R', usd: 1768, mountY: 84, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
+  { code: 'S23', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W5, W7)', w: 36, d: 14, h: 21, hinge: 'n/a', usd: 2148, mountY: 84, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
+  { code: 'S24', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W6, W8)', w: 42, d: 14, h: 21, hinge: 'n/a', usd: 2315, mountY: 84, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   // fits the COUNTER dresser run (24/28/36/42 wide, d 14, mount 86.5)
-  { code: 'S25', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C1, C2)', w: 24, d: 14, h: 15, hinge: 'L&R', gbp: 475, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
-  { code: 'S26', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C7)', w: 28, d: 14, h: 15, hinge: 'L&R', gbp: 510, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
-  { code: 'S27', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits C3, C5, C8)', w: 36, d: 14, h: 15, hinge: 'n/a', gbp: 635, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
-  { code: 'S28', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits C4, C6, C9)', w: 42, d: 14, h: 15, hinge: 'n/a', gbp: 690, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
-  { code: 'S29', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits C1, C2)', w: 24, d: 14, h: 21, hinge: 'L&R', gbp: 530, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
-  { code: 'S30', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits C7)', w: 28, d: 14, h: 21, hinge: 'L&R', gbp: 565, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
-  { code: 'S31', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits C3, C5, C8)', w: 36, d: 14, h: 21, hinge: 'n/a', gbp: 690, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
-  { code: 'S32', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits C4, C6, C9)', w: 42, d: 14, h: 21, hinge: 'n/a', gbp: 745, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
+  { code: 'S25', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C1, C2)', w: 24, d: 14, h: 15, hinge: 'L&R', usd: 1495, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S26', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C7)', w: 28, d: 14, h: 15, hinge: 'L&R', usd: 1601, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S27', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits C3, C5, C8)', w: 36, d: 14, h: 15, hinge: 'n/a', usd: 1981, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S28', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits C4, C6, C9)', w: 42, d: 14, h: 15, hinge: 'n/a', usd: 2148, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S29', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits C1, C2)', w: 24, d: 14, h: 21, hinge: 'L&R', usd: 1662, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
+  { code: 'S30', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits C7)', w: 28, d: 14, h: 21, hinge: 'L&R', usd: 1768, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
+  { code: 'S31', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits C3, C5, C8)', w: 36, d: 14, h: 21, hinge: 'n/a', usd: 2148, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
+  { code: 'S32', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits C4, C6, C9)', w: 42, d: 14, h: 21, hinge: 'n/a', usd: 2315, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
 
   // COUNTER (50" tall, 14" deep — counter-to-ceiling dressers)
-  { code: 'C1', type: 'COUNTER', desc: 'Single', w: 24, d: 14, h: 50, hinge: 'L&R', gbp: 758 },
-  { code: 'C2', type: 'COUNTER', desc: 'Single (Glazed)', w: 24, d: 14, h: 50, hinge: 'L&R', gbp: 820, glazed: true },
-  { code: 'C3', type: 'COUNTER', desc: 'Double', w: 36, d: 14, h: 50, hinge: 'n/a', gbp: 969 },
-  { code: 'C4', type: 'COUNTER', desc: 'Double', w: 42, d: 14, h: 50, hinge: 'n/a', gbp: 1025 },
-  { code: 'C5', type: 'COUNTER', desc: 'Double (Glazed)', w: 36, d: 14, h: 50, hinge: 'n/a', gbp: 1154, glazed: true },
-  { code: 'C6', type: 'COUNTER', desc: 'Double (Glazed)', w: 42, d: 14, h: 50, hinge: 'n/a', gbp: 1210, glazed: true },
-  { code: 'C7', type: 'COUNTER', desc: 'Open Shelves', w: 28, d: 14, h: 50, hinge: 'n/a', gbp: 615 },
-  { code: 'C8', type: 'COUNTER', desc: 'Open Shelves', w: 36, d: 14, h: 50, hinge: 'n/a', gbp: 664 },
-  { code: 'C9', type: 'COUNTER', desc: 'Open Shelves', w: 42, d: 14, h: 50, hinge: 'n/a', gbp: 720 },
+  { code: 'C1', type: 'COUNTER', desc: 'Single', w: 24, d: 14, h: 50, hinge: 'L&R', usd: 2354 },
+  { code: 'C2', type: 'COUNTER', desc: 'Single (Glazed)', w: 24, d: 14, h: 50, hinge: 'L&R', usd: 2542, glazed: true },
+  { code: 'C3', type: 'COUNTER', desc: 'Double', w: 36, d: 14, h: 50, hinge: 'n/a', usd: 2995 },
+  { code: 'C4', type: 'COUNTER', desc: 'Double', w: 42, d: 14, h: 50, hinge: 'n/a', usd: 3165 },
+  { code: 'C5', type: 'COUNTER', desc: 'Double (Glazed)', w: 36, d: 14, h: 50, hinge: 'n/a', usd: 3556, glazed: true },
+  { code: 'C6', type: 'COUNTER', desc: 'Double (Glazed)', w: 42, d: 14, h: 50, hinge: 'n/a', usd: 3726, glazed: true },
+  { code: 'C7', type: 'COUNTER', desc: 'Open Shelves', w: 28, d: 14, h: 50, hinge: 'n/a', usd: 1920 },
+  { code: 'C8', type: 'COUNTER', desc: 'Open Shelves', w: 36, d: 14, h: 50, hinge: 'n/a', usd: 2069 },
+  { code: 'C9', type: 'COUNTER', desc: 'Open Shelves', w: 42, d: 14, h: 50, hinge: 'n/a', usd: 2239 },
 
   // TALL (86" tall, 24" deep)
-  { code: 'T1', type: 'TALL', desc: 'Single', w: 24, d: 24, h: 86, hinge: 'L&R', gbp: 1226 },
-  { code: 'T2', type: 'TALL', desc: 'Single', w: 28, d: 24, h: 86, hinge: 'L&R', gbp: 1289 },
-  { code: 'T3', type: 'TALL', desc: 'Housing (+3.5")', w: 24, d: 24, h: 86, hinge: 'n/a', gbp: 1145, notes: 'Integrated fridge housing' },
-  { code: 'T4', type: 'TALL', desc: 'Housing (+3.5")', w: 30, d: 24, h: 86, hinge: 'n/a', gbp: 1187, notes: 'Integrated fridge housing' },
-  { code: 'T5', type: 'TALL', desc: 'Single Larder', w: 28, d: 24, h: 86, hinge: 'L&R', gbp: 1289 },
-  { code: 'T6', type: 'TALL', desc: 'Single Larder (Drawers)', w: 28, d: 24, h: 86, hinge: 'L&R', gbp: 1692 },
-  { code: 'T7', type: 'TALL', desc: 'Double Larder', w: 44, d: 24, h: 86, hinge: 'n/a', gbp: 1719 },
-  { code: 'T8', type: 'TALL', desc: 'Double Larder (Drawers)', w: 44, d: 24, h: 86, hinge: 'n/a', gbp: 2246 },
-  { code: 'T9', type: 'TALL', desc: 'Oven Housing', w: 30, d: 24, h: 86, hinge: 'n/a', gbp: 1400, notes: 'Housing for a single 24" wall oven (oven not supplied)' },
+  { code: 'T1', type: 'TALL', desc: 'Single', w: 24, d: 24, h: 86, hinge: 'L&R', usd: 3775 },
+  { code: 'T2', type: 'TALL', desc: 'Single', w: 28, d: 24, h: 86, hinge: 'L&R', usd: 3966 },
+  { code: 'T3', type: 'TALL', desc: 'Housing (+3.5")', w: 24, d: 24, h: 86, hinge: 'n/a', usd: 3529, notes: 'Integrated fridge housing' },
+  { code: 'T4', type: 'TALL', desc: 'Housing (+3.5")', w: 30, d: 24, h: 86, hinge: 'n/a', usd: 3657, notes: 'Integrated fridge housing' },
+  { code: 'T5', type: 'TALL', desc: 'Single Larder', w: 28, d: 24, h: 86, hinge: 'L&R', usd: 3966 },
+  { code: 'T6', type: 'TALL', desc: 'Single Larder (Drawers)', w: 28, d: 24, h: 86, hinge: 'L&R', usd: 5190 },
+  { code: 'T7', type: 'TALL', desc: 'Double Larder', w: 44, d: 24, h: 86, hinge: 'n/a', usd: 5272 },
+  { code: 'T8', type: 'TALL', desc: 'Double Larder (Drawers)', w: 44, d: 24, h: 86, hinge: 'n/a', usd: 6872 },
+  { code: 'T9', type: 'TALL', desc: 'Oven Housing', w: 30, d: 24, h: 86, hinge: 'n/a', usd: 4303, notes: 'Housing for a single 24" wall oven (oven not supplied)' },
   // TALL — panel-ready column housings (refrigeration columns by others)
-  { code: 'T10', type: 'TALL', desc: 'Panel-Ready Column Housing (24")', w: 27, d: 24, h: 86, hinge: 'n/a', gbp: 1395, notes: 'Fits 24" panel-ready refrigeration columns (Sub-Zero, Thermador, Miele, Bosch, confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
-  { code: 'T11', type: 'TALL', desc: 'Panel-Ready Column Housing (30")', w: 33, d: 24, h: 86, hinge: 'n/a', gbp: 1440, notes: 'Fits 30" panel-ready refrigeration columns (Sub-Zero, Thermador, Miele, confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
-  { code: 'T12', type: 'TALL', desc: 'Panel-Ready Column Housing (36")', w: 39, d: 24, h: 86, hinge: 'n/a', gbp: 1490, notes: 'Fits 36" panel-ready French-door / column refrigeration (Sub-Zero, Thermador, Miele, confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
-  { code: 'T13', type: 'TALL', desc: 'Double', w: 44, d: 24, h: 86, hinge: 'n/a', gbp: 1650, notes: 'Full-height double doors: left and right hinged pair. Adjustable shelves.' },
+  { code: 'T10', type: 'TALL', desc: 'Panel-Ready Column Housing (24")', w: 27, d: 24, h: 86, hinge: 'n/a', usd: 4288, notes: 'Fits 24" panel-ready refrigeration columns (Sub-Zero, Thermador, Miele, Bosch, confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
+  { code: 'T11', type: 'TALL', desc: 'Panel-Ready Column Housing (30")', w: 33, d: 24, h: 86, hinge: 'n/a', usd: 4425, notes: 'Fits 30" panel-ready refrigeration columns (Sub-Zero, Thermador, Miele, confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
+  { code: 'T12', type: 'TALL', desc: 'Panel-Ready Column Housing (36")', w: 39, d: 24, h: 86, hinge: 'n/a', usd: 4576, notes: 'Fits 36" panel-ready French-door / column refrigeration (Sub-Zero, Thermador, Miele, confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
+  { code: 'T13', type: 'TALL', desc: 'Double', w: 44, d: 24, h: 86, hinge: 'n/a', usd: 5062, notes: 'Full-height double doors: left and right hinged pair. Adjustable shelves.' },
 
   // ACCESSORIES (no 3D geometry placed; listed in cut list only)
-  { code: 'A2', type: 'ACCESSORIES', desc: 'End Panel (Floor)', w: 0, d: 0, h: 0, hinge: '', gbp: 105 },
-  { code: 'A3', type: 'ACCESSORIES', desc: 'Cutlery Insert 28"', w: 0, d: 0, h: 0, hinge: '', gbp: 218 },
-  { code: 'A4', type: 'ACCESSORIES', desc: 'Cutlery Insert 36"', w: 0, d: 0, h: 0, hinge: '', gbp: 218 },
-  { code: 'A5', type: 'ACCESSORIES', desc: 'Utensil Insert 24"', w: 0, d: 0, h: 0, hinge: '', gbp: 218 },
-  { code: 'A6', type: 'ACCESSORIES', desc: 'Utensil Insert 28"', w: 0, d: 0, h: 0, hinge: '', gbp: 218 },
-  { code: 'A8', type: 'ACCESSORIES', desc: 'End Panel (Wall)', w: 0, d: 0, h: 0, hinge: '', gbp: 70 },
-  { code: 'A9', type: 'ACCESSORIES', desc: 'End Panel (Counter)', w: 0, d: 0, h: 0, hinge: '', gbp: 93 },
-  { code: 'A10', type: 'ACCESSORIES', desc: 'End Panel (Tall)', w: 0, d: 0, h: 0, hinge: '', gbp: 146 },
+  { code: 'A2', type: 'ACCESSORIES', desc: 'End Panel (Floor)', w: 0, d: 0, h: 0, hinge: '', usd: 372 },
+  { code: 'A3', type: 'ACCESSORIES', desc: 'Cutlery Insert 28"', w: 0, d: 0, h: 0, hinge: '', usd: 715 },
+  { code: 'A4', type: 'ACCESSORIES', desc: 'Cutlery Insert 36"', w: 0, d: 0, h: 0, hinge: '', usd: 715 },
+  { code: 'A5', type: 'ACCESSORIES', desc: 'Utensil Insert 24"', w: 0, d: 0, h: 0, hinge: '', usd: 715 },
+  { code: 'A6', type: 'ACCESSORIES', desc: 'Utensil Insert 28"', w: 0, d: 0, h: 0, hinge: '', usd: 715 },
+  { code: 'A8', type: 'ACCESSORIES', desc: 'End Panel (Wall)', w: 0, d: 0, h: 0, hinge: '', usd: 265 },
+  { code: 'A9', type: 'ACCESSORIES', desc: 'End Panel (Counter)', w: 0, d: 0, h: 0, hinge: '', usd: 335 },
+  { code: 'A10', type: 'ACCESSORIES', desc: 'End Panel (Tall)', w: 0, d: 0, h: 0, hinge: '', usd: 496 },
 ];
 
 // ----- classify each item into a build form -----------------------------
@@ -229,7 +232,7 @@ const APPLIANCES = [
 export const CATALOGUE = BASE_CATALOGUE
   .concat(APPLIANCES.map((a) => ({
     ...a, type: 'APPLIANCES', hinge: 'n/a', notes: 'Not supplied by PL/NTH, shown for layout only',
-    gbp: 0, halfDepth: false, glazed: false, corner: false, form: 'appliance',
+    usd: 0, halfDepth: false, glazed: false, corner: false, form: 'appliance',
     placeable: true, notSupplied: true,
   })));
 
@@ -282,7 +285,7 @@ export function getCab(code) {
 
 // Loose accessories a customer can add to the order (priced, no 3D geometry).
 export function orderableAccessories() {
-  return CATALOGUE.filter((c) => c.type === 'ACCESSORIES' && c.gbp > 0);
+  return CATALOGUE.filter((c) => c.type === 'ACCESSORIES' && c.usd > 0);
 }
 
 // Same-width alternatives a cabinet can SWAP to in place: same type, same
@@ -340,13 +343,11 @@ export const DEFAULT_FINISH = 'Ghost';
 export function getFinish(name) { return FINISHES.find((f) => f.name === name) || FINISHES[1]; }
 
 // ----- customer pricing --------------------------------------------------
-// Customer-facing sell price only. Internal GBP / margin are never displayed.
-// sell$ per cabinet = (workshop GBP + wrap £) × FX × margin
-export const PRICING = { fx: 1.32, margin: 2, wrap: 20 };
-
-export function sellUSD(cab, p = PRICING) {
-  if (!cab || !cab.gbp) return 0;
-  return (cab.gbp + p.wrap) * p.fx * p.margin;
+// Customer-facing sell price only. Each catalogue item carries a precomputed
+// `usd` sell price (whole dollars, incl. US import tariff + wrapping) written
+// by the pricing sheet's sync script. No cost, FX or margin maths lives here.
+export function sellUSD(cab) {
+  return cab && cab.usd > 0 ? cab.usd : 0;
 }
 
 export function fmtUSD(n) {
@@ -356,8 +357,8 @@ export function fmtUSD(n) {
 // Trade (multi-unit) pricing: cabinets priced per-unit by the same sell formula,
 // plus shipping added once per order by the container. Adjust as needed.
 export const TRADE = {
-  capPerContainer: 60,                       // cabinets per shipping container
-  shipPerContainerUSD: 2000 * PRICING.fx * PRICING.margin, // £2,000 → sell $
+  capPerContainer: 60,       // cabinets per shipping container
+  shipPerContainerUSD: 5280, // sell $ per container (synced from the pricing sheet)
 };
 
 // Indicative volume pricing tiers, applied to the trade cabinet subtotal by
@@ -373,19 +374,16 @@ export function volumeTier(totalUnits) {
   return VOLUME_TIERS.find((t) => totalUnits >= t.min) || null;
 }
 
-// GBP workshop cost → customer sell $ (same FX × margin as cabinets; the per-
-// cabinet wrap doesn't apply to trim/accessories).
-const accSell = (gbp) => Math.round(gbp * PRICING.fx * PRICING.margin);
-
-// Painted filler panel — auto-added to close a small gap to a wall. £30 cost.
-export const FILLER_SELL = accSell(30);
+// Painted filler panel — auto-added to close a small gap to a wall. Sell $ each
+// (synced from the pricing sheet; trim carries no per-cabinet wrap).
+export const FILLER_SELL = 91;
 
 // Cornice / crown molding — auto-applies to the top of wall, tall and counter
-// cabinets. £50 per linear foot (cost) → customer $ per foot.
+// cabinets. Sell $ per linear foot (synced from the pricing sheet).
 export const CORNICE_OPTIONS = {
   none: { label: 'No crown', code: '', sellPerFt: 0 },
-  plain: { label: 'Plain crown', code: 'A13', sellPerFt: accSell(50), blurb: 'A 7/8-inch bar with a thumb-round edge, standing 5/8 inch proud of the doors.' },
-  decorative: { label: 'Georgian crown', code: 'A14', sellPerFt: accSell(50), blurb: 'A built-up, stepped crown profile.' },
+  plain: { label: 'Plain crown', code: 'A13', sellPerFt: 152, blurb: 'A 7/8-inch bar with a thumb-round edge, standing 5/8 inch proud of the doors.' },
+  decorative: { label: 'Georgian crown', code: 'A14', sellPerFt: 152, blurb: 'A built-up, stepped crown profile.' },
 };
 export function corniceOption(name) { return CORNICE_OPTIONS[name] || CORNICE_OPTIONS.none; }
 

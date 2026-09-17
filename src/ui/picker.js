@@ -14,7 +14,7 @@ import { frontSVG } from './frontdraw.js';
 export function orderableCabs() {
   return FAMILY_ORDER
     .filter((f) => f !== 'APPLIANCES')
-    .flatMap((fam) => CATALOGUE.filter((c) => familyOf(c) === fam && c.gbp > 0));
+    .flatMap((fam) => CATALOGUE.filter((c) => familyOf(c) === fam && c.usd > 0));
 }
 
 /**

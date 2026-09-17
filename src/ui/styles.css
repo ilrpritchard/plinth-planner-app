@@ -829,10 +829,16 @@ kbd {
   .q-table tr, .quote-sheet h2, .quote-sheet h3 { break-inside: avoid; page-break-inside: avoid; }
   /* the plan sits with the schedule and totals on one page, and the closing
      notes never end up alone on a page of their own */
+  /* US Letter, and a zero browser margin: that is what stops Chrome printing
+     its own date / URL / page-number header and footer. The sheet carries its
+     own page padding instead and uses the full width, so the render and the
+     plan print large. */
+  @page { size: letter; margin: 0; }
+  .quote-sheet { width: 100% !important; max-width: none !important; padding: 0.55in 0.6in 0.6in !important; box-sizing: border-box; }
   .q-plan { break-before: page; margin: 0 0 10px; padding: 6px; }
-  .q-plan svg { max-height: 250px; }
+  .q-plan svg { max-height: 4.1in; width: 100%; }
   .q-hero { break-inside: avoid; }
-  .q-hero img { max-height: 7.2in; width: auto; margin: 0 auto; display: block; }
+  .q-hero img { max-height: 6.6in; width: 100%; height: auto; object-fit: contain; margin: 0 auto; display: block; }
   .q-totals, .q-delivery, .q-foot, .q-dims { break-inside: avoid; break-before: avoid; }
   /* the browser's own Print command honours the email gate too (body.gated is set by dxfgate.js) */
   body:not(.gated) #planOverlay.show, body:not(.gated) #planOverlay.show *,
