@@ -114,16 +114,7 @@ export class TradeUI {
     this.root.innerHTML = `
       <div class="trade-wrap">
         <div class="trade-bar" id="tBar">${this.barHTML()}</div>
-        <header class="trade-head">
-          <div>
-            <div class="trade-title">PL<span class="slash">/</span>NTH <span>Project</span></div>
-            <div class="trade-sub">Multi-unit pricing and documents, for developers, builders and architects</div>
-            <div class="trade-steps" aria-label="How it works">
-              <span class="ts"><em>1</em> Your unit mix</span><span class="ts-sep">→</span>
-              <span class="ts"><em>2</em> A kitchen per type</span><span class="ts-sep">→</span>
-              <span class="ts"><em>3</em> Price, documents, quote</span>
-            </div>
-          </div>
+        <header class="trade-head trade-head-slim">
           ${isCloud() ? `<div class="trade-cloud">
             <button class="ghost sm" id="tCloudSave" title="Save this project to your PL/NTH account (sign-in required)">Save project</button>
             <button class="ghost sm" id="tCloudOpen" title="Open one of your saved trade projects">Open project</button>
@@ -183,11 +174,7 @@ export class TradeUI {
       '&body=' + encodeURIComponent('Project name and address:\n\nNumber of units:\n\nKitchen types (A, B, C) and how many of each:\n\nAttach a plan per floor. We lay out the kitchens and send back a priced project within two working days.\n');
     this.root.innerHTML = `
       <div class="trade-wrap trade-first">
-        <header class="trade-head">
-          <div>
-            <div class="trade-title">PL<span class="slash">/</span>NTH <span>Project</span></div>
-            <div class="trade-sub">Multi-unit pricing and documents, for developers, builders and architects</div>
-          </div>
+        <header class="trade-head trade-head-slim">
           ${isCloud() ? `<div class="trade-cloud">
             <button class="ghost sm" id="tCloudOpen" title="Open one of your saved trade projects">Open project</button>
             <button class="ghost sm" id="tOrders" title="Your quote requests and orders with live status">Orders</button>
