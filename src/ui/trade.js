@@ -182,7 +182,7 @@ export class TradeUI {
         </header>
         <section class="trade-welcome">
           <h2>Price a building.</h2>
-          <p>Tell us the unit mix and the kitchen in each type. The price is live, per unit and for the whole project, with tariffs and delivery to our New York warehouse included.</p>
+          <p>Tell us the unit mix and the kitchen in each type. The price is live, per unit and for the whole project, with tariffs and delivery to a warehouse in your project's city included.</p>
           <div class="tw-opts">
             <button class="tw-opt" id="twDemo">
               <strong>Start from an example building</strong>
