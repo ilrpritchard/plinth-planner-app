@@ -1366,3 +1366,87 @@ body.approval-mode .trade-meta select:disabled { opacity: 0.85; }
 }
 /* while the mobile heads-up is showing, nothing else is on stage */
 body.notice-up #emptyState { visibility: hidden; }
+
+/* ---- Trade first run (no unit types yet): three doors, not an empty form ---- */
+.trade-first .trade-head { border-bottom: 0; margin-bottom: 8px; }
+.trade-welcome { max-width: 760px; margin: 24px auto 0; padding: 36px 34px 30px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+.trade-welcome h2 { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 34px; line-height: 1.1; color: var(--cream-hi); margin: 0 0 12px; letter-spacing: 0; }
+.trade-welcome > p { font-size: 14px; line-height: 1.55; color: var(--cream); margin: 0 0 24px; max-width: 600px; }
+.tw-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.tw-opt {
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start; text-align: left;
+  font-family: inherit; text-decoration: none; cursor: pointer;
+  padding: 18px 16px 20px; min-height: 150px;
+  background: var(--paper); border: 1px solid var(--line-strong); border-radius: 10px; color: var(--cream);
+  transition: border-color 0.15s, background 0.15s;
+}
+.tw-opt:hover, .tw-opt:focus-visible { border-color: var(--cream); background: #fff; outline: none; }
+.tw-opt strong { font-size: 14px; font-weight: 600; color: var(--cream-hi); letter-spacing: 0.01em; }
+.tw-opt span { font-size: 12px; line-height: 1.5; color: var(--dim); }
+#twDemo { background: var(--cream); border-color: var(--cream); }
+#twDemo strong, #twDemo span { color: var(--paper); }
+#twDemo span { opacity: 0.85; }
+#twDemo:hover, #twDemo:focus-visible { background: var(--cream-hi); border-color: var(--cream-hi); }
+.tw-foot { margin-top: 18px; font-size: 12px; color: var(--dim); }
+.tw-foot a { color: var(--cream); }
+@media (max-width: 760px) { .tw-opts { grid-template-columns: 1fr; } .tw-opt { min-height: 0; } .trade-welcome { padding: 26px 20px; } .trade-welcome h2 { font-size: 28px; } }
+
+/* ---- sticky project bar: the running total, one call to action ---- */
+.trade-bar {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap;
+  margin: -24px -24px 18px; padding: 12px 24px;
+  background: var(--brown-deep); border-bottom: 1px solid var(--line-strong);
+}
+.trade-bar .tb-proj { font-family: var(--serif); font-style: italic; font-size: 20px; color: var(--cream-hi); line-height: 1.1; }
+.trade-bar .tb-stats { font-size: 11px; color: var(--dim); letter-spacing: 0.04em; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.trade-bar .tb-right { display: flex; align-items: center; gap: 18px; }
+.trade-bar .tb-total { display: flex; flex-direction: column; align-items: flex-end; }
+.trade-bar .tb-total .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+.trade-bar .tb-total .v { font-size: 22px; font-weight: 600; color: var(--cream-hi); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.trade-bar .cta { white-space: nowrap; }
+.trade-demo-note { font-size: 12px; color: var(--dim); margin: -6px 0 16px; line-height: 1.5; }
+button.linkish { font: inherit; color: var(--cream); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+
+/* ---- unit card lead: the elevation and the per-unit price ---- */
+.unit-lead { display: flex; justify-content: space-between; align-items: stretch; gap: 20px; padding: 16px 16px 12px; }
+.unit-lead-elev { flex: 1 1 auto; min-width: 0; overflow-x: auto; }
+.unit-elev { display: flex; flex-direction: column; gap: 10px; justify-content: flex-end; min-height: 120px; }
+.unit-elev-empty { min-height: 56px; align-items: flex-start; justify-content: center; color: var(--muted); font-style: italic; font-size: 13px; }
+.ue-row { display: flex; align-items: flex-end; gap: 3px; }
+.ue-cab { display: inline-block; flex: 0 0 auto; }
+.ue-cab svg { display: block; height: 100%; width: auto; }
+.unit-price { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; text-align: right; font-variant-numeric: tabular-nums; min-width: 170px; }
+.unit-price .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+.unit-price .v { font-size: 26px; font-weight: 600; color: var(--cream-hi); line-height: 1.1; margin: 2px 0 6px; }
+.unit-price .s { font-size: 12px; color: var(--dim); }
+.unit-price .s strong { color: var(--cream); }
+@media (max-width: 700px) { .unit-lead { flex-direction: column; } .unit-price { align-items: flex-start; text-align: left; } }
+
+/* ---- folds: cabinet list on a card, project details, phasing ---- */
+details.unit-fold { border-top: 1px solid var(--line); }
+details.unit-fold > summary, details.trade-fold > summary {
+  cursor: pointer; list-style: none; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim);
+  display: flex; align-items: center; gap: 8px; user-select: none;
+}
+details.unit-fold > summary::-webkit-details-marker, details.trade-fold > summary::-webkit-details-marker { display: none; }
+details.unit-fold > summary::before, details.trade-fold > summary::before { content: '+'; font-size: 14px; line-height: 1; width: 12px; color: var(--cream); }
+details.unit-fold[open] > summary::before, details.trade-fold[open] > summary::before { content: '−'; }
+details.unit-fold > summary { padding: 10px 16px; }
+details.unit-fold > summary .uf-n { color: var(--cream); text-transform: none; letter-spacing: 0; font-size: 12px; }
+details.unit-fold > summary:hover, details.trade-fold > summary:hover { color: var(--cream); }
+details.unit-fold[open] > summary { border-bottom: 1px solid var(--line); }
+details.unit-fold > button[data-act="u-addrow"] { margin: 0 14px 12px; }
+details.trade-fold { margin-top: 24px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+details.trade-fold > summary { padding: 14px 18px; }
+details.trade-fold[open] > summary { border-bottom: 1px solid var(--line); }
+details.trade-fold > .trade-meta { padding: 16px 18px 6px; }
+details.trade-fold > .trade-exports { padding: 8px 18px 18px; display: flex; gap: 8px; flex-wrap: wrap; margin-top: 0; }
+#tPhaseFold > .trade-totals { margin: 0; padding: 16px 18px; }
+#tPhaseFold > .trade-totals + .trade-totals { border-top: 1px solid var(--line); }
+.trade-order { scroll-margin-top: 84px; }
+.trade-order h3 { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 22px; color: var(--cream-hi); margin: 0 0 14px; }
+
+/* compact 3D invitation on a unit card that has no layout yet */
+.unit-design-empty { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 16px 12px; padding: 10px 14px; background: none; border-bottom: 0; border: 1px dashed var(--line-strong); border-radius: 8px; font-size: 12px; color: var(--dim); line-height: 1.45; }
+.unit-design-empty button { flex: 0 0 auto; }
