@@ -945,7 +945,10 @@ body.wz-reviewing #viewControls, body.wz-reviewing #selbar {
 .trade-wrap { max-width: 1080px; margin: 0 auto; padding: 24px 24px 60px; }
 .trade-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; border-bottom: 2px solid var(--brown); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 /* the project view has no title block: the sticky bar names the project, so the head is just the account row */
-.trade-head-slim { justify-content: flex-end; border-bottom: 0; padding-bottom: 0; margin-bottom: 14px; min-height: 0; }
+.trade-head-slim { justify-content: space-between; border-bottom: 0; padding-bottom: 0; margin-bottom: 14px; min-height: 0; }
+.trade-cloud-left { margin-right: auto; }
+a.tlink { display: inline-flex; align-items: center; text-decoration: none; background: transparent; color: var(--cream); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 10px; font-size: 12px; }
+a.tlink:hover { background: var(--cream); color: var(--brown-deep); border-color: var(--cream); }
 .trade-first .trade-head-slim { margin-bottom: 0; }
 .trade-title { font-size: 22px; font-weight: 500; letter-spacing: 0.28em; color: var(--charcoal); }
 .trade-title span { font-weight: 400; color: var(--muted); font-size: 14px; letter-spacing: 0.16em; }

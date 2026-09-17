@@ -115,6 +115,10 @@ export class TradeUI {
       <div class="trade-wrap">
         <div class="trade-bar" id="tBar">${this.barHTML()}</div>
         <header class="trade-head trade-head-slim">
+          <div class="trade-cloud trade-cloud-left">
+            <button class="ghost sm" id="tStartOver" title="Clear this project and go back to the three ways to start">&larr; Start over</button>
+            <a class="ghost sm tlink" href="mailto:imogen@plinthmade.com?subject=${encodeURIComponent('Floor plans for pricing')}" title="Send a plan per floor and we lay the kitchens out for you">Send us the floor plans</a>
+          </div>
           ${isCloud() ? `<div class="trade-cloud">
             <button class="ghost sm" id="tCloudSave" title="Save this project to your PL/NTH account (sign-in required)">Save project</button>
             <button class="ghost sm" id="tCloudOpen" title="Open one of your saved trade projects">Open project</button>
@@ -122,7 +126,7 @@ export class TradeUI {
             <button class="ghost sm" id="tOrders" title="Your quote requests and orders with live status">Orders</button>
           </div>` : ''}
         </header>
-        ${t.demo ? `<div class="trade-demo-note">This is an example building, sixty-two units across three kitchen types, priced live. Change the quantities and cabinets to match your project, or <button class="linkish" id="tStartOver">start from an empty project</button>.</div>` : ''}
+        ${t.demo ? `<div class="trade-demo-note">This is an example building, sixty-two units across three kitchen types, priced live. Change the quantities and cabinets to match your project, or start over and enter your own.</div>` : ''}
 
         <div id="tUnits">${t.units.map((u) => this.unitCard(u)).join('')}</div>
         <button class="ghost" id="tAddUnit">+ Add unit type</button>
@@ -461,7 +465,7 @@ export class TradeUI {
       setTimeout(() => { const f = $('tcName'); if (f && !f.value) f.focus({ preventScroll: true }); }, 450);
     });
     $('tStartOver')?.addEventListener('click', async () => {
-      if (await uiConfirm('Clear the example building and start from an empty project? Nothing you typed is kept.', { title: 'Start from empty', confirmLabel: 'Start from empty', cancelLabel: 'Keep it' })) this.startOver();
+      if (await uiConfirm(this.t.demo ? 'Clear the example building and go back to the start? Nothing you typed is kept.' : 'Clear this project and go back to the start? Nothing you typed is kept. Save it first if you want it later.', { title: 'Start over', confirmLabel: 'Start over', cancelLabel: 'Keep it' })) this.startOver();
     });
     $('tDetails')?.addEventListener('toggle', (e) => { this._detailsOpen = e.target.open; });
     $('tProject').addEventListener('input', () => { const b = $('tBar'); if (b) b.innerHTML = this.barHTML(); });
