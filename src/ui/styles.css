@@ -1468,3 +1468,6 @@ details.trade-fold > .trade-exports { padding: 8px 18px 18px; display: flex; gap
 body.mode-trade .topbar-guided { display: none; }
 
 /* corners: the planner keeps its small radii (tried square on 17 Sep 2026, rounded reads better on a dense tool; the site stays square) */
+
+/* the first-run tour card is retired (17 Sep 2026): the wizard is the one pop-up */
+#emptyState { display: none !important; }

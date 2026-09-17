@@ -612,6 +612,22 @@ export class TradeUI {
     this._setDesignChrome(unitName(u));
   }
 
+  /** A kitchen laid out in Kitchen mode, outside any unit-design session,
+   *  becomes a new unit type on the project (rows derived from the layout). */
+  addCurrentAsUnit() {
+    const design = this.store.serialize();
+    design.mode = 'home';
+    delete design.trade;
+    const t = this.t;
+    const u = this.newUnit();
+    u.design = design;
+    u.rows = rowsFromDesign(design.items || []).map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
+    t.units.push(u);
+    this.store.touchTrade();
+    this.render();
+    return u;
+  }
+
   /** Done → save the design on the unit + derive its cabinet rows.
    *  Cancel → throw the edit away. Either way restore the stashed state. */
   finishDesign(save) {

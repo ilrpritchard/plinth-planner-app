@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-104 · nothing over the range; rule breaks ping back';
+const BUILD = 'W2W-105 · Kitchen panel for projects, one pop-up';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -569,6 +569,13 @@ const SHARE_GATE = {
   sub: 'Leave your email and your link is ready to copy.',
   cta: 'Continue',
 };
+// the Kitchen panel's one action: this layout becomes a unit type on the project
+document.getElementById('btnToProject')?.addEventListener('click', () => {
+  const placed = store.state.items.filter((it) => { const c = getCab(it.code); return c && c.placeable; }).length;
+  if (!placed) { toast('Add some cabinets first, then add the kitchen to the project.'); return; }
+  if (tradeUI._stash) { tradeUI.finishDesign(true); }        // inside a unit-design session: same as Done
+  else { tradeUI.addCurrentAsUnit(); store.setMode('trade'); }
+});
 document.getElementById('btnShare')?.addEventListener('click', async () => {
   if (!(await ensureEmailGate('share-link', SHARE_GATE))) return;
   const url = buildShareURL(store);

@@ -275,46 +275,29 @@
       <div class="panel-body" style="flex:0 0 auto;max-height:38%;border-bottom:1px solid var(--line)">
         <div id="finishes"></div>
       </div>
-      <div class="panel-head">Estimate</div>
+      <div class="panel-head">This kitchen</div>
       <div class="panel-body">
         <div id="costLines"></div>
         <div class="cost-total" id="costTotal"></div>
-        <div class="cost-delivery" id="costDelivery"></div>
-        <div class="budget-row">
-          <label>Your budget <span>(optional)</span></label>
-          <input id="budgetInput" inputmode="numeric" placeholder="e.g. $20,000" />
+        <div class="cost-delivery" id="costDelivery" hidden></div>
+        <div class="budget-row" hidden>
+          <label>Budget</label>
+          <input id="budgetInput" inputmode="numeric" />
         </div>
-        <div class="budget-readout" id="budgetReadout"></div>
+        <div class="budget-readout" id="budgetReadout" hidden></div>
         <div id="warnings"></div>
-        <div class="cost-note">Customer price for cabinets only. Shipping &amp; tax confirmed on your order. Countertops shown are representative and not supplied by PL/NTH.</div>
+        <div class="cost-note">Cabinets only, for one kitchen. Tariffs, delivery to New York and volume pricing are worked out per project in the Project tab. Countertops and appliances are shown for layout and not supplied.</div>
+        <button class="cta" id="btnToProject" style="width:100%;padding:11px;margin-top:14px">Add this kitchen to the project &rarr;</button>
+        <div class="cost-note">A project is a unit mix: this kitchen becomes a type, repeated across however many units you give it, and priced for the whole building.</div>
 
-        <details class="incl-drop" id="dropIncluded">
-          <summary>What's included &amp; what happens next</summary>
-          <ul class="incl-list">
-            <li>Hand-painted solid-wood cabinets in your chosen PL/NTH finish</li>
-            <li>Soft-close doors &amp; dovetailed drawers as standard</li>
-            <li>Adjustable legs &amp; a color-matched plinth</li>
-            <li>Hardware by others. Cabinets arrive undrilled, ready for the knobs or pulls you choose</li>
-            <li>Delivered flat-pack-free, fully built and ready to install</li>
-          </ul>
-          <div class="incl-next">
-            <strong>After you send your design:</strong> we review it, confirm measurements on a free Order Advisor call, and send a fixed quote. Nothing's charged until you approve it. Typical lead time is <strong>12–14 weeks</strong>.
-          </div>
-        </details>
-
-        <div class="panel-head" style="margin:18px -16px 12px;padding-left:0;border-bottom:none">Your details</div>
-        <div class="field"><label>Name</label><input id="custName" placeholder="Your name" /></div>
-        <div class="field"><label>Email</label><input id="custEmail" type="email" placeholder="you@email.com" /></div>
-        <div class="field"><label>Zip</label><input id="custZip" placeholder="ZIP code" /></div>
-        <div class="field"><label>Notes</label><textarea id="custNotes" rows="2" placeholder="Anything we should know?"></textarea></div>
-        <a class="book-cta" id="btnBook" href="#" target="_blank" rel="noopener" style="margin-top:0">Book a free Order Advisor call →</a>
-        <button class="ghost" id="placeOrder" style="width:100%;padding:11px;margin-top:8px">Place order →</button>
-        <div class="share-row">
-          <button class="ghost sm" id="btnShare">🔗 Copy share link</button>
-          <button class="ghost sm" id="btnEmailMe">✉ Email me my design</button>
+        <div hidden>
+          <input id="custName" /><input id="custEmail" type="email" /><input id="custZip" /><textarea id="custNotes"></textarea>
+          <a id="btnBook" href="#"></a><button id="placeOrder"></button>
         </div>
-        <div class="cost-note">A quick call with an Order Advisor to make sure nothing's missing from your order before it goes to the workshop. It isn't a design service.</div>
-        <div class="cost-note">Placing the order sends your design and full block list straight to PL/NTH. An Order Advisor checks it and emails your fixed quote. Nothing is charged.</div>
+        <div class="share-row">
+          <button class="ghost sm" id="btnShare">Copy share link</button>
+          <button class="ghost sm" id="btnEmailMe">Email me this layout</button>
+        </div>
       </div>
     </aside>
 
