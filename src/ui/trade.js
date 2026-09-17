@@ -31,7 +31,7 @@ function chooseDxfVariant() {
 }
 import { buildSubmittalHTML, buildSubmittalPackHTML, openPrintWindow } from './submittal.js';
 import { checkOrder, checkDesign } from '../core/speccheck.js';
-import { planPhases, batchWindow, DEFAULT_MAX_PER_BATCH } from '../core/phasing.js';
+import { planPhases, DEFAULT_MAX_PER_BATCH } from '../core/phasing.js';
 import { buildXlsx } from '../core/xlsxmini.js';
 import { buildTradeWorkbook } from '../core/tradebook.js';
 import { isCloud, currentUser } from '../core/cloud.js';
@@ -438,7 +438,7 @@ export class TradeUI {
         <label class="ph-check"><input type="checkbox" id="phShow" ${ph.showFirst ? 'checked' : ''} ${ph.on ? '' : 'disabled'}> Deliver a show kitchen first</label>
         <label class="ph-max">Max units per batch <input type="number" id="phMax" min="1" value="${Number(ph.maxPerBatch) || DEFAULT_MAX_PER_BATCH}" ${ph.on ? '' : 'disabled'}></label>
       </div>
-      <div id="phBatches">${ph.on ? this.phasingTableHTML() : `<div class="ph-note">Off: the whole order ships as one delivery. Turn on to batch floors so each delivery stays manageable, and to send a single show kitchen ahead of the production run for your sales gallery or model unit.</div>`}</div>
+      <div id="phBatches">${ph.on ? this.phasingTableHTML() : `<div class="ph-note">Off: the whole order ships as one delivery. Turn on to batch it by floor band, or to put one show kitchen in the first batch.</div>`}</div>
     </section>`;
   }
 
@@ -446,14 +446,11 @@ export class TradeUI {
     const ph = this.phasing;
     const plan = planPhases(this.t, { maxUnitsPerBatch: ph.maxPerBatch, showKitchenFirst: !!ph.showFirst });
     if (!plan.batches.length) return `<div class="ph-note">Add unit types (with floors and cabinets) to see the delivery batches.</div>`;
-    const rows = plan.batches.map((b) => {
-      const w = batchWindow(b);
-      return `<tr><td>Phase ${b.n}</td><td>${esc(b.label)}</td><td>${b.byType.map((t) => `${t.qty}× ${esc(t.name)}`).join(' · ')}</td>
-        <td class="num">${b.units}</td><td class="num">${b.cabinets}</td><td>${esc(w.from)} – ${esc(w.to)}</td></tr>`;
-    }).join('');
-    return `<table class="breakdown"><thead><tr><th>Phase</th><th>Floors</th><th>Unit types</th><th class="num">Units</th><th class="num">Cabinets</th><th>Est. delivery window</th></tr></thead>
+    const rows = plan.batches.map((b) => `<tr><td>Phase ${b.n}</td><td>${esc(b.label)}</td><td>${b.byType.map((t) => `${t.qty}× ${esc(t.name)}`).join(' · ')}</td>
+        <td class="num">${b.units}</td><td class="num">${b.cabinets}</td></tr>`).join('');
+    return `<table class="breakdown"><thead><tr><th>Phase</th><th>Floors</th><th>Unit types</th><th class="num">Units</th><th class="num">Cabinets</th></tr></thead>
       <tbody>${rows}</tbody></table>
-      <div class="ph-note">Your production slot is reserved at order confirmation. Phase 1 lands ${plan.base.weeksLo}–${plan.base.weeksHi} weeks from drawing sign-off; each later phase follows ~2 weeks after, sequenced to your construction schedule. The phase column is added to the order CSV while phasing is on.</div>`;
+      <div class="ph-note">The phase column is added to the order CSV and workbook while phasing is on.</div>`;
   }
 
   // ---- events ----
