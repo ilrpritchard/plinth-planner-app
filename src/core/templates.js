@@ -174,26 +174,93 @@ export function planWallInfill(state, wall) {
   const axisMax = axis === 'x' ? maxX : maxZ;
   const BAND = BASE_D + 1;   // strip off the wall a new base unit would occupy
 
-  // world footprint of an item — rotation-aware, incl. a corner unit's return
-  const aabb = (it, c) => {
-    const ret = c.corner ? (c.type === 'FLOOR' ? 20 : 10) : 0;
-    const lRet = (c.corner && c.cornerSide !== 'right') ? ret : 0;
-    const rRet = (c.corner && c.cornerSide === 'right') ? ret : 0;
-    const pts = [[-(c.w / 2 + lRet), -c.d / 2], [(c.w / 2 + rRet), -c.d / 2], [(c.w / 2 + rRet), c.d / 2], [-(c.w / 2 + lRet), c.d / 2]];
-    const rad = (it.rotDeg || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
-    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-    for (const [lx, lz] of pts) {
-      const wx = lx * cs + lz * sn, wz = -lx * sn + lz * cs;
-      x0 = Math.min(x0, it.x + wx); x1 = Math.max(x1, it.x + wx);
-      z0 = Math.min(z0, it.z + wz); z1 = Math.max(z1, it.z + wz);
+  // ---- corner conversion (her rule 2026-09-17: filling a second wall must
+  // turn the junction into a CORNER unit, not two runs butting). At each end
+  // of this wall, if a run on the adjoining wall already reaches the corner,
+  // the cabinets of that run inside the corner zone are replaced by a corner
+  // unit whose blank return faces this wall, body edge 24.25" out so this
+  // wall's run meets it leg to leg. Returned as extra placements + `remove`.
+  const CORNER_OUT = 24.25;
+  const extra = [];          // placements on the ADJOINING wall (corner unit + refill)
+  const remove = [];         // ids of adjoining-wall cabinets the corner unit replaces
+  const virt = [...(state.items || [])];
+  const adj = wall === 'back' ? ['left', 'right'] : wall === 'front' ? ['left', 'right'] : ['back', 'front'];
+  for (const A of adj) {
+    const aAxis = (A === 'left' || A === 'right') ? 'z' : 'x';
+    const aMin = aAxis === 'x' ? minX : minZ, aMax = aAxis === 'x' ? maxX : maxZ;
+    // which end of wall A is the shared corner, and which direction runs away from it
+    const cornerAt = (wall === 'left' || wall === 'back') ? aMin : aMax;
+    const dirAway = cornerAt === aMin ? 1 : -1;
+    const inBandA = (b) => A === 'back' ? b.z0 < minZ + BAND : A === 'front' ? b.z1 > maxZ - BAND : A === 'left' ? b.x0 < minX + BAND : b.x1 > maxX - BAND;
+    const along = (b) => aAxis === 'x' ? [b.x0, b.x1] : [b.z0, b.z1];
+    // the adjoining run's floor cabinets that touch the corner zone
+    const zoneEnd = cornerAt + dirAway * (CORNER_OUT + 24);         // corner unit body: 24.25 out + 24" door
+    const inZone = (lo, hi) => dirAway > 0 ? (lo < zoneEnd - 0.5) : (hi > zoneEnd + 0.5);
+    const hits = [];
+    let alreadyCorner = false;
+    for (const it of virt) {
+      const c = getCab(it.code); if (!c || c.type !== 'FLOOR') continue;
+      const b = aabbOf(it, c); if (!inBandA(b)) continue;
+      const [lo, hi] = along(b);
+      if (!inZone(lo, hi)) continue;
+      if (c.corner) { alreadyCorner = true; break; }
+      hits.push({ it, lo, hi });
     }
-    return { x0, x1, z0, z1 };
-  };
+    if (alreadyCorner || !hits.length) continue;
+    // handedness: the blank return must point INTO the corner along the wall
+    // the corner unit sits on (local +x = "right" side maps to world (cos, -sin))
+    const handed = (rotDeg, onAxis, towardCorner) => {
+      const rad = rotDeg * Math.PI / 180;
+      const ux = Math.cos(rad), uz = -Math.sin(rad);
+      return (((onAxis === 'x' ? ux : uz) * towardCorner) > 0) ? 'F16R' : 'F16';
+    };
+    const posOnWall = (Wl, a, depth) => {
+      const off = depth / 2 + WALL_GAP;
+      return Wl === 'back' ? { x: a, z: minZ + off } : Wl === 'front' ? { x: a, z: maxZ - off } : Wl === 'left' ? { x: minX + off, z: a } : { x: maxX - off, z: a };
+    };
+    const reaches = hits.some(({ lo, hi }) => (dirAway > 0 ? lo - cornerAt : aMax - hi) < 6);
+    if (!reaches) {
+      // the adjoining run already stops short of the corner (a leg that was
+      // filled first): THIS wall's run takes the corner unit, return along
+      // this wall into the corner, so the two meet leg to leg
+      const cAt = (A === 'left' || A === 'back') ? axisMin : axisMax;   // the shared corner on THIS wall's axis
+      const dAway = cAt === axisMin ? 1 : -1;
+      const rotB = NEW_ROT[wall] ?? 0;
+      const code = handed(rotB, axis, -dAway);
+      const cc = getCab(code);
+      const centre = cAt + dAway * (CORNER_OUT + cc.w / 2);
+      extra.push({ code, ...posOnWall(wall, centre, cc.d), rotDeg: rotB });
+      virt.push({ id: -1 - extra.length, code, ...posOnWall(wall, centre, cc.d), rotDeg: rotB });
+      continue;
+    }
+    for (const h of hits) { remove.push(h.it.id); virt.splice(virt.indexOf(h.it), 1); }
+    // corner unit on wall A: blank return points INTO the corner (toward this wall)
+    const rotA = NEW_ROT[A] ?? 0;
+    const code = handed(rotA, aAxis, dirAway < 0 ? 1 : -1);
+    const cc = getCab(code);
+    const bodyCentre = cornerAt + dirAway * (CORNER_OUT + cc.w / 2);
+    const posOf = (a) => posOnWall(A, a, cc.d);
+    extra.push({ code, ...posOf(bodyCentre), rotDeg: rotA });
+    virt.push({ id: -1 - extra.length, code, ...posOf(bodyCentre), rotDeg: rotA });
+    // refill what the removed cabinets covered beyond the corner unit
+    const farEdge = dirAway > 0 ? Math.max(...hits.map((h) => h.hi)) : Math.min(...hits.map((h) => h.lo));
+    let at = cornerAt + dirAway * (CORNER_OUT + cc.w);
+    const gap = dirAway > 0 ? farEdge - at : at - farEdge;
+    for (const fc of planFill(gap)) {
+      const f = getCab(fc);
+      const centre = at + dirAway * (f.w / 2);
+      extra.push({ code: fc, ...posOf(centre), rotDeg: rotA });
+      virt.push({ id: -1 - extra.length, code: fc, ...posOf(centre), rotDeg: rotA });
+      at += dirAway * f.w;
+    }
+  }
+
+  const aabb = aabbOf;
 
   // anything floor-standing that intrudes into the wall strip blocks the run —
   // that covers the wall-line run itself AND a perpendicular run's corner unit
   const occ = [];
-  for (const it of (state.items || [])) {
+  for (const it of virt) {
     const c = getCab(it.code);
     if (!c) continue;
     const floorStanding = c.type === 'FLOOR' || c.type === 'TALL' ||
@@ -245,5 +312,23 @@ export function planWallInfill(state, wall) {
       at += cab.w;
     }
   }
-  return out;
+  const all = [...extra, ...out];
+  all.remove = remove;                 // ids the caller must delete first (corner conversion)
+  return all;
+}
+
+/** world footprint of an item, rotation-aware, incl. a corner unit's return */
+function aabbOf(it, c) {
+  const ret = c.corner ? (c.type === 'FLOOR' ? 20 : 10) : 0;
+  const lRet = (c.corner && c.cornerSide !== 'right') ? ret : 0;
+  const rRet = (c.corner && c.cornerSide === 'right') ? ret : 0;
+  const pts = [[-(c.w / 2 + lRet), -c.d / 2], [(c.w / 2 + rRet), -c.d / 2], [(c.w / 2 + rRet), c.d / 2], [-(c.w / 2 + lRet), c.d / 2]];
+  const rad = (it.rotDeg || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const [lx, lz] of pts) {
+    const wx = lx * cs + lz * sn, wz = -lx * sn + lz * cs;
+    x0 = Math.min(x0, it.x + wx); x1 = Math.max(x1, it.x + wx);
+    z0 = Math.min(z0, it.z + wz); z1 = Math.max(z1, it.z + wz);
+  }
+  return { x0, x1, z0, z1 };
 }

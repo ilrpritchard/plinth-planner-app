@@ -104,6 +104,7 @@ export class UI {
     });
     el.querySelector('#wfFill')?.addEventListener('click', () => {
       const placements = planWallInfill(this.store.state, this.activeWall);
+      for (const id of (placements.remove || [])) this.store.removeItem(id);   // corner conversion
       for (const p of placements) this.store.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg });
       const n = placements.length;
       this.controls?.layer?.select(null); this.showSelbar(null);

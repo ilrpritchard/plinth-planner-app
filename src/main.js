@@ -120,6 +120,7 @@ wallMenu?.addEventListener('click', (e) => {
 // under 20" are left for the scribe fillers).
 function fillThisWall(clickWall) {
   const placements = planWallInfill(store.state, clickWall);
+  for (const id of (placements.remove || [])) store.removeItem(id);   // corner conversion
   for (const p of placements) store.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg });
   rebuildWorktop(); rebuildFillers(); rebuildCornice(); ui.refresh();
 }
