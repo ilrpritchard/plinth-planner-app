@@ -22,6 +22,7 @@ export const FLOORS = {
   slate: { label: 'Slate', color: 0x55585a },
 };
 export const WALLS = {
+  white: { label: 'White', color: 0xf7f6f2 },     // plain white (her ask 2026-09-17); a hair off pure so it still shades
   chalk: { label: 'Chalk', color: 0xefe9db },
   warm: { label: 'Warm white', color: 0xe7ddca },
   clay: { label: 'Clay', color: 0xd9c4b0 },
