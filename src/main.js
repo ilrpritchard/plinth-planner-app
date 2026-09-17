@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-97 · trade first run: typical building, sticky total';
+const BUILD = 'W2W-98 · Kitchen / Project, one voice for developers';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -425,8 +425,8 @@ function applyMode() {
 // highest-value leads and registration is normal in that world. Internal
 // setMode calls (unit design, ?tshare approval views) are never gated.
 const TRADE_GATE = {
-  title: 'Enter the trade workspace.',
-  sub: 'Live pricing, submittal packs and real orders. Leave your email and you’re in.',
+  title: 'Price a project.',
+  sub: 'Live per-unit pricing, submittal packs and a fixed quote. Leave your email and you’re in.',
   cta: 'Enter',
 };
 document.getElementById('modeSwitch')?.addEventListener('click', async (e) => {
@@ -495,7 +495,7 @@ setInterval(() => {
   if (isCloud() && !cloudUI.user && store.state.items.length > 0) {
     const t = document.createElement('div');
     t.className = 'toast';
-    t.innerHTML = 'Don’t lose your kitchen, <strong>sign in to save it.</strong>';
+    t.innerHTML = 'Don’t lose this layout, <strong>sign in to save it.</strong>';
     t.style.cursor = 'pointer';
     t.addEventListener('click', () => { cloudUI.open(); t.remove(); });
     document.body.appendChild(t);
@@ -591,8 +591,8 @@ document.getElementById('btnEmailMe')?.addEventListener('click', async () => {
   if (!(await ensureEmailGate('share-email', SHARE_GATE))) return;
   const url = buildShareURL(store);
   const to = store.state.customer.email || '';
-  const subject = 'My PL/NTH kitchen design';
-  const body = `Here's my kitchen design. Open this link to pick up where I left off:\n\n${url}\n\nDesigned in PL/NNER, the PL/NTH kitchen planner`;
+  const subject = 'PL/NTH kitchen layout';
+  const body = `Here's the kitchen layout. Open this link to pick up where I left off:\n\n${url}\n\nLaid out in the PL/NNER, the PL/NTH planner`;
   window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 });
 // "Book a free order check" → an in-planner popup: submit the design and an
@@ -609,7 +609,7 @@ if (bookBtn && ocModal) {
       title: 'Book your Order Advisor call by email',
       sub: 'The request could not reach PL/NTH directly. Nothing is lost. Copy the message below, or open it in your email app.',
       subject: 'Book a free Order Advisor call',
-      body: 'Hi PL/NTH, please give my kitchen design a once-over.\n\nMy design link:\n' + buildShareURL(store),
+      body: 'Hi PL/NTH, please give this kitchen layout a once-over.\n\nLayout link:\n' + buildShareURL(store),
     });
   };
   bookBtn.addEventListener('click', (e) => {

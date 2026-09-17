@@ -14,27 +14,28 @@ import { cookerWindowClashes } from '../core/warnings.js';
 import { designRationale } from '../core/rationale.js';
 
 // ---- voice: the same wizard, two registers ---------------------------------
-// HOME talks to a homeowner dreaming up their kitchen; TRADE talks to the
-// architect / designer / developer laying out a repeatable unit type. Same
-// machinery, different words — pass the unit-type name (or null for home).
+// KITCHEN (no unit) lays out one kitchen; PROJECT (a unit-type name) lays out
+// a repeatable unit type inside a development. Both talk to developers,
+// architects and builders: PL/NTH sells to multi-unit developments only, so
+// neither register is homeowner copy. Pass the unit-type name (or null).
 // Pure and node-testable; keep BOTH registers covered in tradevoice.test.js.
 export function wizardVoice(unit) {
   if (!unit) {
     return {
-      eyebrow: 'The drawing board',
-      title: "Let's dream up your kitchen",
-      sub: "A few quick choices and we'll spark a design to start from. Keep the one you love, then change anything.",
-      roomLead: 'Your room, wall to wall',
-      applLead: 'Your appliances',
-      budgetLead: 'Your budget',
-      finishLead: 'Your finish',
-      windowNote: 'Your window: we place the sink beneath the back-wall window automatically. Drag it later if yours differs.',
-      buildCta: 'Build my kitchen →',
-      building: 'Sketching your kitchen…',
-      rerolling: 'Back to the drawing board…',
-      resultMsg: "Here's a starting idea. Make it yours.",
-      rerollBtn: '↻ Try another',
-      rerollTitle: 'Generate a different idea for the same room',
+      eyebrow: 'Layout',
+      title: 'Lay out a kitchen',
+      sub: 'A few quick choices and the planner drafts a layout to start from. Keep what works, then change anything.',
+      roomLead: 'The room, wall to wall',
+      applLead: 'Appliances',
+      budgetLead: 'Target budget',
+      finishLead: 'Finish',
+      windowNote: 'Window: the sink is placed beneath the back-wall window automatically. Drag it later if the room differs.',
+      buildCta: 'Draft the layout →',
+      building: 'Drafting the layout…',
+      rerolling: 'Drafting another…',
+      resultMsg: 'A starting layout. Change anything.',
+      rerollBtn: '↻ Another layout',
+      rerollTitle: 'Draft a different layout for the same room',
       keepBtn: 'Start editing →',
       showSave: true,               // "♥ Save" → the customer account
     };

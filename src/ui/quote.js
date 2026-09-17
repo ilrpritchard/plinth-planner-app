@@ -40,7 +40,7 @@ export function buildQuoteHTML(state, heroDataURL = null) {
       </div>
     </header>
 
-    ${heroDataURL ? `<div class="q-hero"><img src="${heroDataURL}" alt="Your kitchen"><span class="q-hero-cap">Your kitchen, finished in ${esc(fin.name)}</span></div>` : ''}
+    ${heroDataURL ? `<div class="q-hero"><img src="${heroDataURL}" alt="The kitchen"><span class="q-hero-cap">The kitchen, finished in ${esc(fin.name)}</span></div>` : ''}
 
     <section class="q-meta">
       <div>

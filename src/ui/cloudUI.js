@@ -60,10 +60,10 @@ export class CloudUI {
   _authHTML() {
     // same account either way — but the pitch matches who's reading it
     const trade = this.store.state.mode === 'trade';
-    return `<h3>${trade ? 'Sign in to PL/NTH' : 'Save your kitchen'}</h3>
+    return `<h3>${trade ? 'Sign in to PL/NTH' : 'Save this layout'}</h3>
       <p class="cloud-sub">${trade
-        ? 'Sign in or create an account to save trade projects, share specs for approval and track orders.'
-        : 'Create an account or sign in to save and reopen your designs.'}</p>
+        ? 'Sign in or create an account to save projects, share specs for approval and track quotes and orders.'
+        : 'Create an account or sign in to save and reopen layouts.'}</p>
       <div class="cloud-tabs"><button data-tab="in" class="active">Sign in</button><button data-tab="up">Create account</button></div>
       <form id="authForm">
         <div class="signup-only" style="display:none">

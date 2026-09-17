@@ -7,10 +7,10 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>PL/NNER · Plan Your Kitchen · PL/NTH</title>
-  <meta name="description" content="Plan your kitchen with PL/NTH blocks. Live pricing as you design, a full 3D view, and ordering online. Made-to-order painted cabinets, built in England." />
-  <meta property="og:title" content="PL/NNER · Plan Your Kitchen · PL/NTH" />
-  <meta property="og:description" content="Plan your kitchen with PL/NTH blocks. Live pricing as you design, a full 3D view, and ordering online." />
+  <title>PL/NNER · Price a project · PL/NTH</title>
+  <meta name="description" content="Lay out a kitchen type and price a whole development. Live per-unit pricing, a full 3D view, submittals and a fixed quote. Made-to-order painted cabinets, built in England." />
+  <meta property="og:title" content="PL/NNER · Price a project · PL/NTH" />
+  <meta property="og:description" content="Lay out a kitchen type and price a whole development. Live per-unit pricing, a full 3D view, submittals and a fixed quote." />
   <meta property="og:type" content="website" />
   <!-- Google Analytics (GA4) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-EJRP4BB1HM"></script>
@@ -38,11 +38,11 @@
     <div id="topbar">
       <div class="brand">PL<span class="slash">/</span>NTH <span class="sub brandmark">PL<span class="slash">/</span>NNER</span> <span class="sub" id="buildTag" style="opacity:.45;font-size:9px">build …</span></div>
       <div class="mode-switch" id="modeSwitch">
-        <button data-mode="home" class="active">Home</button>
-        <button data-mode="trade">Trade</button>
+        <button data-mode="home" class="active">Kitchen</button>
+        <button data-mode="trade">Project</button>
       </div>
       <div class="topbar-actions">
-        <button class="sm topbar-guided" id="wzTopOpen" title="Start from one of our designs. Pick a size and we'll sketch a few ideas">✎ Sketch my kitchen</button>
+        <button class="sm topbar-guided" id="wzTopOpen" title="Five quick questions and the planner drafts a layout to start from">✎ Draft a layout</button>
         <button class="sm" id="btnAccount" style="background:var(--brass);color:var(--brown-deep)">Sign in</button>
         <button class="ghost sm" id="btnExport">Save</button>
         <button class="ghost sm" id="btnImport">Open</button>
@@ -57,16 +57,16 @@
     <div id="emptyState">
       <div class="es-card">
         <button class="es-close" id="esClose" aria-label="Dismiss">&times;</button>
-        <div class="es-eyebrow">Welcome to PL/NNER</div>
-        <h3>Let's plan your kitchen</h3>
+        <div class="es-eyebrow">Welcome to the PL/NNER</div>
+        <h3>Lay out a kitchen</h3>
         <div class="es-tour">
-          <div class="es-t-step"><span class="n">1</span><p><strong>Sketch my kitchen</strong>: answer five quick questions</p></div>
+          <div class="es-t-step"><span class="n">1</span><p><strong>Draft a layout</strong>: answer five quick questions</p></div>
           <div class="es-t-line"></div>
-          <div class="es-t-step"><span class="n">2</span><p>Tap or drag cabinets to make it yours</p></div>
+          <div class="es-t-step"><span class="n">2</span><p>Tap or drag cabinets to change it</p></div>
           <div class="es-t-line"></div>
-          <div class="es-t-step"><span class="n">3</span><p>Quote / PDF when you love it</p></div>
+          <div class="es-t-step"><span class="n">3</span><p>Price it, or add it to a project</p></div>
         </div>
-        <button class="cta es-cta" id="esInspire">✎ Sketch my kitchen</button>
+        <button class="cta es-cta" id="esInspire">✎ Draft a layout</button>
         <div class="es-blank"><button type="button" id="esBlank">or start from a blank room</button></div>
       </div>
     </div>
@@ -263,7 +263,7 @@
         </div><!-- /tabRoom -->
 
         <div id="tabBuild">
-        <div class="cabinets-head">Cabinets <span>tap to add to your kitchen</span></div>
+        <div class="cabinets-head">Cabinets <span>tap to add</span></div>
         <div id="wallFit"></div>
         <div id="catalogue"></div>
         </div><!-- /tabBuild -->

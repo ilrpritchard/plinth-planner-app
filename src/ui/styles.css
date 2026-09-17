@@ -415,7 +415,7 @@ kbd {
 }
 @media (max-width: 820px) { #ideaTray { right: 8px; top: 104px; } }
 
-/* branded generation flash — "Sketching your kitchen…" */
+/* branded generation flash — "Drafting the layout…" */
 #wzFlash {
   position: fixed; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center;
   background: rgba(100,91,61,0.45); backdrop-filter: blur(2px);
@@ -1450,3 +1450,6 @@ details.trade-fold > .trade-exports { padding: 8px 18px 18px; display: flex; gap
 /* compact 3D invitation on a unit card that has no layout yet */
 .unit-design-empty { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 16px 12px; padding: 10px 14px; background: none; border-bottom: 0; border: 1px dashed var(--line-strong); border-radius: 8px; font-size: 12px; color: var(--dim); line-height: 1.45; }
 .unit-design-empty button { flex: 0 0 auto; }
+
+/* in Project mode the layout button belongs to the unit cards, not the top bar */
+body.mode-trade .topbar-guided { display: none; }

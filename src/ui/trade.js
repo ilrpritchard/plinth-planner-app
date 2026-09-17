@@ -116,7 +116,7 @@ export class TradeUI {
         <div class="trade-bar" id="tBar">${this.barHTML()}</div>
         <header class="trade-head">
           <div>
-            <div class="trade-title">PL<span class="slash">/</span>NTH <span>Trade</span></div>
+            <div class="trade-title">PL<span class="slash">/</span>NTH <span>Project</span></div>
             <div class="trade-sub">Multi-unit pricing and documents, for developers, builders and architects</div>
             <div class="trade-steps" aria-label="How it works">
               <span class="ts"><em>1</em> Your unit mix</span><span class="ts-sep">→</span>
@@ -159,7 +159,6 @@ export class TradeUI {
 
         <div id="tTotals">${this.totalsHTML()}</div>
 
-        ${this.whyHTML()}
 
         <section class="trade-order" id="tOrder">
           <h3>Request a fixed quote</h3>
@@ -186,7 +185,7 @@ export class TradeUI {
       <div class="trade-wrap trade-first">
         <header class="trade-head">
           <div>
-            <div class="trade-title">PL<span class="slash">/</span>NTH <span>Trade</span></div>
+            <div class="trade-title">PL<span class="slash">/</span>NTH <span>Project</span></div>
             <div class="trade-sub">Multi-unit pricing and documents, for developers, builders and architects</div>
           </div>
           ${isCloud() ? `<div class="trade-cloud">
@@ -418,9 +417,8 @@ export class TradeUI {
         : (s.totalUnits > 0 ? `<div class="ph-note">Volume pricing starts at 10 units, 100+ unit projects earn the top tier. Final project pricing is confirmed on quote.</div>` : '')}
     </section>
     <details class="trade-fold" id="tPhaseFold" ${this._phaseOpen ? 'open' : ''}>
-      <summary>Delivery phasing and how delivery works</summary>
+      <summary>Delivery phasing</summary>
       ${this.phasingHTML()}
-      ${this.deliveryInfoHTML()}
     </details>`;
   }
 
@@ -456,34 +454,6 @@ export class TradeUI {
     return `<table class="breakdown"><thead><tr><th>Phase</th><th>Floors</th><th>Unit types</th><th class="num">Units</th><th class="num">Cabinets</th><th>Est. delivery window</th></tr></thead>
       <tbody>${rows}</tbody></table>
       <div class="ph-note">Your production slot is reserved at order confirmation. Phase 1 lands ${plan.base.weeksLo}–${plan.base.weeksHi} weeks from drawing sign-off; each later phase follows ~2 weeks after, sequenced to your construction schedule. The phase column is added to the order CSV while phasing is on.</div>`;
-  }
-
-  // ---- why PL/NTH (certainty-at-scale positioning — bespoke millwork can't
-  // do any of this; never pitch on prestige) ----------------------------------
-  whyHTML() {
-    return `<section class="trade-totals trade-why">
-      <h3>Certainty at scale: why developers spec PL/NTH</h3>
-      <div class="ph-note" style="margin-top:2px">
-        <p><strong>One approved design, five hundred perfect copies.</strong> The submittal you sign is the frozen spec every unit is built from, and every deviation after that is a numbered, countersigned change order with a cents-exact price delta. Millwork shops manage this with binders and months; you just did it in a browser.</p>
-        <p><strong>Price certainty on day one.</strong> Live, itemized per-unit pricing before you've had a single meeting, no drifting quotes, no re-pricing at rev C. Custom millwork runs 2–3× the cost and quotes in weeks.</p>
-        <p><strong>Documents in minutes, not weeks.</strong> Submittal packs, cabinet schedules, MEP rough-in sheets, compliance data, DXF and Revit models, regenerated on demand from the frozen order, every issue logged. Faster than the design team's own consultants.</p>
-        <p><strong>Delivery phased to your construction schedule.</strong> Floor-band batching feeds straight into the order paperwork, so cabinets arrive as floors are ready, never one un-storable dump.</p>
-        <p><strong>The forever English kitchen.</strong> Proper painted shaker with inset-look face frames, colour-matched to any RAL in our own workshop, quiet-luxury cabinetry with revision control behind it.</p>
-      </div>
-    </section>`;
-  }
-
-  // ---- how delivery works (trade logistics explainer) -----------------------
-  deliveryInfoHTML() {
-    return `<section class="trade-totals delivery-info">
-      <h3>How delivery works</h3>
-      <div class="ph-note" style="margin-top:2px">
-        <p><strong>Sequenced to your build.</strong> Cabinets ship in flat-packed, labelled container loads (~60 cabinets per container). Deliver the whole order at once, or phase it by floor band above so each delivery matches the floors your fit-out crews are actually working.</p>
-        <p><strong>Show kitchen first.</strong> Tick the option above to pull one unit ahead of the production run, a finished kitchen for your sales gallery or model unit while the balance is still in production.</p>
-        <p><strong>Your building's rules, handled.</strong> Certificates of insurance, freight-elevator bookings, union-building requirements and delivery windows are coordinated with your GC or site team before each phase ships, note your building's requirements when you place the order.</p>
-        <p><strong>Site verification.</strong> PL/NTH does not survey. Dimensions are confirmed by your team before ordering. A laser-measured field-verification option for multi-unit projects is available on request.</p>
-      </div>
-    </section>`;
   }
 
   // ---- events ----
@@ -696,7 +666,7 @@ export class TradeUI {
 
   // ---- trade voice on the shared Home chrome ------------------------------
   // While a unit design session is open, the Home designer's consumer copy
-  // ("Sketch my kitchen", the first-run tour) is re-voiced for the pro doing
+  // ("Draft a layout", the first-run tour) is re-voiced for the pro doing
   // a takeoff. Text is swapped IN PLACE (never innerHTML on listener-bearing
   // ancestors) and restored verbatim on Done/Cancel.
   _setDesignChrome(name) {
@@ -708,7 +678,7 @@ export class TradeUI {
     const es = document.getElementById('emptyState');
     if (es) {
       const set = (sel, txt) => { const el = es.querySelector(sel); if (el) el.textContent = txt; };
-      set('.es-eyebrow', 'PL/NNER · Trade');
+      set('.es-eyebrow', 'PL/NNER · Project');
       set('h3', `Lay out ${name}`);
       const steps = es.querySelectorAll('.es-t-step p');
       if (steps[0]) steps[0].innerHTML = '<strong>Auto-layout this unit</strong>: room size, openings &amp; appliances';
@@ -720,18 +690,18 @@ export class TradeUI {
   _restoreDesignChrome() {
     const top = document.getElementById('wzTopOpen');
     if (top) {
-      top.textContent = '✎ Sketch my kitchen';
-      top.title = "Start from one of our designs, pick a size and we'll sketch a few ideas";
+      top.textContent = '✎ Draft a layout';
+      top.title = 'Five quick questions and the planner drafts a layout to start from';
     }
     const es = document.getElementById('emptyState');
     if (es) {
       const set = (sel, txt) => { const el = es.querySelector(sel); if (el) el.textContent = txt; };
-      set('.es-eyebrow', 'Welcome to PL/NNER');
-      set('h3', "Let's plan your kitchen");
+      set('.es-eyebrow', 'Welcome to the PL/NNER');
+      set('h3', 'Lay out a kitchen');
       const steps = es.querySelectorAll('.es-t-step p');
-      if (steps[0]) steps[0].innerHTML = '<strong>Sketch my kitchen</strong>: answer five quick questions';
-      if (steps[2]) steps[2].innerHTML = 'Quote / PDF when you love it';
-      set('#esInspire', '✎ Sketch my kitchen');
+      if (steps[0]) steps[0].innerHTML = '<strong>Draft a layout</strong>: answer five quick questions';
+      if (steps[2]) steps[2].innerHTML = 'Price it, or add it to a project';
+      set('#esInspire', '✎ Draft a layout');
     }
   }
 
@@ -901,7 +871,7 @@ export class TradeUI {
         </div>
         <header class="trade-head">
           <div>
-            <div class="trade-title">PL<span class="slash">/</span>NTH <span>Trade</span></div>
+            <div class="trade-title">PL<span class="slash">/</span>NTH <span>Project</span></div>
             <div class="trade-sub">Project spec shared for approval</div>
           </div>
           <div class="trade-meta approval-meta">

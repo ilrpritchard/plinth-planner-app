@@ -56,7 +56,7 @@ export const TEMPLATES = [
   {
     id: 'galley',
     name: 'Galley',
-    desc: 'Two facing runs, the cook’s corridor. Working wall + fridge wall.',
+    desc: 'Two facing runs: a working wall and a fridge wall.',
     steps: [
       { wall: 'back', code: 'F18' },
       { wall: 'back', code: 'AP2' },

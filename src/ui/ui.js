@@ -717,7 +717,7 @@ export class UI {
     m.innerHTML = `<div class="cloud-card order-modal order-success">
       <h3>Order received ✓</h3>
       <div class="order-no-big">${esc(orderNo)}</div>
-      <p class="cloud-sub">Thank you${s.customer.name ? `, ${esc(s.customer.name.split(' ')[0])}` : ''}. Your kitchen
+      <p class="cloud-sub">Thank you${s.customer.name ? `, ${esc(s.customer.name.split(' ')[0])}` : ''}. This kitchen
         (${sum.totalCabs} cabinets · ${fmtUSD(sum.subtotal)}) is with PL/NTH.
         An Order Advisor gives it a once-over and emails your fixed quote to
         <strong>${esc(s.customer.email)}</strong> within one business day.

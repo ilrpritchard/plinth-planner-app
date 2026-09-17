@@ -1,8 +1,8 @@
-// tradevoice.test.js — the wizard speaks TWO registers: HOME (homeowner
-// dreaming up their kitchen) and TRADE (architect / developer laying out a
-// repeatable unit type). wizardVoice() is the single source for both sets of
-// copy; these tests regression-lock the consumer strings and make sure the
-// trade register never slips back into homeowner romance.
+// tradevoice.test.js — the wizard speaks TWO registers: KITCHEN (one kitchen,
+// no unit type) and PROJECT (a repeatable unit type in a development). Both
+// address developers, architects and builders. wizardVoice() is the single
+// source for both sets of copy; these tests regression-lock the strings and
+// make sure neither register slips back into homeowner romance.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { wizardVoice } from '../src/ui/wizard.js';
@@ -17,16 +17,25 @@ test('both registers carry the full key set', () => {
   }
 });
 
-test('home register: the consumer voice is unchanged', () => {
+test('kitchen register: plain, professional, one kitchen', () => {
   const v = wizardVoice(null);
-  assert.equal(v.eyebrow, 'The drawing board');
-  assert.equal(v.title, "Let's dream up your kitchen");
-  assert.equal(v.buildCta, 'Build my kitchen →');
-  assert.equal(v.building, 'Sketching your kitchen…');
-  assert.equal(v.rerolling, 'Back to the drawing board…');
-  assert.equal(v.rerollBtn, '↻ Try another');
+  assert.equal(v.eyebrow, 'Layout');
+  assert.equal(v.title, 'Lay out a kitchen');
+  assert.equal(v.buildCta, 'Draft the layout →');
+  assert.equal(v.building, 'Drafting the layout…');
+  assert.equal(v.rerolling, 'Drafting another…');
+  assert.equal(v.rerollBtn, '↻ Another layout');
   assert.equal(v.keepBtn, 'Start editing →');
   assert.equal(v.showSave, true);
+});
+
+test('kitchen register never talks like a homeowner either', () => {
+  const v = wizardVoice(null);
+  const banned = ['dream', 'my kitchen', 'your kitchen', 'drawing board', 'sketch', 'idea', 'love'];
+  for (const k of KEYS) {
+    const s = String(v[k]).toLowerCase();
+    for (const b of banned) assert.ok(!s.includes(b), `kitchen ${k} contains "${b}": ${s}`);
+  }
 });
 
 test('trade register: names the unit type, professional voice', () => {
@@ -49,8 +58,8 @@ test('trade register never talks like a homeowner', () => {
   }
 });
 
-test('falsy unit → home voice; any non-empty name → trade voice', () => {
-  assert.equal(wizardVoice('').eyebrow, 'The drawing board');
-  assert.equal(wizardVoice(undefined).eyebrow, 'The drawing board');
+test('falsy unit → kitchen voice; any non-empty name → project voice', () => {
+  assert.equal(wizardVoice('').eyebrow, 'Layout');
+  assert.equal(wizardVoice(undefined).eyebrow, 'Layout');
   assert.equal(wizardVoice('X').eyebrow, 'Unit setup');
 });
