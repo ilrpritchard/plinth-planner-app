@@ -1471,3 +1471,4 @@ body.mode-trade .topbar-guided { display: none; }
 
 /* the first-run tour card is retired (17 Sep 2026): the wizard is the one pop-up */
 #emptyState { display: none !important; }
+.budget-row[hidden], .budget-readout[hidden], .cost-delivery[hidden] { display: none !important; }
