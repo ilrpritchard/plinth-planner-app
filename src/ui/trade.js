@@ -181,7 +181,7 @@ export class TradeUI {
           </div>` : ''}
         </header>
         <section class="trade-welcome">
-          <h2>Price a building in five minutes.</h2>
+          <h2>Price a building.</h2>
           <p>Tell us the unit mix and the kitchen in each type. The price is live, per unit and for the whole project, with tariffs and delivery to our New York warehouse included.</p>
           <div class="tw-opts">
             <button class="tw-opt" id="twDemo">
@@ -197,7 +197,7 @@ export class TradeUI {
               <span>A plan per floor and the kitchen types. We lay out the kitchens and return a priced project within two working days.</span>
             </a>
           </div>
-          <div class="tw-foot">Less than a container, sixty cabinets? Email anyway: <a href="mailto:imogen@plinthmade.com">imogen@plinthmade.com</a></div>
+          <div class="tw-foot">Smaller project? Email anyway: <a href="mailto:imogen@plinthmade.com">imogen@plinthmade.com</a></div>
         </section>
       </div>`;
     const $ = (id) => document.getElementById(id);
