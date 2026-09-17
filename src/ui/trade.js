@@ -168,7 +168,7 @@ export class TradeUI {
             <label>Notes<input id="tcNotes" value="${esc(this.store.state.customer.notes)}"></label>
           </div>
           <button class="cta" id="tPlaceOrder">Request a fixed quote →</button>
-          <div class="trade-note">Requesting a quote logs the project with PL/NTH under a PL- number with live status tracking. We confirm the fixed price and reserve your production slot by email within one business day. Volume pricing shown is indicative until confirmed on quote.</div>
+          <div class="trade-note">Requesting a quote logs the project with PL/NTH under a PL- number with live status tracking. We reply by email with the fixed price. Volume pricing shown is indicative until confirmed on quote.</div>
         </section>
       </div>`;
     this.wire();
@@ -1001,8 +1001,7 @@ export class TradeUI {
       <div class="order-no-big">${esc(snapshot.orderNo)}</div>
       <p class="cloud-sub">Your project <strong>${esc(snapshot.project)}</strong>
         (${snapshot.totals.cabinets} cabinets · ${fmtUSD(snapshot.totals.grand)}) is with PL/NTH.
-        We confirm the fixed price and your production slot by email within one business day.
-        Track it any time under Orders.</p>
+        We reply by email with the fixed price. Track it any time under Orders.</p>
       <div class="order-modal-btns">
         <button class="ghost" id="osCsv">Download CSV</button>
         <button class="ghost" id="osXlsx">Download workbook</button>

@@ -656,8 +656,8 @@ if (bookBtn && ocModal) {
         subtotal: sum.subtotal,
       });
       ocMsg(callTimes
-        ? 'Design received. An Order Advisor will call in one of your windows, or reply within one business day. ✓'
-        : 'Design received. An Order Advisor will reply within one business day. ✓', true);
+        ? 'Layout received. We will call in one of your windows, or reply by email. ✓'
+        : 'Layout received. We will reply by email. ✓', true);
     } catch (err) {
       btn.disabled = false;
       ocMsg((err?.message || 'Could not send') + ', opening email instead…');
