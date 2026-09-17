@@ -13,7 +13,7 @@ import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
 import { bumpRev, unitRev } from '../core/submittal.js';
 import { saveNow } from '../core/persistence.js';
-import { uiConfirm, uiChoice, mailFallback } from './dialog.js';
+import { uiConfirm, uiChoice, uiAlert, mailFallback } from './dialog.js';
 import { frontSVG } from './frontdraw.js';
 import { buildDemoUnits, demoUnitCount, DEMO_PROJECT } from '../core/tradedemo.js';
 
@@ -945,7 +945,14 @@ export class TradeUI {
 
     let user = null;
     try { user = await currentUser(); } catch { user = null; }
-    if (!user) return this.orderFallback('signin');
+    if (!user) {
+      // signed out: the request goes to plinthmade.com, which emails PL/NTH (no account needed)
+      try {
+        await this.quoteByWeb();
+        await uiAlert('Your project and the full cabinet list are with PL/NTH. We reply by email with the fixed price. Sign in any time to track it under Orders.', { title: 'Quote requested', okLabel: 'Done' });
+        return;
+      } catch { return this.orderFallback('signin'); }
+    }
 
     const snapshot = buildOrderSnapshot(this.t, { customer: this.store.state.customer });
     try {
@@ -969,6 +976,20 @@ export class TradeUI {
       body: mail.body || '',
       href: mail.href,
     });
+  }
+
+  /** Signed-out path: POST the request to the website's endpoint (WPCode
+   *  snippet on plinthmade.com), which emails PL/NTH with the order text. */
+  async quoteByWeb() {
+    const mail = buildTradeOrderEmail(this.store.state);
+    const cu = this.store.state.customer;
+    const r = await fetch('https://plinthmade.com/wp-json/plinth/v1/quote', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: cu.name, email: cu.email, notes: cu.notes || '', project: this.t.project || '', summary: mail.body || '' }),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (!j || !j.ok) throw new Error((j && j.error) || 'send');
   }
 
   /** Cloud ordering isn't available (signed out / unreachable) — never block:
