@@ -135,7 +135,7 @@ const lines = (code, cls) => parts(code).filter((p) => p.k === 'line' && p.cls =
   const s = frontSVG(getCab('F18'), 30);
   ok('frontSVG is a standalone svg', s.startsWith('<svg') && s.endsWith('</svg>') && s.includes('height="30"'));
   ok('cabChipHTML shows code + width', cabChipHTML(getCab('F10')).includes('F10') && cabChipHTML(getCab('F10')).includes('36'));
-  ok('cabChipHTML empty state', cabChipHTML(null).includes('select cabinet'));
+  ok('cabChipHTML empty state', cabChipHTML(null).includes('select a cabinet'));
 }
 
 // ---- elevation integration: corner return widens the run ---------------------------
@@ -164,7 +164,7 @@ const lines = (code, cls) => parts(code).filter((p) => p.k === 'line' && p.cls =
     !all.some((c) => c.type === 'APPLIANCES') && all.some((c) => c.type === 'ACCESSORIES'));
 
   const w36 = filterCabinets(all, '36');
-  const all36 = CATALOGUE.filter((c) => c.gbp > 0 && Math.abs(c.w - 36) < 0.3);
+  const all36 = CATALOGUE.filter((c) => c.usd > 0 && Math.abs(c.w - 36) < 0.3);
   ok("query '36' returns every 36-wide SKU", all36.every((c) => w36.some((h) => h.code === c.code)));
   ok("query '36' hits carry 36 in width or text", w36.every((c) =>
     Math.abs(c.w - 36) < 0.3 || c.desc.includes('36') || c.code.includes('36')));

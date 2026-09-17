@@ -85,6 +85,59 @@ test('drag rule: anywhere that is not a right-angle corner is rejected (flag cor
   assert.ok(Math.abs(s.x - (b.minX + 20)) < 0.01);
 });
 
+test('drag rule: a corner unit may leave its back wall to butt the drawers on the return (2026-09-16)', () => {
+  const store = mkStore();
+  const b = bounds(store.state.room);
+  const home = { x: b.minX + 32, z: b.minZ + 12.25 };
+  const f16 = store.addItem('F16', { ...home, rotDeg: 0 });
+  // pulled 10" off the back wall with nothing to touch: the wall magnet keeps it home
+  let s = snapPosition(store, f16.id, home.x, home.z + 10, b);
+  assert.ok(Math.abs(s.z - home.z) < 0.01 && !s.flag, 'with nothing to butt it stays on the wall');
+  // a drawer unit on the LEFT wall run, starting 10" beyond the corner body's front face
+  const f17w = W('F17');
+  const frontZ = home.z + 10 + 12;                           // where the corner's front face will be after the pull
+  store.addItem('F17', { x: b.minX + 12.25, z: frontZ + 0.5 + f17w / 2, rotDeg: 90 });
+  s = snapPosition(store, f16.id, home.x, home.z + 10, b);
+  assert.equal(s.flag, undefined, 'butting the drawers on the return must be allowed');
+  assert.ok(Math.abs(s.z - (home.z + 10)) < 0.6, `must come forward to the drawers, got ${s.z - home.z}`);
+});
+
+test('drag rule: a corner unit may slide along its wall to butt a cabinet on its door side (2026-09-16)', () => {
+  const store = mkStore();
+  const b = bounds(store.state.room);
+  // F16R (blank RIGHT): return points at the right wall; drawers sit to its left on the back run
+  const home = { x: b.maxX - 32, z: b.minZ + 12.25 };
+  const f16r = store.addItem('F16R', { ...home, rotDeg: 0 });
+  const f19w = W('F19');
+  const drawers = store.addItem('F19', { x: home.x - 12 - 30 - f19w / 2, z: home.z, rotDeg: 0 });   // 30" gap to close
+  // slide it left to the drawers: snaps to butt them, return now 30" off the right wall, allowed
+  let s = snapPosition(store, f16r.id, home.x - 28, home.z, b);
+  assert.equal(s.flag, undefined, 'butting the drawers on the door side must be allowed');
+  assert.ok(Math.abs((s.x - 12) - (drawers.x + f19w / 2)) < 0.6, `door edge must meet the drawers, got ${s.x}`);
+  // alone on the wall, away from the corner: still rejected
+  store.removeItem(drawers.id);
+  s = snapPosition(store, f16r.id, home.x - 28, home.z, b);
+  assert.equal(s.flag, 'corner', 'mid-wall with nothing to butt is still not a corner');
+});
+
+test('drag rule: leg-to-leg joint. A corner unit beside a perpendicular run snaps its door leg onto that run\'s front plane (2026-09-16)', () => {
+  // her layout: F15R on the LEFT wall (rot 90, return toward the back wall), F7 on the back wall 24.25" out
+  const store = new Store(); store.setRoom({ width: 119, depth: 134, height: 96 });
+  const b = bounds(store.state.room);
+  const f7 = store.addItem('F7', { x: b.minX + 24.25 + 12, z: b.minZ + 12.25, rotDeg: 0 });
+  const f7Front = f7.z + 12;
+  const corner = store.addItem('F15R', { x: b.minX + 12.25, z: -35.79, rotDeg: 90 });
+  for (const dz of [-3, 0, 4, 9]) {
+    const s = snapPosition(store, corner.id, corner.x, corner.z + dz, b);
+    assert.equal(s.flag, undefined, `nudge ${dz}: must be allowed`);
+    assert.ok(Math.abs((s.z - 10) - f7Front) < 0.05, `nudge ${dz}: door leg must sit on the F7 front plane, got edge ${s.z - 10} vs ${f7Front}`);
+    assert.ok(Math.abs(s.x - corner.x) < 0.05, 'stays on its wall');
+  }
+  // far from the corner the joint does not grab: a 30" drag lands wherever the other rules say
+  const far = snapPosition(store, corner.id, corner.x, corner.z + 30, b);
+  assert.ok(far.flag === 'corner' || Math.abs((far.z - 10) - f7Front) > 5, 'no joint snap from 30" away (refused, or landed elsewhere)');
+});
+
 // ---- 2. the generator guarantee ----------------------------------------------
 
 test('generator sweep (depths 30–60): corner steps only when the leg receives a cabinet', () => {

@@ -181,13 +181,14 @@ test('plan DXF: 3D kitchen — inch units, blocks INSERTed per cabinet, no appli
   }
   // appliances/sinks are NOT exported — the layout just leaves a gap
   assert.ok(!dxf.includes('\n1\nAP2\n'), 'no appliance label');
-  assert.ok(!dxf.includes('AP2_FRONT_FACE'), 'no appliance block');
-  // every DISTINCT supplied cabinet gets one 3D block
+  assert.ok(!dxf.includes('AP2_UNIT'), 'no appliance block');
+  // every DISTINCT supplied cabinet gets one SELF-CONTAINED 3D block (front +
+  // carcass + footprint + label all inside, so one INSERT = one movable unit)
   assert.ok(dxf.includes('\n2\nBLOCKS\n'), 'has BLOCKS section');
   for (const code of ['T3', 'F18', 'F20', 'W2']) {
-    assert.ok(dxf.includes(`\n2\n${code}_FRONT_FACE\n`), `block for ${code}`);
+    assert.ok(dxf.includes(`\n2\n${code}_UNIT\n`), `block for ${code}`);
   }
-  assert.equal((dxf.match(/\n2\nF18_FRONT_FACE\n/g) || []).length, 3,
+  assert.equal((dxf.match(/\n2\nF18_UNIT\n/g) || []).length, 3,
     'duplicate F18s share ONE block definition (1 def in BLOCKS + 2 INSERT refs)');
   // 3D content: polyface meshes for carcasses + INSERTs lifted/rotated
   assert.ok(dxf.includes('\nPOLYLINE\n'), 'carcass polyface meshes present');
@@ -196,6 +197,14 @@ test('plan DXF: 3D kitchen — inch units, blocks INSERTed per cabinet, no appli
   assert.ok(dxf.includes('\n30\n54\n'), 'wall cabinet INSERT at mount height');
   // the rotated island block carries a rotation (group 50 = 180)
   assert.ok(dxf.includes('\n50\n180\n'), 'island INSERT rotated 180°');
+  // MOVABILITY (client-reported, Revit/AutoCAD): modelspace holds ONLY wall
+  // lines and one INSERT per cabinet — every mesh/footprint/label lives
+  // inside the block, so selecting the insert moves the whole cabinet
+  const entSec = dxf.split('\n2\nENTITIES\n')[1];
+  assert.ok(!entSec.includes('\nPOLYLINE\n'), 'no loose meshes in modelspace');
+  assert.ok(!entSec.includes('\nTEXT\n'), 'no loose labels in modelspace');
+  assert.equal((entSec.match(/\nINSERT\n/g) || []).length, 6,
+    'one INSERT per supplied cabinet (6 placed, AP2 skipped)');
   // clean plan read: walls + floor footprints on PLAN, hung units dashed on
   // PLAN-UPPER (DASHED linetype declared), labels on LABEL
   assert.ok(dxf.includes('\nLINE\n'), 'wall plan drawn as LINEs');
@@ -205,6 +214,20 @@ test('plan DXF: 3D kitchen — inch units, blocks INSERTed per cabinet, no appli
   // the doorway breaks the left wall: jamb lines at x=-120" and x=-124"
   assert.ok(dxf.includes('\n10\n-120\n'));
   assert.ok(dxf.includes('\n11\n-124\n'));
+});
+
+test('plan DXF: cabinets-only variant drops the walls, keeps movable blocks', () => {
+  const state = demoState();
+  const dxf = buildPlanDXF(state, { walls: false });
+  assertDXFShape(dxf, 1);
+  assertFiniteCoords(dxf);
+  const entSec = dxf.split('\n2\nENTITIES\n')[1];
+  assert.ok(!entSec.includes('\nLINE\n'), 'no wall linework in modelspace');
+  assert.equal((entSec.match(/\nINSERT\n/g) || []).length, 6,
+    'all six cabinets still INSERTed');
+  // footprints + labels still ship INSIDE the blocks
+  assert.ok(dxf.includes('\n8\nPLAN-UPPER\n'), 'hung footprint inside block');
+  assert.ok(dxf.includes('\n1\nW2\n'), 'labels inside block');
 });
 
 test('plan DXF: empty state still writes a valid four-wall room', () => {

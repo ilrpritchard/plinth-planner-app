@@ -303,3 +303,31 @@ test('worktop stops at a butting tall; open ends keep their 1" overhang', () => 
   assert.ok(Math.abs(slab.x1 - 24) < 0.05, `counter must stop at the tall leg (x=24), got ${slab.x1}`);
   assert.ok(Math.abs(slab.x0 - (-24 - 1)) < 0.05, 'open left end keeps its overhang');
 });
+
+// ---- counter reaches the wall over EVERY scribe filler -------------------------
+// Client report (2026-08-07): a generated L left a 7.75" gap between the last
+// base and the right wall. computeFillers closed it with a painted scribe
+// panel (its MAX_GAP is 9"), but the worktop's WALL_NEAR was 7 — so the top
+// stopped 6.75" short and the filler stood there BARE. The two thresholds must
+// agree: wherever a filler goes, the counter runs over it to the wall.
+test('worktop runs to the wall over every filler-sized end gap (7-9" too)', () => {
+  const cover = (slabs, x, z) => slabs.some((s) => x >= s.x0 - 0.01 && x <= s.x1 + 0.01 && z >= s.z0 - 0.01 && z <= s.z1 + 0.01);
+  const z = minZ + 12.25;
+  for (const gap of [0.25, 3, 6.9, 7.75, 9]) {
+    const items = [
+      { id: 1, code: 'F18', x: maxX - gap - 12, z, rotDeg: 0 },      // 24" wide
+      { id: 2, code: 'F18', x: maxX - gap - 36, z, rotDeg: 0 },
+    ];
+    const state = { room, items };
+    // sanity: this really is filler territory (or flush) — never open space
+    const fillers = computeFillers(state).filter((f) => f.h <= 40 && f.x > 0);
+    if (gap > 0.5) assert.equal(fillers.length, 1, `${gap}" gap should get one base filler`);
+    const slabs = planWorktopSlabs(items, getCab, 'marble', room);
+    assert.ok(cover(slabs, maxX - 0.5, z), `${gap}" end gap: worktop must reach the right wall`);
+  }
+  // beyond filler territory it is open space again — 1" overhang, no reach
+  const wide = [{ id: 1, code: 'F18', x: maxX - 12 - 12, z, rotDeg: 0 }];
+  const slab = planWorktopSlabs(wide, getCab, 'marble', room)[0];
+  assert.ok(Math.abs(slab.x1 - (maxX - 12 + 1)) < 0.05,
+    `a 12" gap is open space — 1" overhang, got x1 ${slab.x1}`);
+});

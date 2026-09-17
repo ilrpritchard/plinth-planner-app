@@ -2,7 +2,7 @@
 
 A self-contained, offline 3D kitchen planner for Plinth. Customers enter their
 room, drop in PL/NTH blocks, pick a finish, see it in 3D, and email the order to
-`hello@plinthmade.com`. Everything is procedural Three.js — no imported models,
+`imogen@plinthmade.com`. Everything is procedural Three.js — no imported models,
 no external APIs, no logins, no shopping cart.
 
 ## Run it
@@ -36,7 +36,7 @@ src/core/
   store.js                 layout state + pub/sub
   persistence.js           localStorage autosave + JSON export/import
   cost.js                  customer estimate + unit list
-  order.js                 mailto order to hello@plinthmade.com
+  order.js                 mailto order to imogen@plinthmade.com
 src/scene/
   Scene.js                 renderer, camera, OrbitControls, studio lighting
   Room.js                  floor + back/left walls from the footprint
@@ -66,8 +66,10 @@ test/                      node test suites
   reads true rather than washing out under the studio environment.
 - **Always seated:** a cheap per-frame guard re-grounds every cabinet to its
   mount height (floor/tall = 0, wall = 54", counter = on the worktop).
-- **Pricing is customer-facing only.** Sell $ = (workshop GBP + £20 wrap) ×
-  1.32 × 2. Workshop GBP, margin and container maths are never shown.
+- **Pricing is customer-facing only.** Each catalogue item carries a
+  precomputed `usd` sell price written by the internal pricing sheet's sync
+  script (it includes the US import tariff and wrapping). Workshop costs, FX,
+  margin and container maths never appear in this repo.
 
 ## Known v1 simplifications / next steps
 
