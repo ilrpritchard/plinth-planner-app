@@ -62,6 +62,9 @@ export class TradeUI {
     this.view = 'build';                     // 'build' | 'orders'
     this._lastOrder = null;                  // snapshot placed this session
     this._detailsOpen = false;               // project details fold (UI only)
+    this._exportsOpen = false;               // downloads fold (UI only)
+    this._floorsOpen = new Set();            // unit ids showing the count-by-floor fields (UI only)
+    this._collapsed = new Set();             // unit ids folded down to their one-line summary (UI only)
     this._phaseOpen = false;                 // phasing fold (UI only)
     this._rowsOpen = new Set();              // unit ids with the cabinet list open
     this.root = document.getElementById('tradePanel');
@@ -116,23 +119,27 @@ export class TradeUI {
         <div class="trade-bar" id="tBar">${this.barHTML()}</div>
         <header class="trade-head trade-head-slim">
           <div class="trade-cloud trade-cloud-left">
-            <button class="ghost sm" id="tStartOver" title="Clear this project and go back to the three ways to start">&larr; Start over</button>
-            <a class="ghost sm tlink" href="mailto:imogen@plinthmade.com?subject=${encodeURIComponent('Floor plans for pricing')}" title="Send a plan per floor and we lay the kitchens out for you">Send us the floor plans</a>
+            <button class="tquiet" id="tStartOver" title="Clear this project and go back to the three ways to start">&larr; Start over</button>
+            <a class="tquiet" href="mailto:imogen@plinthmade.com?subject=${encodeURIComponent('Floor plans for pricing')}" title="Send a plan per floor and we lay the kitchens out for you">Send us the floor plans</a>
           </div>
           ${isCloud() ? `<div class="trade-cloud">
-            <button class="ghost sm" id="tCloudSave" title="Save this project to your PL/NTH account (sign-in required)">Save project</button>
+            <button class="sm" id="tCloudSave" title="Save this project to your PL/NTH account (sign-in required)">Save project</button>
             <button class="ghost sm" id="tCloudOpen" title="Open one of your saved trade projects">Open project</button>
-            <button class="ghost sm" id="tCloudShare" title="Copy a read-only link, the architect or client reviews &amp; approves the spec, no account needed">Share</button>
+            <button class="ghost sm" id="tCloudShare" title="Copy a read-only link, the architect or client reviews &amp; approves the spec, no account needed">Share for approval</button>
             <button class="ghost sm" id="tOrders" title="Your quote requests and orders with live status">Orders</button>
           </div>` : ''}
         </header>
         ${t.demo ? `<div class="trade-demo-note">This is an example building, sixty-two units across three kitchen types, priced live. Change the quantities and cabinets to match your project, or start over and enter your own.</div>` : ''}
 
+        ${t.units.length > 1 ? `<div class="units-bar">
+          <span>${t.units.length} kitchen types</span>
+          <button class="tquiet" id="tFoldAll">${t.units.every((u) => this._collapsed.has(u.id)) ? 'Expand all' : 'Collapse all'}</button>
+        </div>` : ''}
         <div id="tUnits">${t.units.map((u) => this.unitCard(u)).join('')}</div>
         <button class="ghost" id="tAddUnit">+ Add unit type</button>
 
         <details class="trade-fold" id="tDetails" ${this._detailsOpen ? 'open' : ''}>
-          <summary>Project details and exports</summary>
+          <summary>Project details <span class="tf-hint">name, address, team and finish, printed on every document</span></summary>
           <div class="trade-meta">
             <label>Project<input id="tProject" value="${esc(t.project)}" placeholder="e.g. Hudson Yards Tower"></label>
             <label>Project address<input id="tAddress" value="${esc(t.address)}" placeholder="street · city · state"></label>
@@ -142,14 +149,11 @@ export class TradeUI {
             <label>Finish<select id="tFinish">${FINISHES.map((f) => `<option ${f.name === t.finish ? 'selected' : ''}>${f.name}</option>`).join('')}</select></label>
             ${t.finish === 'Custom RAL' ? `<label>RAL code<input id="tFinishRal" value="${esc(t.finishRal)}" placeholder="e.g. 9010"></label>` : ''}
           </div>
-          <div class="trade-exports">
-              <button class="ghost sm" id="tDxfLib" title="Every PL/NTH SKU as a named AutoCAD block (front elevations, DXF R12)">DXF cabinet library</button>
-              <button class="ghost sm" id="tOrderCsv" title="The full order as a spreadsheet, lines, totals, containers &amp; shipping">Order CSV</button>
-              <button class="ghost sm" id="tWorkbook" title="One Excel workbook: summary, a sheet per designed unit, the full order with a PO field, and delivery phasing">Project workbook (.xlsx)</button>
-              <button class="ghost sm" id="tUnitPlans" title="One plan DXF per designed unit type">Unit plans DXF</button>
-              <button class="ghost sm" id="tUnitIFC" title="Every designed unit type as an IFC4 model, link or import it straight into Revit">Revit / IFC (unit models)</button>
-              <button class="ghost sm" id="tSubmittalPack" title="One architect-ready submittal PDF: project cover + cover, plan, elevations, schedule, cut sheets &amp; compliance for every designed unit type">Submittal pack (all units)</button>
-          </div>
+        </details>
+
+        <details class="trade-fold" id="tExports" ${this._exportsOpen ? 'open' : ''}>
+          <summary>Downloads <span class="tf-hint">spreadsheets, drawings, Revit models and the submittal pack</span></summary>
+          ${this.exportsHTML()}
         </details>
 
         <div id="tTotals">${this.totalsHTML()}</div>
@@ -167,6 +171,29 @@ export class TradeUI {
         </section>
       </div>`;
     this.wire();
+  }
+
+  // ---- downloads: one described tile per file, grouped by who asks for it.
+  // Tiles that are built from a 3D layout say so until a unit has one.
+  exportsHTML() {
+    const designed = this.t.units.some((u) => u.design);
+    const tile = (id, name, desc, needsLayout) => `<button class="tx-tile${needsLayout && !designed ? ' tx-wait' : ''}" id="${id}">
+        <strong>${name}</strong><span>${desc}</span>${needsLayout && !designed ? '<em>Needs a unit laid out in 3D</em>' : ''}
+      </button>`;
+    return `<div class="trade-exports">
+        <div class="tx-group"><h4>Spreadsheets</h4><div class="tx-tiles">
+          ${tile('tWorkbook', 'Project workbook (.xlsx)', 'Summary, a sheet per unit type, the full order with a PO field, and delivery phasing.')}
+          ${tile('tOrderCsv', 'Order CSV', 'Every line, totals, containers and shipping as one flat file.')}
+        </div></div>
+        <div class="tx-group"><h4>Drawings and models</h4><div class="tx-tiles">
+          ${tile('tUnitPlans', 'Unit plans (DXF)', 'One AutoCAD plan per unit type.', true)}
+          ${tile('tUnitIFC', 'Revit / IFC model', 'Every unit type as an IFC4 model, to link or import into Revit.', true)}
+          ${tile('tDxfLib', 'Cabinet library (DXF)', 'Every PL/NTH cabinet as a named AutoCAD block, front elevations.')}
+        </div></div>
+        <div class="tx-group"><h4>For the architect</h4><div class="tx-tiles">
+          ${tile('tSubmittalPack', 'Submittal pack (PDF)', 'Project cover, then plan, elevations, schedule, cut sheets and compliance for every unit type.', true)}
+        </div></div>
+      </div>`;
   }
 
   // ---- first run: no unit types yet -------------------------------------------
@@ -278,24 +305,67 @@ export class TradeUI {
     </div>`;
   }
 
+  // a folded card: one line, the whole line opens it again
+  unitSummaryHTML(u) {
+    const q = unitQty(u);
+    let cabs = 0, sell = 0;
+    for (const r of u.rows) { const cab = getCab(r.code); if (!cab) continue; const n = Number(r.qty) || 0; cabs += n; sell += sellUSD(cab) * n; }
+    const flags = (this.unitFindings(u) || []).filter((f) => f.level !== 'info').length;
+    const meta = [`×${q} unit${q === 1 ? '' : 's'}`, `${cabs} cabinet${cabs === 1 ? '' : 's'}`];
+    if (u.design) meta.push('laid out in 3D');
+    return `<section class="unit-card unit-collapsed" data-unit="${u.id}">
+      <button type="button" class="unit-sum" data-act="u-expand" aria-expanded="false" title="Open this type">
+        <span class="ut-chev">+</span>
+        <span class="us-name">${esc(unitName(u))}</span>
+        <span class="us-meta">${meta.join(' · ')}</span>
+        ${flags ? `<span class="us-flag">${flags} to check</span>` : ''}
+        <span class="us-price">${fmtUSD(sell)} <i>per unit</i></span>
+        <span class="us-total">${fmtUSD(sell * q)}</span>
+      </button>
+    </section>`;
+  }
+
+  floorsReadout(u) {
+    const full = u.floorFrom !== '' && u.floorTo !== '' && u.perFloor !== '';
+    const q = unitQty(u);
+    if (!full) return `${q} unit${q === 1 ? '' : 's'} until all three are filled`;
+    return `= ${q} unit${q === 1 ? '' : 's'}`;
+  }
+
   unitCard(u) {
     const q = unitQty(u);
-    const useFloors = u.floorFrom !== '' && u.floorTo !== '' && u.perFloor !== '';
+    if (this._collapsed.has(u.id) && !this.approval) return this.unitSummaryHTML(u);
+    const floorsOn = this._floorsOpen.has(u.id) || u.floorFrom !== '' || u.floorTo !== '' || u.perFloor !== '';
     return `<section class="unit-card" data-unit="${u.id}">
       <div class="unit-head">
-        <div class="unit-head-fields">
-          <label>Bed type<select data-act="u-beds">${BED_TYPES.map((b) => `<option ${b === u.beds ? 'selected' : ''}>${b}</option>`).join('')}</select></label>
-          <label>Type<select data-act="u-letter">${LETTERS.map((l) => `<option ${l === u.letter ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-          <label>Name (optional)<input data-act="u-name" value="${esc(u.name)}" placeholder="${esc(unitName(u))}"></label>
-          <label class="sm">Floors from<input data-act="u-from" type="number" value="${u.floorFrom}"></label>
-          <label class="sm">to<input data-act="u-to" type="number" value="${u.floorTo}"></label>
-          <label class="sm">Per floor<input data-act="u-per" type="number" value="${u.perFloor}"></label>
-          <label class="sm">Units${useFloors ? ' (auto)' : ''}<input data-act="u-qty" type="number" value="${q}" ${useFloors ? 'disabled' : ''}></label>
+        <div class="unit-head-top">
+          <h3 class="unit-title">${this.approval
+            ? `<span id="ut-${u.id}">${esc(unitName(u))}</span>`
+            : `<button type="button" class="unit-tog" data-act="u-collapse" aria-expanded="true" title="Fold this type down to one line"><span class="ut-chev">−</span><span id="ut-${u.id}">${esc(unitName(u))}</span></button>`}</h3>
+          <button class="tquiet tquiet-danger" data-act="u-del" title="Take this kitchen type off the project">Remove this type</button>
         </div>
-        <div class="unit-head-btns">
-          ${u.design ? `<button class="sm" data-act="u-submittal" title="Architect-ready submittal PDF: cover, plan, elevations, schedule, cut sheets &amp; compliance">Submittal PDF</button>
-          <button class="ghost sm" data-act="u-rev" title="Bump the revision letter (records the date on this unit's revision history)">Rev ${esc(unitRev(u))} +</button>` : ''}
-          <button class="danger sm" data-act="u-del">Remove</button>
+        <div class="unit-head-fields">
+          <div class="uh-group">
+            <span class="uh-legend">Kitchen type</span>
+            <div class="uh-row">
+              <label>Bedrooms<select data-act="u-beds">${BED_TYPES.map((b) => `<option ${b === u.beds ? 'selected' : ''}>${b}</option>`).join('')}</select></label>
+              <label>Type<select data-act="u-letter">${LETTERS.map((l) => `<option ${l === u.letter ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+              <label>Your name for it (optional)<input data-act="u-name" value="${esc(u.name)}" placeholder="${esc(unitName(u))}"></label>
+            </div>
+          </div>
+          <div class="uh-group">
+            <span class="uh-legend">How many units of this type</span>
+            <div class="uh-row">
+              ${floorsOn ? `
+              <label class="sm">From floor<input data-act="u-from" type="number" value="${u.floorFrom}"></label>
+              <label class="sm">To floor<input data-act="u-to" type="number" value="${u.floorTo}"></label>
+              <label class="sm">Units per floor<input data-act="u-per" type="number" value="${u.perFloor}"></label>
+              <span class="uh-eq" id="uq-${u.id}">${this.floorsReadout(u)}</span>
+              <button type="button" class="tquiet" data-act="u-floors-off">Enter a total instead</button>` : `
+              <label class="sm">Units<input data-act="u-qty" type="number" min="0" value="${q}"></label>
+              <button type="button" class="tquiet" data-act="u-floors-on" title="Floors 3 to 14, two per floor: the planner does the multiplication">Count by floor instead</button>`}
+            </div>
+          </div>
         </div>
       </div>
       <div class="unit-lead">
@@ -354,7 +424,12 @@ export class TradeUI {
         <span>${count} item${count === 1 ? '' : 's'} placed · cabinet rows derived from the design</span>
         <div class="unit-design-btns">
           <button class="sm" data-act="u-design" title="Reopen this unit's kitchen in the 3D designer">✎ Edit layout in 3D</button>
+        </div>
+        <div class="unit-docs">
+          <span class="ud-l">Documents · Rev ${esc(unitRev(u))}</span>
+          <button class="ghost sm" data-act="u-submittal" title="Architect-ready submittal PDF: cover, plan, elevations, schedule, cut sheets &amp; compliance">Submittal PDF</button>
           <button class="ghost sm" data-act="u-dxf" title="This unit's kitchen plan as AutoCAD DXF">DXF plan</button>
+          <button class="tquiet" data-act="u-rev" title="Bump the revision letter (records the date on this unit's revision history)">Start a new revision</button>
         </div>
       </div>
     </div>`;
@@ -468,6 +543,12 @@ export class TradeUI {
       if (await uiConfirm(this.t.demo ? 'Clear the example building and go back to the start? Nothing you typed is kept.' : 'Clear this project and go back to the start? Nothing you typed is kept. Save it first if you want it later.', { title: 'Start over', confirmLabel: 'Start over', cancelLabel: 'Keep it' })) this.startOver();
     });
     $('tDetails')?.addEventListener('toggle', (e) => { this._detailsOpen = e.target.open; });
+    $('tExports')?.addEventListener('toggle', (e) => { this._exportsOpen = e.target.open; });
+    $('tFoldAll')?.addEventListener('click', () => {
+      const all = this.t.units.every((u) => this._collapsed.has(u.id));
+      this._collapsed = new Set(all ? [] : this.t.units.map((u) => u.id));
+      this.render();
+    });
     $('tProject').addEventListener('input', () => { const b = $('tBar'); if (b) b.innerHTML = this.barHTML(); });
     $('tcName').addEventListener('input', (e) => this.store.setCustomer({ name: e.target.value }));
     $('tcEmail').addEventListener('input', (e) => this.store.setCustomer({ email: e.target.value }));
@@ -552,7 +633,22 @@ export class TradeUI {
     const el = e.target.closest('[data-act]'); if (!el) return;
     const u = this.unitFor(el); if (!u) return;
     const act = el.dataset.act;
-    if (act === 'u-del') { this.t.units = this.t.units.filter((x) => x.id !== u.id); this.store.touchTrade(); this.render(); }
+    if (act === 'u-del') {
+      const drop = () => { this.t.units = this.t.units.filter((x) => x.id !== u.id); this.store.touchTrade(); this.render(); };
+      // an empty card goes quietly; one with cabinets or a layout asks first
+      if (!u.design && !u.rows.some((r) => getCab(r.code))) return drop();
+      uiConfirm(`Remove ${unitName(u)} and its cabinet list${u.design ? ' and 3D layout' : ''} from the project?`,
+        { title: 'Remove this type', confirmLabel: 'Remove', cancelLabel: 'Keep it', danger: true }).then((ok) => { if (ok) drop(); });
+    }
+    else if (act === 'u-collapse') { this._collapsed.add(u.id); this.render(); }
+    else if (act === 'u-expand') { this._collapsed.delete(u.id); this.render(); }
+    else if (act === 'u-floors-on') { this._floorsOpen.add(u.id); this.render(); }
+    else if (act === 'u-floors-off') {
+      u.qty = unitQty(u);                          // keep the count the floors worked out
+      u.floorFrom = ''; u.floorTo = ''; u.perFloor = '';
+      this._floorsOpen.delete(u.id);
+      this.store.touchTrade(); this.render();
+    }
     else if (act === 'u-addrow') { u.rows.push(this.newRow()); this.store.touchTrade(); this.render(); }
     else if (act === 'u-design') { this.enterDesign(u); }
     else if (act === 'u-submittal') {
@@ -751,6 +847,10 @@ export class TradeUI {
     }
     const foot = document.getElementById(`uf-${u.id}`);
     if (foot) foot.innerHTML = this.unitFootHTML(u);
+    const title = document.getElementById(`ut-${u.id}`);
+    if (title) title.textContent = unitName(u);
+    const eq = document.getElementById(`uq-${u.id}`);
+    if (eq) eq.textContent = this.floorsReadout(u);
     const elev = document.getElementById(`ue-${u.id}`);
     if (elev) elev.innerHTML = this.elevationHTML(u);
     const cnt = document.getElementById(`un-${u.id}`);

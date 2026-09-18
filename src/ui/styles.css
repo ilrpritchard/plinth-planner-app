@@ -1246,6 +1246,8 @@ a.tlink:hover { background: var(--cream); color: var(--brown-deep); border-color
 body.approval-mode #modeSwitch,
 body.approval-mode .topbar-actions,
 body.approval-mode .unit-head-btns,
+body.approval-mode .tquiet,
+body.approval-mode [data-act="u-submittal"],
 body.approval-mode [data-act="u-addrow"],
 body.approval-mode [data-act="r-del"],
 body.approval-mode [data-act="u-dxf"],
@@ -1475,3 +1477,80 @@ body.mode-trade .topbar-guided { display: none; }
 /* the first-run tour card is retired (17 Sep 2026): the wizard is the one pop-up */
 #emptyState { display: none !important; }
 .budget-row[hidden], .budget-readout[hidden], .cost-delivery[hidden] { display: none !important; }
+
+/* ---- Project view, room to breathe (18 Sep 2026): fewer boxes, bigger targets,
+   one job per row. Quiet text actions for the rare or destructive; tiles with a
+   line of description for downloads; the unit head split into what / how many. ---- */
+#tradePanel button.sm, #tradePanel a.tlink { min-height: 34px; padding: 7px 14px; }
+.trade-head-slim { align-items: center; margin-bottom: 18px; }
+.trade-cloud { gap: 10px; align-items: center; }
+.trade-cloud-left { gap: 22px; }
+.tquiet {
+  font: inherit; font-size: 12px; color: var(--dim); background: none; border: 0; border-radius: 4px;
+  padding: 8px 2px; min-height: 34px; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px;
+  display: inline-flex; align-items: center;
+}
+.tquiet:hover { color: var(--cream-hi); text-decoration-color: currentColor; filter: none; background: none; }
+.tquiet-danger:hover { color: var(--red); }
+
+.unit-card { margin-bottom: 22px; }
+.unit-head { display: block; padding: 16px 18px 18px; }
+.unit-head-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 12px; }
+.unit-title { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 22px; line-height: 1.15; color: var(--cream-hi); margin: 0; letter-spacing: 0; }
+.unit-head-fields { gap: 14px 40px; align-items: flex-start; }
+.uh-group { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.uh-legend { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--cream); }
+.uh-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.unit-head-fields .sm input { width: 84px; }
+.uh-eq { align-self: flex-end; padding: 8px 2px; font-size: 13px; font-weight: 600; color: var(--cream-hi); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.unit-docs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 10px; margin-top: 2px; border-top: 1px solid var(--line); }
+.unit-docs .ud-l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-right: 4px; }
+.unit-design-meta .unit-docs button { align-self: auto; }
+
+/* cabinet rows: a taller row, and a delete that stays quiet until you reach for it */
+.unit-rows td { padding: 8px 14px; }
+#tradePanel .unit-rows button[data-act="r-del"] { min-height: 32px; width: 32px; padding: 0; font-size: 15px; line-height: 1; border-color: transparent; color: var(--dim); }
+#tradePanel .unit-rows button[data-act="r-del"]:hover { background: none; color: var(--red); border-color: rgba(217,117,106,0.5); }
+details.unit-fold > button[data-act="u-addrow"] { margin: 6px 14px 16px; }
+#tAddUnit { margin: 2px 0 10px; padding: 10px 18px; }
+
+/* folds: a plain-words hint beside the label */
+details.trade-fold > summary .tf-hint { text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--muted); }
+@media (max-width: 700px) { details.trade-fold > summary .tf-hint { display: none; } }
+
+/* downloads: grouped tiles, each says what is in the file */
+details.trade-fold > .trade-exports { display: block; padding: 6px 18px 20px; }
+.tx-group h4 { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--cream); margin: 16px 0 8px; }
+.tx-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.tx-tile {
+  display: flex; flex-direction: column; gap: 5px; align-items: flex-start; text-align: left;
+  font-family: inherit; cursor: pointer; padding: 14px 16px; min-height: 84px;
+  background: var(--paper); border: 1px solid var(--line-strong); border-radius: 8px; color: var(--cream);
+  transition: border-color 0.15s, background 0.15s;
+}
+.tx-tile:hover, .tx-tile:focus-visible { border-color: var(--cream); background: #fff; outline: none; filter: none; }
+.tx-tile strong { font-size: 13px; font-weight: 600; color: var(--cream-hi); }
+.tx-tile span { font-size: 12px; line-height: 1.45; color: var(--dim); }
+.tx-tile em { font-style: normal; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.tx-tile.tx-wait strong, .tx-tile.tx-wait span { opacity: 0.6; }
+@media (max-width: 860px) { .tx-tiles { grid-template-columns: 1fr; } .tx-tile { min-height: 0; } }
+
+/* folded unit cards: one line per kitchen type, the whole line opens it */
+.units-bar { display: flex; justify-content: space-between; align-items: center; margin: -4px 2px 6px; font-size: 12px; color: var(--dim); }
+.unit-tog { font: inherit; color: inherit; background: none; border: 0; padding: 4px 0; margin: 0; cursor: pointer; display: inline-flex; align-items: baseline; gap: 10px; text-align: left; letter-spacing: 0; }
+.unit-tog:hover { filter: none; color: var(--cream); }
+.ut-chev { font-family: var(--sans, inherit); font-style: normal; font-size: 16px; line-height: 1; width: 12px; flex: 0 0 auto; color: var(--cream); }
+.unit-card.unit-collapsed { margin-bottom: 10px; }
+.unit-sum {
+  width: 100%; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; text-align: left;
+  font: inherit; background: #fff; color: var(--cream); border: 0; border-radius: 0; padding: 16px 18px; cursor: pointer; letter-spacing: 0;
+}
+.unit-sum:hover { background: var(--paper); filter: none; }
+.unit-sum .us-name { font-family: var(--serif); font-style: italic; font-size: 20px; color: var(--cream-hi); line-height: 1.15; }
+.unit-sum .us-meta { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.unit-sum .us-flag { font-size: 11px; color: #a8741a; border: 1px solid rgba(168,116,26,0.4); border-radius: 10px; padding: 1px 8px; }
+.unit-sum .us-price { margin-left: auto; font-size: 13px; color: var(--cream); font-variant-numeric: tabular-nums; }
+.unit-sum .us-price i { font-style: normal; color: var(--dim); font-size: 12px; }
+.unit-sum .us-total { font-size: 16px; font-weight: 600; color: var(--cream-hi); font-variant-numeric: tabular-nums; min-width: 96px; text-align: right; }
+@media (max-width: 700px) { .unit-sum .us-price { margin-left: 26px; } }
