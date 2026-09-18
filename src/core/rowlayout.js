@@ -22,8 +22,25 @@ const CORNER_OUT = 24.25;            // a side run starts clear of the back run'
 const MAX_ITEMS = 80;
 const ROT = { back: 0, left: 90, right: 270 };
 
-/** @returns {{placements:Array<{code,x,z,rotDeg}>, unplaced:Array<{code,qty}>}} */
-export function planRowsLayout(rows, room) {
+/** Rows on a unit's list that its drawn layout does not hold yet (a cabinet
+ *  added to the list AFTER the unit was laid out): [{ code, qty }] still to stand. */
+export function rowsNotInDesign(rows, items) {
+  const have = new Map();
+  for (const it of items || []) have.set(it.code, (have.get(it.code) || 0) + 1);
+  const out = [];
+  for (const r of rows || []) {
+    const c = getCab(r && r.code);
+    if (!c || !c.placeable || c.notSupplied) continue;
+    const need = (Number(r.qty) || 0) - (have.get(c.code) || 0);
+    if (need > 0) out.push({ code: c.code, qty: need });
+  }
+  return out;
+}
+
+/** `existing` = items already standing in the room: they hold their wall space,
+ *  so new cabinets are stood in the gaps beside them, never on top.
+ *  @returns {{placements:Array<{code,x,z,rotDeg}>, unplaced:Array<{code,qty}>}} */
+export function planRowsLayout(rows, room, existing = []) {
   const W = room?.width || 144, D = room?.depth || 120;
   const minX = -W / 2, maxX = W / 2, minZ = -D / 2, maxZ = D / 2;
 
@@ -101,6 +118,27 @@ export function planRowsLayout(rows, room) {
     return wall === 'back' ? { x: along, z: minZ + off } : wall === 'left' ? { x: minX + off, z: along } : { x: maxX - off, z: along };
   };
 
+  // what already stands against a wall keeps its span (and clears the corners
+  // exactly like a freshly stood cabinet would)
+  for (const it of existing || []) {
+    const c = getCab(it && it.code);
+    if (!c || !c.placeable || it.island) continue;
+    if (c.type === 'APPLIANCES' && !['range', 'fridge', 'hood'].includes(c.appliance)) continue;   // sinks / cooktops ride in a base
+    const rot = ((((it.rotDeg || 0) % 360) + 360) % 360);
+    const wall = rot === 0 ? 'back' : rot === 90 ? 'left' : rot === 270 ? 'right' : null;
+    if (!wall) continue;
+    const gap = wall === 'back' ? (it.z - c.d / 2) - minZ : wall === 'left' ? (it.x - c.d / 2) - minX : maxX - (it.x + c.d / 2);
+    if (gap > 12) continue;                                        // not against that wall
+    const along = wall === 'back' ? it.x : it.z;
+    const ret = c.corner ? (c.type === 'FLOOR' ? CORNER_OUT : 12) : 0, retLeft = c.corner && c.cornerSide !== 'right';
+    const retLow = wall === 'left' ? !retLeft : retLeft;
+    const lo = along - c.w / 2 - (ret && retLow ? ret : 0), hi = along + c.w / 2 + (ret && !retLow ? ret : 0);
+    const hung = c.type === 'WALL' || c.type === 'COUNTER' || c.type === 'SHELF' || c.appliance === 'hood';
+    const span = [lo, hi]; if (c.type === 'TALL') span.tall = true;
+    occ[hung ? 'upper' : 'floor'][wall].push(span);
+    placed.push({ cab: c, wall, along, lo, hi, stacked: true });    // never offered as a stacker host: it may carry one already
+  }
+
   const placements = [], lost = new Map();
   const miss = (c) => lost.set(c.code, (lost.get(c.code) || 0) + 1);
   const stand = (cab, line) => {
@@ -132,7 +170,8 @@ export function planRowsLayout(rows, room) {
 
   // ---- stackers sit on a host of their own width, one each ----
   for (const s of stackers) {
-    const hostType = s.mountY === 86 ? 'TALL' : s.mountY === 84 ? 'WALL' : 'COUNTER';
+    // tall stackers are 25¼" deep (flush with the proud tall); wall + tall hosts now share the 86" top
+    const hostType = s.d > 20 ? 'TALL' : s.mountY === 86 ? 'WALL' : 'COUNTER';
     const host = placed.find((h) => !h.stacked && h.cab.type === hostType && !h.cab.corner && Math.abs(h.cab.w - s.w) < 0.5);
     if (!host) { miss(s); continue; }
     host.stacked = true;

@@ -69,12 +69,18 @@ export function tradeSummary(trade) {
  * placed items by code, count them, drop appliances/decor (not supplied).
  * Returns [{ code, qty }] sorted by family then code. Pure.
  */
-export function rowsFromDesign(items) {
+export function rowsFromDesign(items, accessories = null) {
   const byCode = new Map();
   for (const it of items || []) {
     const cab = getCab(it && it.code);
     if (!cab || !cab.placeable || cab.notSupplied) continue;
     byCode.set(cab.code, (byCode.get(cab.code) || 0) + 1);
+  }
+  // loose accessories chosen in the 3D session (cutlery / utensil drawer
+  // inserts…) are part of the unit's order too — they follow the cabinets
+  for (const [code, qty] of Object.entries(accessories || {})) {
+    const acc = getCab(code);
+    if (acc && acc.type === 'ACCESSORIES' && Number(qty) > 0) byCode.set(acc.code, Number(qty));
   }
   const order = { FLOOR: 0, WALL: 1, COUNTER: 3, TALL: 4 };
   return [...byCode.entries()]

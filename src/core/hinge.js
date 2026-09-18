@@ -36,6 +36,36 @@ export function hingeOf(cab, it = null) {
   return it && it.hinge === 'R' ? 'R' : 'L';
 }
 
+/** HER RULE (2026-09-18): a single-door upper beside the cooker hinges AWAY
+ *  from it, so its knob — on the leading edge — is the one nearest the cooker.
+ *  Returns the hinge each flanking upper should take: [{ id, hinge }]. Only the
+ *  nearest single-leaf WALL / COUNTER cabinet each side, within 12" of the
+ *  range / cooktop / hood, on the same wall. `getCab` is injected (no cycle). */
+export function hingesTowardCooker(state, getCab) {
+  const rot = (it) => ((((it.rotDeg || 0) % 360) + 360) % 360);
+  const along = (it) => ({ 0: it.x, 180: -it.x, 90: -it.z, 270: it.z })[rot(it)];       // viewer's left → right
+  const perp = (it) => (rot(it) % 180 === 0 ? it.z : it.x);
+  const out = new Map();
+  const items = (state.items || []).filter((it) => !it.island && rot(it) % 90 === 0);
+  for (const ck of items) {
+    const cc = getCab(ck.code);
+    if (!cc || !['range', 'hob', 'hood'].includes(cc.appliance)) continue;
+    const c0 = along(ck) - cc.w / 2, c1 = along(ck) + cc.w / 2;
+    let left = null, right = null;
+    for (const u of items) {
+      const uc = getCab(u.code);
+      if (!uc || uc.stacker || (uc.type !== 'WALL' && uc.type !== 'COUNTER') || !canFlipHinge(uc)) continue;
+      if (rot(u) !== rot(ck) || Math.abs(perp(u) - perp(ck)) > 16) continue;
+      const u0 = along(u) - uc.w / 2, u1 = along(u) + uc.w / 2;
+      if (u1 <= c0 + 1 && c0 - u1 <= 12 && (!left || u1 > left.edge)) left = { id: u.id, edge: u1 };
+      if (u0 >= c1 - 1 && u0 - c1 <= 12 && (!right || u0 < right.edge)) right = { id: u.id, edge: u0 };
+    }
+    if (left) out.set(left.id, 'L');       // hung on the far (left) side → knob by the cooker
+    if (right) out.set(right.id, 'R');
+  }
+  return [...out].map(([id, hinge]) => ({ id, hinge }));
+}
+
 const LABEL = { L: 'Left', R: 'Right', PAIR: 'Pair' };
 /** Schedule wording: 'Left' | 'Right' | 'Pair' | '' (nothing hinges). */
 export function hingeLabel(h) { return LABEL[h] || ''; }

@@ -6,7 +6,7 @@
 // Doors are hinged groups so they can swing open.
 
 import * as THREE from 'three';
-import { SPEC, mmToIn } from '../core/units.js';
+import { SPEC, mmToIn, MOUNT } from '../core/units.js';
 import {
   paintMat, oakMat, interiorMat, glassMat, brassMat,
   shadowMat, paintEdgeMat,
@@ -28,7 +28,7 @@ const FRAME_T = 0.14;
 const KNOB_INSET = 2.2;
 export const OPEN_ANGLE = THREE.MathUtils.degToRad(105);
 
-export const MOUNT = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5 };
+export { MOUNT };   // the one copy lives in core/units.js
 export const SURFACE_Y = 36.5;
 
 export function getMountY(cab) {

@@ -8,9 +8,10 @@
 
 import { getCab } from './catalogue.js';
 import { computeFillers } from './fillers.js';
+import { MOUNT, WALL_H, TALL_H } from './units.js';
 
 // cabinets that carry cornice, and the world Y of their top edge
-const TOP = { WALL: 54 + 30, TALL: 0 + 86, COUNTER: 36.5 + 50 };
+const TOP = { WALL: MOUNT.WALL + WALL_H, TALL: TALL_H, COUNTER: MOUNT.COUNTER + 50 };
 const QUALIFY = new Set(['WALL', 'TALL', 'COUNTER']);
 
 /** Is world point (px,pz) inside another qualifying cabinet's footprint?
@@ -36,6 +37,25 @@ function insideAnother(px, pz, self, cabs, topY = 0) {
     if (Math.abs(lx) <= o.w / 2 + 0.25 && Math.abs(lz) <= o.d / 2 + 0.25) return true;
   }
   return false;
+}
+
+/** A shallower upper (WALL / COUNTER, crown at least as high) butting this
+ *  tall's flank on `side`: how far forward it reaches in the tall's own depth
+ *  frame (front = +d/2). null when nothing shallower butts that flank. */
+function flankReturn(t, side, cabs, topY) {
+  const th = (t.it.rotDeg || 0) * Math.PI / 180, s = Math.sin(th), co = Math.cos(th);
+  let from = null;
+  for (const u of cabs) {
+    if (u === t || (u.cab.type !== 'WALL' && u.cab.type !== 'COUNTER')) continue;
+    if ((TOP[u.cab.type] || 0) < topY - 0.01) continue;
+    if (((u.it.rotDeg || 0) % 180) !== ((t.it.rotDeg || 0) % 180)) continue;
+    const dx = u.it.x - t.it.x, dz = u.it.z - t.it.z;
+    const along = dx * co - dz * s, depth = dx * s + dz * co;           // tall-local width / depth
+    if (Math.sign(along) !== side || Math.abs(along) - (t.w + u.w) / 2 > 2.5) continue;
+    const front = depth + u.d / 2;
+    if (front < t.d / 2 - 1) from = Math.max(from ?? -Infinity, front);
+  }
+  return from == null ? null : { from };
 }
 
 /**
@@ -113,7 +133,20 @@ export function planCornice(state) {
         (f.ox < -0.5 && cx <= minX + WALL_TOL) || (f.ox > 0.5 && cx >= maxX - WALL_TOL) ||
         (f.oz < -0.5 && cz <= minZ + WALL_TOL) || (f.oz > 0.5 && cz >= maxZ - WALL_TOL);
       if (onWall) continue;
-      if (insideAnother(cx + f.ox * 1.0, cz + f.oz * 1.0, c.it, cabs, topY)) continue;
+      if (insideAnother(cx + f.ox * 1.0, cz + f.oz * 1.0, c.it, cabs, topY)) {
+        // LEVEL TOPS (wall cabinets now top out with the talls at 86"): a TALL's
+        // flank is only hidden as far forward as the 14"-deep upper butting
+        // it. The crown returns along the rest — from the tall's proud face
+        // back to where the upper's crown dies into it — and mitres the corner.
+        const ret = i >= 2 && c.cab.type === 'TALL' && !c.filler ? flankReturn(c, i === 2 ? 1 : -1, cabs, topY) : null;
+        if (ret) {
+          const fx = s, fz = co, mid = (ret.from + c.d / 2) / 2, len = c.d / 2 - ret.from;
+          exposed[i] = true;
+          segments.push({ x: c.it.x + f.ox * f.half + fx * mid, z: c.it.z + f.oz * f.half + fz * mid, topY, angle: Math.atan2(f.ox, f.oz), length: len });
+          totalIn += len;
+        }
+        continue;
+      }
       exposed[i] = true;
       segments.push({ x: cx, z: cz, topY, angle: Math.atan2(f.ox, f.oz), length: f.len });
       totalIn += f.len;
@@ -149,6 +182,7 @@ export function planCornice(state) {
       const gap = Math.abs(tA - uA) - (t.w + u.w) / 2;
       if (gap > 2.5 || gap < -2) continue;               // must be butted side-by-side
       if (Math.abs(horiz ? t.it.z - u.it.z : t.it.x - u.it.x) > 14) continue;  // same run
+      if (TOP.TALL - TOP[u.cab.type] < 0.25) continue;   // tops level (or the upper higher): one crown line, nothing to connect
       const side = uA > tA ? 1 : -1;                     // which flank of the tall
       const th = (t.it.rotDeg || 0) * Math.PI / 180;
       const fx = Math.sin(th), fz = Math.cos(th);        // front dir

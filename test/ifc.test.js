@@ -120,8 +120,8 @@ test('geometry is inches: F20 (36×24×35in) extrudes 36×24 by 35', () => {
 });
 
 test('mount heights in inches: wall units lift 54in, counter 36.5in', () => {
-  // W2 placed at x=-96,z=-82.75 → point (-96, 82.75, 54)
-  assert.match(IFC, /IFCCARTESIANPOINT\(\(-96\.,82\.75,54\.\)\)/);
+  // W2 placed at x=-96,z=-82.75 → point (-96, 82.75, 56)
+  assert.match(IFC, /IFCCARTESIANPOINT\(\(-96\.,82\.75,56\.\)\)/);
   // C1 at x=40 → (40, 82.75, 36.5)
   assert.match(IFC, /IFCCARTESIANPOINT\(\(40\.,82\.75,36\.5\)\)/);
 });

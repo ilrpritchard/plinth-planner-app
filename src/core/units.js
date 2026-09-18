@@ -23,6 +23,14 @@ export function inToMm(inches) {
 // Plinth construction constants, converted from the published mm spec.
 // (Taken from the F2 elevation: flush 115mm plinth, 22mm legs each side,
 //  80mm face-frame stiles & rails.)
+// Mount heights (bottom of the box above the finished floor, inches) — the ONE
+// copy: 3D, elevations, DXF, IFC, cornice and warnings all import this.
+// WALL = 56 so a 30" wall cabinet tops out at 86", LEVEL WITH THE TALLS (her
+// rule 2026-09-18: "wall cabinets would always align with the tall cabinet at
+// the top"; was 54 / 84"). Leaves 19½" between worktop and upper.
+export const MOUNT = { FLOOR: 0, TALL: 0, WALL: 56, COUNTER: 36.5 };
+export const WALL_H = 30, TALL_H = 86;
+
 export const SPEC = {
   PANEL_IN: mmToIn(22),     // 22mm carcass panels
   LEG_IN: mmToIn(22),       // 22mm legs each side (visible carcass face edge)

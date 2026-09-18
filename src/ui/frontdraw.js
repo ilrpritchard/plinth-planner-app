@@ -270,6 +270,25 @@ export function drawFront(cab, s0, y0, Y, opts = {}) {
     }
   }
 
+  // opts.marks (elevations + cut sheets): how the fronts that do NOT side-hinge
+  // open. A dishwasher door DROPS DOWN — same convention, the dashed diagonals
+  // meet at its hinge edge, the bottom. A pull-out has no swing symbol in
+  // elevation practice (an X reads as a fixed panel / void), so it is lettered.
+  if (opts.marks) {
+    const leafs = fp.parts.filter((p) => p.k === 'rect' && p.cls === 'leaf');
+    if (cab.form === 'dishwasher') {
+      for (const p of leafs) {
+        const yT = Y(y0 + p.y + p.h), yB = Y(y0 + p.y);
+        out.push(`<polyline points="${n(X(p.x))},${n(yT)} ${n(X(p.x + p.w / 2))},${n(yB)} ${n(X(p.x + p.w))},${n(yT)}" fill="none" stroke="${LIGHT}" stroke-width="${P.W_18}" stroke-dasharray="2.2 1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`);
+      }
+    } else if (cab.form === 'bin' && leafs[0]) {
+      const p = leafs[0], fs = Math.min(2.2, Math.max(1.5, p.w * 0.11));
+      for (const [i, word] of ['PULL', 'OUT'].entries()) {
+        out.push(`<text x="${n(X(p.x + p.w / 2))}" y="${n(Y(y0 + p.y + p.h / 2) + (i - 0.5) * fs * 1.25)}" font-size="${n(fs)}" fill="#8a8a8a" text-anchor="middle" dominant-baseline="central" letter-spacing="0.5" paint-order="stroke" stroke="#fff" stroke-width="0.6">${word}</text>`);
+      }
+    }
+  }
+
   if (opts.code) {
     const halo = ' paint-order="stroke" stroke="#fff" stroke-width="0.7"';
     const floorStanding = cab.type === 'FLOOR' || cab.type === 'TALL';

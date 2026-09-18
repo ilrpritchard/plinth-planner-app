@@ -8,7 +8,11 @@ import { tradeSummary, unitQty, unitName, rowsFromDesign } from '../core/cost.js
 import { buildTradeOrderEmail } from '../core/order.js';
 import { buildCabinetLibraryDXF, buildPlanDXF } from '../core/dxf.js';
 import { buildUnitIFC } from '../core/ifc.js';
-import { ensureDxfEmail } from './dxfgate.js';
+import { ensureDxfEmail, ensureEmailGate } from './dxfgate.js';
+
+// documents never leave without an email on file (one email unlocks everything;
+// signed-in users and anyone who came through the Project-view gate pass silently)
+const DOC_GATE = { title: 'Where should we send updates?', sub: 'Leave your email to download the submittal. One email unlocks every document.', cta: 'Download' };
 import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
 import { bumpRev, unitRev } from '../core/submittal.js';
@@ -49,7 +53,7 @@ import { buildInvoiceModel } from '../core/invoice.js';
 import { buildInvoiceHTML } from './invoice.js';
 import { buildChangeOrderModel } from '../core/changeorder.js';
 import { buildChangeOrderHTML } from './changeorder.js';
-import { planRowsLayout } from '../core/rowlayout.js';
+import { planRowsLayout, rowsNotInDesign } from '../core/rowlayout.js';
 
 const BED_TYPES = ['Studio', '1 Bed', '2 Bed', '3 Bed', '4 Bed', 'Penthouse'];
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -93,7 +97,7 @@ export class TradeUI {
       if (u && cur.mode === 'home' && Array.isArray(cur.items) && cur.items.length) {
         const design = cur; design.mode = 'home'; delete design.trade;
         u.design = design;
-        u.rows = rowsFromDesign(design.items).map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
+        u.rows = rowsFromDesign(design.items, design.accessories).map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
       }
       this.store.replace(saved.stash);
       saveNow(this.store);            // on disk before the stash is dropped
@@ -191,7 +195,7 @@ export class TradeUI {
           ${tile('tUnitIFC', 'Revit / IFC model', 'Every unit type as an IFC4 model, to link or import into Revit.', true)}
           ${tile('tDxfLib', 'Cabinet library (DXF)', 'Every PL/NTH cabinet as a named AutoCAD block, front elevations.')}
         </div></div>
-        <div class="tx-group"><h4>For the architect</h4><div class="tx-tiles">
+        <div class="tx-group"><h4>Submittals</h4><div class="tx-tiles">
           ${tile('tSubmittalPack', 'Submittal pack (PDF)', 'Project cover, then plan, elevations, schedule, cut sheets and compliance for every unit type.', true)}
         </div></div>
       </div>`;
@@ -571,9 +575,10 @@ export class TradeUI {
     $('tCloudSave')?.addEventListener('click', () => this.cloudSave());
     $('tCloudOpen')?.addEventListener('click', () => this.cloudOpen());
     $('tCloudShare')?.addEventListener('click', () => this.cloudShare());
-    $('tSubmittalPack')?.addEventListener('click', () => {
+    $('tSubmittalPack')?.addEventListener('click', async () => {
       const designed = this.t.units.filter((u) => u.design);
       if (!designed.length) return toast('No designed units yet, hit “✎ Lay out this unit in 3D” first.');
+      if (!(await ensureEmailGate('submittal-pack', DOC_GATE))) return;
       openPrintWindow(buildSubmittalPackHTML(this.t));
       toast('Submittal pack ready: save it as a PDF from the print dialog.');
     });
@@ -654,8 +659,11 @@ export class TradeUI {
     else if (act === 'u-design') { this.enterDesign(u); }
     else if (act === 'u-submittal') {
       if (!u.design) return toast('Design this unit first. The submittal is built from its layout.');
-      openPrintWindow(buildSubmittalHTML({ project: this.t.project, unit: u, trade: this.t }));
-      toast('Submittal ready: save it as a PDF from the print dialog.');
+      ensureEmailGate('unit-submittal', DOC_GATE).then((ok) => {
+        if (!ok) return;
+        openPrintWindow(buildSubmittalHTML({ project: this.t.project, unit: u, trade: this.t }));
+        toast('Submittal ready: save it as a PDF from the print dialog.');
+      });
     }
     else if (act === 'u-rev') {
       const rev = bumpRev(u);
@@ -706,9 +714,25 @@ export class TradeUI {
     // mid-design can never lose the project (recovered on next boot)
     try { localStorage.setItem('plnr-trade-stash', JSON.stringify({ stash: this._stash, unitId: u.id })); } catch { /* storage full */ }
     let d, seeded = null;
-    if (u.design) d = JSON.parse(JSON.stringify(u.design));
-    else {
+    if (u.design) {
+      d = JSON.parse(JSON.stringify(u.design));
+      // cabinets added to the LIST after the unit was drawn (her catch: "I just
+      // added these cabinets and they don't show up in the 3D planner") are
+      // stood in the free wall space beside what is already there — Done
+      // re-derives the list from the layout, so leaving them out would drop them
+      const extra = rowsNotInDesign(u.rows, d.items);
+      if (extra.length) {
+        const plan = planRowsLayout(extra, d.room, d.items);
+        let nid = Math.max(Number(d.nextId) || 1, ...(d.items || []).map((it) => (it.id || 0) + 1));
+        d.items = (d.items || []).concat(plan.placements.map((p) => ({ id: nid++, code: p.code, x: p.x, z: p.z, rotDeg: p.rotDeg, finish: null })));
+        d.nextId = nid;
+        seeded = { placed: plan.placements.length, unplaced: plan.unplaced };
+      }
+    } else {
       d = this.store.serialize(); d.items = []; d.accessories = {};
+      // accessory rows on the list (drawer inserts, end panels…) ride into the
+      // session, or Done — which re-derives the list — would drop them
+      for (const r of u.rows || []) { if (getCab(r.code)?.type === 'ACCESSORIES' && Number(r.qty) > 0) d.accessories[r.code] = Number(r.qty); }
       // a hand-built cabinet list opens STOOD ALONG THE WALLS, not as an empty room:
       // Done re-derives the list from the layout, so an empty room used to mean
       // redrawing everything (or losing the list)
@@ -741,7 +765,7 @@ export class TradeUI {
     const t = this.t;
     const u = this.newUnit();
     u.design = design;
-    u.rows = rowsFromDesign(design.items || []).map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
+    u.rows = rowsFromDesign(design.items || [], design.accessories).map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
     t.units.push(u);
     this.store.touchTrade();
     this.render();
@@ -761,7 +785,7 @@ export class TradeUI {
       const su = (t.units || []).find((x) => x.id === this._designUnitId);
       if (su) {
         su.design = design;                        // JSONB-ready snapshot
-        su.rows = rowsFromDesign(design.items)     // manual rows → derived rows
+        su.rows = rowsFromDesign(design.items, design.accessories)     // manual rows → derived rows (inserts ride along)
           .map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
       }
     }

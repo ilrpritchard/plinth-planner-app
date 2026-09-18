@@ -3,7 +3,7 @@
 // problems before ordering. No DOM, no Three.js.
 
 import { getCab } from './catalogue.js';
-import { fmtIn } from './units.js';
+import { fmtIn, MOUNT } from './units.js';
 import { openingCenter, openingWidth } from './openings.js';
 
 // axis-aligned footprint extents (x half, z half) for an item, accounting for
@@ -67,7 +67,6 @@ export function computeWarnings(state) {
   // ---- 0b. cabinets standing taller than the ceiling ----
   // (stackers on top of the 86" tall run only fit under 9'+ ceilings)
   {
-    const MOUNT = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5 }; // matches models/cabinet.js
     const H = (r && r.height) || 96;
     for (const b of boxes) {
       const y0 = typeof b.cab.mountY === 'number' ? b.cab.mountY : (MOUNT[b.cab.type] ?? 0);

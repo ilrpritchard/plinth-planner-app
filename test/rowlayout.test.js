@@ -2,13 +2,13 @@
 // 3D" opens it (core/rowlayout.js). Hard rule 1 swept across list sizes and rooms.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { planRowsLayout } from '../src/core/rowlayout.js';
+import { planRowsLayout, rowsNotInDesign } from '../src/core/rowlayout.js';
 import { getCab, CATALOGUE } from '../src/core/catalogue.js';
 import { rowsFromDesign } from '../src/core/cost.js';
 import { buildDemoUnits } from '../src/core/tradedemo.js';
 import { openingCenter, openingWidth } from '../src/core/openings.js';
 
-const MOUNT = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5, SHELF: 54 };
+const MOUNT = { FLOOR: 0, TALL: 0, WALL: 56, COUNTER: 36.5, SHELF: 56 };
 const box3 = (it) => {
   const c = getCab(it.code), ret = c.corner ? (c.type === 'FLOOR' ? 20 : 10) : 0;
   const lR = (c.corner && c.cornerSide !== 'right') ? ret : 0, rR = (c.corner && c.cornerSide === 'right') ? ret : 0;
@@ -99,4 +99,18 @@ test('SWEEP: the example building, every orderable cabinet, and corner units: no
     runs++;
   }
   assert.ok(runs > 40, `swept ${runs} lists`);
+});
+
+// Her catch 2026-09-18: cabinets added to the LIST of a unit that already had a
+// (here: empty, then part-drawn) layout never reached the 3D room.
+test('cabinets added to the list after the unit was drawn are stood beside what is already there', () => {
+  const room = { width: 144, depth: 120, height: 96, openings: [] };
+  const rows = [{ code: 'F12', qty: 1 }, { code: 'F7', qty: 1 }];
+  assert.deepEqual(rowsNotInDesign(rows, []), rows, 'an empty layout is missing the whole list');
+  const drawn = [{ id: 1, code: 'F18', x: -60, z: -47.75, rotDeg: 0 }, { id: 2, code: 'F7', x: -36, z: -47.75, rotDeg: 0 }];
+  const extra = rowsNotInDesign([{ code: 'F18', qty: 2 }, { code: 'F7', qty: 1 }, { code: 'T1', qty: 1 }, { code: 'AP1', qty: 1 }], drawn);
+  assert.deepEqual(extra, [{ code: 'F18', qty: 1 }, { code: 'T1', qty: 1 }], 'only what the layout lacks; appliances never');
+  const plan = planRowsLayout(extra, room, drawn);
+  assert.equal(plan.placements.length, 2); assert.equal(plan.unplaced.length, 0);
+  assertClean([...drawn, ...plan.placements], room, 'existing + newly stood');
 });

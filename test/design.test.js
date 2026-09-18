@@ -106,11 +106,14 @@ test('cornice runs OVER a tall filler and drops down the tall\'s side to meet an
   // the filler carries moulding: some segment sits within the filler span (x < -68)
   assert.ok(plan.segments.some((seg) => seg.x < -66 || (seg.length > 3 && seg.x - seg.length / 2 < -67.5)),
     'no cornice over the tall filler');
-  // and a vertical drop connects the wall cabinet's cornice to the tall's
-  assert.equal(plan.drops.length, 1);
-  const d = plan.drops[0];
-  assert.ok(Math.abs(d.x - (-44)) < 1.5, `drop not on the tall's flank (x=${d.x})`);
-  assert.ok(d.y0 === 84 && d.y1 === 86, `drop levels ${d.y0}→${d.y1}`);
+  // wall cabinets top out LEVEL with the talls (86"): one crown line, so no
+  // vertical drop board; instead the tall's crown RETURNS along its flank from
+  // its proud face back to the 14"-deep upper's face
+  assert.equal(plan.drops.length, 0);
+  assert.ok(plan.segments.every((seg) => seg.topY === 86), 'every crown segment sits on the 86" line');
+  const ret = plan.segments.find((seg) => Math.abs(seg.x - (-44)) < 0.5 && seg.length > 6 && seg.length < 14);
+  assert.ok(ret, 'tall flank return forward of the upper is missing');
+  assert.ok(Math.abs(ret.length - 10) < 0.6, `flank return ${ret.length}" (tall 24" deep less the 14" upper)`);
   // both extras are PRICED (totalIn grows vs. a bare pair)
   const bare = planCornice({ ...s.serialize(), items: s.state.items.filter((i) => i.code === 'W2') });
   assert.ok(plan.totalIn > bare.totalIn, 'extra moulding not counted');

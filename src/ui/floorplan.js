@@ -110,21 +110,22 @@ export function buildFloorplanSVG(state, underlay = null, opts = {}) {
 // hangs the door, so the side is part of the order).
 // Returns the extra viewBox width it needs (0 when the plan is empty).
 /** The KEY's rows: [{ code, cab, hinge, qty, family }], one per code + hinge side. */
-export function planKeyRows(state) {
+export function planKeyRows(state, opts = {}) {
   const counts = new Map();
   for (const it of state.items || []) {
     const c = getCab(it.code);
     if (!c || !c.placeable) continue;
     const hinge = hingeOf(c, it);
-    const k = `${c.code}|${hinge || ''}`;
-    const row = counts.get(k) || { code: c.baseCode || c.code, cab: c, hinge, qty: 0,
+    const island = !!(opts.splitIsland && it.island);        // the submittal KEY lists the island on its own
+    const k = `${c.code}|${hinge || ''}|${island ? 'i' : ''}`;
+    const row = counts.get(k) || { code: c.baseCode || c.code, cab: c, hinge, island, qty: 0,
       family: c.type === 'APPLIANCES' ? 'Appliance' : (FAMILY_LABEL[familyOf(c)] || FAMILY_LABEL[c.type]) };
     row.qty++;
     counts.set(k, row);
   }
   const order = { FLOOR: 0, WALL: 1, SHELF: 2, COUNTER: 3, TALL: 4, APPLIANCES: 5 };
   return [...counts.values()]
-    .sort((a, b) => (order[a.cab.type] - order[b.cab.type]) || a.cab.code.localeCompare(b.cab.code, 'en', { numeric: true })
+    .sort((a, b) => (Number(a.island) - Number(b.island)) || (order[a.cab.type] - order[b.cab.type]) || a.cab.code.localeCompare(b.cab.code, 'en', { numeric: true })
       || String(a.hinge).localeCompare(String(b.hinge)));
 }
 

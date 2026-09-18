@@ -14,6 +14,7 @@
 import { sinkSpec } from './sinkspec.js';
 
 const OVERHANG = 1.0;   // proud of a door front / island edge
+export const ISLAND_END_OVERHANG = 50 / 25.4;   // 50mm past each END of an island run (her spec 2026-09-18)
 const SEATING = 12;     // breakfast-bar overhang past an island back (300mm)
 const CONNECT = 9.6;    // cabinets within this gap (incl. a 9\" max filler) share a slab
 const WALL_NEAR = 9.6;  // a run end this close to a wall extends to it (fills).
@@ -42,6 +43,7 @@ export function planWorktopSlabs(items, getCab, defaultMat = 'marble', room = nu
       x0: it.x - hw, x1: it.x + hw, z0: it.z - hd, z1: it.z + hd,
       mat: it.worktop || defaultMat,
       seating: !!it.seating,          // island breakfast-bar overhang (+z side)
+      island: !!it.island,
     };
     // a CORNER cabinet's blank return extends the footprint one side — the
     // worktop must cover it too, so the surface turns the corner continuously.
@@ -133,21 +135,25 @@ export function planWorktopSlabs(items, getCab, defaultMat = 'marble', room = nu
     // seating: any flagged cell turns the cluster's open +z edge into a
     // breakfast-bar overhang (stool side), instead of the 1" lip
     const seatOver = cluster.some((c) => c.seating) ? SEATING : OVERHANG;
-    const tL = tallFace(x0, -1, 'x', z0, z1, OVERHANG);
-    const tR = tallFace(x1, +1, 'x', z0, z1, OVERHANG);
-    const tB = tallFace(z0, -1, 'z', x0, x1, OVERHANG);
+    // an ISLAND's two ends (along its run) carry 50mm; its long edges keep the 1" lip
+    const isl = cluster.every((c) => c.island), runX = cluster[0].horiz;
+    const overX = isl && runX ? ISLAND_END_OVERHANG : OVERHANG;
+    const overZ = isl && !runX ? ISLAND_END_OVERHANG : OVERHANG;
+    const tL = tallFace(x0, -1, 'x', z0, z1, overX);
+    const tR = tallFace(x1, +1, 'x', z0, z1, overX);
+    const tB = tallFace(z0, -1, 'z', x0, x1, overZ);
     const tF = tallFace(z1, +1, 'z', x0, x1, seatOver);
     if (room) {
       const minX = -room.width / 2, maxX = room.width / 2, minZ = -room.depth / 2, maxZ = room.depth / 2;
-      x0 = tL != null ? tL : (x0 - minX <= WALL_NEAR) ? minX : x0 - OVERHANG;
-      x1 = tR != null ? tR : (maxX - x1 <= WALL_NEAR) ? maxX : x1 + OVERHANG;
-      z0 = tB != null ? tB : (z0 - minZ <= WALL_NEAR) ? minZ : z0 - OVERHANG;
-      z1 = tF != null ? tF : (maxZ - z1 <= WALL_NEAR) ? maxZ : z1 + seatOver;
+      x0 = tL != null ? tL : (x0 - minX <= WALL_NEAR) ? minX : x0 - overX;
+      x1 = tR != null ? tR : (maxX - x1 <= WALL_NEAR) ? maxX : x1 + overX;
+      z0 = tB != null ? tB : (z0 - minZ <= WALL_NEAR) ? minZ : z0 - overZ;
+      z1 = tF != null ? tF : (maxZ - z1 <= WALL_NEAR) ? maxZ : z1 + (seatOver > OVERHANG ? seatOver : Math.max(seatOver, overZ));
     } else {
-      x0 = tL != null ? tL : x0 - OVERHANG;
-      x1 = tR != null ? tR : x1 + OVERHANG;
-      z0 = tB != null ? tB : z0 - OVERHANG;
-      z1 = tF != null ? tF : z1 + seatOver;
+      x0 = tL != null ? tL : x0 - overX;
+      x1 = tR != null ? tR : x1 + overX;
+      z0 = tB != null ? tB : z0 - overZ;
+      z1 = tF != null ? tF : z1 + (seatOver > OVERHANG ? seatOver : Math.max(seatOver, overZ));
     }
 
     // material: most common across the cluster (usually uniform)

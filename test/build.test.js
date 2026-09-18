@@ -116,7 +116,7 @@ ok('T9 oven housing keeps exactly 1 hinged door', t9.userData.doors.length===1);
 
 // mount heights correct per family + appliances
 ok('FLOOR mount 0', getMountY(getCab('F1'))===0);
-ok('WALL mount 54', getMountY(getCab('W1'))===54);
+ok('WALL mount 56: a 30" wall cabinet tops out level with the 86" talls', getMountY(getCab('W1'))===56 && 56 + getCab('W1').h === getCab('T1').h);
 ok('COUNTER mount 36.5', getMountY(getCab('C1'))===36.5);
 ok('TALL mount 0', getMountY(getCab('T1'))===0);
 ok('hob mounts on worktop 36.5', getMountY(getCab('AP4'))===36.5);

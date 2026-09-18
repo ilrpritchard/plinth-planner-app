@@ -355,3 +355,22 @@ test('no perpendicular near-clash between non-corner cabinets, any width', () =>
     }
   }
 });
+
+// Her catch 2026-09-18 (3D screenshot, 168" U): the right corner unit stopped 9½"
+// short of the right leg with its oak return on show. A sliver too big for the
+// leg-inset (<= 5.5") OR the filler (<= 9") alone now takes both.
+test('U-shape: the right corner unit always meets the right leg, leg to leg, at every width', () => {
+  let seen = 0;
+  for (const w of [150, 156, 168, 180, 192, 204, 216, 240]) for (const d of [120, 132, 150, 168]) for (let seed = 1; seed <= 8; seed++) {
+    const store = buildKitchen('u-shape', w, d, seed);
+    const its = store.state.items;
+    const cr = its.find((it) => getCab(it.code)?.corner && getCab(it.code).cornerSide === 'right');
+    const leg = its.filter((it) => (it.rotDeg || 0) === 270 && ['FLOOR', 'TALL'].includes(getCab(it.code).type));
+    if (!cr || !leg.length) continue;
+    seen++;
+    const first = leg.reduce((a, b) => (a.z < b.z ? a : b)), fc = getCab(first.code);
+    const bodyR = cr.x + getCab(cr.code).w / 2, legFront = first.x - fc.d / 2;
+    assert.ok(Math.abs(legFront - bodyR) <= 1.5, `${w}x${d} seed ${seed}: corner body ${bodyR.toFixed(1)} vs right leg front ${legFront.toFixed(1)}`);
+  }
+  assert.ok(seen > 100, `swept ${seen} U-shapes`);
+});

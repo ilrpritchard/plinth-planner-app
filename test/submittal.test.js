@@ -68,7 +68,7 @@ ok('alongWall round-trip', near(alongWall(design.room, 'back', -57, 0), 15));
 
 // mount heights match the 3D (models/cabinet.js MOUNT)
 ok('floor cabs mount at 0', byId(2).y0 === 0 && byId(1).y0 === 0);
-ok('wall cabs mount at 54', byId(6).y0 === 54 && byId(6).y0 + byId(6).h === 84);
+ok('wall cabs mount at 56, tops level with the talls at 86', byId(6).y0 === 56 && byId(6).y0 + byId(6).h === 86 && byId(1).h === 86);
 ok('mountY: counter 36.5, hood 58', mountY(getCab('C1')) === 36.5 && mountY(getCab('AP8')) === 58);
 
 // dimension chain: continuous run 3→141, segments sum to the run, wall dim = 144
@@ -87,7 +87,7 @@ ok('right filler: 3" wide, base height, ends at wall', near(fR.s0, 141) && fR.h 
 // crown: runs over the tall AND its tall scribe filler, and over each upper
 ok('crown spans exist (cornice=plain)', back.crowns.length >= 2);
 ok('crown covers the tall filler to the wall', back.crowns.some((c) => c.s0 <= 0.1 && near(c.top, 86)));
-ok('crown over uppers at 84', back.crowns.some((c) => near(c.top, 84)));
+ok('crown over uppers at 86, the same line as the talls', back.crowns.every((c) => near(c.top, 86)));
 
 // worktop: over base runs only — never over the range
 ok('worktop spans = 2 (broken at the range)', back.worktops.length === 2);
@@ -158,10 +158,10 @@ ok('says cabinets, never casework', !/casework/i.test(html) && html.includes('CA
 ok('no placeholder project name, no "trade" in the title block', !html.includes('PL/NTH trade project') && !html.includes('TRADE SUBMITTAL'));
 ok('no "Made with PL/NNER" stamp', !html.includes('Made with'));
 ok('disclaimer names the Buyer, not "the client"', html.includes('as entered by the Buyer') && !/the client/i.test(html));
-ok('cover says Color, never prints the internal hex', html.includes('Color: Hudson') && !/#[0-9a-f]{6}\s*<\/td>/i.test(html));
+ok('cover carries a big COLOR tile, never the internal hex as text', html.includes('class="color-tile"') && html.includes('<small>COLOR</small>Hudson') && !/#[0-9a-f]{6}\s*<\/td>/i.test(html));
 ok('worktop is "By others", material never named', html.includes('<td>By others</td>') && !html.includes('<td>Marble</td>'));
-ok('plinth is not site-scribed (cabinets arrive ready to install)', !html.includes('site-scribed') && html.includes('ready to install'));
-ok('hinge is the designed side, never "site-selectable"', !html.includes('site-selectable') && html.includes('Hinge: Left hung'));
+ok('plinth is not site-scribed, and the finish schedule carries no plinth row', !html.includes('site-scribed') && !html.includes('<th>Plinth</th><td>115mm'));
+ok('hinge is the designed side, never "site-selectable"', !html.includes('site-selectable') && html.includes('<th>Hinge</th><td>Left hung</td>'));
 ok('schedule carries a HINGE column', html.includes('<th>HINGE</th>') && sched.rows.find((r) => r.code === 'T1').hinge === 'Left'
   && sched.rows.find((r) => r.code === 'F10').hinge === 'Pair' && sched.rows.find((r) => r.code === 'F18').hinge === '');
 const anon = buildSubmittalHTML({ unit, trade: { address: '12 Rockledge Rd' }, date: 'July 8, 2026' });
@@ -221,6 +221,42 @@ ok('6 base/wall SKUs share one cut sheet', cutSheetPages(skus).length === 1 && c
 // ---- plan sheet: big drawing, KEY beside it in HTML -------------------------------------
 ok('plan sheet: KEY is an HTML table beside a key-less, tight-margin drawing', html.includes('class="plan-key"') && html.includes('<table class="cab key">')
   && !html.slice(html.indexOf('plan-fig'), html.indexOf('</svg>', html.indexOf('plan-fig'))).includes('>KEY<'));
+
+
+// ---- her second markup (2026-09-18), locked ------------------------------------------
+ok('a TITLE PAGE fronts the document: PL/NTH cabinets for <project>, then the address', anon.indexOf('class="sheet title"') > -1
+  && anon.indexOf('class="sheet title"') < anon.indexOf('PROJECT DIRECTORY') && anon.includes('PL/NTH CABINETS FOR') && anon.includes('<h1>12 Rockledge Rd</h1>'));
+{
+  const named = buildSubmittalHTML({ unit, trade: { project: 'Rockledge', address: '12 Rockledge Rd' }, date: 'July 8, 2026' });
+  ok('named project: name is the headline, address beneath', named.includes('<h1>Rockledge</h1>') && named.includes('class="tp-addr">12 Rockledge Rd<'));
+}
+ok('notes are a ruled NOTES block, never a loose paragraph', html.includes('class="notes"') && !html.includes('class="fig-note">Interior'));
+ok('worktop STOPS DEAD at the range and the wall, 1" lip only on an open end', back.worktops.every((wt) => wt.overL === 0 || wt.overL === 1)
+  && back.worktops.find((wt) => near(wt.s1, 87)).overR === 0 && back.worktops.find((wt) => near(wt.s1, 144)).overR === 0);
+{
+  const tallRun = computeElevation({ ...design, items: [{ id: 1, code: 'F18', x: -40, z: -47.75, rotDeg: 0 }, { id: 2, code: 'T1', x: -16, z: -46.57, rotDeg: 0 }] }, 'back');
+  ok('worktop dies into a butting tall (no overhang past its face), open end keeps the lip', near(tallRun.worktops[0].s1, -16 - 12 + 72) && tallRun.worktops[0].overR === 0 && tallRun.worktops[0].overL === 1);
+}
+ok('crown is drawn as built: a slim 22mm bar, not a 1½" band', svg.includes(`height="${Math.round((22 / 25.4) * 100) / 100}"`) && !svg.includes('height="1.5" fill="#fff"'));
+{
+  const dwBin = buildElevationSVG(computeElevation({ ...design, items: [{ id: 1, code: 'F2', x: -40, z: -47.75, rotDeg: 0 }, { id: 2, code: 'F7', x: -16, z: -47.75, rotDeg: 0 }, { id: 3, code: 'F21', x: 6, z: -47.75, rotDeg: 0 }, { id: 4, code: 'F18', x: 28, z: -47.75, rotDeg: 0 }] }, 'back'));
+  ok('dishwasher door shows a drop-down V; a pull-out is lettered, never crossed', (dwBin.match(/stroke-dasharray="2.2 1.6"/g) || []).length === 2
+    && dwBin.includes('>PULL<') && dwBin.includes('>OUT<'));
+}
+{
+  const withInserts = scheduleRows({ ...design, accessories: { A4: 2 } });
+  const a4 = withInserts.rows.find((r) => r.code === 'A4');
+  ok('drawer inserts chosen in 3D are scheduled and priced', a4 && a4.qty === 2 && a4.accessory && near(withInserts.subtotal - sched.subtotal, a4.each * 2, 0.01));
+  ok('no inserts → schedule unchanged', !sched.rows.some((r) => r.accessory));
+}
+{
+  const sinkDesign = { ...design, items: design.items.concat([{ id: 30, code: 'AP7', x: -3, z: -47.75, rotDeg: 0 }]) };
+  const sh = buildSubmittalHTML({ project: 'P', unit: { ...unit, design: sinkDesign }, date: 'July 8, 2026' });
+  ok('wherever there is a sink: the base it needs + what its base takes', sh.includes('needs a 33&quot; base or wider') && sh.includes('F10 is a sink base') && sh.includes('cut-out up to 34&quot; wide'));
+}
+ok('spec sheet: inches first with mm in brackets, headed PRODUCT SPECIFICATION', html.includes('PRODUCT SPECIFICATION') && html.includes('4&#189;" (115mm)')
+  && html.includes('&#8542;" (22mm)') && !html.includes('80mm stiles'));
+ok('cut cards are a label / value grid', html.includes('<table class="cut-spec">') && html.includes('<th>Size</th>') && !html.includes('cut-notes'));
 
 console.log(`\nsubmittal.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

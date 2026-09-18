@@ -48,10 +48,11 @@ test('S-series stackers are hung, flagged, priced, in two heights', () => {
   for (const cab of stackers) {
     assert.match(cab.code, /^S\d+$/, `${cab.code} is an S-code`);
     assert.equal(cab.type, 'WALL', `${cab.code} is hung (never floor-standing)`);
-    assert.ok([84, 86, 86.5].includes(cab.mountY), `${cab.code} mounts on a host top`);
+    assert.ok([86, 86.5].includes(cab.mountY), `${cab.code} mounts on a host top`);
     assert.ok([15, 21].includes(cab.h));
     // depth matches the host family: talls proud → 25.25", wall/counter → 14"
-    assert.ok(Math.abs(cab.d - (cab.mountY === 86 ? 25.25 : 14)) < 0.01,
+    // (wall hosts now top out at 86" too, level with the talls, so the desc names the family)
+    assert.ok(Math.abs(cab.d - (/fits T/.test(cab.desc) ? 25.25 : 14)) < 0.01,
       `${cab.code} depth matches its host family`);
     assert.ok(sellUSD(cab) > 0);
     // desc names the HOST CABINET CODES it fits (her spec), not dimensions
@@ -61,7 +62,7 @@ test('S-series stackers are hung, flagged, priced, in two heights', () => {
 });
 
 test('every stacker desc lists exactly its matching host codes', () => {
-  const hostFam = (s) => (s.mountY === 86 ? 'TALL' : s.mountY === 84 ? 'WALL' : 'COUNTER');
+  const hostFam = (s) => (s.d > 20 ? 'TALL' : s.mountY === 86 ? 'WALL' : 'COUNTER');
   const hosts = CATALOGUE.filter((c) =>
     ['WALL', 'TALL', 'COUNTER'].includes(c.type) && c.placeable && !c.corner && !c.stacker);
   for (const s of CATALOGUE.filter((c) => c.stacker)) {
@@ -76,7 +77,7 @@ test('EVERY wall/tall/counter cabinet has a stacker that fits it exactly', () =>
   // her spec: "check that all the stackers are the correct size to fit on top
   // of all the wall, tall, counter cabinets" — width equal, mount at the
   // host's top, both heights available. Corners excluded (blank returns).
-  const MOUNT = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5 };
+  const MOUNT = { FLOOR: 0, TALL: 0, WALL: 56, COUNTER: 36.5 };
   const top = (c) => (typeof c.mountY === 'number' ? c.mountY : MOUNT[c.type] ?? 0) + c.h;
   const stackers = CATALOGUE.filter((c) => c.stacker);
   const hosts = CATALOGUE.filter((c) =>

@@ -193,8 +193,8 @@ test('plan DXF: 3D kitchen — inch units, blocks INSERTed per cabinet, no appli
   // 3D content: polyface meshes for carcasses + INSERTs lifted/rotated
   assert.ok(dxf.includes('\nPOLYLINE\n'), 'carcass polyface meshes present');
   assert.ok(dxf.includes('\n70\n64\n'), 'polyface-mesh flag set');
-  // the W2 wall cabinet hangs at 54" (INSERT z)
-  assert.ok(dxf.includes('\n30\n54\n'), 'wall cabinet INSERT at mount height');
+  // the W2 wall cabinet hangs at 56" (INSERT z): its top is level with the 86" talls
+  assert.ok(dxf.includes('\n30\n56\n'), 'wall cabinet INSERT at mount height');
   // the rotated island block carries a rotation (group 50 = 180)
   assert.ok(dxf.includes('\n50\n180\n'), 'island INSERT rotated 180°');
   // MOVABILITY (client-reported, Revit/AutoCAD): modelspace holds ONLY wall

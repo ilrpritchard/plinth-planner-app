@@ -21,10 +21,11 @@
 // byte-for-byte (`opts.timestamp` defaults to '' for the same reason).
 
 import { getCab } from './catalogue.js';
+import { MOUNT } from './units.js';
 
 // mount heights (inches, z of the unit's underside) — mirrors models/cabinet.js
 // MOUNT and dxf.js MOUNT_IN. Appliances carry their own cab.mountY instead.
-const MOUNT_IN = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5 };
+const MOUNT_IN = MOUNT;
 
 // vertical gap between successive storeys in the file (inches) so unit types
 // read as stacked floors instead of overlapping ghosts when the model is opened

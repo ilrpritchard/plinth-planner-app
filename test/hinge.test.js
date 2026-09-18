@@ -53,5 +53,23 @@ ok('cut sheet: drawers draw no swing', !skuGlyphSVG(cab('F18'), null).includes('
 const plan = buildFloorplanSVG(design);
 ok('plan KEY has a HINGE column and splits F2 left / right', plan.includes('>HINGE<') && plan.includes('>Left<') && plan.includes('>Right<') && plan.includes('>Pair<'));
 
+// her rule: an upper beside the cooker hinges AWAY from it (knob nearest the cooker)
+{
+  const { hingesTowardCooker } = await import('../src/core/hinge.js');
+  const st = { items: [
+    { id: 1, code: 'AP2', x: 0, z: -46.75, rotDeg: 0 }, { id: 2, code: 'AP8', x: 0, z: -49.75, rotDeg: 0 },
+    { id: 3, code: 'W2', x: -30, z: -52.75, rotDeg: 0, hinge: 'R' },      // left of the hood: must hang LEFT
+    { id: 4, code: 'W2', x: 30, z: -52.75, rotDeg: 0 },                   // right of the hood: must hang RIGHT
+    { id: 5, code: 'W2', x: 54, z: -52.75, rotDeg: 0 },                   // not next to the cooker: untouched
+    { id: 6, code: 'W5', x: -60, z: -52.75, rotDeg: 0 },                  // a pair: never touched
+  ] };
+  const got = Object.fromEntries(hingesTowardCooker(st, getCab).map((h) => [h.id, h.hinge]));
+  ok('uppers flanking the cooker hinge away from it', got[3] === 'L' && got[4] === 'R' && !(5 in got) && !(6 in got));
+  // left wall (rot 90): viewer's left is +z
+  const side = { items: [{ id: 1, code: 'AP1', x: -58.75, z: 0, rotDeg: 90 }, { id: 2, code: 'W2', x: -64.75, z: 28, rotDeg: 90 }, { id: 3, code: 'W2', x: -64.75, z: -28, rotDeg: 90 }] };
+  const gs = Object.fromEntries(hingesTowardCooker(side, getCab).map((h) => [h.id, h.hinge]));
+  ok('same rule on a side wall, in the viewer\'s frame', gs[2] === 'L' && gs[3] === 'R');
+}
+
 console.log(`\nhinge.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

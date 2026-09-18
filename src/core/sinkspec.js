@@ -32,6 +32,32 @@ export function sinkSpec(cab) {
   };
 }
 
+/** The narrowest base cabinet this sink goes in: the maker's figure when there
+ *  is one, else the bowl cut-out + 2" (1" of carcass each side), never under 24". */
+export function sinkMinBase(cab) {
+  return cab.minBase || Math.max(24, Math.ceil(sinkSpec(cab).cutW + 2));
+}
+
+/** The widest bowl CUT-OUT a base of this width takes (the same 2" rule, reversed). */
+export const maxSinkCutout = (baseW) => baseW - 2;
+
+/** Every sink on the plan with the base it sits in: [{ sink, sinkCab, base, baseCab }]. */
+export function sinkHosts(state) {
+  const out = [];
+  for (const r of state.items || []) {
+    const rc = getCab(r.code);
+    if (!rc || rc.appliance !== 'sink') continue;
+    const base = (state.items || []).find((b) => {
+      const bc = getCab(b.code);
+      if (!hostable(bc)) return false;
+      const o = localOffset(b, bc, r.x, r.z);
+      return Math.abs(o.along) < o.hw && Math.abs(o.across) < o.hd;
+    });
+    out.push({ sink: r, sinkCab: rc, base: base || null, baseCab: base ? getCab(base.code) : null });
+  }
+  return out;
+}
+
 /** Every sink, narrow to wide, for the selection bar's size picker. */
 export function sinkSizes(code) {
   const cur = getCab(code);
@@ -85,7 +111,7 @@ export function bestBaseFor(state, rider, preferRot = null) {
     let score;
     if (rider.appliance === 'sink') {
       if (!(c.form === 'door' || c.form === 'double') || /cooktop/i.test(c.desc)) continue;
-      const need = rider.minBase || Math.max(24, Math.ceil(sinkSpec(rider).cutW + 2));
+      const need = sinkMinBase(rider);
       score = c.w >= need ? c.w - need : 100 + (need - c.w);          // snuggest base that is big enough
     } else {
       const prepped = /cooktop/i.test(c.desc);

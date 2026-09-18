@@ -13,15 +13,25 @@ import { getCab, sellUSD, familyOf } from './catalogue.js';
 import { rowsFromDesign } from './cost.js';
 import { computeFillers } from './fillers.js';
 import { openingCenter, openingWidth } from './openings.js';
-import { SPEC } from './units.js';
+import { SPEC, MOUNT as UNIT_MOUNT, fmtIn } from './units.js';
 import { hingeSummary, sharedHinge } from './hinge.js';
 
-// mount heights — MUST match src/models/cabinet.js MOUNT (the 3D truth)
-export const MOUNT = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5, SHELF: 54 };
+// mount heights — the one copy in core/units.js (the 3D uses the same)
+export const MOUNT = { ...UNIT_MOUNT, SHELF: UNIT_MOUNT.WALL };
 export const SURFACE_Y = 36.5;              // top of the worktop
 export const WORKTOP_SLAB = 1.5;            // 35" carcass + 1.5" slab = 36.5"
 export const PLINTH_IN = SPEC.PLINTH_IN;    // 115mm flush plinth = 4.53"
-export const CROWN_IN = 1.5;                // drawn crown band height
+// crown, as built (models/cornice.js): plain = one 22mm bar, 15mm proud of the
+// face; decorative = three stepped layers. [{ outer, h }] bottom → top, inches.
+export const CROWN_PROFILE = {
+  plain: [{ outer: 15 / 25.4, h: 22 / 25.4 }],
+  decorative: [{ outer: 0.55, h: 0.6 }, { outer: 1.185, h: 0.75 }, { outer: 1.32, h: 0.28 }],
+};
+export const crownLayers = (profile) => CROWN_PROFILE[profile] || CROWN_PROFILE.plain;
+export const CROWN_IN = CROWN_PROFILE.plain[0].h;   // kept for callers that only need the plain height
+export const WT_OVERHANG = 1.0;                       // worktop lip past an OPEN run end (hard rule 8)
+export const WT_ISLAND_END = 50 / 25.4;               // 50mm past each end of an island
+const WT_WALL_NEAR = 9.6;                             // same reach as core/worktop-plan.js
 
 export const WALL_ORDER = ['back', 'left', 'right', 'front'];
 const WALL_ROT = { back: 0, left: 90, front: 180, right: 270 };
@@ -196,7 +206,7 @@ export function computeElevation(design, wall) {
   const L = wallLength(room, wall);
   const H = room.height || 96;
 
-  const worktops = worktopSpans(items, fillers);
+  const worktops = worktopSpans(items, fillers, L);
 
   // crown spans over WALL / TALL / COUNTER tops (+ tall scribe fillers)
   let crowns = [];
@@ -208,16 +218,31 @@ export function computeElevation(design, wall) {
     crowns = mergeSpans(spans, 2.5).map((s) => ({ s0: s.s0, s1: s.s1, top: s.top }));
   }
 
-  return { wall, wallLen: L, height: H, items, fillers, openings, worktops, crowns, chain: dimChain(items) };
+  return { wall, wallLen: L, height: H, items, fillers, openings, worktops, crowns, crownProfile: room.cornice || 'none', chain: dimChain(items) };
 }
 
-/** Worktop spans: contiguous FLOOR cabinets (incl. corner returns) + base fillers. */
-function worktopSpans(items, fillers = []) {
+/** Worktop spans: contiguous FLOOR cabinets (incl. corner returns) + base
+ *  fillers, with each END resolved the way the 3D slab is (hard rule 8): it
+ *  STOPS DEAD at a butting tall / range / fridge, runs on to a near wall, and
+ *  only an open end carries the 1" lip (overL / overR; an island end = 50mm). */
+function worktopSpans(items, fillers = [], wallLen = null, island = false) {
   const wtSpans = items
     .filter((i) => i.type === 'FLOOR')
     .map((i) => ({ s0: i.runS0 ?? i.s0, w: (i.runS1 ?? i.s0 + i.w) - (i.runS0 ?? i.s0), top: 0 }))
     .concat(fillers.filter((f) => f.h <= 40).map((f) => ({ s0: f.s0, w: f.w, top: 0 })));
-  return mergeSpans(wtSpans, 1.0).map((s) => ({ s0: s.s0, s1: s.s1 }));
+  const stops = items.filter((i) => i.y0 === 0 && (i.type === 'TALL' ||
+    (i.type === 'APPLIANCES' && ['range', 'fridge'].includes(i.cab.appliance))));
+  return mergeSpans(wtSpans, 1.0).map((sp) => {
+    const out = { s0: sp.s0, s1: sp.s1, overL: WT_OVERHANG, overR: WT_OVERHANG };
+    if (island) { out.overL = out.overR = WT_ISLAND_END; return out; }
+    const butL = stops.find((t) => Math.abs((t.runS1 ?? t.s0 + t.w) - sp.s0) <= 2);
+    const butR = stops.find((t) => Math.abs((t.runS0 ?? t.s0) - sp.s1) <= 2);
+    if (butL) { out.s0 = butL.runS1 ?? butL.s0 + butL.w; out.overL = 0; }
+    else if (wallLen != null && sp.s0 <= WT_WALL_NEAR) { out.s0 = 0; out.overL = 0; }
+    if (butR) { out.s1 = butR.runS0 ?? butR.s0; out.overR = 0; }
+    else if (wallLen != null && wallLen - sp.s1 <= WT_WALL_NEAR) { out.s1 = wallLen; out.overR = 0; }
+    return out;
+  });
 }
 
 /** Bottom chain: floor-standing widths (talls, bases, ranges/fridges), gaps italic. */
@@ -303,7 +328,7 @@ export function computeIslandElevation(design, face) {
     wall: null, island: true, title: face.title, toward: face.toward,
     refLen: Math.max(design.room.width, design.room.depth),   // draw at the wall elevations' scale, not blown up to the sheet
     wallLen: hi, height: top + 8, items, fillers: [], openings: [],
-    worktops: worktopSpans(items), crowns: [], chain: dimChain(items),
+    worktops: worktopSpans(items, [], null, true), crowns: [], chain: dimChain(items),
   };
 }
 
@@ -313,9 +338,12 @@ export function computeIslandElevation(design, face) {
  *  '1 Left · 2 Right' | '') — the workshop hangs the doors, so it is part of
  *  the order. */
 export function scheduleRows(design) {
-  const rows = rowsFromDesign(design.items).map((r) => {
+  const rows = rowsFromDesign(design.items, design.accessories).map((r) => {
     const cab = getCab(r.code);
     const each = sellUSD(cab);
+    if (cab.type === 'ACCESSORIES') {            // drawer inserts etc: priced, no size / hinge
+      return { code: cab.code, desc: cab.desc, type: 'ACCESSORIES', hinge: '', w: 0, d: 0, h: 0, qty: r.qty, each, line: each * r.qty, accessory: true };
+    }
     return {
       code: cab.code, desc: cab.desc, type: familyOf(cab),   // display family (stackers get their own)
       hinge: hingeSummary(cab, (design.items || []).filter((it) => it.code === r.code), true),
@@ -342,11 +370,18 @@ export function distinctSkus(design) {
       const notes = [];
       const hung = hingeSummary(cab, its);           // the side(s) AS DESIGNED — doors ship hung, never site-selectable
       if (hung) notes.push(`Hinge: ${hung} (viewed facing the front)`);
+      // the same facts as a label / value GRID for the cut card
+      const specs = [['Size', `W ${fmtIn(cab.w)} · D ${fmtIn(cab.d)} · H ${fmtIn(cab.h)}`]];   // (quantity rides in the card's header)
+      if (hung) specs.push(['Hinge', hung]);
+      if (cab.corner) specs.push(['Corner', `+${cab.type === 'FLOOR' ? 20 : 10}" blank return into the corner`]);
+      if (cab.glazed) specs.push(['Glazing', 'Clear glass']);
+      if (cab.type === 'FLOOR' || cab.type === 'TALL') specs.push(['Plinth', '4½" (115mm) painted, flush fit']);
+      if (cab.notes) specs.push(['Detail', cab.notes]);
       if (cab.corner) notes.push(`Corner unit — +${cab.type === 'FLOOR' ? 20 : 10}" blank return into the corner`);
       if (cab.notes) notes.push(cab.notes);
       if (cab.glazed) notes.push('Glazed door(s), clear glass');
-      if (cab.type === 'FLOOR' || cab.type === 'TALL') notes.push('115mm (4½") painted plinth, flush fit');
-      return { cab, code, qty, notes, hinge: sharedHinge(cab, its) };
+      if (cab.type === 'FLOOR' || cab.type === 'TALL') notes.push('4½" (115mm) painted plinth, flush fit');
+      return { cab, code, qty, notes, specs, hinge: sharedHinge(cab, its) };
     })
     .sort((a, b) => ((order[a.cab.type] ?? 9) - (order[b.cab.type] ?? 9))
       || a.code.localeCompare(b.code, 'en', { numeric: true }));
@@ -364,8 +399,8 @@ const CUT_PAGE_MM = 150, CUT_ROW_GAP_MM = 6;
 
 /** Estimated printed height (mm) of one cut card. */
 export function cutCardMM(sku) {
-  const lines = sku.notes.reduce((t, nt) => t + Math.ceil(nt.length / 58), 0);
-  return (sku.cab.h + 18) * CUT_MM_PER_IN + 19 + lines * 3.4;
+  const lines = (sku.specs || []).reduce((t, [, v]) => t + Math.ceil(String(v).length / 46), 0);
+  return (sku.cab.h + 18) * CUT_MM_PER_IN + 13 + lines * 3.7;
 }
 
 /** skus → pages → the skus on each page (rows of 3, max 2 rows a page). */

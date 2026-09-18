@@ -11,6 +11,7 @@ import { getMountY } from '../models/cabinet.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
 import { planBudgetSwaps } from '../core/budget.js';
 import { cookerWindowClashes } from '../core/warnings.js';
+import { hingesTowardCooker } from '../core/hinge.js';
 import { designRationale } from '../core/rationale.js';
 
 // ---- voice: the same wizard, two registers ---------------------------------
@@ -623,6 +624,14 @@ export class Wizard {
           const sliver = (maxX - (rc.x + cw / 2)) - (sideD + 0.25);  // residual at the corner
           if (sliver > 0.05 && sliver <= 5.5) rightLegInset = sliver;
           else if (sliver > 5.5 && sliver <= 9) this.store.updateItem(rc.id, { x: rc.x + sliver }, { quiet: true });
+          // a sliver too big for either trick alone (her catch 2026-09-18: a 168"
+          // U left the corner unit 9½" short of the right leg, oak return on show)
+          // takes BOTH: the leg pulls off its wall by the full 5½" and the corner
+          // slides out over a filler for the rest — the junction stays leg to leg
+          else if (sliver > 9 && sliver <= 14.5) {
+            rightLegInset = 5.5;
+            this.store.updateItem(rc.id, { x: rc.x + (sliver - 5.5) }, { quiet: true });
+          }
         }
       }
     }
@@ -791,6 +800,8 @@ export class Wizard {
     }
     this._groundCounters();                              // counter cabinets touch their wall
     this._resolveOverlaps();                             // HARD RULE: nothing ever overlaps
+    // her rule: an upper beside the cooker hinges away from it (knob nearest the cooker)
+    for (const h of hingesTowardCooker(this.store.state, getCab)) this.store.updateItem(h.id, { hinge: h.hinge }, { quiet: true });
     // Rule: on a big L-shape, offer an island (the results bar shows the button).
     const shape = this.lastShape || this.shape;
     this._canIsland = shape === 'l-shape' && this._roomFitsIsland();
@@ -963,15 +974,18 @@ export class Wizard {
     });
   }
 
-  /** Subset-sum pack of a stretch (`inches`) with the given units, widest first,
-   *  so the row fills the stretch as completely as possible. */
+  /** Subset-sum pack of a stretch (`inches`) with the given units. FEWEST, WIDEST
+   *  cabinets win (her note: a 44" stretch reads better as ONE 36" double than
+   *  as a 24 + a 20): each extra cabinet costs as much as 12" left unfilled, so
+   *  doubles are chosen wherever they fit and the group is centred. */
   _packStretch(inches, units) {
     const cap = Math.floor(inches + 0.5);
     if (cap < 20) return [];
     const reach = new Array(cap + 1).fill(null);
-    reach[0] = { prev: -1, c: null };
-    for (let s = 0; s <= cap; s++) { if (!reach[s]) continue; for (const u of units) { const ns = s + u.w; if (ns <= cap && !reach[ns]) reach[ns] = { prev: s, c: u.c }; } }
-    let best = -1; for (let s = cap; s >= 20; s--) { if (reach[s]) { best = s; break; } }
+    reach[0] = { prev: -1, c: null, n: 0 };
+    for (let s = 0; s <= cap; s++) { if (!reach[s]) continue; for (const u of units) { const ns = s + u.w; if (ns <= cap && (!reach[ns] || reach[ns].n > reach[s].n + 1)) reach[ns] = { prev: s, c: u.c, n: reach[s].n + 1 }; } }
+    let best = -1, bestScore = Infinity;
+    for (let s = cap; s >= 20; s--) { if (!reach[s]) continue; const sc = reach[s].n * 12 + (cap - s); if (sc < bestScore) { bestScore = sc; best = s; } }
     if (best <= 0) return [];
     const out = []; for (let s = best; s > 0; s = reach[s].prev) out.push(reach[s].c);
     return out;

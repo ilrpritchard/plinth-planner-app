@@ -22,6 +22,7 @@
 // testable in plain node.
 
 import { CATALOGUE, getCab } from './catalogue.js';
+import { MOUNT } from './units.js';
 import { openingCenter, openingWidth } from './openings.js';
 
 // ---- low-level group-code helpers ----------------------------------------
@@ -402,7 +403,7 @@ export function buildCabinetLibraryDXF() {
 
 // mount heights (inches, z of the unit's underside) — mirrors models/cabinet.js
 // MOUNT (not imported: dxf.js stays free of Three.js so it runs in plain node)
-const MOUNT_IN = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5 };
+const MOUNT_IN = MOUNT;
 
 /** Mount height (mm) of a cabinet's underside — mirrors models/cabinet.js. */
 function mountMM(cab) {
