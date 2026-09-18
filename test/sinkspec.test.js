@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getCab, CATALOGUE } from '../src/core/catalogue.js';
-import { sinkSpec, sinkSizes, baseUnder, bestBaseFor, SINK_BASES } from '../src/core/sinkspec.js';
+import { sinkSpec, sinkSizes, baseUnder, bestBaseFor, canHost, overDishwasher, SINK_BASES } from '../src/core/sinkspec.js';
 import { snapPosition } from '../src/interaction/snapping.js';
 import { subtractSinkCutouts, sinkCornerFillets } from '../src/core/worktop-plan.js';
 import { computeWarnings } from '../src/core/warnings.js';
@@ -130,5 +130,41 @@ test('Sink base shortcuts are real SKUs, big enough for their sink, never a new 
     assert.ok(base.w >= (sink.minBase || sinkSpec(sink).cutW + 2), `${c.id}: ${base.code} is big enough for ${sink.code}`);
     assert.equal(getCab(c.id), undefined, `${c.id} is a shortcut, not a SKU`);
   }
+});
+
+// ---- her rule 2026-09-18 (screenshot: a sink snapped onto the F7 front): a sink
+// can NEVER sit over a dishwasher; it only centres on a door / double base ----
+test('a sink never lands on the dishwasher front: not by centring, not by dropping, and old designs are flagged', () => {
+  const st = new Store(); st.setRoom({ width: 144, depth: 120, height: 96 }); const z = -60 + 12.25;
+  const dw = st.addItem('F7', { x: -60, z }), door = st.addItem('F2', { x: -36, z }), drawers = st.addItem('F18', { x: -12, z });
+  for (const code of ['F7', 'F29']) assert.equal(canHost(getCab(code), getCab('AP6')), false, `${code} never hosts a sink`);
+  for (const code of ['F7', 'F29']) assert.equal(canHost(getCab(code), getCab('AP4')), false, `${code} never hosts a cooktop`);
+  assert.equal(canHost(getCab('F18'), getCab('AP6')), false, 'nor does a drawer bank take a sink');
+  assert.equal(canHost(getCab('F21'), getCab('AP6')), false, 'nor the bin');
+  assert.ok(canHost(getCab('F2'), getCab('AP6')) && canHost(getCab('F10'), getCab('AP19')), 'door and double bases do');
+  assert.ok(canHost(getCab('F30'), getCab('AP5')) && canHost(getCab('F20'), getCab('AP5')), 'a cooktop sits over drawers / a cooktop base');
+
+  const sink = st.addItem('AP6', { x: 40, z: 20 });
+  // pointer right over the dishwasher: the nearest SINK base is the door cabinet beside it
+  const s1 = snapPosition(st, sink.id, dw.x, z, bounds);
+  assert.ok(!(Math.abs(s1.x - dw.x) < 0.01 && Math.abs(s1.z - z) < 0.01), 'never centred on the dishwasher');
+  assert.ok(!overDishwasher(st.state, getCab('AP6'), s1.x, s1.z, s1.rotDeg), 'wherever it lands, it is clear of the dishwasher');
+  // with no sink base in reach, a drop over the dishwasher is refused and pings back
+  st.removeItem(door.id);
+  const s2 = snapPosition(st, sink.id, dw.x, z, bounds);
+  assert.equal(s2.flag, 'dishwasher');
+  assert.deepEqual([s2.x, s2.z], [40, 20], 'stays where it was');
+  // a saved design that already has one is called out
+  st.updateItem(sink.id, { x: dw.x, z });
+  assert.match(computeWarnings(st.state).map((w) => w.msg).join(' | '), /sitting over the dishwasher/);
+  void drawers;
+});
+
+test('a wide sink on the base NEXT to a dishwasher is fine as long as its bowl stays off it', () => {
+  const st = new Store(); st.setRoom({ width: 144, depth: 120, height: 96 }); const z = -60 + 12.25;
+  st.addItem('F7', { x: -60, z }); const base = st.addItem('F10', { x: -30, z });
+  const sink = st.addItem('AP19', { x: 40, z: 20 });
+  const s = snapPosition(st, sink.id, -30, z, bounds);
+  assert.deepEqual([s.x, s.z, s.flag], [base.x, z, undefined], 'a 33" sink centres on the 36" double beside the dishwasher');
 });
 

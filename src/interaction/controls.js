@@ -142,6 +142,7 @@ export class PointerControls {
       offwall: '✕ Wall, counter & tall cabinets sit against a wall',
       corner: '✕ Corner units live in corners: the blank return meets the adjoining run',
       oven: '✕ A wall oven lives in an oven housing of its size',
+      dishwasher: '✕ Nothing sits over the dishwasher: a sink needs a door or double base',
     };
     if (snapped.flag) this._showRuleFlag(RULE_MSG[snapped.flag] || '✕ Not allowed there', e);
     else this._hideRuleFlag();

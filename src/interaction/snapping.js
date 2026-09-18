@@ -7,7 +7,7 @@ import { getFootprint, getMountY } from '../models/cabinet.js';
 import { mmToIn } from '../core/units.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
 import { isOven, findOvenHost } from '../core/ovenseat.js';
-import { baseUnder } from '../core/sinkspec.js';
+import { baseUnder, overDishwasher } from '../core/sinkspec.js';
 
 const WALL_SNAP = 16;   // perpendicular distance to a wall that triggers snap
 const EDGE_SNAP = 9;    // distance between neighbouring edges that triggers butt
@@ -362,8 +362,13 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // cabinet"): same spot and rotation as the base, which is where the wizard
   // seats one. Away from every base it moves freely, as before.
   if ((cab.appliance === 'sink' || cab.appliance === 'hob') && !flag) {
-    const base = baseUnder(store.state, rawX, rawZ);
+    const base = baseUnder(store.state, rawX, rawZ, 7, cab);
     if (base) { x = base.x; z = base.z; rotDeg = base.rotDeg || 0; }
+  }
+  // RULE (her call 2026-09-18): a sink or cooktop NEVER sits over a dishwasher
+  // front. There is a machine behind that door. The drop pings back.
+  if ((cab.appliance === 'sink' || cab.appliance === 'hob') && !flag && overDishwasher(store.state, cab, x, z, rotDeg)) {
+    x = item.x; z = item.z; rotDeg = item.rotDeg || 0; flag = 'dishwasher';
   }
 
   // RULE: the sink/hob lives IN the worktop — it never butts against a tall,

@@ -5,6 +5,7 @@
 import { getCab } from './catalogue.js';
 import { fmtIn, MOUNT } from './units.js';
 import { openingCenter, openingWidth } from './openings.js';
+import { overDishwasher } from './sinkspec.js';
 
 // axis-aligned footprint extents (x half, z half) for an item, accounting for
 // 90°/270° rotation. Returns center + half-sizes in inches.
@@ -116,6 +117,10 @@ export function computeWarnings(state) {
       (f.hz + b.hz) - Math.abs(f.z - b.z) > 2);
     if (!supported) {
       out.push({ level: 'warn', msg: `${b.cab.desc} isn’t over a base cabinet — sit it on a sink/cooktop base so it has support.` });
+    }
+    // a sink or cooktop over the dishwasher front: there is a machine behind that door
+    if (overDishwasher(state, b.cab, b.x, b.z, b.it.rotDeg || 0)) {
+      out.push({ level: 'error', msg: `${b.cab.desc} is sitting over the dishwasher. Move it onto a door or double base cabinet: nothing can be fitted above a dishwasher.` });
     }
     // the maker's minimum base: a 30" or 33" bowl will not drop into a 24" carcass
     if (supported && b.cab.minBase) {

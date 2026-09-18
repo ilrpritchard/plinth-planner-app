@@ -80,11 +80,37 @@ function localOffset(base, cab, x, z) {
   return { along: dx * c - dz * sn, across: dx * sn + dz * c, hw: cab.w / 2, hd: cab.d / 2 };
 }
 
-export function baseUnder(state, x, z, reach = 7) {
+/** Can this base take this rider? A SINK drops into a door or double base and
+ *  nothing else: never the dishwasher front (F7 / F29: there is a machine behind
+ *  it, her screenshot 2026-09-18 had a sink snapped onto one), never a drawer
+ *  bank, bin, tray space or cooktop-prepped base. A COOKTOP sits over drawers, a
+ *  double or a cooktop base. */
+export function canHost(baseCab, rider) {
+  if (!hostable(baseCab) || baseCab.form === 'dishwasher') return false;
+  if (!rider) return true;
+  if (rider.appliance === 'sink') return (baseCab.form === 'door' || baseCab.form === 'double') && !/cooktop/i.test(baseCab.desc || '');
+  if (rider.appliance === 'hob') return baseCab.form === 'drawers' || baseCab.form === 'double' || /cooktop/i.test(baseCab.desc || '');
+  return true;
+}
+
+/** Is any part of this sink / cooktop over a dishwasher front? (footprints overlap by more than `tol`) */
+export function overDishwasher(state, rider, x, z, rotDeg = 0, tol = 1.5) {
+  const half = (c, r) => { const th = ((r || 0) * Math.PI) / 180; return [Math.abs(Math.cos(th)) * c.w / 2 + Math.abs(Math.sin(th)) * c.d / 2, Math.abs(Math.sin(th)) * c.w / 2 + Math.abs(Math.cos(th)) * c.d / 2]; };
+  const sp = rider.appliance === 'sink' ? sinkSpec(rider) : null;
+  const [rx, rz] = half(sp ? { w: sp.cutW, d: sp.cutD } : rider, rotDeg);   // a sink is judged by its BOWL opening, not its rim
+  return (state.items || []).some((it) => {
+    const c = getCab(it.code);
+    if (!c || c.form !== 'dishwasher') return false;
+    const [hx, hz] = half(c, it.rotDeg);
+    return (rx + hx) - Math.abs(it.x - x) > tol && (rz + hz) - Math.abs(it.z - z) > tol;
+  });
+}
+
+export function baseUnder(state, x, z, reach = 7, rider = null) {
   let best = null, bestScore = Infinity;
   for (const it of state.items || []) {
     const cab = getCab(it.code);
-    if (!hostable(cab)) continue;
+    if (!canHost(cab, rider)) continue;
     const o = localOffset(it, cab, x, z);
     const outAlong = Math.max(0, Math.abs(o.along) - o.hw), outAcross = Math.max(0, Math.abs(o.across) - o.hd);
     if (outAlong > reach || outAcross > reach + 6) continue;   // a sink dragged in from the room side still catches
