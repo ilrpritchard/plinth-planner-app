@@ -28,7 +28,7 @@ export function designRationale(state) {
 
   const sink = find((it) => appliance(it) === 'sink')[0];
   const range = find((it) => appliance(it) === 'range')[0] || find((it) => appliance(it) === 'hob')[0];
-  const oven = find((it) => it.code === 'T9')[0];
+  const oven = find((it) => getCab(it.code)?.form === 'ovenHousing')[0];
   const fridge = find((it) => it.code === 'T3' || it.code === 'T4' || appliance(it) === 'fridge')[0];
   const dw = find((it) => it.code === 'F7')[0];
   const bin = find((it) => it.code === 'F21' || it.code === 'F22')[0];

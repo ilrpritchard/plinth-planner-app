@@ -557,8 +557,11 @@ function buildFront(g, cab, ctx) {
       const y0 = openCenterY - openH / 2, openTop = openCenterY + openH / 2;
       const doorH = openH * 0.26;                    // low cupboard door
       const drawH = openH * 0.09;                    // slim drawer-style panel
-      const ovenH = 29;                              // 24" single wall oven front
-      hingedDoor(g, doors, { w: faceW, h: doorH, mat, glazed: false, frontZ, hingeX: (ctx.hinge ?? -1) * faceW / 2, centerY: y0 + doorH / 2, hingeSign: ctx.hinge ?? -1, handle });
+      const ovenH = cab.w >= 36 ? 24 : 29;           // single wall oven front: 24" / 30" ovens stand ~29", a 36" is lower and wider
+      if (cab.w >= 36) {                             // T15: a 36"+ face takes a door PAIR, never one yard-wide door
+        const colW = faceW / 2 - REVEAL / 2;
+        for (const sgn of [-1, 1]) hingedDoor(g, doors, { w: colW, h: doorH, mat, glazed: false, frontZ, hingeX: sgn * faceW / 2, centerY: y0 + doorH / 2, hingeSign: sgn, handle });
+      } else hingedDoor(g, doors, { w: faceW, h: doorH, mat, glazed: false, frontZ, hingeX: (ctx.hinge ?? -1) * faceW / 2, centerY: y0 + doorH / 2, hingeSign: ctx.hinge ?? -1, handle });
       g.add(flatDrawer(faceW, drawH - REVEAL, mat, ctx.frontFlush, y0 + doorH + REVEAL + (drawH - REVEAL) / 2, handle));
       const oy0 = y0 + doorH + drawH + 2 * REVEAL;   // oven fascia bottom (~33")
       // gallery-style oven front (the Gaggenau idiom): ONE uninterrupted

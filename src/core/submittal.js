@@ -312,7 +312,7 @@ export function roughInPointsOnWall(design, wall) {
     } else if (ap === 'range' || ap === 'hob') {
       out.push({ kind: 'range', wall, x: mid(e), height: ROUGHIN_HEIGHTS.range, label: 'RANGE point (gas/elec)', note: 'centered behind range' });
     } else if (e.cab.form === 'ovenHousing') {
-      out.push({ kind: 'wallOven', wall, x: mid(e), height: ROUGHIN_HEIGHTS.wallOven, label: 'WALL-OVEN point', note: 'T9 oven housing' });
+      out.push({ kind: 'wallOven', wall, x: mid(e), height: ROUGHIN_HEIGHTS.wallOven, label: 'WALL-OVEN point', note: `${e.cab.code} oven housing` });
     } else if (ap === 'hood') {
       out.push({ kind: 'hood', wall, x: mid(e), height: H, label: 'HOOD duct — duct above', note: 'centered over range/hob' });
     } else if (ap === 'fridge') {

@@ -60,6 +60,20 @@ ok(`built all appliances (${apps})`, apps===13);   // AP10 prep sink + AP11/12 f
     Math.sign(g.userData.doors[0].userData.openAngle)===-Math.sign(g.userData.doors[1].userData.openAngle));
 }
 
+// T14/T15 oven housings for 30" and 36" wall ovens, sized like the T11/T12
+// column housings (appliance width + 3"); the 39" face takes a door PAIR below the oven
+{
+  const t9 = getCab('T9'), t14 = getCab('T14'), t15 = getCab('T15');
+  ok('T14 houses a 30" oven in 33"', !!t14 && t14.type==='TALL' && t14.form==='ovenHousing' && t14.w===33 && t14.ovenW===30 && t14.h===86 && t14.d===24);
+  ok('T15 houses a 36" oven in 39"', !!t15 && t15.type==='TALL' && t15.form==='ovenHousing' && t15.w===39 && t15.ovenW===36 && t15.h===86 && t15.d===24);
+  ok('sized like the T11/T12 column housings: nominal appliance width + 3"', t14.w===getCab('T11').w && t15.w===getCab('T12').w && t14.w-t14.ovenW===3 && t15.w-t15.ovenW===3);
+  ok('wider housings cost more than T9, in order', t9.usd < t14.usd && t14.usd < t15.usd);
+  ok('T14 keeps one low door', buildCabinet(t14, FINISHES[0].hex, {}).userData.doors.length===1);
+  const g15 = buildCabinet(t15, FINISHES[0].hex, {});
+  ok('T15 has a door pair opening opposite ways', g15.userData.doors.length===2 &&
+    Math.sign(g15.userData.doors[0].userData.openAngle)===-Math.sign(g15.userData.doors[1].userData.openAngle));
+}
+
 // AP12/AP13 sized integrated fridges: 72" french-door and 30" over-under
 {
   const a12 = CATALOGUE.find(c=>c.code==='AP12'), a13 = CATALOGUE.find(c=>c.code==='AP13');

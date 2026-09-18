@@ -160,7 +160,11 @@ function drawFront(p, cab, a) {
       const dy = oyv + ovenH + rev;
       p.push(rect(ox + rev, dy, ow - 2 * rev, drawH - rev, 1));            // drawer panel
       knob(p, ox + ow / 2, dy + (drawH - rev) / 2);
-      doorPanel(ox + rev, dy + drawH, ow - 2 * rev, oy + oh - (dy + drawH) - rev, +1); // low door
+      const ldh = oy + oh - (dy + drawH) - rev;
+      if (cab.w >= 36) {                                                   // door pair under a 36" oven
+        const lw = (ow - 3 * rev) / 2;
+        doorPanel(ox + rev, dy + drawH, lw, ldh, +1); doorPanel(ox + 2 * rev + lw, dy + drawH, lw, ldh, -1);
+      } else doorPanel(ox + rev, dy + drawH, ow - 2 * rev, ldh, +1);       // low door
       break;
     }
     case 'larder': {

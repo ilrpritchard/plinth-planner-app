@@ -379,7 +379,7 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
   // ---- MEP ROUGH-IN (A-5xx): one sheet per wall carrying utility points ----
   const KIND_LABEL = {
     sink: 'Plumbing: waste + hot/cold supply', dishwasher: 'Electrical: dishwasher outlet',
-    range: 'Gas / electrical: range point', wallOven: 'Electrical: wall-oven point (T9)',
+    range: 'Gas / electrical: range point', wallOven: 'Electrical: wall-oven point (oven housing)',
     hood: 'Ventilation: hood duct centerline', fridge: 'Electrical: refrigerator receptacle',
   };
   roughInWalls(design).forEach((wall, i) => {

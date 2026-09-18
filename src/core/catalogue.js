@@ -82,15 +82,15 @@ const RAW = [
   { code: 'S2', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T10)', w: 27, d: 25.25, h: 15, hinge: 'L&R', usd: 1707, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 9\'+ ceilings.' },
   { code: 'S3', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T2, T5, T6)', w: 28, d: 25.25, h: 15, hinge: 'L&R', usd: 1738, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
   { code: 'S4', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T4, T9)', w: 30, d: 25.25, h: 15, hinge: 'n/a', usd: 1905, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
-  { code: 'S5', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T11)', w: 33, d: 25.25, h: 15, hinge: 'n/a', usd: 2011, mountY: 86, notes: 'Sits on the T11 panel-ready housing. For 9\'+ ceilings.' },
-  { code: 'S6', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T12)', w: 39, d: 25.25, h: 15, hinge: 'n/a', usd: 2178, mountY: 86, notes: 'Sits on the T12 panel-ready housing. For 9\'+ ceilings.' },
+  { code: 'S5', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T11, T14)', w: 33, d: 25.25, h: 15, hinge: 'n/a', usd: 2011, mountY: 86, notes: 'Sits on the T11 panel-ready housing or the T14 oven housing. For 9\'+ ceilings.' },
+  { code: 'S6', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T12, T15)', w: 39, d: 25.25, h: 15, hinge: 'n/a', usd: 2178, mountY: 86, notes: 'Sits on the T12 panel-ready housing or the T15 oven housing. For 9\'+ ceilings.' },
   { code: 'S7', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T7, T8, T13)', w: 44, d: 25.25, h: 15, hinge: 'n/a', usd: 2315, mountY: 86, notes: 'Sits on the 44" double larder. For 9\'+ ceilings.' },
   { code: 'S8', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T1, T3)', w: 24, d: 25.25, h: 21, hinge: 'L&R', usd: 1798, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
   { code: 'S9', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T10)', w: 27, d: 25.25, h: 21, hinge: 'L&R', usd: 1874, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 10\'+ ceilings.' },
   { code: 'S10', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T2, T5, T6)', w: 28, d: 25.25, h: 21, hinge: 'L&R', usd: 1905, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
   { code: 'S11', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T4, T9)', w: 30, d: 25.25, h: 21, hinge: 'n/a', usd: 2072, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
-  { code: 'S12', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T11)', w: 33, d: 25.25, h: 21, hinge: 'n/a', usd: 2178, mountY: 86, notes: 'Sits on the T11 panel-ready housing. For 10\'+ ceilings.' },
-  { code: 'S13', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T12)', w: 39, d: 25.25, h: 21, hinge: 'n/a', usd: 2345, mountY: 86, notes: 'Sits on the T12 panel-ready housing. For 10\'+ ceilings.' },
+  { code: 'S12', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T11, T14)', w: 33, d: 25.25, h: 21, hinge: 'n/a', usd: 2178, mountY: 86, notes: 'Sits on the T11 panel-ready housing or the T14 oven housing. For 10\'+ ceilings.' },
+  { code: 'S13', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T12, T15)', w: 39, d: 25.25, h: 21, hinge: 'n/a', usd: 2345, mountY: 86, notes: 'Sits on the T12 panel-ready housing or the T15 oven housing. For 10\'+ ceilings.' },
   { code: 'S14', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T7, T8, T13)', w: 44, d: 25.25, h: 21, hinge: 'n/a', usd: 2482, mountY: 86, notes: 'Sits on the 44" double larder. For 10\'+ ceilings.' },
   // fits the WALL run (20/24/28/36/42 wide, d 14, mount 84 — stacked uppers)
   { code: 'S15', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W1, W3, W11)', w: 20, d: 14, h: 15, hinge: 'L&R', usd: 1419, mountY: 84, notes: 'Sits directly on a standard hung wall run (tops at 84"), stacked uppers to the ceiling.' },
@@ -139,6 +139,12 @@ const RAW = [
   { code: 'T11', type: 'TALL', desc: 'Panel-Ready Column Housing (30")', w: 33, d: 24, h: 86, hinge: 'n/a', usd: 4425, notes: 'Fits 30" panel-ready refrigeration columns (Sub-Zero, Thermador, Miele, confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
   { code: 'T12', type: 'TALL', desc: 'Panel-Ready Column Housing (36")', w: 39, d: 24, h: 86, hinge: 'n/a', usd: 4576, notes: 'Fits 36" panel-ready French-door / column refrigeration (Sub-Zero, Thermador, Miele, confirm model at order). Matching door panel set included, supplied undrilled. Appliance not supplied.' },
   { code: 'T13', type: 'TALL', desc: 'Double', w: 44, d: 24, h: 86, hinge: 'n/a', usd: 5062, notes: 'Full-height double doors: left and right hinged pair. Adjustable shelves.' },
+  // wider oven housings, sized like the T11/T12 column housings (appliance
+  // width + 3": the 22mm legs clear a 30" / 36" oven's cutout, which a 30" / 36"
+  // box would not). usd ASSUMED (T9 + the column housings' per-inch step) and
+  // the widths are PROPOSED: workshop to confirm both before a first real quote.
+  { code: 'T14', type: 'TALL', desc: 'Oven Housing (30")', w: 33, d: 24, h: 86, hinge: 'n/a', usd: 4375, ovenW: 30, notes: 'Housing for a single 30" wall oven (oven not supplied). Confirm the cutout against the oven model at order.' },
+  { code: 'T15', type: 'TALL', desc: 'Oven Housing (36")', w: 39, d: 24, h: 86, hinge: 'n/a', usd: 4515, ovenW: 36, notes: 'Housing for a single 36" wall oven (Wolf, BlueStar, Gaggenau; oven not supplied). Double door below. Confirm the cutout against the oven model at order.' },
 
   // ACCESSORIES (no 3D geometry placed; listed in cut list only)
   { code: 'A2', type: 'ACCESSORIES', desc: 'End Panel (Floor)', w: 0, d: 0, h: 0, hinge: '', usd: 372 },
