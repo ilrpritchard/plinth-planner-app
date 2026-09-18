@@ -171,7 +171,11 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // WALL and COUNTER cabinets are exempt: they are wall-backed by rule, and
   // front-aligning a 14"-deep dresser with a 24"-deep tall used to FLOAT it
   // ~9" off the wall — their back stays against the wall instead.
-  if (bestN && !['WALL', 'COUNTER'].includes(cab.type)) {
+  // APPLIANCES are exempt both ways: a 26"-deep range really does stand 2" proud
+  // of a 24" run. Aligning to it pulled a base cabinet 1" off the wall the moment
+  // it was touched, and pushed a touched range back INTO the wall.
+  const floorAppliance = (c) => c.type === 'APPLIANCES' && (c.mountY || 0) === 0;
+  if (bestN && !['WALL', 'COUNTER'].includes(cab.type) && !floorAppliance(cab) && !floorAppliance(bestN.oc)) {
     const rad = (rotDeg * Math.PI) / 180;
     const sgn = horizontal
       ? (Math.cos(rad) >= 0 ? 1 : -1)   // front +z for rot 0, -z for rot 180

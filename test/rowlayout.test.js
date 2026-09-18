@@ -114,3 +114,49 @@ test('cabinets added to the list after the unit was drawn are stood beside what 
   assert.equal(plan.placements.length, 2); assert.equal(plan.unplaced.length, 0);
   assertClean([...drawn, ...plan.placements], room, 'existing + newly stood');
 });
+
+// ---- corner units belong IN a corner, leg to leg with a run on the side wall
+// (her screenshot 2026-09-18: a corner unit stood mid-run, oak return on show) ----
+test('corner units are stood at their room corner and met leg to leg by a partner run', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const { snapPosition } = await import('../src/interaction/snapping.js');
+  let checked = 0;
+  for (const [w, d] of [[150, 130], [168, 140], [173, 126], [204, 160], [240, 180]]) {
+    for (const rows of [
+      [{ code: 'F18', qty: 2 }, { code: 'F2', qty: 1 }, { code: 'F16R', qty: 1 }, { code: 'F17', qty: 1 }, { code: 'F19', qty: 1 }, { code: 'F20', qty: 2 }],
+      [{ code: 'F16', qty: 1 }, { code: 'F10', qty: 2 }, { code: 'F18', qty: 3 }],
+      [{ code: 'F16', qty: 1 }, { code: 'F16R', qty: 1 }, { code: 'F10', qty: 1 }, { code: 'F19', qty: 2 }, { code: 'F20', qty: 3 }, { code: 'T3', qty: 1 }],
+      [{ code: 'F15R', qty: 1 }, { code: 'F20', qty: 1 }, { code: 'F17', qty: 1 }],
+    ]) {
+      const rm = room(w, d), r = planRowsLayout(rows, rm), label = `${w}x${d} [${rows.map((x) => x.code).join(',')}]`;
+      assertClean(r.placements, rm, label);
+      const st = new Store(); st.setRoom({ width: w, depth: d, height: 96 });
+      const ids = r.placements.map((p) => st.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg }).id);
+      const b = { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2 };
+      r.placements.forEach((p, i) => {
+        const c = getCab(p.code); if (!c.corner) return;
+        const right = c.cornerSide === 'right';
+        assert.equal(p.rotDeg, 0, `${label}: ${p.code} stands on the back wall`);
+        const bodyEdge = right ? p.x + c.w / 2 : p.x - c.w / 2, want = right ? w / 2 - 24.25 : -w / 2 + 24.25;
+        assert.ok(Math.abs(bodyEdge - want) < 0.01, `${label}: ${p.code} body edge ${bodyEdge} sits 24.25" off its side wall`);
+        // the partner run: first cabinet on that side wall, front plane on the body edge, starting clear of the return
+        const leg = r.placements.filter((q) => q.rotDeg === (right ? 270 : 90) && getCab(q.code).type === 'FLOOR');
+        assert.ok(leg.length > 0, `${label}: ${p.code} has a partner run`);
+        const first = leg.reduce((a, q) => (a.z < q.z ? a : q)), fc = getCab(first.code);
+        const front = right ? first.x - fc.d / 2 : first.x + fc.d / 2;
+        assert.ok(Math.abs(front - bodyEdge) < 0.3, `${label}: leg front ${front.toFixed(2)} meets the corner body ${bodyEdge.toFixed(2)}`);
+        assert.ok(Math.abs((first.z - fc.w / 2) - (-d / 2 + 24.3)) < 0.1, `${label}: the leg starts against the return`);
+        assert.equal(snapPosition(st, ids[i], p.x, p.z, b).flag, undefined, `${label}: ${p.code} passes the drag rule where it stands`);
+        checked++;
+      });
+    }
+  }
+  assert.ok(checked >= 20, `checked ${checked} corner units`);
+});
+
+test('a corner unit that cannot reach its corner (a door in the way) joins the run instead, still no overlap', () => {
+  const rm = room(168, 140, [{ id: 1, type: 'door', wall: 'back', pos: 0.95, width: 30 }]);
+  const r = planRowsLayout([{ code: 'F16R', qty: 1 }, { code: 'F20', qty: 2 }], rm);
+  assertClean(r.placements, rm, 'door in the corner');
+  assert.equal(r.placements.length + r.unplaced.reduce((n, x) => n + x.qty, 0), 3);
+});

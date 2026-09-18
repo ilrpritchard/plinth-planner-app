@@ -47,3 +47,24 @@ test('a hood above the range is still allowed', () => {
   const s = snapPosition(store, hood.id, 0, b.minZ + 10.25, b);
   assert.notEqual(s.flag, 'cooker', 'the hood belongs over the range');
 });
+
+// ---- a range stands PROUD of the run: touching a cabinet beside it (or the range
+// itself) must not drag anything off, or into, the wall (her share link 2026-09-18:
+// F19 and the corner unit sat 1.75" off the back wall after being clicked) ----
+test('front-flush snap leaves appliances out of it, both ways', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const { snapPosition } = await import('../src/interaction/snapping.js');
+  const st = new Store(); st.setRoom({ width: 200, depth: 150, height: 96 });
+  const b = { minX: -100, maxX: 100, minZ: -75, maxZ: 75 };
+  const left = st.addItem('F21', { x: -17.75, z: -62.75 }), rng = st.addItem('AP1', { x: 7.25, z: -61.75 }), right = st.addItem('F19', { x: 36.25, z: -62.75 });
+  for (const it of [left, right]) {
+    const s = snapPosition(st, it.id, it.x + 0.3, it.z + 0.4, b);
+    assert.ok(Math.abs(s.z - -62.75) < 0.01, `${it.code} stays on the wall beside the range (z ${s.z})`);
+  }
+  const s = snapPosition(st, rng.id, rng.x, rng.z + 0.3, b);
+  assert.ok(Math.abs(s.z - -61.75) < 0.01, `the range keeps its own wall position (z ${s.z})`);
+  // two CABINETS still align their fronts
+  const tall = st.addItem('T1', { x: 80, z: 40 });
+  const t = snapPosition(st, tall.id, 36.25 + 14 + 12 + 0.2, -62, b);
+  assert.ok(t.z > -62.75 + 1, 'a tall still stands 30mm proud of the base run');
+});

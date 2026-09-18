@@ -201,6 +201,14 @@ export class PointerControls {
   _key(e) {
     const id = this.layer.selectedId;
     if (id == null) return;
+    // NEVER while typing: Backspace in the room-size / name / email box used to
+    // DELETE the selected cabinet (and swallow the keystroke), and an "r" rotated
+    // it. Her U-shape lost the first cabinet of its right leg that way and the
+    // corner opened up (share link 2026-09-18). Same while a dialog or modal is up.
+    const t = e.target;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''))) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (typeof document !== 'undefined' && document.querySelector('#uiDialog.show, #cloudModal.show, #orderCheckModal.show, #wizard.show, #pickModal')) return;
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       this.store.removeItem(id);

@@ -58,12 +58,10 @@ export function planRowsLayout(rows, room, existing = []) {
   const counters = cabs.filter((c) => c.type === 'COUNTER');
   const uppers = cabs.filter((c) => (c.type === 'WALL' && !c.stacker) || c.type === 'SHELF');
   const stackers = cabs.filter((c) => c.stacker);
-  const lead = cornerL.slice(0, 1);
-  // a blank-LEFT corner leads the run (its return reaches back into the left corner);
-  // blank-RIGHT corners close it, so their return faces what is left of the wall
-  const floorLine = lead.length
-    ? [...lead, ...floors, ...cornerL.slice(1), ...cornerR, ...talls]
-    : [...talls, ...floors, ...cornerR];
+  // Corner units are stood AT a room corner, leg to leg with a run on the adjoining
+  // wall (hard rule 4), see "corners" below. Only one of each hand can be anchored;
+  // a second one of the same hand just joins the run.
+  const spareCorners = [...cornerL.slice(1), ...cornerR.slice(1)];
 
   // ---- walls: usable range along each, and what blocks it ----
   const walls = {
@@ -141,31 +139,65 @@ export function planRowsLayout(rows, room, existing = []) {
 
   const placements = [], lost = new Map();
   const miss = (c) => lost.set(c.code, (lost.get(c.code) || 0) + 1);
-  const stand = (cab, line) => {
+  const takenOn = (wall, line, cab) => {
     const upperish = line === 'upper' || cab.type === 'TALL';
-    // a corner unit's blank return reaches back to the wall it turns from
-    const ret = cab.corner ? (cab.type === 'FLOOR' ? CORNER_OUT : 12) : 0;
-    const retLeft = cab.corner && cab.cornerSide !== 'right', need = cab.w + ret;
-    for (const wall of ['back', 'left', 'right']) {
-      const taken = [...blocked[wall].all, ...(upperish ? blocked[wall].upper : []), ...occ[line][wall],
-        // hung things never overlap a tall, and a tall never stands under a hung thing
-        ...(line === 'upper' ? occ.floor[wall].filter((s) => s.tall) : cab.type === 'TALL' ? occ.upper[wall] : [])];
-      const at = firstGap(wall, need, taken, cab);
+    return [...blocked[wall].all, ...(upperish ? blocked[wall].upper : []), ...occ[line][wall],
+      // hung things never overlap a tall, and a tall never stands under a hung thing
+      ...(line === 'upper' ? occ.floor[wall].filter((s) => s.tall) : cab.type === 'TALL' ? occ.upper[wall] : [])];
+  };
+  const lastGap = (wall, need, taken, cab) => {                 // firstGap, mirrored: pack against the HIGH end
+    const [lo, hi] = wall === 'back' ? backRange(cab) : [cornerClear(wall, cab), walls[wall].hi];
+    const solid = taken.filter(([a, b]) => b > lo && a < hi).sort((p, q) => q[1] - p[1]);
+    let cur = hi;
+    for (const [a, b] of solid) { if (cur - b >= need - 1e-6) return cur - need; cur = Math.min(cur, a); }
+    return cur - lo >= need - 1e-6 ? cur - need : null;
+  };
+  // a corner unit's blank return reaches back to the wall it turns from
+  const retOf = (cab) => (cab.corner ? (cab.type === 'FLOOR' ? CORNER_OUT : 12) : 0);
+  const putAt = (cab, line, wall, at) => {
+    const ret = retOf(cab), need = cab.w + ret, retLeft = cab.corner && cab.cornerSide !== 'right';
+    // which END of the span the return takes: local -x is the low end on the back and
+    // right walls, the HIGH end on the left wall (rot 90 runs local +x toward -z)
+    const retLow = wall === 'left' ? !retLeft : retLeft;
+    const body0 = at + (cab.corner && retLow ? ret : 0), centre = body0 + cab.w / 2;
+    const span = [at, at + need]; if (cab.type === 'TALL') span.tall = true;
+    occ[line][wall].push(span);
+    placements.push({ code: cab.code, ...posOn(wall, centre, cab), rotDeg: ROT[wall] });
+    placed.push({ cab, wall, along: centre, lo: at, hi: at + need, stacked: false });
+  };
+  const stand = (cab, line, order = ['back', 'left', 'right'], fromHigh = false) => {
+    const need = cab.w + retOf(cab);
+    for (const wall of order) {
+      const at = (fromHigh && wall === 'back' ? lastGap : firstGap)(wall, need, takenOn(wall, line, cab), cab);
       if (at == null) continue;
-      // which END of the span the return takes: local -x is the low end on the back and
-      // right walls, the HIGH end on the left wall (rot 90 runs local +x toward -z)
-      const retLow = wall === 'left' ? !retLeft : retLeft;
-      const body0 = at + (cab.corner && retLow ? ret : 0), centre = body0 + cab.w / 2;
-      const span = [at, at + need]; if (cab.type === 'TALL') span.tall = true;
-      occ[line][wall].push(span);
-      const p = { code: cab.code, ...posOn(wall, centre, cab), rotDeg: ROT[wall] };
-      placements.push(p); placed.push({ cab, wall, along: centre, lo: at, hi: at + need, stacked: false });
+      putAt(cab, line, wall, at);
       return true;
     }
     miss(cab); return false;
   };
 
-  for (const c of floorLine) stand(c, 'floor');
+  // ---- corners: a corner unit belongs IN a corner, its return reaching the side
+  // wall and a run on that wall meeting it leg to leg. (Her screenshot 2026-09-18:
+  // stood mid-run like any other cabinet, the oak return was left on show and the
+  // side run started wherever the back wall happened to fill up.) Blank-left goes
+  // to the back-left corner, blank-right to the back-right; each keeps one base
+  // cabinet back for its partner run so the corner is never an orphan.
+  const free = (wall, a, b, cab) => !takenOn(wall, 'floor', cab).some(([p, q]) => q > a + 1e-6 && p < b - 1e-6);
+  const legs = [];
+  const cL = cornerL[0], cR = cornerR[0];
+  const needL = cL ? cL.w + CORNER_OUT : 0, needR = cR ? cR.w + CORNER_OUT : 0;
+  if (cL && W >= needL + needR && free('back', minX, minX + needL, cL)) { putAt(cL, 'floor', 'back', minX); legs.push('left'); } else if (cL) spareCorners.unshift(cL);
+  if (cR && W >= needL + needR && free('back', maxX - needR, maxX, cR)) { putAt(cR, 'floor', 'back', maxX - needR); legs.push('right'); } else if (cR) spareCorners.push(cR);
+  const partners = [];
+  for (const leg of legs) if (floors.length > 1) partners.push([floors.pop(), leg]);
+  // overflow turns onto a wall that HAS a corner unit first
+  const order = ['back', ...legs, ...['left', 'right'].filter((w) => !legs.includes(w))];
+  for (const [cab, leg] of partners) stand(cab, 'floor', [leg, ...order]);
+  // with only a right-hand corner the run packs against IT, so the slack lands at the open left end
+  const fromHigh = legs.length === 1 && legs[0] === 'right';
+  const line = legs.length ? [...floors, ...spareCorners, ...talls] : [...talls, ...floors, ...spareCorners];
+  for (const c of line) stand(c, 'floor', order, fromHigh && c.type === 'FLOOR');
+
   for (const c of [...counters, ...uppers]) stand(c, 'upper');
 
   // ---- stackers sit on a host of their own width, one each ----
