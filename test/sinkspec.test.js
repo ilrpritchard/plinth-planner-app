@@ -4,7 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getCab, CATALOGUE } from '../src/core/catalogue.js';
-import { sinkSpec, sinkSizes } from '../src/core/sinkspec.js';
+import { sinkSpec, sinkSizes, baseUnder, bestBaseFor, SINK_BASES } from '../src/core/sinkspec.js';
+import { snapPosition } from '../src/interaction/snapping.js';
 import { subtractSinkCutouts, sinkCornerFillets } from '../src/core/worktop-plan.js';
 import { computeWarnings } from '../src/core/warnings.js';
 import { cabinetSVG } from '../src/ui/icon.js';
@@ -77,3 +78,57 @@ test('size picker lists every sink narrow to wide; icons draw one rounded bowl p
     assert.equal((svg.match(/<rect /g) || []).length, 1 + sinkSpec(c).bowls.length, `${c.code}: stone line + a rect per bowl`);
   }
 });
+
+// ---- her rules 2026-09-18: a sink dropped near a base CENTRES on it; "Sink base"
+// shortcut tiles drop a real base with a real sink ----
+const bounds = { minX: -72, maxX: 72, minZ: -60, maxZ: 60 };
+const kitchen = () => { const st = new Store(); st.setRoom({ width: 144, depth: 120, height: 96 }); const z = -60 + 12.25;
+  return { st, z, a: st.addItem('F18', { x: -60, z }), b: st.addItem('F10', { x: -30, z }), c: st.addItem('F2', { x: 0, z }) }; };
+
+test('a sink dragged anywhere over or near a base snaps to its centre, both ways', () => {
+  const { st, z, b, c } = kitchen();
+  const sink = st.addItem('AP19', { x: 40, z: 20 });
+  for (const [rx, rz] of [[-41, -50], [-19, -44], [-30, -30], [-33, -58]]) {
+    const s = snapPosition(st, sink.id, rx, rz, bounds);
+    assert.deepEqual([s.x, s.z, s.rotDeg, s.flag], [b.x, z, 0, undefined], `dropped at ${rx},${rz} -> centred on the 36" base`);
+  }
+  const s2 = snapPosition(st, sink.id, 3, -50, bounds);
+  assert.deepEqual([s2.x, s2.z], [c.x, z], 'over the next base: that one');
+  assert.equal(baseUnder(st.state, 50, 30), null, 'out in the room: no base, the sink moves freely');
+});
+
+test('a side-wall base hands the sink its rotation too', () => {
+  const st = new Store(); st.setRoom({ width: 144, depth: 120, height: 96 });
+  const base = st.addItem('F10', { x: -72 + 12.25, z: 10, rotDeg: 90 });
+  const sink = st.addItem('AP20', { x: 0, z: 0 });
+  const s = snapPosition(st, sink.id, -55, 14, bounds);
+  assert.deepEqual([s.x, s.z, s.rotDeg], [base.x, base.z, 90]);
+});
+
+test('a sink added on its own goes to the snuggest EMPTY base that is big enough', () => {
+  const { st, b, c } = kitchen();
+  assert.equal(bestBaseFor(st.state, getCab('AP6')).id, c.id, '24" sink -> the 24" single, not the drawers, not the 36"');
+  assert.equal(bestBaseFor(st.state, getCab('AP19')).id, b.id, '33" sink -> the 36" double');
+  st.addItem('AP19', { x: b.x, z: b.z });
+  assert.equal(bestBaseFor(st.state, getCab('AP20')).id, c.id, 'the double is taken: next best, and the warning says it is too small');
+  st.addItem('AP6', { x: c.x, z: c.z });
+  assert.equal(bestBaseFor(st.state, getCab('AP6')), null, 'every suitable base taken');
+  assert.equal(bestBaseFor(new Store().state, getCab('AP6')), null);
+});
+
+test('cooktops prefer the cooktop-prepped bases', () => {
+  const st = new Store(); st.setRoom({ width: 144, depth: 120, height: 96 }); const z = -60 + 12.25;
+  st.addItem('F20', { x: -40, z }); const prepped = st.addItem('F30', { x: 0, z });
+  assert.equal(bestBaseFor(st.state, getCab('AP5')).id, prepped.id);
+});
+
+test('Sink base shortcuts are real SKUs, big enough for their sink, never a new catalogue code', () => {
+  for (const c of SINK_BASES) {
+    const base = getCab(c.base), sink = getCab(c.sink);
+    assert.ok(base && base.type === 'FLOOR' && (base.form === 'door' || base.form === 'double'), `${c.id} base`);
+    assert.ok(sink && sink.appliance === 'sink', `${c.id} sink`);
+    assert.ok(base.w >= (sink.minBase || sinkSpec(sink).cutW + 2), `${c.id}: ${base.code} is big enough for ${sink.code}`);
+    assert.equal(getCab(c.id), undefined, `${c.id} is a shortcut, not a SKU`);
+  }
+});
+

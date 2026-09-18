@@ -22,19 +22,20 @@ const FRAME = SPEC.FRAME_IN;   // 80mm
 const PLN = SPEC.PLINTH_IN;    // 115mm
 
 /** Returns an <svg> line-elevation of `cab`, scaled to its real proportions. */
-export function cabinetSVG(cab) {
+export function cabinetSVG(cab, opts = {}) {
   if (cab.appliance) return applianceSVG(cab);
   if (cab.shelf) return shelfSVG();
+  const sink = opts.sink || null;               // "Sink base" shortcut tile: the base drawn with worktop, bowl and tap
   const cornerRet = cab.corner ? (cab.type === 'FLOOR' ? 20 : 10) : 0; // blank return panel
   const wIn = (cab.w || 24) + cornerRet;
   const hIn = cab.h || 35;
-  const avail = BOX - 2 * PAD;
+  const avail = BOX - 2 * PAD - (sink ? 16 : 0);
   const ar = wIn / hIn;
   let dw, dh;
   if (ar >= 1) { dw = avail; dh = avail / ar; } else { dh = avail; dw = avail * ar; }
   const s = dw / wIn;                 // px per inch (uniform — aspect preserved)
   const x0 = (BOX - dw) / 2;
-  const y0 = (BOX - dh) / 2;
+  const y0 = (BOX - dh) / 2 + (sink ? 9 : 0);
 
   const leg = LEG * s, frame = FRAME * s;
   const hasPlinth = cab.type === 'FLOOR' || cab.type === 'TALL';
@@ -58,6 +59,17 @@ export function cabinetSVG(cab) {
   if (hasPlinth) p.push(hline(x0, x0 + dw, y0 + dh - plinth, 1.1)); // flush plinth
 
   drawFront(p, cab, { ox, oy, ow, oh, frame, s });
+
+  if (sink) {
+    const sp = sinkSpec(sink), wt = 1.5 * s, cx = BOX / 2;
+    p.push(rect(x0 - 1.5 * s, y0 - wt - 0.6, dw + 3 * s, wt, 1.2));                          // worktop
+    const bw = sp.cutW * s, bd = sp.depth * s;                                               // the bowl hanging under it
+    p.push(`<path d="M ${f(cx - bw / 2)} ${f(y0 - 0.6)} v ${f(bd - 3)} q 0 3 3 3 h ${f(bw - 6)} q 3 0 3 -3 v ${f(-(bd - 3))}" fill="none" stroke="${HAIR}" stroke-width="0.9" stroke-dasharray="2.2 1.6"/>`);
+    if (sp.bowls.length > 1) p.push(`<line x1="${f(cx)}" y1="${f(y0 - 0.6)}" x2="${f(cx)}" y2="${f(y0 - 0.6 + bd)}" stroke="${HAIR}" stroke-width="0.9" stroke-dasharray="2.2 1.6"/>`);
+    const ty = y0 - wt - 0.6;                                                                // gooseneck tap
+    p.push(`<path d="M ${f(cx - 5)} ${f(ty)} v -9 a 5 5 0 0 1 10 0 v 3" fill="none" stroke="${STROKE}" stroke-width="1.6" stroke-linecap="round"/>`);
+    p.push(`<line x1="${f(cx - 8.5)}" y1="${f(ty - 3)}" x2="${f(cx - 5)}" y2="${f(ty - 3)}" stroke="${STROKE}" stroke-width="1.4" stroke-linecap="round"/>`);
+  }
 
   return `<svg viewBox="0 0 ${BOX} ${BOX}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" aria-hidden="true" fill="none">${p.join('')}</svg>`;
 }

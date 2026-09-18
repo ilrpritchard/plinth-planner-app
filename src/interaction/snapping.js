@@ -7,6 +7,7 @@ import { getFootprint, getMountY } from '../models/cabinet.js';
 import { mmToIn } from '../core/units.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
 import { isOven, findOvenHost } from '../core/ovenseat.js';
+import { baseUnder } from '../core/sinkspec.js';
 
 const WALL_SNAP = 16;   // perpendicular distance to a wall that triggers snap
 const EDGE_SNAP = 9;    // distance between neighbouring edges that triggers butt
@@ -351,6 +352,15 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   }
 
   let flag = windowFlag ? 'window' : (cookerFlag ? 'cooker' : undefined);
+
+  // A sink or cooktop near a base cabinet CENTRES on it, both ways (her rule
+  // 2026-09-18: "the sink when dropped in always automatically centres on the
+  // cabinet"): same spot and rotation as the base, which is where the wizard
+  // seats one. Away from every base it moves freely, as before.
+  if ((cab.appliance === 'sink' || cab.appliance === 'hob') && !flag) {
+    const base = baseUnder(store.state, rawX, rawZ);
+    if (base) { x = base.x; z = base.z; rotDeg = base.rotDeg || 0; }
+  }
 
   // RULE: the sink/hob lives IN the worktop — it never butts against a tall,
   // wall or counter cabinet body (plan-view check with a small clearance).

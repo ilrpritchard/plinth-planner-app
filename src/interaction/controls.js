@@ -8,6 +8,7 @@ import { getCab } from '../core/catalogue.js';
 import { measureRun } from '../core/measure.js';
 import { fmtIn } from '../core/units.js';
 import { isOven, findOvenHost, housingCodeFor } from '../core/ovenseat.js';
+import { bestBaseFor } from '../core/sinkspec.js';
 
 export class PointerControls {
   constructor({ scene, cabinetLayer, room, store, onCommit, onSelect, onWallClick, onOpeningClick }) {
@@ -227,6 +228,16 @@ export class PointerControls {
     const cab = getCab(code);
     if (!cab || !cab.placeable) return null;
     if (isOven(cab)) return this._placeOven(cab, wall);
+    // a sink or cooktop goes straight into the best empty base for it, centred
+    if (cab.appliance === 'sink' || cab.appliance === 'hob') {
+      const rot = { back: 0, left: 90, front: 180, right: 270 }[wall] ?? null;
+      const base = bestBaseFor(this.store.state, cab, rot);
+      if (base) {
+        const item = this.store.addItem(code, { x: base.x, z: base.z, rotDeg: base.rotDeg || 0 });
+        this.layer.select(item.id); this.onSelect(item.id); this.onCommit();
+        return item;
+      }
+    }
     const b = this.room.bounds();
 
     // figure out where the current run on this wall ends, so we append
@@ -254,6 +265,20 @@ export class PointerControls {
     this.onSelect(item.id);
     this.onCommit();
     return item;
+  }
+
+  // "Sink base" shortcut: the base cabinet goes in like any other, then its sink
+  // lands centred in it. ONE undo step takes both out.
+  placeSinkBase(combo, wall = 'back') {
+    this.store.beginHistory();
+    const base = this.placeNew(combo.base, wall);
+    const host = base && this.store.getItem(base.id);
+    let sink = null;
+    if (host) sink = this.store.addItem(combo.sink, { x: host.x, z: host.z, rotDeg: host.rotDeg || 0 });
+    this.store.endHistory();
+    if (host) { this.layer.select(host.id); this.onSelect(host.id); }
+    this.onCommit();
+    return host ? { base: host, sink } : null;
   }
 
   // A wall oven goes into the nearest empty housing of its size. With none in

@@ -15,7 +15,7 @@ import { exportJSON, importJSON } from '../core/persistence.js';
 import { TEMPLATES, applyTemplate, planWallInfill } from '../core/templates.js';
 import { cabinetSVG } from './icon.js';
 import { planRangeResize, rangeSizes } from '../core/resize.js';
-import { sinkSizes, sinkSpec } from '../core/sinkspec.js';
+import { sinkSizes, sinkSpec, SINK_BASES, sinkBaseCombo } from '../core/sinkspec.js';
 import { uiConfirm, uiAlert, mailFallback } from './dialog.js';
 import { genOrderNo } from '../core/orders.js';
 import { FLOORS, WALLS } from '../scene/Room.js';
@@ -479,6 +479,20 @@ export class UI {
       const open = ''; // all catalogue groups start collapsed
       const glyph = items[0] ? `<span class="cat-fam-ico" aria-hidden="true">${cabinetSVG(items[0])}</span>` : '';
       html += `<details class="cat-group" ${open}><summary>${glyph}${FAMILY_LABEL[fam]}<span class="cat-count">${items.length}</span></summary><div class="cat-grid">`;
+      // "Sink base" shortcuts lead the Floor list: a real base + a real sink, centred, in one tap
+      if (fam === 'FLOOR') {
+        for (const combo of SINK_BASES) {
+          const b = getCab(combo.base), sk = getCab(combo.sink);
+          if (!b || !sk) continue;
+          if (this.activeWall !== 'island' && b.w > remaining + TOL) continue;
+          html += `<button type="button" class="cat-item cat-combo" data-combo="${combo.id}" title="Adds ${b.code} · ${b.desc} ${fmtIn(b.w)} with a ${sk.desc} centred in it. The sink is not supplied">
+          <span class="cat-thumb">${cabinetSVG(b, { sink: sk })}</span>
+          <span class="ci-code">${b.code} + sink</span>
+          <span class="ci-desc">${combo.label}</span>
+          <span class="ci-meta">${combo.bowl} &middot; ${fmtUSD(sellUSD(b))}</span>
+        </button>`;
+        }
+      }
       for (const c of items) {
         const wide = tooWide.has(c.code);
         const meta = wide ? `needs ${fmtIn(c.w)} of wall`
@@ -502,6 +516,12 @@ export class UI {
     document.getElementById('catalogue').addEventListener('click', (e) => {
       const row = e.target.closest('.cat-item');
       if (!row) return;
+      if (row.dataset.combo) {
+        const combo = sinkBaseCombo(row.dataset.combo);
+        const res = combo && this.controls.placeSinkBase(combo, this.activeWall);
+        if (res) this._toast(`${getCab(combo.base).desc} ${fmtIn(getCab(combo.base).w)} added with its sink. Click the sink to change its size.`);
+        return;
+      }
       this._announcePlaced(this.controls.placeNew(row.dataset.code, this.activeWall));
     });
   }

@@ -39,3 +39,75 @@ export function sinkSizes(code) {
   return CATALOGUE.filter((c) => c.appliance === 'sink' && c.placeable !== false && !c.baseCode)
     .sort((a, b) => a.w - b.w || (/double/i.test(a.desc) ? 1 : 0) - (/double/i.test(b.desc) ? 1 : 0));
 }
+
+// ---- the base a sink or cooktop sits in ------------------------------------
+// A sink (or cooktop) dropped near a base cabinet belongs CENTRED on it, both
+// ways: across the door(s) and front to back, exactly where the wizard seats
+// one. baseUnder() finds that base from a pointer position: the floor cabinet
+// the point is over, else the nearest one within `reach`. Corners never host.
+
+const hostable = (c) => !!c && c.type === 'FLOOR' && !c.corner && c.placeable !== false;
+
+function localOffset(base, cab, x, z) {
+  const th = ((base.rotDeg || 0) * Math.PI) / 180, c = Math.cos(th), sn = Math.sin(th);
+  const dx = x - base.x, dz = z - base.z;
+  return { along: dx * c - dz * sn, across: dx * sn + dz * c, hw: cab.w / 2, hd: cab.d / 2 };
+}
+
+export function baseUnder(state, x, z, reach = 7) {
+  let best = null, bestScore = Infinity;
+  for (const it of state.items || []) {
+    const cab = getCab(it.code);
+    if (!hostable(cab)) continue;
+    const o = localOffset(it, cab, x, z);
+    const outAlong = Math.max(0, Math.abs(o.along) - o.hw), outAcross = Math.max(0, Math.abs(o.across) - o.hd);
+    if (outAlong > reach || outAcross > reach + 6) continue;   // a sink dragged in from the room side still catches
+    const score = (outAlong + outAcross) * 100 + Math.abs(o.along);
+    if (score < bestScore) { bestScore = score; best = it; }
+  }
+  return best;
+}
+
+/** Where a newly added sink / cooktop should go: the best EMPTY base for it.
+ *  Sinks want a door or double base wide enough for them (their minBase when
+ *  they have one); cooktops want the cooktop-prepped bases first. */
+export function bestBaseFor(state, rider, preferRot = null) {
+  const taken = (b, bc) => (state.items || []).some((o) => {
+    const oc = getCab(o.code);
+    if (!oc || oc.type !== 'APPLIANCES' || !(oc.appliance === 'sink' || oc.appliance === 'hob')) return false;
+    const l = localOffset(b, bc, o.x, o.z);
+    return Math.abs(l.along) < l.hw && Math.abs(l.across) < l.hd + 2;
+  });
+  let best = null, bestScore = Infinity;
+  for (const it of state.items || []) {
+    const c = getCab(it.code);
+    if (!hostable(c) || c.halfDepth || taken(it, c)) continue;
+    let score;
+    if (rider.appliance === 'sink') {
+      if (!(c.form === 'door' || c.form === 'double') || /cooktop/i.test(c.desc)) continue;
+      const need = rider.minBase || Math.max(24, Math.ceil(sinkSpec(rider).cutW + 2));
+      score = c.w >= need ? c.w - need : 100 + (need - c.w);          // snuggest base that is big enough
+    } else {
+      const prepped = /cooktop/i.test(c.desc);
+      if (!prepped && !(c.form === 'drawers' || c.form === 'double')) continue;
+      score = (prepped ? 0 : 50) + (c.w >= rider.w ? c.w - rider.w : 100 + (rider.w - c.w));
+    }
+    if (preferRot != null && (it.rotDeg || 0) !== preferRot) score += 25;   // the wall she is working on first
+    if (score < bestScore) { bestScore = score; best = it; }
+  }
+  return best;
+}
+
+// ---- "Sink base" shortcuts ---------------------------------------------------
+// The catalogue has no sink cabinet: a sink sits in an ordinary door / double
+// base. These are SHORTCUT TILES, not SKUs (hard rule 13: never invent or rename
+// SKUs): each drops a real base cabinet with a real sink centred in it, and the
+// estimate lists the two separately. Her pick 2026-09-18 over auto-spawning.
+export const SINK_BASES = [
+  { id: 'SB24', base: 'F2', sink: 'AP6', label: 'Sink base 24"', bowl: 'single 24"' },
+  { id: 'SB28', base: 'F3', sink: 'AP6', label: 'Sink base 28"', bowl: 'single 24"' },
+  { id: 'SB36', base: 'F10', sink: 'AP19', label: 'Sink base 36"', bowl: 'single 33"' },
+  { id: 'SB36D', base: 'F10', sink: 'AP20', label: 'Sink base 36"', bowl: 'double 33"' },
+];
+export const sinkBaseCombo = (id) => SINK_BASES.find((c) => c.id === id) || null;
+

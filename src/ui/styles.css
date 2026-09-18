@@ -1571,3 +1571,7 @@ details.trade-fold > .trade-exports { display: block; padding: 6px 18px 20px; }
 .cat-item.is-toowide { opacity: 0.45; cursor: not-allowed; }
 .cat-item.is-toowide:hover { filter: none; box-shadow: none; transform: none; }
 .cat-item.is-toowide .ci-meta { font-style: italic; }
+
+/* "Sink base" shortcut tiles: a real base + a real sink in one tap */
+.cat-item.cat-combo { border-style: solid; }
+.cat-item.cat-combo .ci-code { letter-spacing: 0.02em; }
