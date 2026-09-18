@@ -7,6 +7,7 @@ import { computeFillers } from './core/fillers.js';
 import { planWallInfill } from './core/templates.js';
 import { parseLength, fmtFeetIn } from './core/units.js';
 import { autosave, loadSaved, loadFromHash, buildShareURL } from './core/persistence.js';
+import { shortShareURL, fetchShortDesign } from './core/sharelink.js';
 import { Scene } from './scene/Scene.js';
 import { Room } from './scene/Room.js';
 import { Worktop } from './models/worktop.js';
@@ -31,7 +32,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-134 · a sink can never sit over the dishwasher';
+const BUILD = 'W2W-135 · very short share links (?s=code), falling back to the self-contained link';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -41,6 +42,8 @@ const store = new Store();
 const TSHARE = new URLSearchParams(location.search).get('tshare');
 // ?book=1 — site links land straight in the order-check flow (see below)
 const BOOK = new URLSearchParams(location.search).get('book') === '1';
+// ?s=code — a very short share link: the design is fetched after boot (see below)
+const SHORT = new URLSearchParams(location.search).get('s');
 // Load the last local session FIRST, then let a shared #d= design replace the
 // visible design on top of it. Order matters: the saved trade project must be
 // in the store before the hash load so preserveTrade can keep it — a share
@@ -567,7 +570,7 @@ document.getElementById('wzAgain')?.addEventListener('click', () => { if (wizard
 // first-time visitor (nothing restored, empty room) → open the guided wizard
 // (skipped when the site's trade CTAs land here with ?mode=trade — pros go
 // straight to the TRADE workspace, not the homeowner drawing board)
-if (!TSHARE && !BOOK && !fromHash && !fromSave && store.state.items.length === 0 && store.state.mode !== 'trade') {
+if (!TSHARE && !BOOK && !SHORT && !fromHash && !fromSave && store.state.items.length === 0 && store.state.mode !== 'trade') {
   mobileHold.then(() => setTimeout(() => wizard.open(), 400));
 }
 
@@ -590,13 +593,13 @@ document.getElementById('btnToProject')?.addEventListener('click', () => {
 });
 document.getElementById('btnShare')?.addEventListener('click', async () => {
   if (!(await ensureEmailGate('share-link', SHARE_GATE))) return;
-  const url = buildShareURL(store);
+  const url = await shortShareURL(store);   // ?s=code, or the self-contained #k= link when the server is out of reach
   try { await navigator.clipboard.writeText(url); toast('Share link copied. Paste it anywhere.'); }
   catch { prompt('Copy your share link:', url); }
 });
 document.getElementById('btnEmailMe')?.addEventListener('click', async () => {
   if (!(await ensureEmailGate('share-email', SHARE_GATE))) return;
-  const url = buildShareURL(store);
+  const url = await shortShareURL(store);   // ?s=code, or the self-contained #k= link when the server is out of reach
   const to = store.state.customer.email || '';
   const subject = 'PL/NTH kitchen layout';
   const body = `Here's the kitchen layout. Open this link to pick up where I left off:\n\n${url}\n\nLaid out in the PL/NNER, the PL/NTH planner`;
@@ -676,6 +679,27 @@ if (bookBtn && ocModal) {
 // expose a tiny mount API so the planner can drop onto a page if desired —
 // loadState is the same rebuild sequence the compare tray uses, and is what
 // the headless visual-check harnesses drive.
+// ?s=code: open a very short share link. Same rules as a #k= link: it replaces the
+// visible design, never the trade project in this browser, and the code is
+// stripped from the address afterwards so a reload boots from the autosave.
+if (SHORT && !TSHARE) {
+  fetchShortDesign(SHORT).then((data) => {
+    const ok = data && store.replace(data, { preserveTrade: true });
+    if (ok) {
+      buildRoom(true); rebuildWorktop(); rebuildFillers(); rebuildCornice(); layer.rebuildAll(); ui.refresh(); applyMode();
+      toast('Shared kitchen opened.');
+    } else {
+      uiAlert('That share link could not be opened. It may have been mistyped, or you may be offline. Ask for the link again, or try once you are back online.', { title: 'Link not found', okLabel: 'OK' })
+        .then(() => { if (!fromSave && store.state.items.length === 0 && store.state.mode !== 'trade') wizard.open(); });
+    }
+    try {
+      const q = new URLSearchParams(location.search); q.delete('s');
+      const rest = q.toString();
+      history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : '') + location.hash);
+    } catch { /* ignore */ }
+  });
+}
+
 window.PlinthPlanner = {
   store, scene, room, controls,
   loadState(json) {

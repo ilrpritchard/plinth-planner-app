@@ -85,3 +85,38 @@ test('garbage is refused, never half-loaded', () => {
   assert.equal(loadFromHash(b), false);
   assert.equal(b.state.items.length, 1);
 });
+
+// ---- very short links (?s=code, SUPABASE_SHARE.sql): the server stores the SAME
+// compact text, and every failure falls back to the self-contained #k= link ----
+const { shortShareURL, fetchShortDesign } = await import('../src/core/sharelink.js');
+const realFetch = globalThis.fetch;
+const mockFetch = (handler) => { const calls = []; globalThis.fetch = async (url, init) => { calls.push({ url: String(url), body: JSON.parse(init.body) }); return handler(String(url), JSON.parse(init.body)); }; return calls; };
+const json = (v, ok = true, status = 200) => ({ ok, status, json: async () => v });
+
+test('Copy share link: the server code when it answers, the #k= link when it does not', async () => {
+  const a = kitchen();
+  let calls = mockFetch(() => json('k7m2xq9'));
+  assert.equal(await shortShareURL(a), 'https://planner.plinthmade.com/?s=k7m2xq9');
+  assert.match(calls[0].url, /\/rest\/v1\/rpc\/share_design$/);
+  assert.ok(calls[0].body.p_design.startsWith('k1~'), 'only the compact design text is sent');
+  for (const secret of ['Jane', 'example.com', '4417']) assert.ok(!JSON.stringify(calls[0].body).includes(secret), `server never sees "${secret}"`);
+  for (const broken of [() => json({ message: 'function not found' }, false, 404), () => { throw new Error('offline'); }, () => json('Not A Code!'), () => json(null)]) {
+    mockFetch(broken);
+    assert.match(await shortShareURL(a), /#k=k1~/, 'falls back to the self-contained link');
+  }
+  globalThis.fetch = realFetch;
+});
+
+test('opening ?s=code gives back the same kitchen; bad codes never touch the network', async () => {
+  const a = kitchen(), stored = encodeDesign(a.serialize());
+  let calls = mockFetch((url, body) => json(body.p_code === 'k7m2xq9' ? stored : null));
+  const data = await fetchShortDesign(' K7M2XQ9 ');
+  assert.equal(data.items.length, a.state.items.length);
+  assert.equal(data.room.floor, 'herringbone');
+  assert.equal(await fetchShortDesign('zzzzzzz'), null, 'unknown code');
+  const before = calls.length;
+  for (const bad of ['', 'ab', '../etc', 'k7m2xq9;drop', null]) assert.equal(await fetchShortDesign(bad), null);
+  assert.equal(calls.length, before, 'malformed codes are refused locally');
+  globalThis.fetch = realFetch;
+});
+
