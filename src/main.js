@@ -19,7 +19,7 @@ import { UI } from './ui/ui.js';
 import { buildFloorplanSVG, buildPlanSheetHTML } from './ui/floorplan.js';
 import { buildPlanDXF } from './core/dxf.js';
 import { ensureDxfEmail, ensureEmailGate, capturedEmail, setLeadContext } from './ui/dxfgate.js';
-import { uiAlert, uiChoice, mailFallback } from './ui/dialog.js';
+import { uiAlert, uiChoice, uiConfirm, mailFallback } from './ui/dialog.js';
 import { buildQuoteHTML } from './ui/quote.js';
 import { openPrintWindow } from './ui/submittal.js';
 import { TradeUI } from './ui/trade.js';
@@ -31,7 +31,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-123 · countertops repainted, four new surfaces; white walls by default';
+const BUILD = 'W2W-124 · a unit opens in 3D with its listed cabinets already along the walls';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -428,6 +428,17 @@ function applyMode() {
 document.getElementById('modeSwitch')?.addEventListener('click', (e) => {
   const b = e.target.closest('[data-mode]');
   if (!b) return;
+  // While a unit is being laid out the REAL project sits in the design stash and
+  // the live one is empty: the Project tab would show a blank first-run card (or a
+  // stale list under the Designing bar, her screenshot 2026-09-18), and anything
+  // entered there is thrown away on Done. So the tab asks to finish instead.
+  const unit = tradeUI?.designingUnit();
+  if (unit && b.dataset.mode === 'trade') {
+    uiConfirm(`Unit ${unit} is open in 3D. Save this layout to the unit and go back to the project?`,
+      { title: 'Finish the layout first', confirmLabel: 'Save and go back', cancelLabel: 'Keep designing' })
+      .then((ok) => { if (ok) tradeUI.finishDesign(true); });
+    return;
+  }
   store.setMode(b.dataset.mode);
 });
 store.subscribe((s, c) => { if (c.type === 'mode' || c.type === 'load' || c.type === 'reset') applyMode(); });

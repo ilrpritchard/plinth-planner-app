@@ -49,6 +49,7 @@ import { buildInvoiceModel } from '../core/invoice.js';
 import { buildInvoiceHTML } from './invoice.js';
 import { buildChangeOrderModel } from '../core/changeorder.js';
 import { buildChangeOrderHTML } from './changeorder.js';
+import { planRowsLayout } from '../core/rowlayout.js';
 
 const BED_TYPES = ['Studio', '1 Bed', '2 Bed', '3 Bed', '4 Bed', 'Penthouse'];
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -695,21 +696,40 @@ export class TradeUI {
   /** Stash the current state, load this unit's design (or a blank room) into
    *  Home mode, and show the persistent Done/Cancel banner. */
   enterDesign(u) {
-    if (this._stash) return;                       // already designing
+    if (this._stash) {                             // already designing (main.js keeps the Project tab shut meanwhile)
+      toast(`Unit ${this.designingUnit()} is open in 3D: Done or Cancel in the bar at the top.`);
+      return;
+    }
     this._stash = this.store.serialize();
     this._designUnitId = u.id;
     // the stash holds the ENTIRE trade project — persist it so a reload
     // mid-design can never lose the project (recovered on next boot)
     try { localStorage.setItem('plnr-trade-stash', JSON.stringify({ stash: this._stash, unitId: u.id })); } catch { /* storage full */ }
-    let d;
+    let d, seeded = null;
     if (u.design) d = JSON.parse(JSON.stringify(u.design));
-    else { d = this.store.serialize(); d.items = []; d.accessories = {}; }
+    else {
+      d = this.store.serialize(); d.items = []; d.accessories = {};
+      // a hand-built cabinet list opens STOOD ALONG THE WALLS, not as an empty room:
+      // Done re-derives the list from the layout, so an empty room used to mean
+      // redrawing everything (or losing the list)
+      const plan = planRowsLayout(u.rows, d.room);
+      let nid = Math.max(1, Number(d.nextId) || 1);
+      d.items = plan.placements.map((p) => ({ id: nid++, code: p.code, x: p.x, z: p.z, rotDeg: p.rotDeg, finish: null }));
+      d.nextId = nid;
+      seeded = { placed: plan.placements.length, unplaced: plan.unplaced };
+    }
     d.mode = 'home';
     delete d.trade;                                // designs never nest trade state
     this.store.replace(d);
     this.onDesignLoad?.();
     this.showBanner(unitName(u));
     this._setDesignChrome(unitName(u));
+    if (seeded && seeded.placed) {
+      const left = seeded.unplaced.reduce((n, r) => n + r.qty, 0);
+      // a shortfall matters (Done rewrites the list from the layout): say it in a dialog, not a 2.6s toast
+      if (left) uiAlert(`${seeded.placed} cabinets from the list are standing along the walls. ${left} did not fit this room: ${seeded.unplaced.map((r) => `${r.qty}× ${r.code}`).join(', ')}. Make the room bigger, or add them by hand before Done. Done rewrites the list from what is in the room.`, { title: 'Not everything fitted', okLabel: 'Got it' });
+      else toast(`The ${seeded.placed} cabinet${seeded.placed === 1 ? '' : 's'} from the list ${seeded.placed === 1 ? 'is' : 'are'} along the walls. Drag them where they belong, then Done.`);
+    }
   }
 
   /** A kitchen laid out in Kitchen mode, outside any unit-design session,
