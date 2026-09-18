@@ -300,7 +300,7 @@ export function sinkCornerFillets(slabs, items, getCab, segments = 8) {
         const a = (i / segments) * (Math.PI / 2);
         pts.push(world(cx - sx * r * (1 - Math.sin(a)), cz - sz * r * (1 - Math.cos(a))));
       }
-      out.push({ mat: slab.mat, pts });
+      out.push({ mat: slab.mat, alongZ: !!slab.alongZ, pts });
     }
   }
   return out;

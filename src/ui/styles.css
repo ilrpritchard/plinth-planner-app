@@ -658,9 +658,18 @@ kbd {
 .acc-info em { display: block; font-style: normal; color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
 .acc-step { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .acc-step button {
-  width: 26px; height: 26px; border-radius: 50%; cursor: pointer; font-size: 15px; line-height: 1;
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
   background: var(--brown-soft); color: var(--cream); border: 1px solid var(--line);
+  /* the base button rule's 8px 13px padding left a 26px circle with NO inside, so
+     the glyph spilled out low and right (her screenshot 2026-09-18). No padding,
+     and the − / + are DRAWN as bars: a font glyph never sits truly centred. */
+  padding: 0; position: relative; flex: 0 0 26px; font-size: 0; line-height: 0; letter-spacing: 0;
 }
+.acc-step button::before, .acc-step button[data-d="1"]::after {
+  content: ''; position: absolute; left: 50%; top: 50%; background: currentColor; border-radius: 1px;
+  width: 10px; height: 1.5px; transform: translate(-50%, -50%);
+}
+.acc-step button[data-d="1"]::after { width: 1.5px; height: 10px; }
 .acc-step button:hover { border-color: var(--brass); color: var(--cream-hi); }
 .acc-qty { min-width: 16px; text-align: center; font-variant-numeric: tabular-nums; color: var(--cream); }
 .acc-row.has .acc-qty { color: var(--brass); font-weight: 700; }

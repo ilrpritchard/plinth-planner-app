@@ -20,6 +20,7 @@ import { uiConfirm, uiAlert, mailFallback } from './dialog.js';
 import { genOrderNo } from '../core/orders.js';
 import { FLOORS, WALLS } from '../scene/Room.js';
 import { floorSwatchURL } from '../scene/floorTexture.js';
+import { worktopSwatchURL } from '../models/worktopTexture.js';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -269,8 +270,11 @@ export class UI {
        </button>`;
     }).join('');
     document.getElementById('wallSwatches').innerHTML = swHTML(WALLS, 'wall', false); // colours only
-    document.getElementById('worktopSwatches').innerHTML = Object.entries(WORKTOP_OPTIONS).map(([k, v]) =>
-      `<button type="button" class="rs-sw" data-worktop="${k}" title="${v.label}"><span class="rs-chip" style="background:${v.hex}"></span><span class="rs-name">${v.label}</span></button>`).join('');
+    // countertops show a patch of the REAL painted surface too
+    document.getElementById('worktopSwatches').innerHTML = Object.entries(WORKTOP_OPTIONS).map(([k, v]) => {
+      let img = ''; try { img = worktopSwatchURL(k); } catch { img = ''; }
+      return `<button type="button" class="rs-sw" data-worktop="${k}" title="${v.label}"><span class="rs-chip rs-chip-floor" style="background:${v.hex}${img ? ` url(${img}) center/cover` : ''}"></span><span class="rs-name">${v.label}</span></button>`;
+    }).join('');
 
     document.getElementById('floorSwatches').addEventListener('click', (e) => {
       const b = e.target.closest('[data-floor]'); if (!b) return;

@@ -63,7 +63,7 @@ export class Room {
     const { width, depth, height } = opts;
     this.dims = { width, depth, height };
     const floorColor = (FLOORS[opts.floor] || FLOORS.oak).color;
-    const wallColor = (WALLS[opts.wall] || WALLS.chalk).color;
+    const wallColor = (WALLS[opts.wall] || WALLS.white).color;
 
     for (const c of [...this.group.children]) { this.group.remove(c); disposeDeep(c); }
 

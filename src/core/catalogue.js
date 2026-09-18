@@ -417,10 +417,16 @@ export const CORNICE_OPTIONS = {
 export function corniceOption(name) { return CORNICE_OPTIONS[name] || CORNICE_OPTIONS.none; }
 
 // Worktop options for the UI (not supplied by Plinth — visual only).
+// keys are saved in designs (room.worktop, item.worktop): never rename one.
+// models/materials.js WORKTOPS holds the matching surface for each key.
 export const WORKTOP_OPTIONS = {
-  marble: { label: 'Marble', hex: '#eae7e0' },
-  granite: { label: 'Granite', hex: '#3a3b40' },
-  oak: { label: 'Oak', hex: '#b98c50' },
+  marble: { label: 'Carrara marble', hex: '#e2e0db' },
+  calacatta: { label: 'Calacatta marble', hex: '#ece9e3' },
+  quartz: { label: 'White quartz', hex: '#e8e6e1' },
+  soapstone: { label: 'Soapstone', hex: '#3e4544' },
+  granite: { label: 'Black granite', hex: '#26272b' },
+  oak: { label: 'Oak block', hex: '#bc9462' },
+  walnut: { label: 'Walnut block', hex: '#684832' },
 };
 
 // Interior finish constants (for materials / labels)

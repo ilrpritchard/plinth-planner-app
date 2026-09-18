@@ -15,7 +15,7 @@ function defaultState() {
     version: VERSION,
     room: {
       width: 144, depth: 120, height: 96, // 12ft × 10ft × 8ft default
-      floor: 'oak', wall: 'chalk', worktop: 'marble', cornice: 'none',
+      floor: 'oak', wall: 'white', worktop: 'marble', cornice: 'none',   // white walls by default (her call 2026-09-18; was chalk since the first deploy)
       // openings: [{ id, type:'window'|'door'|'doorway', wall:'back'|'left', pos:0..1, width }]
       openings: [],
       nextOpening: 1,
