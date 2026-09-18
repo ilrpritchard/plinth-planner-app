@@ -431,7 +431,7 @@ export function drawingIndex(design) {
   idx.push({ no: 'A-300', title: 'FINISH, HARDWARE & CABINET SCHEDULE' });
   const pages = cutSheetPages(distinctSkus(design)).length;
   for (let i = 0; i < pages; i++) idx.push({ no: `A-4${String(i + 1).padStart(2, '0')}`, title: `CABINET CUT SHEETS ${i + 1}/${pages}` });
-  idx.push({ no: 'A-600', title: 'COMPLIANCE & PRODUCT DATA' });
+  idx.push({ no: 'A-600', title: 'PRODUCT SPECIFICATION' });
   return idx;
 }
 

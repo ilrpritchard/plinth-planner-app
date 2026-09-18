@@ -212,7 +212,7 @@ test('trade order email carries directory, RAL, tier and undrilled hardware', ()
 test('drawing index carries the A-600 compliance sheet', () => {
   const design = { room: { width: 144, depth: 120, height: 96, openings: [] }, items: [{ id: 1, code: 'F2', x: 0, z: -47.5, rotDeg: 0 }] };
   const idx = drawingIndex(design);
-  assert.ok(idx.some((d) => d.no === 'A-600' && /COMPLIANCE/.test(d.title)));
+  assert.ok(idx.some((d) => d.no === 'A-600' && d.title === 'PRODUCT SPECIFICATION'));
 });
 
 // ---- worktop appliance clamp: notch, never edge-shave ------------------------

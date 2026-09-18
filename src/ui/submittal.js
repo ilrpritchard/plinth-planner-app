@@ -223,7 +223,7 @@ function stampBoxHTML() {
 // ---- compliance & product data (sheet A-600) --------------------------------
 // NOTE: statements below are submittal-coordination language (Imogen must
 // verify the claims with the workshop before first real issue).
-function complianceBody(design, pm = {}) {
+function specificationBody(design, pm = {}) {
   const finishLabel = design.finish === 'Custom RAL' && pm.finishRal
     ? `Custom: matched to RAL ${esc(pm.finishRal)}`
     : `${esc(design.finish || '-')} (one of 15 PL/NTH standard colors)`;
@@ -246,8 +246,8 @@ function complianceBody(design, pm = {}) {
     ['Field verification', esc(DISCLAIMER_BODY)],
   ].map((r) => `<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join('');
   return `<div class="two-col">
-      <div><h3>PRODUCT SPECIFICATION</h3><table class="fin comp">${prodRows}</table></div>
-      <div><h3>COMPLIANCE STATEMENTS</h3><table class="fin comp">${compRows}</table></div>
+      <div><h3>CONSTRUCTION &amp; FINISH</h3><table class="fin comp">${prodRows}</table></div>
+      <div><h3>SPECIFICATION NOTES</h3><table class="fin comp">${compRows}</table></div>
     </div>
     ${notesHTML(['Dimensions are given in inches with the metric size in brackets.', 'Statements on this sheet are provided for submittal coordination.'])}`;
 }
@@ -285,7 +285,7 @@ function planBody(design) {
 
 // ---- the per-unit sheet set --------------------------------------------------
 /** All sheets for one unit type (cover → plan → elevations → schedule → cuts →
- *  compliance). `pm` carries the project meta (address, architect,
+ *  product specification). `pm` carries the project meta (address, architect,
  *  gc, owner, finishRal) from the trade project. */
 export function buildUnitSheets({ project, unit, date, pm = {} }) {
   const design = unit.design;
@@ -414,9 +414,9 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
       `<div class="cut-grid">${cards || '<div class="fig-note">No PL/NTH cabinets in this design yet.</div>'}</div>`, foot(dNo)));
   }
 
-  // ---- COMPLIANCE & PRODUCT DATA (A-600) ----
-  sheets.push(sheet('COMPLIANCE & PRODUCT DATA', m(uname, 'A-600', rev),
-    complianceBody(design, pm), foot('A-600')));
+  // ---- PRODUCT SPECIFICATION (A-600) ----
+  sheets.push(sheet('PRODUCT SPECIFICATION', m(uname, 'A-600', rev),
+    specificationBody(design, pm), foot('A-600')));
 
   return sheets.join('\n');
 }

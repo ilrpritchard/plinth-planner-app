@@ -120,7 +120,7 @@ const skus = distinctSkus(design);
 ok('distinct SKUs = 6, appliances excluded', skus.length === 6 && !skus.some((s) => s.code === 'AP1'));
 // MEP rough-in is NOT PL/NTH's responsibility: no A-5xx sheets, ever (her markup 2026-09-18)
 ok('drawing index covers plan + 2 elevations + schedule + cuts (6 SKUs = ONE sheet) + compliance', drawingIndex(design).length === 1 + 1 + 2 + 1 + 1 + 1);
-ok('drawing index ends with A-600 compliance sheet', drawingIndex(design).at(-1).no === 'A-600' && drawingIndex(design).at(-1).title.includes('COMPLIANCE'));
+ok('drawing index ends with the A-600 product specification sheet', drawingIndex(design).at(-1).no === 'A-600' && drawingIndex(design).at(-1).title === 'PRODUCT SPECIFICATION');
 ok('drawing index carries NO rough-in sheets', !drawingIndex(design).some((d) => /^A-5/.test(d.no) || /ROUGH/i.test(d.title)));
 
 // ---- esc() safety --------------------------------------------------------------
@@ -146,7 +146,7 @@ const html = buildSubmittalHTML({ project: 'Hudson & Co Tower', unit, date: 'Jul
 ok('submittal HTML: letter landscape + all sheet types', html.includes('size: letter landscape')
   && html.includes('>SUBMITTAL<') && html.includes('FLOOR PLAN') && html.includes('ELEVATION: BACK WALL')
   && html.includes('ELEVATION: LEFT WALL') && html.includes('CABINET SCHEDULE') && html.includes('CUT SHEETS')
-  && html.includes('COMPLIANCE &amp; PRODUCT DATA'));
+  && html.includes('<small>PRODUCT SPECIFICATION</small>') && !/COMPLIANCE/.test(html));
 ok('submittal HTML escapes the project name', html.includes('Hudson &amp; Co Tower') && !html.includes('Hudson & Co Tower'));
 ok('rev letter + disclaimer on the sheets', html.includes('Rev C') && html.includes('does not survey or verify site dimensions'));
 
@@ -254,7 +254,7 @@ ok('crown is drawn as built: a slim 22mm bar, not a 1½" band', svg.includes(`he
   const sh = buildSubmittalHTML({ project: 'P', unit: { ...unit, design: sinkDesign }, date: 'July 8, 2026' });
   ok('wherever there is a sink: the base it needs + what its base takes', sh.includes('needs a 33&quot; base or wider') && sh.includes('F10 is a sink base') && sh.includes('cut-out up to 34&quot; wide'));
 }
-ok('spec sheet: inches first with mm in brackets, headed PRODUCT SPECIFICATION', html.includes('PRODUCT SPECIFICATION') && html.includes('4&#189;" (115mm)')
+ok('spec sheet: inches first with mm in brackets, headed PRODUCT SPECIFICATION', html.includes('PRODUCT SPECIFICATION') && html.includes('CONSTRUCTION &amp; FINISH') && html.includes('4&#189;" (115mm)')
   && html.includes('&#8542;" (22mm)') && !html.includes('80mm stiles'));
 ok('cut cards are a label / value grid', html.includes('<table class="cut-spec">') && html.includes('<th>Size</th>') && !html.includes('cut-notes'));
 

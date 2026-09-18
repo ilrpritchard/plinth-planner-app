@@ -196,7 +196,7 @@ export class TradeUI {
           ${tile('tDxfLib', 'Cabinet library (DXF)', 'Every PL/NTH cabinet as a named AutoCAD block, front elevations.')}
         </div></div>
         <div class="tx-group"><h4>Submittals</h4><div class="tx-tiles">
-          ${tile('tSubmittalPack', 'Submittal pack (PDF)', 'Project cover, then plan, elevations, schedule, cut sheets and compliance for every unit type.', true)}
+          ${tile('tSubmittalPack', 'Submittal pack (PDF)', 'Project cover, then plan, elevations, schedule, cut sheets and product specification for every unit type.', true)}
         </div></div>
       </div>`;
   }
@@ -432,7 +432,7 @@ export class TradeUI {
         </div>
         <div class="unit-docs">
           <span class="ud-l">Documents · Rev ${esc(unitRev(u))}</span>
-          <button class="ghost sm" data-act="u-submittal" title="Architect-ready submittal PDF: cover, plan, elevations, schedule, cut sheets &amp; compliance">Submittal PDF</button>
+          <button class="ghost sm" data-act="u-submittal" title="Architect-ready submittal PDF: cover, plan, elevations, schedule, cut sheets &amp; product specification">Submittal PDF</button>
           <button class="ghost sm" data-act="u-dxf" title="This unit's kitchen plan as AutoCAD DXF">DXF plan</button>
           <button class="tquiet" data-act="u-rev" title="Bump the revision letter (records the date on this unit's revision history)">Start a new revision</button>
         </div>
