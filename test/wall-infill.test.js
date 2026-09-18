@@ -107,3 +107,44 @@ test('fill two adjoining walls, either order: a corner unit at the junction, leg
     for (const c of corners) assert.equal(snapPosition(st, c.id, c.x, c.z, b).flag, undefined, `${order.join('>')}: ${c.code} passes the corner rule where it was placed`);
   }
 });
+
+// ---- a range, fridge, tall or sink base already standing in the corner zone:
+// the junction stays two butting runs, a corner unit never lands on it ----
+test('SWEEP: fill walls around an appliance in every position: zero overlaps, nothing standing is removed', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const { getCab } = await import('../src/core/catalogue.js');
+  const box = (it) => { const c = getCab(it.code); const ret = c.corner ? 20 : 0, lR = (c.corner && c.cornerSide !== 'right') ? ret : 0, rR = (c.corner && c.cornerSide === 'right') ? ret : 0; const rad = (it.rotDeg || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad); const pts = [[-(c.w / 2 + lR), -c.d / 2], [c.w / 2 + rR, -c.d / 2], [c.w / 2 + rR, c.d / 2], [-(c.w / 2 + lR), c.d / 2]]; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const [lx, lz] of pts) { const wx = lx * cs + lz * sn, wz = -lx * sn + lz * cs; x0 = Math.min(x0, it.x + wx); x1 = Math.max(x1, it.x + wx); z0 = Math.min(z0, it.z + wz); z1 = Math.max(z1, it.z + wz); } return { x0, x1, z0, z1 }; };
+  const stands = (it) => { const c = getCab(it.code); return c.type === 'FLOOR' || c.type === 'TALL' || (c.type === 'APPLIANCES' && (c.mountY || 0) === 0); };
+  let runs = 0;
+  for (const order of [['back', 'left'], ['left', 'back'], ['back', 'right'], ['right', 'back'], ['left', 'back', 'right']]) {
+    for (const width of [132, 144, 168, 204]) {
+      for (const code of ['AP1', 'AP3', 'AP9', 'T3']) {
+        const c = getCab(code);
+        for (let x = -width / 2 + c.w / 2; x <= width / 2 - c.w / 2; x += 7) {
+          const st = new Store(); st.setRoom({ width, depth: 150, height: 96 });
+          const fixed = st.addItem(code, { x, z: -75 + c.d / 2 + 0.25, rotDeg: 0 });
+          for (const wall of order) { const pl = planWallInfill(st.state, wall); for (const id of (pl.remove || [])) st.removeItem(id); for (const p of pl) st.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg }); }
+          const label = `${order.join('>')} w=${width} ${code}@${x}`;
+          assert.ok(st.getItem(fixed.id), `${label}: the appliance is still there`);
+          const items = st.state.items.filter(stands);
+          for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+            const a = box(items[i]), b = box(items[j]);
+            const ix = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), iz = Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0);
+            assert.ok(!(ix > 0.5 && iz > 0.5), `${label}: ${items[i].code} overlaps ${items[j].code} by ${ix.toFixed(2)}x${iz.toFixed(2)}`);
+          }
+          runs++;
+        }
+      }
+    }
+  }
+  assert.ok(runs > 800, `swept ${runs} fills`);
+});
+
+test('a sink base in the corner zone is never pulled out from under its sink', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const st = new Store(); st.setRoom({ width: 144, depth: 130, height: 96 });
+  const base = st.addItem('F10', { x: -72 + 18, z: -65 + 12.25, rotDeg: 0 });
+  st.addItem('AP6', { x: -72 + 18, z: -65 + 12.25, rotDeg: 0 });
+  const pl = planWallInfill(st.state, 'left');
+  assert.ok(!(pl.remove || []).includes(base.id), 'the sink base stays');
+});

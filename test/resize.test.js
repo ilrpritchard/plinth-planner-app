@@ -118,7 +118,7 @@ test('shrinking closes the run back up and may widen a neighbour', () => {
 });
 
 test('SWEEP: filled walls with corners, every room width, every size change, both directions: never an overlap', () => {
-  let done = 0, refused = 0, skipped = 0;
+  let done = 0, refused = 0;
   for (const walls of [['back'], ['back', 'left'], ['left', 'back'], ['back', 'right'], ['left', 'back', 'right']]) {
     for (let width = 132; width <= 252; width += 12) {
       for (const pos of [-0.2, 0, 0.25]) {
@@ -126,7 +126,7 @@ test('SWEEP: filled walls with corners, every room width, every size change, bot
           const st = new Store(); st.setRoom({ width, depth: 150, height: 96 });
           const rng = st.addItem(start, { x: Math.round(pos * width / 2), z: -75 + 13.25, rotDeg: 0 });
           fill(st, walls);
-          try { assertClean(st, 'fixture'); } catch { skipped++; continue; }   // the fixture itself must be legal
+          assertClean(st, `fixture ${walls.join('>')} w=${width} ${start}`);   // fill this wall must hand over a legal kitchen
           for (const target of ['AP1', 'AP2', 'AP3', 'AP1']) {
             const label = `${walls.join('>')} w=${width} pos=${pos} ${st.getItem(rng.id).code}->${target}`;
             const before = JSON.stringify(st.state.items);
@@ -143,8 +143,8 @@ test('SWEEP: filled walls with corners, every room width, every size change, bot
       }
     }
   }
-  assert.ok(done > 400, `swept ${done} resizes (${refused} refused, ${skipped} fixtures skipped)`);
-  console.log(`resize sweep: ${done} resizes applied, ${refused} refused, ${skipped} fixtures skipped`);
+  assert.ok(done > 400, `swept ${done} resizes (${refused} refused)`);
+  console.log(`resize sweep: ${done} resizes applied, ${refused} refused`);
 });
 
 test('a range on the side wall resizes along z', () => {

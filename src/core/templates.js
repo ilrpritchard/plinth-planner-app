@@ -207,6 +207,25 @@ export function planWallInfill(state, wall) {
       hits.push({ it, lo, hi });
     }
     if (alreadyCorner || !hits.length) continue;
+    // a range, fridge or tall standing in the corner zone cannot be swapped for
+    // a corner unit, and a base with a sink or cooktop in it cannot be taken
+    // out from under it: leave this junction as two butting runs (the dead
+    // corner), never a corner unit on top of an appliance (hard rule 1)
+    const fixedInZone = (Wl, from, dir) => {
+      const end = from + dir * (CORNER_OUT + 24);
+      const lo = Math.min(from, end), hi = Math.max(from, end);
+      const band = (b) => Wl === 'back' ? b.z0 < minZ + BAND : Wl === 'front' ? b.z1 > maxZ - BAND : Wl === 'left' ? b.x0 < minX + BAND : b.x1 > maxX - BAND;
+      const onX = Wl === 'back' || Wl === 'front';
+      return virt.some((it) => {
+        const c = getCab(it.code); if (!c || c.type === 'FLOOR') return false;
+        const stands = c.type === 'TALL' || (c.type === 'APPLIANCES' && (c.mountY || 0) === 0);
+        const rides = c.type === 'APPLIANCES' && (c.appliance === 'sink' || c.appliance === 'hob');
+        if (!stands && !rides) return false;
+        const b = aabbOf(it, c); if (!band(b)) return false;
+        const [a0, a1] = onX ? [b.x0, b.x1] : [b.z0, b.z1];
+        return Math.min(a1, hi) - Math.max(a0, lo) > 0.5;
+      });
+    };
     // handedness: the blank return must point INTO the corner along the wall
     // the corner unit sits on (local +x = "right" side maps to world (cos, -sin))
     const handed = (rotDeg, onAxis, towardCorner) => {
@@ -218,8 +237,12 @@ export function planWallInfill(state, wall) {
       const off = depth / 2 + WALL_GAP;
       return Wl === 'back' ? { x: a, z: minZ + off } : Wl === 'front' ? { x: a, z: maxZ - off } : Wl === 'left' ? { x: minX + off, z: a } : { x: maxX - off, z: a };
     };
-    const reaches = hits.some(({ lo, hi }) => (dirAway > 0 ? lo - cornerAt : aMax - hi) < 6);
+    // the adjoining run "reaches" unless it stops a full corner-return short
+    // (24.25"): this wall's corner unit needs that much clear for its return.
+    // A run that stops only part-way short is converted on ITS wall instead.
+    const reaches = hits.some(({ lo, hi }) => (dirAway > 0 ? lo - cornerAt : aMax - hi) < CORNER_OUT - 0.5);
     if (!reaches) {
+      if (fixedInZone(wall, (A === 'left' || A === 'back') ? axisMin : axisMax, ((A === 'left' || A === 'back') ? 1 : -1))) continue;
       // the adjoining run already stops short of the corner (a leg that was
       // filled first): THIS wall's run takes the corner unit, return along
       // this wall into the corner, so the two meet leg to leg
@@ -233,6 +256,7 @@ export function planWallInfill(state, wall) {
       virt.push({ id: -1 - extra.length, code, ...posOnWall(wall, centre, cc.d), rotDeg: rotB });
       continue;
     }
+    if (fixedInZone(A, cornerAt, dirAway)) continue;
     for (const h of hits) { remove.push(h.it.id); virt.splice(virt.indexOf(h.it), 1); }
     // corner unit on wall A: blank return points INTO the corner (toward this wall)
     const rotA = NEW_ROT[A] ?? 0;
