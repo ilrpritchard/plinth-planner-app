@@ -211,7 +211,7 @@ export class Room {
     h = THREE.MathUtils.clamp(h, 6, height - sill);
     const centerY = sill + h / 2;
 
-    const g = this._buildOpening(o.type, w, h);
+    const g = this._buildOpening(o.type, w, h, { stool: isWindow && sill - 3.4 >= 40 });
     g.userData.openingId = o.id;              // clickable: edit / delete popup
     g.userData.openingType = o.type;
     const OFF = 1.0; // clear of the wall plane
@@ -223,15 +223,45 @@ export class Room {
     (this.wallAttached[wall] = this.wallAttached[wall] || []).push(g);
   }
 
-  _buildOpening(type, w, h) {
+  _buildOpening(type, w, h, opts = {}) {
     const g = new THREE.Group();
     const cream = () => new THREE.MeshStandardMaterial({ color: 0xefe9da, roughness: 0.8 });
     if (type === 'window') {
-      const frame = mesh(new THREE.BoxGeometry(w + 5, h + 5, 1.4), cream());
-      const pane = mesh(new THREE.BoxGeometry(w, h, 0.6), new THREE.MeshStandardMaterial({ color: 0xbcd0d6, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.55, depthWrite: false }));
-      pane.position.z = 0.4; pane.castShadow = false; pane.renderOrder = 1;
-      const mull = mesh(new THREE.BoxGeometry(1, h, 0.8), cream()); mull.position.z = 0.5;
-      g.add(frame, pane, mull);
+      // A painted timber window, built like one: casing round the opening, a
+      // sash frame set back inside it, mullions + a meeting rail, a stool and
+      // apron under it, and daylight behind. EVERY face sits on its own plane.
+      // The old one was a slab with a see-through pane whose front face shared
+      // the slab's front plane, which z-fought (her report: "they flicker when
+      // we scroll around"). The glass is an OPAQUE unlit daylight panel: there
+      // is a wall behind it, so transparency only bought sorting trouble.
+      const paint = cream();
+      const CAS = 3.4, SASH = 1.7;
+      const bar = (bw, bh, bd, x, y, z, shadow = true) => { const m = mesh(new THREE.BoxGeometry(bw, bh, bd), paint); m.position.set(x, y, z); m.castShadow = shadow; g.add(m); return m; };
+      // casing (proud of the wall, front face z = 0.45)
+      bar(CAS, h + 2 * CAS, 1.4, -(w / 2 + CAS / 2), 0, -0.25);
+      bar(CAS, h + 2 * CAS, 1.4, w / 2 + CAS / 2, 0, -0.25);
+      bar(w, CAS, 1.4, 0, h / 2 + CAS / 2, -0.25);
+      bar(w, CAS, 1.4, 0, -(h / 2 + CAS / 2), -0.25);
+      // daylight, recessed to the back of the reveal (z = -0.7)
+      const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, h), daylightMat());
+      glass.position.z = -0.7; g.add(glass);
+      // sash frame, set back from the casing face (front face z = 0.05)
+      const IN = 0.02;                                   // hairline inside the casing: no shared side planes
+      bar(SASH, h - 2 * IN, 0.7, -(w / 2 - SASH / 2 - IN), 0, -0.3, false);
+      bar(SASH, h - 2 * IN, 0.7, w / 2 - SASH / 2 - IN, 0, -0.3, false);
+      bar(w - 2 * SASH, SASH, 0.7, 0, h / 2 - SASH / 2 - IN, -0.3, false);
+      bar(w - 2 * SASH, SASH + 0.5, 0.7, 0, -(h / 2 - (SASH + 0.5) / 2 - IN), -0.3, false);
+      // lights: one under 30", two to 66", three beyond; a meeting rail on anything tall enough.
+      // Fronts step back 0.12" at a time (sash 0.05, rail -0.07, mullion -0.19) so nothing fights.
+      const lights = w < 30 ? 1 : w < 66 ? 2 : 3;
+      for (let i = 1; i < lights; i++) bar(1.3, h - 2 * SASH - 0.6, 0.5, -w / 2 + (w * i) / lights, 0, -0.44, false);
+      if (h >= 30) bar(w - 2 * SASH - 0.04, 1.5, 0.6, 0, 0, -0.37, false);
+      // stool (the inside sill) and the apron under it: only where the window
+      // stands clear of a worktop. Over a counter the casing dies into the splash.
+      if (opts.stool) {
+        bar(w + 2 * CAS + 2.4, 1.1, 3.0, 0, -(h / 2 + CAS) - 0.55, 0.55);
+        bar(w + 2 * CAS - 1, 2.6, 0.7, 0, -(h / 2 + CAS) - 1.1 - 1.3, -0.6);
+      }
     } else if (type === 'doorway') {
       // an OPEN cased opening — just the casing/architrave, no leaf. The wall
       // itself is cut (see _buildWall) so you see straight through.
@@ -252,6 +282,21 @@ export class Room {
     }
     return g;
   }
+}
+
+// Daylight behind a window: an unlit vertical gradient (sky at the head, a bright
+// horizon glow toward the sill). One shared material; unlit so it never goes grey
+// in the room's shade and never needs transparency sorting.
+let _daylight = null;
+function daylightMat() {
+  if (_daylight) return _daylight;
+  const c = document.createElement('canvas'); c.width = 8; c.height = 256;
+  const ctx = c.getContext('2d'), grad = ctx.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, '#c6dcea'); grad.addColorStop(0.55, '#e0edf3'); grad.addColorStop(1, '#f6f9f7');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 8, 256);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  _daylight = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+  return _daylight;
 }
 
 function mesh(geo, mat) { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; return m; }

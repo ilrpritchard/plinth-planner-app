@@ -40,3 +40,20 @@ export function rangeCooktop(cab) {
   const gx = -w / 2 + 1.3 + secW * (s.cols + 0.5);
   return { secW, burners, griddle: s.griddle ? { x: gx, z: 0.2, w: secW - 1.2, d: d - 4.4 } : null };
 }
+
+/** A drop-in cooktop's burners and knobs, local inches (x across, z front = +).
+ *  30" = four burners; 36" = five, with the big one in the middle. Knobs run
+ *  along the front edge. Shared by the 3D model and the catalogue icon. */
+export function hobSpec(cab) {
+  const w = cab.w, d = cab.d, five = w >= 34;
+  const bx = w * (five ? 0.33 : 0.25), bz = d * 0.19, back = -d * 0.06;
+  const burners = [
+    { x: -bx, z: back - bz, r: 2.0 }, { x: bx, z: back - bz, r: 2.4 },      // back row: simmer, medium
+    { x: -bx, z: back + bz, r: 2.7 }, { x: bx, z: back + bz, r: 2.0 },      // front row: power, simmer
+  ];
+  if (five) burners.push({ x: 0, z: back, r: 3.1 });                         // the wok burner
+  const n = burners.length, span = Math.min(w * 0.5, n * 2.6);
+  const knobs = burners.map((_, i) => ({ x: -span / 2 + (span * i) / (n - 1), z: d / 2 - 1.7 }));
+  return { burners, knobs };
+}
+

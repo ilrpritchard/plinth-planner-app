@@ -6,7 +6,7 @@
 // flush 115mm plinth, recessed door panels, flat drawer fronts.
 
 import { SPEC } from '../core/units.js';
-import { rangeSpec } from '../core/rangespec.js';
+import { rangeSpec, hobSpec } from '../core/rangespec.js';
 import { sinkSpec } from '../core/sinkspec.js';
 
 // cream line-art so the catalogue elevations read on the dark brand cards
@@ -272,27 +272,81 @@ function applianceSVG(cab) {
     p.push(rect(ox + ow * 0.12, oy + oh * 0.4, ow * 0.76, oh * 0.46, 0.8, HAIR));  // glass
     p.push(`<line x1="${f(ox + 4)}" y1="${f(oy + oh * 0.27)}" x2="${f(ox + ow - 4)}" y2="${f(oy + oh * 0.27)}" stroke="${STROKE}" stroke-width="1.4" stroke-linecap="round"/>`); // handle
   } else if (a === 'hob') {
-    p.push(rect(x, y + 18, w, h - 34, 1.6));
-    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => p.push(disc(50 + sx * 16, 50 + sy * 13, 7)));
-  } else if (a === 'sink') {
-    // plan view to scale (a 33" reads wider than a 24"): stone cut line, the
-    // rounded bowl(s), drain set toward the back, tap behind. From sinkSpec.
-    const sp = sinkSpec(cab);
-    const k = 80 / 34, cw = sp.cutW * k, cd = sp.cutD * k, cy = 56;          // cy = bowl centre
-    p.push(`<rect x="${f(50 - cw / 2 - 3)}" y="${f(cy - cd / 2 - 3)}" width="${f(cw + 6)}" height="${f(cd + 6)}" rx="2" fill="none" stroke="${STROKE}" stroke-width="1.6"/>`);
-    for (const bl of sp.bowls) {
-      p.push(`<rect x="${f(50 + (bl.x - bl.w / 2) * k)}" y="${f(cy - cd / 2)}" width="${f(bl.w * k)}" height="${f(cd)}" rx="${f(sp.r * k)}" fill="none" stroke="${HAIR}" stroke-width="1"/>`);
-      p.push(disc(50 + bl.x * k, cy + sp.drainZ * k, 2.6));
+    // plan view to scale (a 36" reads wider than a 30"): glass with rounded
+    // corners, each burner a ring + cap under four grate fingers, knobs along
+    // the front. From hobSpec, the same burners the 3D cooktop has.
+    const hs = hobSpec(cab), k = 84 / 36, gw = cab.w * k, gd = cab.d * k, cy = 50;
+    p.push(`<rect x="${f(50 - gw / 2)}" y="${f(cy - gd / 2)}" width="${f(gw)}" height="${f(gd)}" rx="3.2" fill="none" stroke="${STROKE}" stroke-width="1.6"/>`);
+    for (const b of hs.burners) {
+      const bx = 50 + b.x * k, by = cy + b.z * k, r = b.r * k * 1.3;   // drawn a touch bold so it reads at tile size
+      p.push(`<circle cx="${f(bx)}" cy="${f(by)}" r="${f(r)}" fill="none" stroke="${STROKE}" stroke-width="1.1"/>`);
+      p.push(`<circle cx="${f(bx)}" cy="${f(by)}" r="${f(r * 0.42)}" fill="none" stroke="${HAIR}" stroke-width="0.9"/>`);
+      for (let i = 0; i < 4; i++) {                                           // grate fingers
+        const a2 = Math.PI / 4 + (i * Math.PI) / 2, c2 = Math.cos(a2), s2 = Math.sin(a2);
+        p.push(`<line x1="${f(bx + c2 * r * 0.42)}" y1="${f(by + s2 * r * 0.42)}" x2="${f(bx + c2 * r * 1.22)}" y2="${f(by + s2 * r * 1.22)}" stroke="${HAIR}" stroke-width="0.9" stroke-linecap="round"/>`);
+      }
     }
-    p.push(disc(50, cy - cd / 2 - 9, 2.4)); p.push(vline(50, cy - cd / 2 - 9, cy - cd / 2 + 3, 1.2));   // tap + spout
+    for (const kn of hs.knobs) p.push(`<circle cx="${f(50 + kn.x * k)}" cy="${f(cy + kn.z * k)}" r="1.3" fill="${KNOB}" stroke="none"/>`);
+  } else if (a === 'sink') {
+    // plan view to scale (a 33" reads wider than a 24"): the rim, the rounded
+    // bowl(s) drawn as a double line (the wall), four pressed creases running to
+    // a drain set toward the back, and a tap with its spout over the bowl.
+    const sp = sinkSpec(cab);
+    const k = 82 / 34, cw = sp.cutW * k, cd = sp.cutD * k, cy = 57, rim = 2.6;
+    p.push(`<rect x="${f(50 - cw / 2 - rim)}" y="${f(cy - cd / 2 - rim)}" width="${f(cw + 2 * rim)}" height="${f(cd + 2 * rim)}" rx="${f(sp.r * k * 0.55 + rim)}" fill="none" stroke="${STROKE}" stroke-width="1.6"/>`);
+    for (const bl of sp.bowls) {
+      const x0 = 50 + (bl.x - bl.w / 2) * k, y0 = cy - cd / 2, bw = bl.w * k, r = sp.r * k;
+      p.push(`<rect x="${f(x0)}" y="${f(y0)}" width="${f(bw)}" height="${f(cd)}" rx="${f(r)}" fill="none" stroke="${STROKE}" stroke-width="1"/>`);
+      const dx = 50 + bl.x * k, dy = cy + sp.drainZ * k, dr = Math.min(3.4, bw / 7);
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {          // pressed creases, corner to drain
+        const ex = dx + sx * (bw / 2 - r * 0.62), ey = cy + sy * (cd / 2 - r * 0.62);
+        const len = Math.hypot(ex - dx, ey - dy), ux = (ex - dx) / len, uy = (ey - dy) / len;
+        p.push(`<line x1="${f(dx + ux * (dr + 1.2))}" y1="${f(dy + uy * (dr + 1.2))}" x2="${f(ex)}" y2="${f(ey)}" stroke="${HAIR}" stroke-width="0.8" stroke-linecap="round"/>`);
+      }
+      p.push(`<circle cx="${f(dx)}" cy="${f(dy)}" r="${f(dr)}" fill="none" stroke="${STROKE}" stroke-width="1"/>`);
+      p.push(`<circle cx="${f(dx)}" cy="${f(dy)}" r="${f(dr * 0.4)}" fill="${KNOB}" stroke="none"/>`);
+    }
+    // tap: base on the rim behind the bowl, spout reaching over it, lever to the side
+    const ty = cy - cd / 2 - rim - 4.5;
+    p.push(`<line x1="50" y1="${f(ty + 2.6)}" x2="50" y2="${f(cy - cd / 2 + cd * 0.2)}" stroke="${STROKE}" stroke-width="1.8" stroke-linecap="round"/>`);
+    p.push(`<circle cx="50" cy="${f(ty)}" r="2.6" fill="none" stroke="${STROKE}" stroke-width="1.2"/>`);
+    p.push(`<line x1="${f(50 + 5.5)}" y1="${f(ty)}" x2="${f(50 + 10)}" y2="${f(ty - 2.2)}" stroke="${STROKE}" stroke-width="1.4" stroke-linecap="round"/>`);
   } else if (a === 'hood') {
-    p.push(`<path d="M ${x} ${y + h} L ${x + 12} ${y + 30} L ${x + w - 12} ${y + 30} L ${x + w} ${y + h} Z" fill="none" stroke="${STROKE}" stroke-width="1.6"/>`);
-    p.push(rect(x + w / 2 - 8, y + 8, 16, 24, 1.2));
+    // front elevation: flue, tapered canopy, the lip with its lights and buttons, a baffle line
+    const k = 78 / 36, cw = cab.w * k, top = 12, shoulder = 46, lipTop = 70, lipBot = 78, flue = 15;
+    p.push(rect(50 - flue / 2, top, flue, shoulder - top, 1.4));                                        // flue
+    p.push(hline(50 - flue / 2, 50 + flue / 2, top + 9, 0.7));                                          // telescopic joint
+    p.push(`<path d="M ${f(50 - flue / 2 - 3)} ${shoulder} L ${f(50 + flue / 2 + 3)} ${shoulder} L ${f(50 + cw / 2)} ${lipTop} L ${f(50 - cw / 2)} ${lipTop} Z" fill="none" stroke="${STROKE}" stroke-width="1.6" stroke-linejoin="round"/>`);
+    p.push(rect(50 - cw / 2, lipTop, cw, lipBot - lipTop, 1.6));                                        // lip
+    p.push(hline(50 - cw / 2 + 5, 50 + cw / 2 - 5, (shoulder + lipTop) / 2 + 3, 0.7));                  // canopy crease
+    for (const sx of [-1, 1]) p.push(`<circle cx="${f(50 + sx * cw * 0.3)}" cy="${f((lipTop + lipBot) / 2)}" r="1.9" fill="none" stroke="${HAIR}" stroke-width="0.9"/>`); // lights
+    for (let i = -1; i <= 1; i++) p.push(`<circle cx="${f(50 + i * 4)}" cy="${f((lipTop + lipBot) / 2)}" r="0.9" fill="${KNOB}" stroke="none"/>`);             // buttons
   } else if (a === 'fridge') {
-    p.push(rect(x + 16, y, w - 32, h, 1.6));
-    p.push(hline(x + 16, x + w - 16, y + h * 0.42, 0.9));
-    p.push(vline(x + 22, y + 6, y + h * 0.38, 1.2));
-    p.push(vline(x + 22, y + h * 0.46, y + h - 6, 1.2));
+    // front elevation to scale (84" tall fills the tile): doors over a freezer
+    // drawer. Integrated = painted shaker panels + knobs on a flush plinth;
+    // freestanding = steel doors with bar handles on feet. One door on a narrow
+    // or over-under unit, a french pair otherwise.
+    const k = 82 / Math.max(84, cab.h), fw = cab.w * k, fh = cab.h * k, x0 = 50 - fw / 2, y1 = 92, y0 = y1 - fh;
+    const base = (cab.integrated ? 4.5 : 2.2) * k, drawerH = fh * 0.27;
+    const dTop = y1 - base - drawerH, pair = !cab.overUnder && cab.w >= 33;
+    p.push(rect(x0, y0, fw, fh, 1.6));
+    p.push(hline(x0, x0 + fw, y1 - base, 0.9));                                                         // plinth / feet line
+    p.push(hline(x0, x0 + fw, dTop, 1));                                                                // drawer top
+    if (pair) p.push(vline(50, y0, dTop, 1));
+    const doors = pair ? [[x0, fw / 2], [50, fw / 2]] : [[x0, fw]];
+    if (cab.integrated) {
+      for (const [dx, dw] of doors) p.push(rect(dx + 2.6, y0 + 2.6, dw - 5.2, dTop - y0 - 5.2, 0.8, HAIR));                    // shaker field
+      p.push(rect(x0 + 2.6, dTop + 2.6, fw - 5.2, drawerH - 5.2, 0.8, HAIR));
+      const ky = y0 + (dTop - y0) * 0.56;
+      if (pair) { knob(p, 50 - 2.4, ky); knob(p, 50 + 2.4, ky); } else knob(p, x0 + fw - 4, ky);
+      knob(p, 50 - fw / 9 * 1.5, dTop + 5); knob(p, 50 + fw / 9 * 1.5, dTop + 5);
+    } else {
+      const bar = (bx, ya, yb) => p.push(`<line x1="${f(bx)}" y1="${f(ya)}" x2="${f(bx)}" y2="${f(yb)}" stroke="${STROKE}" stroke-width="1.6" stroke-linecap="round"/>`);
+      const ha = y0 + (dTop - y0) * 0.3, hb = y0 + (dTop - y0) * 0.78;
+      if (pair) { bar(50 - 2.6, ha, hb); bar(50 + 2.6, ha, hb); } else bar(x0 + fw - 4, ha, hb);
+      p.push(`<line x1="${f(x0 + fw * 0.2)}" y1="${f(dTop + 5)}" x2="${f(x0 + fw * 0.8)}" y2="${f(dTop + 5)}" stroke="${STROKE}" stroke-width="1.6" stroke-linecap="round"/>`);
+      for (const sx of [-1, 1]) p.push(rect(50 + sx * (fw / 2 - 4) - 1.5, y1 - base, 3, base, 0.8, HAIR));                       // feet
+    }
   } else {
     p.push(rect(x, y, w, h, 1.6));
   }

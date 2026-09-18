@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { buildIntegratedFridge } from './cabinet.js';
-import { rangeSpec, rangeCooktop } from '../core/rangespec.js';
+import { rangeSpec, rangeCooktop, hobSpec } from '../core/rangespec.js';
 import { sinkSpec } from '../core/sinkspec.js';
 
 function mat(color, metalness, roughness, env = 0.8) {
@@ -162,7 +162,14 @@ export function buildAppliance(cab, finishHex = '#efece3') {
     case 'hob': {
       const slab = box(w, 1.2, d, GLASS()); slab.position.y = 0.6; g.add(slab);
       const rim = box(w + 0.6, 0.4, d + 0.6, STEEL_DK()); rim.position.y = 0.1; g.add(rim);
-      for (const bx of [-w / 4, w / 4]) for (const bz of [-d / 6, d / 6]) burner(g, bx, bz, 1.4, Math.min(w, d) * 0.14);
+      // burners and front knobs from hobSpec (the catalogue icon draws the same):
+      // four on a 30", five on a 36" with the big one in the middle
+      const hs = hobSpec(cab);
+      for (const b of hs.burners) burner(g, b.x, b.z, 1.4, b.r * 1.45);
+      for (const kn of hs.knobs) {
+        const base = cyl(0.62, 0.68, 0.18, STEEL_DK(), 20); base.position.set(kn.x, 1.29, kn.z); base.castShadow = false; g.add(base);
+        const knob = cyl(0.46, 0.52, 0.62, STEEL(), 20); knob.position.set(kn.x, 1.68, kn.z); g.add(knob);
+      }
       break;
     }
     case 'sink': {

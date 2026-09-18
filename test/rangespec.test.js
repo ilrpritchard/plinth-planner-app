@@ -4,7 +4,7 @@
 // griddle and twin ovens. Node test, no DOM.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rangeSpec, rangeCooktop } from '../src/core/rangespec.js';
+import { rangeSpec, rangeCooktop, hobSpec } from '../src/core/rangespec.js';
 import { getCab, CATALOGUE } from '../src/core/catalogue.js';
 import { drawFront } from '../src/ui/frontdraw.js';
 import { cabinetSVG } from '../src/ui/icon.js';
@@ -54,3 +54,23 @@ test('elevation and icon draw the doors the spec describes, elevation stays dash
     assert.equal((icon.match(/<rect /g) || []).length, 2 + e.ovens * 2, `${code} icon: body, grates, then door + window per oven`);
   }
 });
+
+test('cooktops: four burners on the 30", five on the 36", a knob each, all on the glass and clear of each other', () => {
+  for (const [code, n] of [['AP4', 4], ['AP5', 5]]) {
+    const cab = getCab(code), hs = hobSpec(cab);
+    assert.equal(hs.burners.length, n, `${code} burners`);
+    assert.equal(hs.knobs.length, n, `${code} a knob per burner`);
+    for (const b of hs.burners) assert.ok(Math.abs(b.x) + b.r * 1.3 < cab.w / 2 && Math.abs(b.z) + b.r * 1.3 < cab.d / 2, `${code} burner on the glass`);
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const a = hs.burners[i], b = hs.burners[j];
+      assert.ok(Math.hypot(a.x - b.x, a.z - b.z) > (a.r + b.r) * 1.3, `${code} burners never touch, even drawn bold`);
+    }
+    for (const k of hs.knobs) {
+      assert.ok(Math.abs(k.x) < cab.w / 2 - 1 && k.z < cab.d / 2 - 0.8, `${code} knob on the glass`);
+      for (const b of hs.burners) assert.ok(Math.hypot(k.x - b.x, k.z - b.z) > b.r * 1.3 + 0.6, `${code} knob clear of the burners`);
+    }
+    const icon = cabinetSVG(cab);
+    assert.equal((icon.match(/<circle /g) || []).length, n * 3, `${code} icon: ring + cap per burner, a dot per knob`);
+  }
+});
+
