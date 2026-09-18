@@ -13,13 +13,18 @@ import { makeFloorTexture, floorSurface } from './floorTexture.js';
 
 const WALL_T = 4;
 
+// key -> label + base colour; scene/floorTexture.js PAINT says how each is drawn.
+// Keys are saved in designs: never rename one (tile / ash keep theirs).
 export const FLOORS = {
-  oak: { label: 'Oak', color: 0xc9a978 },
-  ash: { label: 'Pale ash', color: 0xddc9a3 },
-  walnut: { label: 'Walnut', color: 0x6b4a2f },
-  tile: { label: 'Stone', color: 0xcfcabf },
-  concrete: { label: 'Concrete', color: 0xb4b0a8 },
-  slate: { label: 'Slate', color: 0x55585a },
+  oak: { label: 'Oak', color: 0xc2a27b },
+  ash: { label: 'Pale ash', color: 0xd9cab0 },
+  walnut: { label: 'Walnut', color: 0x70503a },
+  herringbone: { label: 'Oak herringbone', color: 0xbf9e74 },
+  tile: { label: 'Limestone', color: 0xd7d1c4 },
+  slate: { label: 'Slate', color: 0x5b5e61 },
+  checker: { label: 'Checkerboard', color: 0x8c8b88 },
+  terrazzo: { label: 'Terrazzo', color: 0xe5e0d5 },
+  concrete: { label: 'Concrete', color: 0xb8b5ad },
 };
 export const WALLS = {
   white: { label: 'White', color: 0xf7f6f2 },     // plain white (her ask 2026-09-17); a hair off pure so it still shades
@@ -63,8 +68,14 @@ export class Room {
     for (const c of [...this.group.children]) { this.group.remove(c); disposeDeep(c); }
 
     // procedurally textured floor (planks / tile / stone / concrete)
-    this._floorTex?.dispose?.();
-    this._floorTex = makeFloorTexture(opts.floor, floorColor, width, depth);
+    // painting a floor costs ~0.2s, and the room rebuilds on every window nudge:
+    // keep the texture while the floor and the footprint stay the same
+    const floorKey = `${opts.floor}|${floorColor}|${width}x${depth}`;
+    if (this._floorKey !== floorKey) {
+      this._floorTex?.dispose?.();
+      this._floorTex = makeFloorTexture(opts.floor, floorColor, width, depth);
+      this._floorKey = floorKey;
+    }
     const surf = floorSurface(opts.floor);
     const floorMat = new THREE.MeshStandardMaterial({
       map: this._floorTex, color: 0xffffff, roughness: surf.roughness, metalness: 0, envMapIntensity: surf.env,

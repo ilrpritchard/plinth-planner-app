@@ -19,6 +19,7 @@ import { sinkSizes, sinkSpec, SINK_BASES, sinkBaseCombo } from '../core/sinkspec
 import { uiConfirm, uiAlert, mailFallback } from './dialog.js';
 import { genOrderNo } from '../core/orders.js';
 import { FLOORS, WALLS } from '../scene/Room.js';
+import { floorSwatchURL } from '../scene/floorTexture.js';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -259,7 +260,14 @@ export class UI {
          <span class="rs-chip" style="background:${hex6(v.color)}"></span>
          ${showName ? `<span class="rs-name">${v.label}</span>` : ''}
        </button>`).join('');
-    document.getElementById('floorSwatches').innerHTML = swHTML(FLOORS, 'floor');
+    // floors show a patch of the REAL painted floor, not a flat colour chip
+    document.getElementById('floorSwatches').innerHTML = Object.entries(FLOORS).map(([k, v]) => {
+      let img = ''; try { img = floorSwatchURL(k, v.color); } catch { img = ''; }
+      return `<button type="button" class="rs-sw" data-floor="${k}" title="${v.label}">
+         <span class="rs-chip rs-chip-floor" style="background:${hex6(v.color)}${img ? ` url(${img}) center/cover` : ''}"></span>
+         <span class="rs-name">${v.label}</span>
+       </button>`;
+    }).join('');
     document.getElementById('wallSwatches').innerHTML = swHTML(WALLS, 'wall', false); // colours only
     document.getElementById('worktopSwatches').innerHTML = Object.entries(WORKTOP_OPTIONS).map(([k, v]) =>
       `<button type="button" class="rs-sw" data-worktop="${k}" title="${v.label}"><span class="rs-chip" style="background:${v.hex}"></span><span class="rs-name">${v.label}</span></button>`).join('');
