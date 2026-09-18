@@ -335,6 +335,16 @@ export function swapAlternatives(code) {
     (c.mountY ?? null) === (cur.mountY ?? null));
 }
 
+/** Drawer inserts made for this cabinet: the cutlery / utensil accessories whose
+ *  width matches a drawer bank (A3 / A6 for 28", A5 for 24", A4 for 36"; nothing is
+ *  made for 20"). Cooktop drawers are skipped: their top front is fixed. */
+export function drawerInserts(code) {
+  const cab = getCab(code);
+  if (!cab || cab.form !== 'drawers' || /cooktop/i.test(cab.desc || '')) return [];
+  return CATALOGUE.filter((a) => a.type === 'ACCESSORIES' && /insert/i.test(a.desc) && a.usd > 0 &&
+    Number((a.desc.match(/(\d+)"/) || [])[1]) === cab.w);
+}
+
 // For a double-sided island: given a front (standard-depth) floor cabinet,
 // pick a half-depth floor cabinet to sit back-to-back behind it. Match the
 // width as closely as possible without overhanging the front unit.

@@ -311,7 +311,7 @@ function drawCabinet(out, labels, it, cab, hosts) {
 
   // ---- code label, pushed to `labels` so it paints after every shape. Base /
   // tall / appliance: dead centre, haloed. Uppers (which overlap the base run
-  // in plan): small grey code tucked at their front-left corner. A sink or
+  // in plan): small grey code tucked at their back-left corner. A sink or
   // cooktop riding IN a base shares ONE label with it ("F10 · AP7") — two
   // codes stacked on the same centre would be unreadable. Widths live in the
   // dimension CHAIN + the key, not on every box.
@@ -320,8 +320,10 @@ function drawCabinet(out, labels, it, cab, hosts) {
   const codeLabel = cab.baseCode || cab.code;
   if (hosts.hosted.has(it.id)) return;            // its rider carries both codes
   if (upper) {
-    const lab = L(-w / 2 + 1.8, d / 2 - 1.2);
-    labels.push(`<text x="${n(lab[0])}" y="${n(lab[1])}" font-size="${F_CODE * 0.8}" fill="${UPPER}" dominant-baseline="central">${codeLabel}</text>`);
+    // tucked at the upper's BACK-left corner, against the wall: the base below
+    // carries its own code dead centre, so the front corner would land on it
+    const lab = L(-w / 2 + 1.8, -d / 2 + 2.4);
+    labels.push(`<text x="${n(lab[0])}" y="${n(lab[1])}" font-size="${F_CODE * 0.8}" fill="${UPPER}" dominant-baseline="central"${HALO}>${codeLabel}</text>`);
     return;
   }
   const hostCode = hosts.hostCode.get(it.id);
