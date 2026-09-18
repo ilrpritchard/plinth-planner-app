@@ -1471,6 +1471,10 @@ details.trade-fold > .trade-exports { padding: 8px 18px 18px; display: flex; gap
 
 /* in Project mode the layout button belongs to the unit cards, not the top bar */
 body.mode-trade .topbar-guided { display: none; }
+/* ...and so do saving and opening: Project mode has Save project / Open project / Start over on the
+   page, so the top bar's file Save / Open / Clear (kitchen-design tools) stay out of the way.
+   They return while a unit is being laid out in 3D, because that runs in Kitchen mode. */
+body.mode-trade #btnExport, body.mode-trade #btnImport, body.mode-trade #btnClear { display: none; }
 
 /* corners: the planner keeps its small radii (tried square on 17 Sep 2026, rounded reads better on a dense tool; the site stays square) */
 

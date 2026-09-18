@@ -202,7 +202,7 @@ export class TradeUI {
   renderWelcome() {
     const n = demoUnitCount();
     const mail = 'mailto:imogen@plinthmade.com?subject=' + encodeURIComponent('Floor plans for pricing') +
-      '&body=' + encodeURIComponent('Project name and address:\n\nNumber of units:\n\nKitchen types (A, B, C) and how many of each:\n\nAttach a plan per floor. We lay out the kitchens and send back a priced project within two working days.\n');
+      '&body=' + encodeURIComponent('Project name and address:\n\nNumber of units:\n\nKitchen types (A, B, C) and how many of each:\n\nAttach a plan per floor. We lay out the kitchens and send back a priced project.\n');
     this.root.innerHTML = `
       <div class="trade-wrap trade-first">
         <header class="trade-head trade-head-slim">
@@ -225,7 +225,7 @@ export class TradeUI {
             </button>
             <a class="tw-opt" id="twSend" href="${mail}">
               <strong>Send us the floor plans</strong>
-              <span>A plan per floor and the kitchen types. PL/NTH lays out the kitchens and returns a priced project within two working days.</span>
+              <span>A plan per floor and the kitchen types. PL/NTH lays out the kitchens and returns a priced project.</span>
             </a>
           </div>
           <div class="tw-foot">Smaller projects and one-off kitchens: <a href="mailto:imogen@plinthmade.com">imogen@plinthmade.com</a></div>
