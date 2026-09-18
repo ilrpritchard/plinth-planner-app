@@ -11,6 +11,8 @@
 // exactly (no 1" overhang over the range, no spill past its edge at a run
 // end), stops dead, and resumes on the other side.
 
+import { sinkSpec } from './sinkspec.js';
+
 const OVERHANG = 1.0;   // proud of a door front / island edge
 const SEATING = 12;     // breakfast-bar overhang past an island back (300mm)
 const CONNECT = 9.6;    // cabinets within this gap (incl. a 9\" max filler) share a slab
@@ -249,7 +251,7 @@ export function subtractSinkCutouts(slabs, items, getCab) {
   for (const it of items || []) {
     const cab = getCab(it.code);
     if (!cab || cab.appliance !== 'sink') continue;
-    const cutW = cab.w - 2.4, cutD = cab.d - 4.5;        // basin opening, local
+    const { cutW, cutD } = sinkSpec(cab);                // basin opening, local (core/sinkspec.js)
     const th = ((it.rotDeg || 0) * Math.PI) / 180;
     const hx = Math.abs(Math.cos(th)) * cutW / 2 + Math.abs(Math.sin(th)) * cutD / 2;
     const hz = Math.abs(Math.sin(th)) * cutW / 2 + Math.abs(Math.cos(th)) * cutD / 2;
@@ -273,3 +275,34 @@ export function subtractSinkCutouts(slabs, items, getCab) {
   }
   return rects.filter((s) => s.x1 - s.x0 > 0.05 && s.z1 - s.z0 > 0.05);
 }
+
+// ---- rounded cutout corners ---------------------------------------------------
+// The hole above is square-cornered (rectangle arithmetic). A real undermount is
+// cut FLUSH to a wide-radius bowl, so each corner of the opening gets a small
+// stone fillet: the r x r corner square minus the bowl's quarter circle. Returned
+// as world-space polygons [[x, z], ...] in the material of the slab the sink sits
+// in; models/worktop.js extrudes them to slab thickness. Pure.
+export function sinkCornerFillets(slabs, items, getCab, segments = 8) {
+  const out = [];
+  for (const it of items || []) {
+    const cab = getCab(it.code);
+    if (!cab || cab.appliance !== 'sink') continue;
+    const slab = (slabs || []).find((s) => it.x > s.x0 && it.x < s.x1 && it.z > s.z0 && it.z < s.z1);
+    if (!slab) continue;                                  // no worktop here: nothing to round
+    const { cutW, cutD, r } = sinkSpec(cab);
+    const th = ((it.rotDeg || 0) * Math.PI) / 180, c = Math.cos(th), sn = Math.sin(th);
+    const world = (lx, lz) => [it.x + lx * c + lz * sn, it.z - lx * sn + lz * c];
+    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const cx = sx * cutW / 2, cz = sz * cutD / 2;       // the hole's corner, local
+      const pts = [world(cx, cz)];
+      // arc centre sits r in from the corner on both axes; sweep the quarter nearest the corner
+      for (let i = 0; i <= segments; i++) {
+        const a = (i / segments) * (Math.PI / 2);
+        pts.push(world(cx - sx * r * (1 - Math.sin(a)), cz - sz * r * (1 - Math.cos(a))));
+      }
+      out.push({ mat: slab.mat, pts });
+    }
+  }
+  return out;
+}
+

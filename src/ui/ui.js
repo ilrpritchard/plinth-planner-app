@@ -15,6 +15,7 @@ import { exportJSON, importJSON } from '../core/persistence.js';
 import { TEMPLATES, applyTemplate, planWallInfill } from '../core/templates.js';
 import { cabinetSVG } from './icon.js';
 import { planRangeResize, rangeSizes } from '../core/resize.js';
+import { sinkSizes, sinkSpec } from '../core/sinkspec.js';
 import { uiConfirm, uiAlert, mailFallback } from './dialog.js';
 import { genOrderNo } from '../core/orders.js';
 import { FLOORS, WALLS } from '../scene/Room.js';
@@ -795,6 +796,12 @@ export class UI {
     // (slides into free wall first, then a neighbour drops to a narrower twin)
     document.getElementById('selSize')?.addEventListener('change', async (e) => {
       const id = this.controls.layer.selectedId; if (id == null) return;
+      if (getCab(e.target.value)?.appliance === 'sink') {       // a sink rides in the worktop: a straight swap, the live warning says if its base is too small
+        this.store.swapItem(id, e.target.value);
+        this.showSelbar(id);
+        this._toast(`${getCab(e.target.value).desc} fitted.`);
+        return;
+      }
       const plan = planRangeResize(this.store.state, id, e.target.value);
       if (!plan.ok) { this._toast(plan.reason); this.showSelbar(id); return; }
       // sliding and narrowing just happen; taking a cabinet OUT is asked first
@@ -864,12 +871,16 @@ export class UI {
         swap.style.display = '';
       } else swap.style.display = 'none';
     }
-    // size picker: range cookers only
+    // size picker: range cookers and sinks
     const size = document.getElementById('selSize');
     if (size) {
-      const sizes = rangeSizes(it.code);
+      const isSink = cab.appliance === 'sink';
+      const sizes = isSink ? sinkSizes(it.code) : rangeSizes(it.code);
       if (sizes.length > 1) {
-        size.innerHTML = sizes.map((c) => `<option value="${c.code}" ${c.code === cab.code ? 'selected' : ''}>${c.code === cab.code ? 'Size: ' : ''}${fmtIn(c.w)}</option>`).join('');
+        // ranges differ only by width; sinks also by single / double, so they show their name
+        // (two doubles are 33": the 7" original and the 9"-deep Grande size, so depth is part of the name)
+        const label = (c) => (isSink ? `${c.desc.replace(/^Sink /, '')}${/\d"$/.test(c.desc) ? '' : ` ${fmtIn(c.w)}`} · ${sinkSpec(c).depth}" deep` : fmtIn(c.w));
+        size.innerHTML = sizes.map((c) => `<option value="${c.code}" ${c.code === cab.code ? 'selected' : ''}>${c.code === cab.code ? 'Size: ' : ''}${label(c)}</option>`).join('');
         size.style.display = '';
       } else size.style.display = 'none';
     }

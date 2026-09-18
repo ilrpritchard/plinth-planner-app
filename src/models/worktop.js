@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { worktopMat } from './materials.js';
 import { SURFACE_Y } from './cabinet.js';
-import { planWorktopSlabs, subtractSinkCutouts } from '../core/worktop-plan.js';
+import { planWorktopSlabs, subtractSinkCutouts, sinkCornerFillets } from '../core/worktop-plan.js';
 
 const THICK = 1.25;
 
@@ -31,7 +31,17 @@ export class Worktop {
   /** Rebuild from placed items. getCab(code)->catalogue; room gives wall bounds. */
   rebuild(items, getCab, defaultMat = 'marble', room = null) {
     this.clear();
-    for (const s of subtractSinkCutouts(planWorktopSlabs(items, getCab, defaultMat, room), items, getCab)) {
+    const planned = planWorktopSlabs(items, getCab, defaultMat, room);
+    // an undermount is cut flush to a rounded bowl: stone fillets round each corner of the square hole
+    for (const f of sinkCornerFillets(planned, items, getCab)) {
+      const shape = new THREE.Shape(f.pts.map(([x, z]) => new THREE.Vector2(x, z)));
+      const fillet = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: THICK, bevelEnabled: false }), worktopMat(f.mat));
+      fillet.rotation.x = Math.PI / 2;                    // shape y -> world z, extrude -> down
+      fillet.position.y = SURFACE_Y;
+      fillet.castShadow = true; fillet.receiveShadow = true;
+      this.group.add(fillet);
+    }
+    for (const s of subtractSinkCutouts(planned, items, getCab)) {
       const w = s.x1 - s.x0, d = s.z1 - s.z0;
       if (w <= 0.05 || d <= 0.05) continue;
       const slab = new THREE.Mesh(new THREE.BoxGeometry(w - 0.02, THICK, d - 0.02), worktopMat(s.mat));

@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { buildIntegratedFridge } from './cabinet.js';
 import { rangeSpec, rangeCooktop } from '../core/rangespec.js';
+import { sinkSpec } from '../core/sinkspec.js';
 
 function mat(color, metalness, roughness, env = 0.8) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), metalness, roughness, envMapIntensity: env });
@@ -165,37 +166,68 @@ export function buildAppliance(cab, finishHex = '#efece3') {
       break;
     }
     case 'sink': {
-      // UNDERMOUNT stainless with REAL depth: the worktop plan cuts a matching
-      // hole (core/worktop-plan.js subtractSinkCutouts uses the same numbers),
-      // so each bowl is a true open-top basin recessed 7" below the surface —
-      // BackSide walls you look down into, a brushed floor, and a drain.
-      const double = /double/i.test(cab.desc);
-      const cutW = cab.w - 2.4, cutD = d - 4.5, bowlDepth = 7;
-      const bowls = double ? [[-cutW / 4 - 0.25, cutW / 2 - 0.5], [cutW / 4 + 0.25, cutW / 2 - 0.5]] : [[0, cutW]];
-      for (const [x, bw] of bowls) {
-        // four REAL thin walls + a floor — solid geometry so the bowl reads
-        // correctly from every angle (a flipped-normals box sees through its
-        // near wall when viewed from the front)
-        const t = 0.18, yMid = -bowlDepth / 2;
-        const mkWall = (ww, dd, px, pz) => {
-          const m = box(ww, bowlDepth, dd, BASIN());
-          m.position.set(px, yMid, pz); g.add(m);         // walls CAST shadow into the bowl — that's the depth cue
-        };
-        mkWall(bw, t, x, -cutD / 2 + t / 2);              // back
-        mkWall(bw, t, x, cutD / 2 - t / 2);               // front
-        mkWall(t, cutD, x - bw / 2 + t / 2, 0);           // left
-        mkWall(t, cutD, x + bw / 2 - t / 2, 0);           // right
-        // the floor sits in the bowl's own shade — drawn decisively darker than
-        // the worktop or the scene's flat lighting washes the recess out
-        const floor = box(bw, 0.2, cutD, mat(0x7e848a, 0.5, 0.52, 0.7));
-        floor.position.set(x, -bowlDepth + 0.1, 0); floor.castShadow = false; g.add(floor);
-        const drain = cyl(0.8, 0.8, 0.12, DARK()); drain.position.set(x, -bowlDepth + 0.26, 1.4); drain.castShadow = false; g.add(drain);
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.82, 0.09, 8, 24), CHROME());
-        ring.rotation.x = Math.PI / 2; ring.position.set(x, -bowlDepth + 0.3, 1.4); ring.castShadow = false; g.add(ring);
+      // UNDERMOUNT stainless in the Franke Grande idiom (her pick), cut FLUSH: the
+      // worktop plan cuts the hole and rounds its corners with stone fillets
+      // (core/sinkspec.js is the ONE set of numbers), so the stone meets a
+      // WIDE-RADIUS bowl wall directly, no steel rim showing. Walls drop the full
+      // depth to a floor pressed with four creases that run to a rear-set basket
+      // strainer. A double shows steel only on its divider.
+      const sp = sinkSpec(cab);
+      // Franke "silk": bright, soft-brushed. LOW metalness on purpose: in this
+      // scene's flat light a truly metallic bowl reads near-black in its own shade
+      const SILK = () => mat(0xd0d4d8, 0.42, 0.36, 1.3);
+      const SILK_FLOOR = () => mat(0xb9bec3, 0.4, 0.44, 1.1);      // the floor sits a touch darker, in the bowl's shade
+      const SLAB = 1.25;                                           // worktop thickness (models/worktop.js THICK)
+      const roundRect = (S, cx, cz, rw, rd, r) => {               // shape-space: x = across, y = world z
+        const x0 = cx - rw / 2, x1 = cx + rw / 2, y0 = cz - rd / 2, y1 = cz + rd / 2;
+        S.moveTo(x0 + r, y0); S.lineTo(x1 - r, y0); S.absarc(x1 - r, y0 + r, r, -Math.PI / 2, 0, false);
+        S.lineTo(x1, y1 - r); S.absarc(x1 - r, y1 - r, r, 0, Math.PI / 2, false);
+        S.lineTo(x0 + r, y1); S.absarc(x0 + r, y1 - r, r, Math.PI / 2, Math.PI, false);
+        S.lineTo(x0, y0 + r); S.absarc(x0 + r, y0 + r, r, Math.PI, Math.PI * 1.5, false);
+        return S;
+      };
+      // extrude a shape DOWN from world y = top (shape y -> world z)
+      const drop = (shape, top, depth, m, shadow = true) => {
+        const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 10 });
+        const mesh = new THREE.Mesh(geo, m); mesh.rotation.x = Math.PI / 2; mesh.position.y = top;
+        mesh.castShadow = shadow; mesh.receiveShadow = true; g.add(mesh); return mesh;
+      };
+      const LIP = 0;                                               // flush reveal: stone edge = bowl wall
+      const WALL = 0.16, top = -SLAB, fall = sp.depth;
+      if (sp.bowls.length > 1) {
+        // the divider's top (and the webs at its rounded ends) is the only steel at stone level
+        const web = roundRect(new THREE.Shape(), 0, 0, sp.cutW, sp.cutD, sp.r);
+        for (const bl of sp.bowls) web.holes.push(roundRect(new THREE.Path(), bl.x, 0, bl.w, bl.d, sp.r));
+        drop(web, top, 0.14, SILK(), false);
       }
-      if (double) {                                       // divider crests just below the rim
-        const div = box(0.7, bowlDepth - 0.8, cutD, BASIN());
-        div.position.set(0, -(bowlDepth - 0.8) / 2 - 0.8, 0); g.add(div);
+      for (const bl of sp.bowls) {
+        const ow = bl.w - 2 * LIP, od = bl.d - 2 * LIP, r = Math.max(0.6, sp.r - LIP);
+        // walls: a rounded ring the full depth of the bowl (they cast the shadow that reads as depth)
+        const ring = roundRect(new THREE.Shape(), bl.x, 0, ow + 2 * WALL, od + 2 * WALL, r + WALL);
+        ring.holes.push(roundRect(new THREE.Path(), bl.x, 0, ow, od, r));
+        drop(ring, top, fall, SILK());
+        // floor
+        const floor = drop(roundRect(new THREE.Shape(), bl.x, 0, ow + WALL, od + WALL, r), top - fall, 0.12, SILK_FLOOR(), false);
+        floor.receiveShadow = true;
+        const fy = top - fall + 0.02, dz = sp.drainZ;
+        // pressed drainage creases: corner -> drain, hairline proud of the floor
+        for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+          const cx = bl.x + sx * (ow / 2 - r * 0.7), cz = sz * (od / 2 - r * 0.7);
+          const len = Math.hypot(cx - bl.x, cz - dz) - 2.4;
+          if (len < 1) continue;
+          const crease = box(len, 0.035, 0.1, mat(0xf2f4f6, 0.3, 0.3, 1.3));
+          crease.castShadow = false;
+          crease.position.set((cx + bl.x) / 2 + (cx - bl.x) * 0.12, fy, (cz + dz) / 2 + (cz - dz) * 0.12);
+          crease.rotation.y = -Math.atan2(cz - dz, cx - bl.x);
+          g.add(crease);
+        }
+        // basket strainer: chrome flange ring, dark basket, centre post
+        const sr = Math.min(2.2, ow / 6);
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(sr, 0.13, 10, 32), CHROME()); rim.rotation.x = Math.PI / 2; rim.position.set(bl.x, fy + 0.06, dz); rim.castShadow = false; g.add(rim);
+        const dish = cyl(sr, sr * 0.92, 0.1, CHROME(), 32); dish.position.set(bl.x, fy + 0.02, dz); dish.castShadow = false; g.add(dish);
+        const basket = cyl(sr * 0.62, sr * 0.62, 0.12, DARK(), 28); basket.position.set(bl.x, fy + 0.06, dz); basket.castShadow = false; g.add(basket);
+        const inner = new THREE.Mesh(new THREE.TorusGeometry(sr * 0.62, 0.07, 8, 28), CHROME()); inner.rotation.x = Math.PI / 2; inner.position.set(bl.x, fy + 0.1, dz); inner.castShadow = false; g.add(inner);
+        const post = cyl(0.22, 0.28, 0.4, CHROME(), 14); post.position.set(bl.x, fy + 0.25, dz); post.castShadow = false; g.add(post);
       }
       gooseneck(g, 0, -d / 2 + 1.6);
       // single lever handle beside the column

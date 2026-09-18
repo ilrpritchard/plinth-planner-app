@@ -118,6 +118,15 @@ export function computeWarnings(state) {
     if (!supported) {
       out.push({ level: 'warn', msg: `${b.cab.desc} isn’t over a base cabinet — sit it on a sink/cooktop base so it has support.` });
     }
+    // the maker's minimum base: a 30" or 33" bowl will not drop into a 24" carcass
+    if (supported && b.cab.minBase) {
+      const under = floor.filter((f) => f.cab.type === 'FLOOR' &&
+        (f.hx + b.hx) - Math.abs(f.x - b.x) > 2 && (f.hz + b.hz) - Math.abs(f.z - b.z) > 2)
+        .sort((p, q) => Math.hypot(p.x - b.x, p.z - b.z) - Math.hypot(q.x - b.x, q.z - b.z))[0];
+      if (under && under.cab.w < b.cab.minBase - 0.5) {
+        out.push({ level: 'warn', msg: `${b.cab.desc} needs a ${b.cab.minBase}" base under it. ${under.cab.code} is ${under.cab.w}". Swap the base for a wider one or pick a smaller sink.` });
+      }
+    }
     // a COOKTOP body drops into the cabinet below — a working top drawer or a
     // plain double can't take it. Point at the cooktop-prepped bases (F30/F31).
     if (b.cab.appliance === 'hob') {

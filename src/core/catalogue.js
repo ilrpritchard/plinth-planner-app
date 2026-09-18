@@ -229,6 +229,14 @@ const APPLIANCES = [
   { code: 'AP6', appliance: 'sink', desc: 'Sink (Single)', w: 24, d: 20, h: 8, mountY: 36.5 },
   { code: 'AP7', appliance: 'sink', desc: 'Sink (Double)', w: 33, d: 20, h: 8, mountY: 36.5 },
   { code: 'AP10', appliance: 'sink', desc: 'Sink (Prep) 15"', w: 15, d: 18, h: 8, mountY: 36.5 },
+  // bigger undermounts, sized from the Franke Grande range she chose (9" deep,
+  // wide-radius corners, rear drain). w = the sink's overall length; `bowl` is
+  // the opening the worktop is cut to (core/sinkspec.js); minBase = the base
+  // cabinet the maker asks for. Shown for layout only, never supplied.
+  { code: 'AP17', appliance: 'sink', desc: 'Sink (Single) 25"', w: 24.75, d: 22, h: 9, mountY: 36.5, minBase: 30, bowl: { n: 1, w: 23, d: 17, depth: 9, r: 2.75 }, notes: 'Not supplied by PL/NTH, shown for layout only. Sized to the Franke Grande GDX11023 (24-3/4" x 18-3/4", 9" deep). Needs a 30" base.' },
+  { code: 'AP18', appliance: 'sink', desc: 'Sink (Single) 30"', w: 30.125, d: 22, h: 9, mountY: 36.5, minBase: 36, bowl: { n: 1, w: 28, d: 17.4, depth: 9, r: 2.75 }, notes: 'Not supplied by PL/NTH, shown for layout only. Sized to the Franke Grande GDX11028 (30-1/8" x 19-1/8", 9" deep). Needs a 36" base.' },
+  { code: 'AP19', appliance: 'sink', desc: 'Sink (Single) 33"', w: 32.75, d: 22, h: 9, mountY: 36.5, minBase: 36, bowl: { n: 1, w: 31, d: 17, depth: 9, r: 2.75 }, notes: 'Not supplied by PL/NTH, shown for layout only. Sized to the Franke Grande GDX11031 (32-3/4" x 18-3/4", 9" deep). Needs a 36" base.' },
+  { code: 'AP20', appliance: 'sink', desc: 'Sink (Double) 33"', w: 32.875, d: 22, h: 9, mountY: 36.5, minBase: 36, bowl: { n: 2, w: 15, d: 17, depth: 9, r: 2.5, divider: 1.1 }, notes: 'Not supplied by PL/NTH, shown for layout only. Sized to the Franke Grande GDX12031 (32-7/8" x 18-3/4", two 15" x 17" bowls, 9" deep). Needs a 36" base.' },
   { code: 'AP8', appliance: 'hood', desc: 'Range Hood 36"', w: 36, d: 20, h: 28, mountY: 58 },
   { code: 'AP9', appliance: 'fridge', desc: 'Refrigerator (Freestanding)', w: 36, d: 28, h: 70, mountY: 0 },
   // integrated fridge-freezer: 84" nominal install height (Sub-Zero / Thermador
@@ -252,7 +260,7 @@ const APPLIANCES = [
 
 export const CATALOGUE = BASE_CATALOGUE
   .concat(APPLIANCES.map((a) => ({
-    ...a, type: 'APPLIANCES', hinge: 'n/a', notes: 'Not supplied by PL/NTH, shown for layout only',
+    ...a, type: 'APPLIANCES', hinge: 'n/a', notes: a.notes || 'Not supplied by PL/NTH, shown for layout only',
     usd: 0, halfDepth: false, glazed: false, corner: false, form: 'appliance',
     placeable: true, notSupplied: true,
   })));

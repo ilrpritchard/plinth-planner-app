@@ -7,6 +7,7 @@
 
 import { SPEC } from '../core/units.js';
 import { rangeSpec } from '../core/rangespec.js';
+import { sinkSpec } from '../core/sinkspec.js';
 
 // cream line-art so the catalogue elevations read on the dark brand cards
 const STROKE = '#645b3d';
@@ -274,11 +275,16 @@ function applianceSVG(cab) {
     p.push(rect(x, y + 18, w, h - 34, 1.6));
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => p.push(disc(50 + sx * 16, 50 + sy * 13, 7)));
   } else if (a === 'sink') {
-    p.push(rect(x, y + 10, w, h - 24, 1.6));
-    const dbl = /double/i.test(cab.desc);
-    if (dbl) { p.push(rect(x + 6, y + 18, w / 2 - 9, h - 40, 0.9, HAIR)); p.push(rect(x + w / 2 + 3, y + 18, w / 2 - 9, h - 40, 0.9, HAIR)); }
-    else p.push(rect(x + 10, y + 18, w - 20, h - 40, 0.9, HAIR));
-    p.push(disc(50, y + 6, 2.4)); p.push(vline(50, y + 4, y + 12, 1));
+    // plan view to scale (a 33" reads wider than a 24"): stone cut line, the
+    // rounded bowl(s), drain set toward the back, tap behind. From sinkSpec.
+    const sp = sinkSpec(cab);
+    const k = 80 / 34, cw = sp.cutW * k, cd = sp.cutD * k, cy = 56;          // cy = bowl centre
+    p.push(`<rect x="${f(50 - cw / 2 - 3)}" y="${f(cy - cd / 2 - 3)}" width="${f(cw + 6)}" height="${f(cd + 6)}" rx="2" fill="none" stroke="${STROKE}" stroke-width="1.6"/>`);
+    for (const bl of sp.bowls) {
+      p.push(`<rect x="${f(50 + (bl.x - bl.w / 2) * k)}" y="${f(cy - cd / 2)}" width="${f(bl.w * k)}" height="${f(cd)}" rx="${f(sp.r * k)}" fill="none" stroke="${HAIR}" stroke-width="1"/>`);
+      p.push(disc(50 + bl.x * k, cy + sp.drainZ * k, 2.6));
+    }
+    p.push(disc(50, cy - cd / 2 - 9, 2.4)); p.push(vline(50, cy - cd / 2 - 9, cy - cd / 2 + 3, 1.2));   // tap + spout
   } else if (a === 'hood') {
     p.push(`<path d="M ${x} ${y + h} L ${x + 12} ${y + 30} L ${x + w - 12} ${y + 30} L ${x + w} ${y + h} Z" fill="none" stroke="${STROKE}" stroke-width="1.6"/>`);
     p.push(rect(x + w / 2 - 8, y + 8, 16, 24, 1.2));
