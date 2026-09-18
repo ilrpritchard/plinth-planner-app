@@ -7,6 +7,7 @@ import { snapPosition } from './snapping.js';
 import { getCab } from '../core/catalogue.js';
 import { measureRun } from '../core/measure.js';
 import { fmtIn } from '../core/units.js';
+import { isOven, findOvenHost, housingCodeFor } from '../core/ovenseat.js';
 
 export class PointerControls {
   constructor({ scene, cabinetLayer, room, store, onCommit, onSelect, onWallClick, onOpeningClick }) {
@@ -131,7 +132,7 @@ export class PointerControls {
     const rawX = p.x + this.drag.ox;
     const rawZ = p.z + this.drag.oz;
     const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds());
-    this.store.updateItem(this.drag.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg }, { quiet: true });
+    this.store.updateItem(this.drag.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg, ...(snapped.hostId != null ? { hostId: snapped.hostId } : {}) }, { quiet: true });
     this.drag.flag = snapped.flag || null;
     const RULE_MSG = {
       window: '✕ Cabinets can’t cover a window',
@@ -139,6 +140,7 @@ export class PointerControls {
       sink: '✕ The sink sits in clear countertop. Keep it off talls & uppers',
       offwall: '✕ Wall, counter & tall cabinets sit against a wall',
       corner: '✕ Corner units live in corners: the blank return meets the adjoining run',
+      oven: '✕ A wall oven lives in an oven housing of its size',
     };
     if (snapped.flag) this._showRuleFlag(RULE_MSG[snapped.flag] || '✕ Not allowed there', e);
     else this._hideRuleFlag();
@@ -224,6 +226,7 @@ export class PointerControls {
   placeNew(code, wall = 'back') {
     const cab = getCab(code);
     if (!cab || !cab.placeable) return null;
+    if (isOven(cab)) return this._placeOven(cab, wall);
     const b = this.room.bounds();
 
     // figure out where the current run on this wall ends, so we append
@@ -251,6 +254,28 @@ export class PointerControls {
     this.onSelect(item.id);
     this.onCommit();
     return item;
+  }
+
+  // A wall oven goes into the nearest empty housing of its size. With none in
+  // the room, its housing (T9 / T14) is placed on the active wall first and the
+  // oven goes into that: ONE undo step. `item.broughtHousing` tells the UI.
+  _placeOven(cab, wall) {
+    this.store.beginHistory();
+    let host = findOvenHost(this.store.state, cab, 0, 0);
+    let brought = null;
+    if (!host) {
+      const hcode = housingCodeFor(cab);
+      if (!hcode || wall === 'island') { this.store.endHistory(); return { refused: true, needs: hcode }; }
+      brought = this.placeNew(hcode, wall);
+      host = brought && this.store.getItem(brought.id);
+      if (!host) { this.store.endHistory(); return { refused: true, needs: hcode }; }
+    }
+    const item = this.store.addItem(cab.code, { x: host.x, z: host.z, rotDeg: host.rotDeg || 0, hostId: host.id });
+    this.store.endHistory();
+    this.layer.select(item.id);
+    this.onSelect(item.id);
+    this.onCommit();
+    return brought ? { ...item, broughtHousing: brought.code } : item;
   }
 
   // along-axis coordinate where the current run on `wall` ends

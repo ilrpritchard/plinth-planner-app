@@ -6,6 +6,7 @@ import { getCab } from '../core/catalogue.js';
 import { getFootprint, getMountY } from '../models/cabinet.js';
 import { mmToIn } from '../core/units.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
+import { isOven, findOvenHost } from '../core/ovenseat.js';
 
 const WALL_SNAP = 16;   // perpendicular distance to a wall that triggers snap
 const EDGE_SNAP = 9;    // distance between neighbouring edges that triggers butt
@@ -17,7 +18,15 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   const cab = getCab(item.code);
   const fp = getFootprint(cab);
   const w = fp.w, d = fp.d;
-  const others = store.state.items.filter((o) => o.id !== id);
+  // a wall oven is a RIDER: it only ever lands inside an empty oven housing of
+  // its size (nearest to the pointer), and takes that housing's exact spot
+  if (isOven(cab)) {
+    const host = findOvenHost(store.state, cab, rawX, rawZ, id);
+    if (!host) return { x: item.x, z: item.z, rotDeg: item.rotDeg || 0, flag: 'oven' };
+    return { x: host.x, z: host.z, rotDeg: host.rotDeg || 0, hostId: host.id };
+  }
+  // ...and because it sits wholly inside its housing it never blocks anything else
+  const others = store.state.items.filter((o) => o.id !== id && !isOven(getCab(o.code)));
 
   let x = rawX, z = rawZ, rotDeg = item.rotDeg || 0;
 

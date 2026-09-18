@@ -28,7 +28,7 @@ for(const cab of CATALOGUE.filter(c=>c.type==='APPLIANCES')){
   try { const g=buildAppliance(cab); let m=0; g.traverse(o=>o.isMesh&&m++); if(m<1) fail++; apps++; }
   catch(e){ fail++; console.error(`✗ appliance ${cab.code}: ${e.message}`); }
 }
-ok(`built all appliances (${apps})`, apps===13);   // AP10 prep sink + AP11/12 french FF + AP13 over-under
+ok(`built all appliances (${apps})`, apps===16);   // AP10 prep sink + AP11/12 french FF + AP13 over-under + AP14/15/16 wall ovens
 
 // AP11 integrated fridge-freezer: correct install dims (84" h, 36" w, 24"
 // counter depth) and a panel look — its meshes must include NO stainless body

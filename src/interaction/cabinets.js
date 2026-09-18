@@ -7,6 +7,7 @@ import { buildAppliance } from '../models/appliances.js';
 import { exposedBackIds } from '../core/endpanels.js';
 import { getCab, getFinish } from '../core/catalogue.js';
 import { cornerReturnLength } from './snapping.js';
+import { isOvenHousing, ovenIn } from '../core/ovenseat.js';
 
 export class CabinetLayer {
   constructor(scene, store) {
@@ -84,9 +85,14 @@ export class CabinetLayer {
   _syncSinkBases() {
     for (const it of this.store.state.items) {
       const cab = getCab(it.code);
-      if (!cab || cab.type !== 'FLOOR') continue;
+      if (!cab) continue;
       const rec = this.map.get(it.id);
       if (!rec) continue;
+      if (isOvenHousing(cab)) {                      // oven fitted / taken out → redraw the housing's seat
+        if (!!rec.ovenIn !== !!ovenIn(this.store.state, it.id)) { this._dispose(it.id); this._addOrUpdate(it); }
+        continue;
+      }
+      if (cab.type !== 'FLOOR') continue;
       if (!!rec.sinkOver !== this._sinkOver(it, cab)) { this._dispose(it.id); this._addOrUpdate(it); }
     }
   }
@@ -101,6 +107,9 @@ export class CabinetLayer {
     const opts = { hinge: item.hinge, handle: 'knob', backPanel: finishedBack };
     this._lastSinkOver = cab.type === 'FLOOR' && this._sinkOver(item, cab);
     opts.sinkOver = this._lastSinkOver;
+    // an oven housing with a real wall oven in it shows the seat, not its placeholder oven
+    this._lastOvenIn = isOvenHousing(cab) && !!ovenIn(this.store.state, item.id);
+    opts.ovenFitted = this._lastOvenIn;
     // corner units: draw the blank return long enough to meet the adjacent
     // wall flush (sized from the actual distance — see cornerReturnLength)
     if (cab.corner) opts.returnLen = cornerReturnLength(cab, item, this.store.state.room);
@@ -114,7 +123,7 @@ export class CabinetLayer {
     const g = this._build(cab, item);
     g.userData.itemId = item.id;
     this.group.add(g);
-    const rec = { group: g, code: item.code, sinkOver: this._lastSinkOver };
+    const rec = { group: g, code: item.code, sinkOver: this._lastSinkOver, ovenIn: this._lastOvenIn };
     if (cab.corner) rec.returnLen = cornerReturnLength(cab, item, this.store.state.room);
     this.map.set(item.id, rec);
     this._reposition(item.id);

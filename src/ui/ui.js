@@ -501,8 +501,21 @@ export class UI {
     document.getElementById('catalogue').addEventListener('click', (e) => {
       const row = e.target.closest('.cat-item');
       if (!row) return;
-      this.controls.placeNew(row.dataset.code, this.activeWall);
+      this._announcePlaced(this.controls.placeNew(row.dataset.code, this.activeWall));
     });
+  }
+
+  // a wall oven cannot float: it goes into an empty housing of its size, and
+  // when the room has none its housing arrives with it (a priced cabinet, so say so)
+  _announcePlaced(res) {
+    if (!res) return;
+    if (res.refused) {
+      const h = res.needs && getCab(res.needs);
+      this._toast(h ? `A wall oven lives in an oven housing. Pick a wall, then add it again and the ${h.code} ${h.desc} comes with it.` : 'A wall oven lives in an oven housing.');
+    } else if (res.broughtHousing) {
+      const h = getCab(res.broughtHousing);
+      this._toast(`${getCab(res.code).desc} added in a ${h.code} ${h.desc} (${fmtUSD(sellUSD(h))}). Undo takes both out.`);
+    } else if (getCab(res.code)?.appliance === 'oven') this._toast(`${getCab(res.code).desc} fitted into the empty oven housing.`);
   }
 
   // ---------- room ----------
@@ -818,6 +831,7 @@ export class UI {
     document.getElementById('selDuplicate').addEventListener('click', () => {
       const id = this.controls.layer.selectedId; if (id == null) return;
       const it = this.store.getItem(id);
+      if (getCab(it.code)?.appliance === 'oven') { this._announcePlaced(this.controls.placeNew(it.code, this.activeWall)); return; }
       const copy = this.store.addItem(it.code, { x: it.x + 4, z: it.z, rotDeg: it.rotDeg });
       this.controls.layer.select(copy.id);
       this.showSelbar(copy.id);

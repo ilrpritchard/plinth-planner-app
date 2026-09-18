@@ -52,6 +52,7 @@ export function buildFloorplanSVG(state, underlay = null) {
   for (const it of state.items) {
     const cab = getCab(it.code);
     if (!cab || !cab.placeable) continue;
+    if (cab.appliance === 'oven') continue;       // rides inside its housing: the housing's box and code stand for both, the KEY lists the oven
     drawCabinet(out, it, cab);
   }
 

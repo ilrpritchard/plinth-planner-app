@@ -12,6 +12,7 @@ import {
   shadowMat, paintEdgeMat,
 } from './materials.js';
 import { makeKnob } from './knob.js';
+import { ovenSeat } from '../core/ovenseat.js';
 
 const PANEL = SPEC.PANEL_IN;     // 22mm carcass
 const LEG = SPEC.LEG_IN;         // 22mm legs
@@ -277,7 +278,7 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   const faceW = w - 2 * LEG - 2 * REVEAL;     // door spans between the legs
   const doorFrontZ = frontZ - 0.18;           // doors recessed behind the legs
 
-  const ctx = { mat, doors, faceW, openH, openCenterY, frontZ: doorFrontZ, frontFlush: frontZ, openY0, inW, inD, bodyY0, bodyTop: bodyY0 + bodyH, handle: opts.handle || 'knob', hinge: opts.hinge === 'R' ? 1 : -1 };
+  const ctx = { mat, doors, faceW, openH, openCenterY, frontZ: doorFrontZ, frontFlush: frontZ, openY0, inW, inD, bodyY0, bodyTop: bodyY0 + bodyH, handle: opts.handle || 'knob', hinge: opts.hinge === 'R' ? 1 : -1, ovenFitted: !!opts.ovenFitted };
   const hasShelf = buildFront(g, cab, ctx);
 
   // ----- one 18mm oak shelf for door cabinets -----
@@ -555,15 +556,27 @@ function buildFront(g, cab, ctx) {
       const steelDk = new THREE.MeshStandardMaterial({ color: 0x8f959b, metalness: 0.85, roughness: 0.35 });
       const dkGlass = new THREE.MeshStandardMaterial({ color: 0x131518, metalness: 0.3, roughness: 0.15 });
       const y0 = openCenterY - openH / 2, openTop = openCenterY + openH / 2;
-      const doorH = openH * 0.26;                    // low cupboard door
-      const drawH = openH * 0.09;                    // slim drawer-style panel
-      const ovenH = cab.w >= 36 ? 24 : 29;           // single wall oven front: 24" / 30" ovens stand ~29", a 36" is lower and wider
+      const seat = ovenSeat(cab);                    // shared with the oven appliance + the snap (core/ovenseat.js)
+      const doorH = seat.doorH;                      // low cupboard door
+      const drawH = seat.drawH;                      // slim drawer-style panel
+      const ovenH = seat.ovenH;                      // single wall oven front: 24" / 30" ovens stand ~29", a 36" is lower and wider
       if (cab.w >= 36) {                             // T15: a 36"+ face takes a door PAIR, never one yard-wide door
         const colW = faceW / 2 - REVEAL / 2;
         for (const sgn of [-1, 1]) hingedDoor(g, doors, { w: colW, h: doorH, mat, glazed: false, frontZ, hingeX: sgn * faceW / 2, centerY: y0 + doorH / 2, hingeSign: sgn, handle });
       } else hingedDoor(g, doors, { w: faceW, h: doorH, mat, glazed: false, frontZ, hingeX: (ctx.hinge ?? -1) * faceW / 2, centerY: y0 + doorH / 2, hingeSign: ctx.hinge ?? -1, handle });
       g.add(flatDrawer(faceW, drawH - REVEAL, mat, ctx.frontFlush, y0 + doorH + REVEAL + (drawH - REVEAL) / 2, handle));
       const oy0 = y0 + doorH + drawH + 2 * REVEAL;   // oven fascia bottom (~33")
+      if (ctx.ovenFitted) {
+        // a real wall oven (AP14 / AP15) rides here and draws itself: the housing
+        // shows the seat it sits in, painted filler stiles closing the face each
+        // side of the oven and a dark cavity behind (never two ovens in one hole)
+        const ovenFace = seat.ovenW - 0.25, stile = Math.max(0, (faceW - ovenFace) / 2);
+        const cavity = box(faceW, ovenH, 0.3, new THREE.MeshStandardMaterial({ color: 0x17181a, roughness: 0.9 }));
+        cavity.position.set(0, oy0 + ovenH / 2, frontZ - 1.2); cavity.castShadow = false; g.add(cavity);
+        if (stile > 0.2) for (const sx of [-1, 1]) {
+          const st = box(stile - 0.06, ovenH, DOOR_T, mat); st.position.set(sx * (faceW / 2 - stile / 2), oy0 + ovenH / 2, frontZ - DOOR_T / 2); g.add(st);
+        }
+      } else {
       // gallery-style oven front (the Gaggenau idiom): ONE uninterrupted
       // dark-glass panel in a hairline steel surround, a small display strip,
       // and a single slim full-width bar handle — no window frame, no trim.
@@ -575,6 +588,7 @@ function buildFront(g, cab, ctx) {
       for (const sx of [-1, 1]) {
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.1, 8), steel);
         post.rotation.x = Math.PI / 2; post.position.set(sx * (faceW - 4) / 2, oy0 + ovenH - 4.6, frontZ + 0.45); g.add(post);
+      }
       }
       const bh = Math.max(0.5, openTop - (oy0 + ovenH + REVEAL));
       const blank = box(faceW, bh, DOOR_T, mat); blank.position.set(0, oy0 + ovenH + REVEAL + bh / 2, frontZ - DOOR_T / 2); g.add(blank);

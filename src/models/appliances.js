@@ -142,6 +142,22 @@ export function buildAppliance(cab, finishHex = '#efece3') {
       const topBar = cyl(0.35, 0.35, w - 2.5, STEEL_DK()); topBar.rotation.z = Math.PI / 2; topBar.position.set(0, h + 3.0, -d / 2 + 0.6); g.add(topBar);
       break;
     }
+    case 'oven': {
+      // single wall oven, gallery idiom (matches the placeholder the housing
+      // draws when empty): steel surround, one dark glass door, display strip,
+      // slim bar handle. Body behind it is a plain dark box inside the housing.
+      const fw = cab.w - 0.25;
+      const bodyBox = box(fw - 1.5, h - 1, d - 2, DARK()); bodyBox.position.set(0, h / 2, -1); bodyBox.castShadow = false; g.add(bodyBox);
+      const fascia = box(fw, h, 0.5, STEEL_DK()); fascia.position.set(0, h / 2, fz - 0.28); g.add(fascia);
+      const glassFront = box(fw - 0.7, h - 4.2, 0.45, GLASS()); glassFront.position.set(0, (h - 4.2) / 2 + 0.35, fz + 0.02); glassFront.castShadow = false; g.add(glassFront);
+      const strip = box(fw - 0.7, 3.2, 0.45, mat(0x1d2024, 0.35, 0.2, 1.0)); strip.position.set(0, h - 1.95, fz + 0.02); strip.castShadow = false; g.add(strip);
+      const display = box(Math.min(fw * 0.3, 8), 0.9, 0.12, STEEL()); display.position.set(0, h - 1.95, fz + 0.3); display.castShadow = false; g.add(display);
+      for (const sx of [-1, 1]) { const dial = cyl(0.55, 0.6, 0.5, STEEL()); dial.rotation.x = Math.PI / 2; dial.position.set(sx * (fw / 2 - 2.6), h - 1.95, fz + 0.45); g.add(dial); }
+      const railY = h - 6.2;
+      const rail = cyl(0.3, 0.3, fw - 3, STEEL(), 12); rail.rotation.z = Math.PI / 2; rail.position.set(0, railY, fz + 1.05); g.add(rail);
+      for (const sx of [-1, 1]) { const post = cyl(0.17, 0.17, 1.1, STEEL(), 8); post.rotation.x = Math.PI / 2; post.position.set(sx * (fw - 4) / 2, railY, fz + 0.5); g.add(post); }
+      break;
+    }
     case 'hob': {
       const slab = box(w, 1.2, d, GLASS()); slab.position.y = 0.6; g.add(slab);
       const rim = box(w + 0.6, 0.4, d + 0.6, STEEL_DK()); rim.position.y = 0.1; g.add(rim);

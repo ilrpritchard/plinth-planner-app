@@ -7,6 +7,8 @@
 // (this file ships to every visitor's browser). Each item is given a `form`
 // that tells the procedural builder how to construct it. No external data.
 
+import { SPEC, mmToIn } from './units.js';
+
 // ----- raw catalogue (from costing tool) ---------------------------------
 // type: FLOOR | WALL | COUNTER | TALL | ACCESSORIES
 const RAW = [
@@ -205,10 +207,23 @@ export function familyOf(cab) {
 // ----- appliances (NOT Plinth products — visual placeholders, unpriced) ----
 // Each sits at its own mount height: ranges/fridges on the floor, hobs & sinks
 // in the worktop (36.5"). They snap to walls/runs like base units.
+// floor to the bottom of the oven fascia in an 86" oven housing: plinth + base
+// panel + low door (26% of the opening) + drawer panel (9%) + two reveals.
+// core/ovenseat.js ovenSeat() derives the same number; build.test.js locks them together.
+const OVEN_SEAT_Y = (() => {
+  const openY0 = SPEC.PLINTH_IN + SPEC.PANEL_IN, openH = 86 - mmToIn(35) - openY0;
+  return openY0 + openH * 0.35 + 2 * SPEC.REVEAL_IN;
+})();
 const APPLIANCES = [
   { code: 'AP1', appliance: 'range', desc: 'Range cooker 30"', w: 30, d: 26, h: 36, mountY: 0 },
   { code: 'AP2', appliance: 'range', desc: 'Range cooker 36"', w: 36, d: 26, h: 36, mountY: 0 },
   { code: 'AP3', appliance: 'range', desc: 'Range cooker 48"', w: 48, d: 26, h: 36, mountY: 0 },
+  // wall ovens: RIDERS that live inside an oven housing (T9 24", T14 30", T15 36"), the
+  // way a sink lives in a base. mountY = the housing's oven seat (core/ovenseat.js).
+  { code: 'AP14', appliance: 'oven', ovenW: 24, desc: 'Wall oven 24"', w: 24, d: 23.7, h: 29, mountY: OVEN_SEAT_Y },
+  { code: 'AP15', appliance: 'oven', ovenW: 30, desc: 'Wall oven 30"', w: 30, d: 23.7, h: 29, mountY: OVEN_SEAT_Y },
+  // 36": wide and short (Wolf / BlueStar / Gaggenau), rides in T15 whose seat is 24" tall
+  { code: 'AP16', appliance: 'oven', ovenW: 36, desc: 'Wall oven 36"', w: 36, d: 23.7, h: 24, mountY: OVEN_SEAT_Y },
   { code: 'AP4', appliance: 'hob', desc: 'Cooktop 30"', w: 30, d: 21, h: 2, mountY: 36.5 },
   { code: 'AP5', appliance: 'hob', desc: 'Cooktop 36"', w: 36, d: 21, h: 2, mountY: 36.5 },
   { code: 'AP6', appliance: 'sink', desc: 'Sink (Single)', w: 24, d: 20, h: 8, mountY: 36.5 },

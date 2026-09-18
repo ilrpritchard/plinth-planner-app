@@ -22,7 +22,7 @@ const isFloorStanding = (cab) =>
   (cab.type === 'APPLIANCES' && (cab.mountY ?? 0) === 0);
 
 const isWorktopAppliance = (cab) =>
-  cab.type === 'APPLIANCES' && (cab.mountY ?? 0) > 0 && (cab.mountY ?? 0) < 50; // hob / sink
+  cab.type === 'APPLIANCES' && cab.appliance !== 'oven' && (cab.mountY ?? 0) > 0 && (cab.mountY ?? 0) < 50; // hob / sink (a wall oven rides in its housing)
 
 /** Ranges / hobs sitting in front of a window on their wall (hard rule: a
  *  cooker never goes in front of a window). Pure geometry, shared by the

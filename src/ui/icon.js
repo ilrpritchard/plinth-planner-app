@@ -262,6 +262,14 @@ function applianceSVG(cab) {
       p.push(rect(dx + dw * 0.19, dy + dh * 0.28, dw * 0.62, dh * 0.36, 0.8, HAIR)); // window
       p.push(`<line x1="${f(dx + 3)}" y1="${f(dy + 4)}" x2="${f(dx + dw - 3)}" y2="${f(dy + 4)}" stroke="${STROKE}" stroke-width="1.4" stroke-linecap="round"/>`); // handle
     }
+  } else if (a === 'oven') {
+    // wall oven front, to the same scale as the ranges so 24 reads narrower than 30
+    const k = 88 / 48 * 1.35, ow = cab.w * k, oh = cab.h * k, ox = 50 - ow / 2, oy = 50 - oh / 2;
+    p.push(rect(ox, oy, ow, oh, 1.6));                                      // surround
+    p.push(hline(ox, ox + ow, oy + oh * 0.16, 0.9));                        // control strip
+    p.push(rect(50 - ow * 0.14, oy + oh * 0.05, ow * 0.28, oh * 0.06, 0.7, HAIR)); // display
+    p.push(rect(ox + ow * 0.12, oy + oh * 0.4, ow * 0.76, oh * 0.46, 0.8, HAIR));  // glass
+    p.push(`<line x1="${f(ox + 4)}" y1="${f(oy + oh * 0.27)}" x2="${f(ox + ow - 4)}" y2="${f(oy + oh * 0.27)}" stroke="${STROKE}" stroke-width="1.4" stroke-linecap="round"/>`); // handle
   } else if (a === 'hob') {
     p.push(rect(x, y + 18, w, h - 34, 1.6));
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => p.push(disc(50 + sx * 16, 50 + sy * 13, 7)));

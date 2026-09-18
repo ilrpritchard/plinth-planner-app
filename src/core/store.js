@@ -3,7 +3,8 @@
 // Everything in inches. The scene and the UI both subscribe; whenever the
 // state changes they get told what changed so they can update cheaply.
 
-import { DEFAULT_FINISH } from './catalogue.js';
+import { DEFAULT_FINISH, getCab } from './catalogue.js';
+import { housingTakes } from './ovenseat.js';
 
 export const SCHEMA = 'plinth-planner';
 export const VERSION = 1;
@@ -201,6 +202,7 @@ export class Store {
       ...(pos.island ? { island: true } : {}),
       ...(pos.backPanel ? { backPanel: true } : {}),
       ...(pos.seating ? { seating: true } : {}),
+      ...(pos.hostId != null ? { hostId: pos.hostId } : {}),
     };
     this.state.items.push(item);
     this._emit({ type: 'add', id: item.id });
@@ -213,6 +215,14 @@ export class Store {
     if (!opts.quiet) this._record();
     Object.assign(it, patch);
     this._emit({ type: 'update', id, quiet: !!opts.quiet });
+    // a wall oven rides in its housing: wherever the housing goes, it goes
+    if ('x' in patch || 'z' in patch || 'rotDeg' in patch) {
+      for (const r of this.state.items) {
+        if (r.hostId !== id) continue;
+        Object.assign(r, { x: it.x, z: it.z, rotDeg: it.rotDeg });
+        this._emit({ type: 'update', id: r.id, quiet: !!opts.quiet });
+      }
+    }
   }
 
   /** Flip a single-door cabinet's hinge side (L ↔ R). Undoable, rebuilds the item. */
@@ -232,12 +242,20 @@ export class Store {
     it.code = code;
     delete it.open;                       // door state doesn't carry across forms
     this._emit({ type: 'swap', id });
+    // swapped for something that is not its housing: the oven inside comes out
+    for (const r of this.state.items.filter((o) => o.hostId === id)) {
+      if (housingTakes(getCab(code), getCab(r.code))) continue;
+      this.state.items = this.state.items.filter((o) => o !== r);
+      this._emit({ type: 'remove', id: r.id });
+    }
   }
 
   removeItem(id) {
     this._record();
-    this.state.items = this.state.items.filter((i) => i.id !== id);
+    const riders = this.state.items.filter((i) => i.hostId === id);   // the oven leaves with its housing
+    this.state.items = this.state.items.filter((i) => i.id !== id && i.hostId !== id);
     this._emit({ type: 'remove', id });
+    for (const r of riders) this._emit({ type: 'remove', id: r.id });
   }
 
   getItem(id) { return this.state.items.find((i) => i.id === id); }
