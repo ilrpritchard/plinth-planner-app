@@ -7,7 +7,9 @@ import { getCab, FAMILY_LABEL, familyOf } from '../core/catalogue.js';
 import { fmtFeetIn, fmtIn, SPEC, mmToIn } from '../core/units.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
 import { computeFillers } from '../core/fillers.js';
-import { rangeCooktop } from '../core/rangespec.js';
+import { rangeCooktop, rangeSpec, hobSpec } from '../core/rangespec.js';
+import { sinkSpec } from '../core/sinkspec.js';
+import { hingeOf, hingeLabel } from '../core/hinge.js';
 
 const FRONT_FRAME = mmToIn(22); // 22mm face frame at the front
 const PANEL18 = mmToIn(18);     // 18mm sides & back
@@ -18,6 +20,10 @@ const INK = '#1a1a1a';
 const DIM = '#8a8378';
 const UPPER = '#888';
 const SWING = '#bdbdbd';     // light grey for door swings / drawer pulls
+// appliances are NOT supplied by PL/NTH: they draw as grey-filled context so
+// the eye separates them from the cabinetry at a glance
+const HALO = ' paint-order="stroke" stroke="#fff" stroke-width="1" stroke-linejoin="round"';
+const APPL_FILL = '#ebebeb', APPL_INK = '#8f8f8f', APPL_PALE = '#f8f8f8';
 const LEG = SPEC.LEG_IN;     // 22mm leg each side — doors sit between the legs
 
 // hairline widths in *pixels* (non-scaling) so they stay fine at any zoom
@@ -48,12 +54,15 @@ export function buildFloorplanSVG(state, underlay = null) {
   // with a corner → near-edge dimension so the drawing reads like a survey ----
   for (const o of (r.openings || [])) drawOpeningPlan(out, r, o);
 
-  // ---- cabinets (base solid, upper dashed) ----
+  // ---- cabinets (base solid, upper dashed, appliances grey). Shapes first,
+  // code labels LAST (after the fillers) so no box ever paints over a code ----
+  const hosts = riderHosts(state);
+  const labels = [];
   for (const it of state.items) {
     const cab = getCab(it.code);
     if (!cab || !cab.placeable) continue;
     if (cab.appliance === 'oven') continue;       // rides inside its housing: the housing's box and code stand for both, the KEY lists the oven
-    drawCabinet(out, it, cab);
+    drawCabinet(out, labels, it, cab, hosts);
   }
 
   // ---- scribe fillers: hatched panels closing run-to-wall gaps ----
@@ -68,9 +77,11 @@ export function buildFloorplanSVG(state, underlay = null) {
       out.push(line(fx0 + fw * t, fz0 + fd, fx0 + fw, fz0 + fd * t, W_18, '#9a9a9a'));
     }
     if (fw >= 4 || fd >= 4) {
-      out.push(`<text x="${n(f.x)}" y="${n(f.z)}" font-size="2.4" fill="#666" text-anchor="middle" dominant-baseline="central"${horiz ? '' : ` transform="rotate(-90 ${n(f.x)} ${n(f.z)})"`}>FILL ${fmtIn(f.w)}</text>`);
+      // the label runs ALONG the panel (a filler is a sliver: its long side is its depth)
+      out.push(`<text x="${n(f.x)}" y="${n(f.z)}" font-size="2.4" fill="#666" text-anchor="middle" dominant-baseline="central"${HALO}${fw >= fd ? '' : ` transform="rotate(-90 ${n(f.x)} ${n(f.z)})"`}>FILL ${fmtIn(f.w)}</text>`);
     }
   }
+  out.push(...labels);
 
   // ---- dimensions ----
   drawWallDims(out, state, 'back');
@@ -88,24 +99,30 @@ export function buildFloorplanSVG(state, underlay = null) {
 }
 
 // ---- key / legend --------------------------------------------------------
-// Lists each distinct code once: "2× F18 — Floor Drawers (3) · 24 × 24 × 35".
+// Lists each distinct code + hinge side once: "2× F2 — Floor Single · Left ·
+// 24 × 24 × 35" (the same SKU hung left AND right is two rows — the workshop
+// hangs the door, so the side is part of the order).
 // Returns the extra viewBox width it needs (0 when the plan is empty).
 function drawKey(out, state, x0, y0) {
   const counts = new Map();
   for (const it of state.items) {
     const c = getCab(it.code);
     if (!c || !c.placeable) continue;
-    counts.set(c.code, (counts.get(c.code) || 0) + 1);
+    const hinge = hingeOf(c, it);
+    const k = `${c.code}|${hinge || ''}`;
+    const row = counts.get(k) || { code: c.code, cab: c, hinge, qty: 0 };
+    row.qty++;
+    counts.set(k, row);
   }
   if (!counts.size) return 0;
   const order = { FLOOR: 0, WALL: 1, SHELF: 2, COUNTER: 3, TALL: 4, APPLIANCES: 5 };
-  const rows = [...counts.entries()]
-    .map(([code, qty]) => ({ code, qty, cab: getCab(code) }))
-    .sort((a, b) => (order[a.cab.type] - order[b.cab.type]) || a.code.localeCompare(b.code, 'en', { numeric: true }));
+  const rows = [...counts.values()]
+    .sort((a, b) => (order[a.cab.type] - order[b.cab.type]) || a.code.localeCompare(b.code, 'en', { numeric: true })
+      || String(a.hinge).localeCompare(String(b.hinge)));
 
   // table columns (offsets from x0, in drawing inches)
-  const COL = { qty: 0, code: 8, type: 20, desc: 38, w: 92, d: 102, h: 112 };
-  const TBL_W = 120;
+  const COL = { qty: 0, code: 8, type: 20, desc: 38, hinge: 90, w: 104, d: 114, h: 124 };
+  const TBL_W = 132;
   const ROW = 5.6;
 
   out.push(`<text x="${n(x0)}" y="${n(y0 + 3)}" font-size="4" fill="${INK}" font-weight="bold" letter-spacing="1">KEY</text>`);
@@ -113,23 +130,35 @@ function drawKey(out, state, x0, y0) {
   // header row
   const th = (dx, t, anchor = 'start') =>
     `<tspan x="${n(x0 + dx)}"${anchor === 'end' ? ` text-anchor="end"` : ''}>${t}</tspan>`;
-  out.push(`<text y="${n(y)}" font-size="2.6" fill="${DIM}" letter-spacing="0.5">${th(COL.qty, 'QTY')}${th(COL.code, 'CODE')}${th(COL.type, 'TYPE')}${th(COL.desc, 'DESCRIPTION')}${th(COL.w + 6, 'W', 'end')}${th(COL.d + 6, 'D', 'end')}${th(COL.h + 6, 'H', 'end')}</text>`);
+  out.push(`<text y="${n(y)}" font-size="2.6" fill="${DIM}" letter-spacing="0.5">${th(COL.qty, 'QTY')}${th(COL.code, 'CODE')}${th(COL.type, 'TYPE')}${th(COL.desc, 'DESCRIPTION')}${th(COL.hinge, 'HINGE')}${th(COL.w + 6, 'W', 'end')}${th(COL.d + 6, 'D', 'end')}${th(COL.h + 6, 'H', 'end')}</text>`);
   y += 2;
   out.push(line(x0, y, x0 + TBL_W, y, W_DIM, INK));
   y += 4.6;
   for (const r of rows) {
     const fam = r.cab.type === 'APPLIANCES' ? 'Appliance' : (FAMILY_LABEL[familyOf(r.cab)] || FAMILY_LABEL[r.cab.type]);
     const td = (dx, t, opts = '') => `<tspan x="${n(x0 + dx)}"${opts}>${t}</tspan>`;
-    out.push(`<text y="${n(y)}" font-size="3" fill="#333">${td(COL.qty, r.qty)}${td(COL.code, r.cab.baseCode || r.code, ' font-weight="bold"')}${td(COL.type, fam + (r.cab.notSupplied ? ' *' : ''))}${td(COL.desc, esc(r.cab.desc))}${r.cab.h ? `${td(COL.w + 6, fmtIn(r.cab.w), ' text-anchor="end"')}${td(COL.d + 6, fmtIn(r.cab.d), ' text-anchor="end"')}${td(COL.h + 6, fmtIn(r.cab.h), ' text-anchor="end"')}` : ''}</text>`);
+    out.push(`<text y="${n(y)}" font-size="3" fill="#333">${td(COL.qty, r.qty)}${td(COL.code, r.cab.baseCode || r.code, ' font-weight="bold"')}${td(COL.type, fam + (r.cab.notSupplied ? ' *' : ''))}${td(COL.desc, esc(keyDesc(r.cab.desc)))}${td(COL.hinge, hingeLabel(r.hinge))}${r.cab.h ? `${td(COL.w + 6, fmtIn(r.cab.w), ' text-anchor="end"')}${td(COL.d + 6, fmtIn(r.cab.d), ' text-anchor="end"')}${td(COL.h + 6, fmtIn(r.cab.h), ' text-anchor="end"')}` : ''}</text>`);
     y += 1.8;
     out.push(line(x0, y, x0 + TBL_W, y, W_DIM * 0.5, '#ddd6c8'));
     y += ROW - 1.8;
   }
+  y += 1;
+  if (rows.some((r) => r.hinge)) {
+    out.push(`<text x="${n(x0)}" y="${n(y)}" font-size="2.6" fill="${DIM}">Hinge side as viewed facing the cabinet front. Pair = left + right hung doors.</text>`);
+    y += 4;
+  }
   if (rows.some((r) => r.cab.notSupplied)) {
-    y += 1;
-    out.push(`<text x="${n(x0)}" y="${n(y)}" font-size="2.6" fill="${DIM}">* appliance shown for layout only, not supplied by PL/NTH</text>`);
+    out.push(`<text x="${n(x0)}" y="${n(y)}" font-size="2.6" fill="${DIM}">* appliance shown in grey for layout only, not supplied by PL/NTH</text>`);
   }
   return TBL_W + 18;
+}
+
+/** A description that fits the KEY's column: long appliance names lose their
+ *  bracketed fit notes first, then truncate. */
+function keyDesc(desc) {
+  let d = String(desc || '');
+  if (d.length > 34) d = d.replace(/\s*\([^)]*\)\s*$/, '');
+  return d.length > 34 ? `${d.slice(0, 33)}…` : d;
 }
 
 // ---- openings on the plan -------------------------------------------------
@@ -177,7 +206,7 @@ function drawOpeningPlan(out, room, o) {
 }
 
 // ---- cabinet ------------------------------------------------------------
-function drawCabinet(out, it, cab) {
+function drawCabinet(out, labels, it, cab, hosts) {
   const th = (it.rotDeg || 0) * Math.PI / 180;
   const fx = Math.sin(th), fz = Math.cos(th);   // front (into room)
   const wx = Math.cos(th), wz = -Math.sin(th);  // width axis
@@ -193,7 +222,9 @@ function drawCabinet(out, it, cab) {
   const upper = cab.type === 'WALL' || cab.type === 'COUNTER' || (cab.mountY || 0) >= 40;
   const isAppliance = cab.type === 'APPLIANCES';
   const dash = upper ? ' stroke-dasharray="3.5 2.5"' : '';
-  out.push(`<polygon points="${pt(p1)} ${pt(p2)} ${pt(p3)} ${pt(p4)}" fill="${upper ? 'none' : '#fff'}" stroke="${upper ? UPPER : INK}" stroke-width="${upper ? W_UPPER : W_CAB}" vector-effect="non-scaling-stroke"${dash}/>`);
+  const bodyFill = upper ? 'none' : isAppliance ? APPL_FILL : '#fff';
+  const bodyInk = isAppliance ? APPL_INK : upper ? UPPER : INK;
+  out.push(`<polygon points="${pt(p1)} ${pt(p2)} ${pt(p3)} ${pt(p4)}" fill="${bodyFill}" stroke="${bodyInk}" stroke-width="${upper ? W_UPPER : W_CAB}" vector-effect="non-scaling-stroke"${dash}/>`);
 
   // ---- carcass: 22mm front frame straight across, 18mm sides & back ----
   // L maps a local point (along width, along depth-from-centre, front = +) to world
@@ -222,19 +253,37 @@ function drawCabinet(out, it, cab) {
     out.push(seg(L(xi, dBack), L(xi, dFront), W_18, thinStroke, dash));
   }
 
-  // ---- a range reads as a range in plan: burner rings (and the griddle on a
-  // 48"), light ink, from the same rangeSpec as the 3D model ----
+  // ---- appliances read as what they are, in grey, from the same specs as
+  // the 3D models: a range (grates, burners, griddle, control strip), a
+  // cooktop (burners + knobs), a sink (bowls + faucet), a fridge (door line) ----
+  const poly = (pts, fill = 'none', sw = W_18) => `<polygon points="${pts.map(pt).join(' ')}" fill="${fill}" stroke="${APPL_INK}" stroke-width="${sw}" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+  const box = (x0, z0, x1, z1, fill, sw) => poly([L(x0, z0), L(x1, z0), L(x1, z1), L(x0, z1)], fill, sw);
+  const ring = (x, z, r, fill = 'none') => { const q = L(x, z); return `<circle cx="${n(q[0])}" cy="${n(q[1])}" r="${n(r)}" fill="${fill}" stroke="${APPL_INK}" stroke-width="${W_18}" vector-effect="non-scaling-stroke"/>`; };
   if (cab.appliance === 'range') {
-    const top = rangeCooktop(cab);
-    for (const b of top.burners) {
-      const q = L(b.x, b.z);
-      for (const r of [b.r * 0.92, b.r * 0.4]) out.push(`<circle cx="${n(q[0])}" cy="${n(q[1])}" r="${n(r)}" fill="none" stroke="${UPPER}" stroke-width="${W_18}" vector-effect="non-scaling-stroke"/>`);
+    const top = rangeCooktop(cab), sp = rangeSpec(cab);
+    const strip = d / 2 - 2.6;                                  // control strip along the front
+    out.push(seg(L(-w / 2, strip), L(w / 2, strip), W_18, APPL_INK));
+    for (let i = 0; i < sp.knobs; i++) out.push(ring(-w / 2 + 3.2 + i * ((w - 6.4) / Math.max(1, sp.knobs - 1)), d / 2 - 1.3, 0.55, APPL_PALE));
+    for (let c0 = 0; c0 < sp.sections; c0++) {                  // one grate per section
+      const gx = -w / 2 + 1.3 + top.secW * (c0 + 0.5);
+      out.push(box(gx - top.secW / 2 + 0.6, -d / 2 + 1.6, gx + top.secW / 2 - 0.6, strip - 1, APPL_PALE));
     }
-    if (top.griddle) {
-      const gr = top.griddle, hw = gr.w / 2, hd = gr.d / 2;
-      const c4 = [L(gr.x - hw, gr.z - hd), L(gr.x + hw, gr.z - hd), L(gr.x + hw, gr.z + hd), L(gr.x - hw, gr.z + hd)];
-      out.push(`<polygon points="${c4.map(pt).join(' ')}" fill="none" stroke="${UPPER}" stroke-width="${W_18}" vector-effect="non-scaling-stroke"/>`);
+    for (const b of top.burners) out.push(ring(b.x, b.z, b.r * 0.92), ring(b.x, b.z, b.r * 0.38));
+    if (top.griddle) out.push(box(top.griddle.x - top.griddle.w / 2 + 1.2, -d / 2 + 3, top.griddle.x + top.griddle.w / 2 - 1.2, strip - 2.4, APPL_FILL));
+  } else if (cab.appliance === 'hob') {
+    const hob = hobSpec(cab);
+    for (const b of hob.burners) out.push(ring(b.x, b.z, b.r, APPL_PALE), ring(b.x, b.z, b.r * 0.4));
+    for (const k of hob.knobs) out.push(ring(k.x, k.z, 0.55, APPL_PALE));
+  } else if (cab.appliance === 'sink') {
+    const sk = sinkSpec(cab);
+    for (const b of sk.bowls) {
+      const bq = L(b.x, 0), rw = (horizontal(it) ? b.w : b.d), rh = (horizontal(it) ? b.d : b.w);
+      out.push(`<rect x="${n(bq[0] - rw / 2)}" y="${n(bq[1] - rh / 2)}" width="${n(rw)}" height="${n(rh)}" rx="${n(sk.r)}" fill="${APPL_PALE}" stroke="${APPL_INK}" stroke-width="${W_18}" vector-effect="non-scaling-stroke"/>`);
     }
+    const tapZ = -sk.cutD / 2 - Math.min(1.3, (d - sk.cutD) / 4);  // faucet on the back rim, spout over the bowl
+    out.push(seg(L(0, tapZ), L(0, tapZ + 5), W_CAB, APPL_INK), ring(0, tapZ, 0.8, APPL_PALE));
+  } else if (cab.appliance === 'fridge') {
+    out.push(seg(L(-w / 2, d / 2 - 2), L(w / 2, d / 2 - 2), W_18, APPL_INK));
   }
 
   // ---- door swings / drawer pull-outs (light grey, between the legs) ----
@@ -260,20 +309,52 @@ function drawCabinet(out, it, cab) {
     }
   }
 
-  // ---- code label. Base/tall/appliance: centred. Uppers (which overlap the
-  // base run in plan): small grey code tucked at their front-left corner so
-  // the two labels never sit on top of each other. Widths live in the
+  // ---- code label, pushed to `labels` so it paints after every shape. Base /
+  // tall / appliance: dead centre, haloed. Uppers (which overlap the base run
+  // in plan): small grey code tucked at their front-left corner. A sink or
+  // cooktop riding IN a base shares ONE label with it ("F10 · AP7") — two
+  // codes stacked on the same centre would be unreadable. Widths live in the
   // dimension CHAIN + the key, not on every box.
   // sized virtual codes (e.g. AP9:36x30x72) label with their short base code —
   // the key's description carries the exact size.
   const codeLabel = cab.baseCode || cab.code;
+  if (hosts.hosted.has(it.id)) return;            // its rider carries both codes
   if (upper) {
     const lab = L(-w / 2 + 1.8, d / 2 - 1.2);
-    out.push(`<text x="${n(lab[0])}" y="${n(lab[1])}" font-size="${F_CODE * 0.8}" fill="${UPPER}" dominant-baseline="central">${codeLabel}</text>`);
-  } else {
-    const lab = L(0, cab.appliance === 'range' ? 0 : -d * 0.18);   // a range's code sits between its burner rows
-    out.push(`<text x="${n(lab[0])}" y="${n(lab[1])}" font-size="${F_CODE}" fill="#333" text-anchor="middle" dominant-baseline="central">${codeLabel}</text>`);
+    labels.push(`<text x="${n(lab[0])}" y="${n(lab[1])}" font-size="${F_CODE * 0.8}" fill="${UPPER}" dominant-baseline="central">${codeLabel}</text>`);
+    return;
   }
+  const hostCode = hosts.hostCode.get(it.id);
+  // a cooktop's code sits in the clear band between its front burners and knobs
+  const lab = L(0, cab.appliance === 'hob' ? d * 0.24 : 0);
+  const halo = ` paint-order="stroke" stroke="${isAppliance ? APPL_FILL : '#fff'}" stroke-width="1.1" stroke-linejoin="round"`;
+  const own = isAppliance
+    ? `<tspan fill="${APPL_INK}"${hostCode ? ` font-size="${F_CODE * 0.82}"` : ''}>${hostCode ? ' · ' : ''}${codeLabel}</tspan>`
+    : codeLabel;
+  labels.push(`<text x="${n(lab[0])}" y="${n(lab[1])}" font-size="${F_CODE}" fill="#333" text-anchor="middle" dominant-baseline="central"${halo}>${hostCode || ''}${own}</text>`);
+}
+
+const horizontal = (it) => (((it.rotDeg || 0) % 180) + 180) % 180 === 0;
+
+/** Sinks / cooktops that sit IN a base cabinet: hosted = base item ids whose
+ *  label the rider carries, hostCode = rider item id → that base's code. */
+function riderHosts(state) {
+  const hosted = new Set(), hostCode = new Map();
+  const items = state.items || [];
+  for (const r of items) {
+    const rc = getCab(r.code);
+    if (!rc || !(rc.appliance === 'sink' || rc.appliance === 'hob')) continue;
+    for (const b of items) {
+      const bc = getCab(b.code);
+      if (!bc || bc.type !== 'FLOOR' || !bc.placeable || hosted.has(b.id)) continue;
+      const hz = horizontal(b), hw = (hz ? bc.w : bc.d) / 2, hd = (hz ? bc.d : bc.w) / 2;
+      if (Math.abs(r.x - b.x) < hw * 0.6 && Math.abs(r.z - b.z) < hd) {
+        hosted.add(b.id); hostCode.set(r.id, bc.baseCode || bc.code);
+        break;
+      }
+    }
+  }
+  return { hosted, hostCode };
 }
 
 function formDoors(cab, it) {
@@ -281,7 +362,7 @@ function formDoors(cab, it) {
   const openHalf = w / 2 - LEG;        // half the door zone (between the legs)
   const single = w - 2 * LEG;          // full opening width
   const half = openHalf - 0.5;         // each leaf of a pair (small centre reveal)
-  const hingeSign = (it.hinge === 'R') ? 1 : -1;
+  const hingeSign = hingeOf(cab, it) === 'R' ? 1 : -1;     // core/hinge.js — corners hinge on their blank side
   switch (cab.form) {
     case 'door': case 'glazed': case 'corner':
       return [{ hinge: hingeSign, dw: single }];
@@ -347,7 +428,7 @@ function drawWallDims(out, state, wall) {
         : `<text x="${n(offChain - 1.8)}" y="${n(mid)}" font-size="${F_DIM * 0.92}" fill="${s.gap ? UPPER : DIM}" text-anchor="middle"${s.gap ? ' font-style="italic"' : ''} transform="rotate(-90 ${n(offChain - 1.8)} ${n(mid)})">${txt}</text>`);
     }
     // ---- overall run
-    if (hi - lo > 0.5) put(lo, hi, offRun, fmtIn(hi - lo));
+    if (hi - lo > 0.5 && segs.length > 1) put(lo, hi, offRun, fmtIn(hi - lo));   // one unit: the chain already says it
   }
 
   // ---- overall wall length
@@ -380,7 +461,7 @@ function drawIslandDims(out, state) {
     tick(c.a + c.w / 2);
     if (c.w >= 5.5) out.push(`<text x="${n(c.a)}" y="${n(off + 4)}" font-size="${F_DIM * 0.92}" fill="${DIM}" text-anchor="middle">${fmtIn(c.w)}</text>`);
   }
-  if (hi - lo > 0.5) out.push(dimH(lo, hi, off + 11, fmtIn(hi - lo)));
+  if (hi - lo > 0.5 && cabs.length > 1) out.push(dimH(lo, hi, off + 11, fmtIn(hi - lo)));   // one cabinet: the chain already says it
 }
 
 // ---- dimension primitives (thin, gray, small arrowheads) ----------------

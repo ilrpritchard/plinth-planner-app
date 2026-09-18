@@ -117,10 +117,10 @@ ok('subtotal = sum of lines', near(sched.subtotal, sched.rows.reduce((t, r) => t
 // cut sheets: one card per distinct supplied SKU
 const skus = distinctSkus(design);
 ok('distinct SKUs = 6, appliances excluded', skus.length === 6 && !skus.some((s) => s.code === 'AP1'));
-// index now ends with MEP rough-in sheets: the range on the back wall → A-500
-ok('drawing index covers plan + 2 elevations + schedule + cuts + rough-in + compliance', drawingIndex(design).length === 1 + 1 + 2 + 1 + 2 + 1 + 1);
+// MEP rough-in is NOT PL/NTH's responsibility: no A-5xx sheets, ever (her markup 2026-09-18)
+ok('drawing index covers plan + 2 elevations + schedule + cuts + compliance', drawingIndex(design).length === 1 + 1 + 2 + 1 + 2 + 1);
 ok('drawing index ends with A-600 compliance sheet', drawingIndex(design).at(-1).no === 'A-600' && drawingIndex(design).at(-1).title.includes('COMPLIANCE'));
-ok('drawing index includes A-500 rough-in for the back wall', drawingIndex(design).some((d) => d.no === 'A-500' && d.title.includes('ROUGH-IN') && d.title.includes('BACK')));
+ok('drawing index carries NO rough-in sheets', !drawingIndex(design).some((d) => /^A-5/.test(d.no) || /ROUGH/i.test(d.title)));
 
 // ---- esc() safety --------------------------------------------------------------
 const e = esc('Dishwasher Door & Plinth <x> "q" \'z\'');
@@ -143,10 +143,29 @@ const glyph = skuGlyphSVG(getCab('F18'));
 ok('SKU glyph is an svg', glyph.startsWith('<svg') && glyph.includes('</svg>'));
 const html = buildSubmittalHTML({ project: 'Hudson & Co Tower', unit, date: 'July 8, 2026' });
 ok('submittal HTML: letter landscape + all sheet types', html.includes('size: letter landscape')
-  && html.includes('TRADE SUBMITTAL') && html.includes('FLOOR PLAN') && html.includes('ELEVATION — BACK WALL')
-  && html.includes('ELEVATION — LEFT WALL') && html.includes('CABINET SCHEDULE') && html.includes('CUT SHEETS'));
+  && html.includes('>SUBMITTAL<') && html.includes('FLOOR PLAN') && html.includes('ELEVATION: BACK WALL')
+  && html.includes('ELEVATION: LEFT WALL') && html.includes('CABINET SCHEDULE') && html.includes('CUT SHEETS')
+  && html.includes('COMPLIANCE &amp; PRODUCT DATA'));
 ok('submittal HTML escapes the project name', html.includes('Hudson &amp; Co Tower') && !html.includes('Hudson & Co Tower'));
 ok('rev letter + disclaimer on the sheets', html.includes('Rev C') && html.includes('does not survey or verify site dimensions'));
+
+
+// ---- her 2026-09-18 markup, locked ------------------------------------------------
+ok('no MEP rough-in sheets in the pack', !/ROUGH-IN/i.test(html) && !html.includes('A-500'));
+ok('no drawing index on the cover', !html.includes('DRAWING INDEX'));
+ok('says cabinets, never casework', !/casework/i.test(html) && html.includes('CABINET VENDOR') && html.includes('06 41 00'));
+ok('no placeholder project name, no "trade" in the title block', !html.includes('PL/NTH trade project') && !html.includes('TRADE SUBMITTAL'));
+ok('no "Made with PL/NNER" stamp', !html.includes('Made with'));
+ok('disclaimer names the Buyer, not "the client"', html.includes('as entered by the Buyer') && !/the client/i.test(html));
+ok('cover says Color, never prints the internal hex', html.includes('Color: Hudson') && !/#[0-9a-f]{6}\s*<\/td>/i.test(html));
+ok('worktop is "By others", material never named', html.includes('<td>By others</td>') && !html.includes('<td>Marble</td>'));
+ok('plinth is not site-scribed (cabinets arrive ready to install)', !html.includes('site-scribed') && html.includes('ready to install'));
+ok('hinge is the designed side, never "site-selectable"', !html.includes('site-selectable') && html.includes('Hinge: Left hung'));
+ok('schedule carries a HINGE column', html.includes('<th>HINGE</th>') && sched.rows.find((r) => r.code === 'T1').hinge === 'Left'
+  && sched.rows.find((r) => r.code === 'F10').hinge === 'Pair' && sched.rows.find((r) => r.code === 'F18').hinge === '');
+const anon = buildSubmittalHTML({ unit, trade: { address: '12 Rockledge Rd' }, date: 'July 8, 2026' });
+ok('unnamed project: the address heads the cover', anon.includes('<h1>12 Rockledge Rd</h1>'));
+ok('elevation draws hinge swing marks + grey appliances', svg.includes('stroke-dasharray="2.2 1.6"') && svg.includes('#ebebeb'));
 
 console.log(`\nsubmittal.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

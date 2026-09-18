@@ -43,12 +43,13 @@ test('everything stays inside the appliance footprint and face', () => {
   }
 });
 
-test('elevation and icon draw the doors the spec describes, elevation stays dashed with its code', () => {
+test('elevation and icon draw the doors the spec describes, elevation is grey (by others) with its code', () => {
   for (const [code, e] of Object.entries(EXPECT)) {
     const cab = getCab(code);
     const elev = drawFront(cab, 0, 0, (y) => cab.h - y, { code });
-    assert.ok(elev.includes('stroke-dasharray') && elev.includes(`>${code}<`), `${code} dashed outline + code`);
-    assert.equal((elev.match(/<rect /g) || []).length, 1 + e.ovens, `${code} elevation: outline + a rect per oven door`);
+    // appliances are not supplied: grey-filled, never cabinet ink, never a bare dashed box
+    assert.ok(elev.includes('fill="#ebebeb"') && !elev.includes('#1a1a1a') && elev.includes(`>${code}<`), `${code} grey body + code`);
+    assert.equal((elev.match(/<rect /g) || []).length, 2 + e.ovens * 2, `${code} elevation: body, control rail, then door + window per oven`);
     assert.equal((elev.match(/<circle /g) || []).length, rangeSpec(cab).knobs, `${code} elevation knobs`);
     const icon = cabinetSVG(cab);
     assert.equal((icon.match(/<rect /g) || []).length, 2 + e.ovens * 2, `${code} icon: body, grates, then door + window per oven`);

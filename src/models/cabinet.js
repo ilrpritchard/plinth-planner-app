@@ -609,7 +609,7 @@ function buildFront(g, cab, ctx) {
       const cols = cab.w >= 40 ? 2 : 1; const colW = faceW / cols - REVEAL / 2;
       for (let c = 0; c < cols; c++) {
         const cx = cols === 1 ? 0 : (c === 0 ? -faceW / 4 : faceW / 4);
-        const hingeSign = cols === 1 ? -1 : (c === 0 ? -1 : +1);
+        const hingeSign = cols === 1 ? (ctx.hinge ?? -1) : (c === 0 ? -1 : +1);   // single leaf follows the item's hinge side, like every other single door
         hingedDoor(g, doors, { w: colW, h: doorH, mat, glazed: false, frontZ, hingeX: cx - hingeSign * colW / 2, centerY: doorCenter, hingeSign, handle });
       }
       return false;

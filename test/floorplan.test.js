@@ -47,9 +47,10 @@ test('per-cabinet width labels are gone (no dimension on every box)', () => {
   const svg = buildFloorplanSVG(demoState());
   // the old style drew one width text per cabinet + arrows at each face; the
   // chain draws ONE 36" label per 36" bay: AP2 + F20 in the back chain, plus
-  // the island's bay and its overall length → exactly four DIM labels (the
-  // key table's size cells are text-anchor="end", dims are "middle").
-  assert.equal((svg.match(/text-anchor="middle">36"</g) || []).length, 4);
+  // the island's bay → exactly three DIM labels (a ONE-cabinet island no longer
+  // repeats its width as an "overall" line; the key table's size cells are
+  // text-anchor="end", dims are "middle").
+  assert.equal((svg.match(/text-anchor="middle">36"</g) || []).length, 3);
 });
 
 test('branded sheet wraps the SVG with header, meta and footer', () => {

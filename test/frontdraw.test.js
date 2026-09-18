@@ -123,9 +123,12 @@ const lines = (code, cls) => parts(code).filter((p) => p.k === 'line' && p.cls =
 
 // ---- appliances ---------------------------------------------------------
 {
-  ok('AP1 range is an appliance (dashed outline, no parts)', frontParts(getCab('AP1')).appliance);
+  ok('AP1 range is an appliance (no cabinet parts)', frontParts(getCab('AP1')).appliance);
   const svg = drawFront(getCab('AP1'), 0, 0, (y) => 36 - y, { code: 'AP1' });
-  ok('AP1 drawFront is dashed with the code', svg.includes('stroke-dasharray') && svg.includes('>AP1<'));
+  // appliances are by others: GREY and filled (never cabinet ink, never a bare dashed box), code on the kick
+  ok('AP1 drawFront is grey-filled with the code', svg.includes('fill="#ebebeb"') && !svg.includes('#1a1a1a') && svg.includes('>AP1<'));
+  const sink = drawFront(getCab('AP7'), 0, 36.5, (y) => 96 - y, { code: 'AP7' });
+  ok('a sink reads as a faucet above the worktop, not a floating box', sink.includes('<path') && sink.includes('>AP7<'));
   // solid-oak floating shelves (SH1–SH3) were dropped from the range 2026-07
   ok('floating shelves are gone from the catalogue', getCab('SH2') === undefined);
 }

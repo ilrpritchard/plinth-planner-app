@@ -1,25 +1,32 @@
-// submittal.js — the PL/NTH trade submittal pack: an architect-ready,
-// multi-page, letter-LANDSCAPE document per unit type (cover, plan, wall
-// elevations, finish + cabinet schedule, SKU cut sheets), printed to PDF via
-// the same window.open → document.write → print() flow as buildPlanSheetHTML.
+// submittal.js — the PL/NTH submittal pack: an architect-ready, multi-page,
+// letter-LANDSCAPE document per unit type (cover, plan, wall elevations,
+// finish + cabinet schedule, SKU cut sheets, compliance), printed to PDF via
+// the hidden-iframe print flow (openPrintWindow).
+//
+// PL/NTH supplies CABINETS, ready to install. The pack documents those and
+// nothing else: appliances and worktops are by others (drawn grey / named "by
+// others"), and MEP rough-in is NOT PL/NTH's responsibility — never add
+// rough-in sheets back (Imogen's markup, 2026-09-18).
 //
 // All layout maths lives in src/core/submittal.js (pure, node-tested). This
 // file only turns those numbers into SVG + HTML, reusing the floorplan.js
 // drawing style so every sheet in the set matches.
 
-import { getFinish, corniceOption, WORKTOP_OPTIONS, FAMILY_LABEL, familyOf, fmtUSD } from '../core/catalogue.js';
+import { getFinish, corniceOption, FAMILY_LABEL, familyOf, fmtUSD } from '../core/catalogue.js';
 import { fmtIn, fmtFeetIn } from '../core/units.js';
 import { unitName, unitQty } from '../core/cost.js';
 import {
   computeElevation, wallsWithItems, scheduleRows, distinctSkus, drawingIndex,
-  wallTitle, unitRev, esc, MOUNT, SURFACE_Y, WORKTOP_SLAB, CROWN_IN,
-  roughInWalls, roughInPointsOnWall, SPEC_SECTION,
+  wallTitle, unitRev, esc, MOUNT, SURFACE_Y, WORKTOP_SLAB, CROWN_IN, SPEC_SECTION,
 } from '../core/submittal.js';
+import { hingeOf } from '../core/hinge.js';
 import { buildFloorplanSVG, PLAN_STYLE as P, svgLine, svgDimH, svgDimV, svgN as n } from './floorplan.js';
 import { drawFront, frontParts } from './frontdraw.js';
 import { uiAlert } from './dialog.js';
 
-const DISCLAIMER = 'Please note: all room dimensions, openings and services shown are as entered by the client. The client is responsible for checking and confirming every measurement on site before ordering. PL/NTH does not survey or verify site dimensions.';
+// "the Buyer", as in the Terms of Sale: on a trade document "the client" reads
+// as a homeowner, and to an architect it means THEIR client, not the orderer.
+const DISCLAIMER_BODY = 'All room dimensions, openings and services shown are as entered by the Buyer. The Buyer is responsible for checking and confirming every measurement on site before ordering. PL/NTH does not survey or verify site dimensions.';
 // Hardware is supply-only: cabinets ship undrilled, hardware and fitting by
 // others. Knobs drawn in the 3D view / elevations are for visualization only.
 const HARDWARE_LABEL = 'By others: cabinets supplied undrilled';
@@ -29,7 +36,7 @@ const HARDWARE_NOTE = 'Knobs shown on drawings are for visualization only; no ho
 function drawFiller(out, f, Y) {
   const x0 = f.s0, y1 = Y(f.y0 + f.h), fw = f.w, fh = f.h;
   out.push(`<rect x="${n(x0)}" y="${n(y1)}" width="${n(fw)}" height="${n(fh)}" fill="#fff" stroke="${P.INK}" stroke-width="${P.W_CAB}" vector-effect="non-scaling-stroke"/>`);
-  // 45-degree diagonal hatch = "site-scribed panel", matching the plan style
+  // 45-degree diagonal hatch = scribe filler panel, matching the plan style
   const step = Math.max(3, Math.min(6, fw * 1.5));
   for (let t = step; t < fh + fw; t += step) {
     // the line x-x0 + y-y1 = t, clipped to the filler rectangle
@@ -58,7 +65,7 @@ export function buildElevationSVG(elev) {
 
   // cabinets at their true x + mount height, drawn with their full
   // master-library fronts (shaker panels, drawer stacks, glazing, returns)
-  for (const e of elev.items) out.push(drawFront(e.cab, e.s0, e.y0, Y, { code: e.code }));
+  for (const e of elev.items) out.push(drawFront(e.cab, e.s0, e.y0, Y, { code: e.code, hinge: hingeOf(e.cab, e.it) }));
 
   // worktop slab over the base runs (35" carcass + 1½" slab = 36½")
   for (const wt of elev.worktops) {
@@ -92,7 +99,8 @@ export function buildElevationSVG(elev) {
       if (len < 5.5) continue;
       out.push(`<text x="${n((s.a + s.b) / 2)}" y="${n(offChain - 1.8)}" font-size="${P.F_DIM * 0.92}" fill="${s.gap ? P.UPPER : P.DIM}" text-anchor="middle"${s.gap ? ' font-style="italic"' : ''}>${fmtIn(len)}</text>`);
     }
-    if (ch.hi - ch.lo > 0.5) out.push(svgDimH(ch.lo, ch.hi, offRun, fmtIn(ch.hi - ch.lo)));
+    // overall run — skipped when the chain is a single unit (it would repeat the same figure)
+    if (ch.hi - ch.lo > 0.5 && ch.segs.length > 1) out.push(svgDimH(ch.lo, ch.hi, offRun, fmtIn(ch.hi - ch.lo)));
   }
   out.push(svgDimH(0, L, offWall, fmtFeetIn(L)));
 
@@ -103,74 +111,11 @@ export function buildElevationSVG(elev) {
   </svg>`;
 }
 
-// ---- MEP rough-in drawing for one wall (sheet A-5xx) ------------------------
-// Plan-style wall face with ghosted cabinets for context; every point gets a
-// symbol at its true height, a leader to a staggered label row above the wall,
-// and a dimension chain locating it from the LEFT wall corner.
-const RI_SYMBOL = {
-  sink: (x, y) => `<path d="M ${n(x - 2.2)} ${n(y - 1.9)} L ${n(x + 2.2)} ${n(y - 1.9)} L ${n(x)} ${n(y + 2)} Z" fill="#fff" stroke="${P.INK}" stroke-width="${P.W_CAB}" vector-effect="non-scaling-stroke"/>`,
-  range: (x, y) => `<path d="M ${n(x)} ${n(y - 2.4)} L ${n(x + 2.4)} ${n(y)} L ${n(x)} ${n(y + 2.4)} L ${n(x - 2.4)} ${n(y)} Z" fill="#fff" stroke="${P.INK}" stroke-width="${P.W_CAB}" vector-effect="non-scaling-stroke"/>`,
-  hood: (x, y) => `<circle cx="${n(x)}" cy="${n(y)}" r="2.2" fill="#fff" stroke="${P.INK}" stroke-width="${P.W_CAB}" vector-effect="non-scaling-stroke"/>`
-    + svgLine(x - 1.5, y - 1.5, x + 1.5, y + 1.5, P.W_CAB) + svgLine(x - 1.5, y + 1.5, x + 1.5, y - 1.5, P.W_CAB),
-  outlet: (x, y) => `<circle cx="${n(x)}" cy="${n(y)}" r="2.2" fill="#fff" stroke="${P.INK}" stroke-width="${P.W_CAB}" vector-effect="non-scaling-stroke"/>`
-    + svgLine(x - 0.9, y - 1.1, x - 0.9, y + 1.1, P.W_CAB) + svgLine(x + 0.9, y - 1.1, x + 0.9, y + 1.1, P.W_CAB),
-};
-const riSymbol = (kind, x, y) => (RI_SYMBOL[kind] || RI_SYMBOL.outlet)(x, y);
-
-export function buildRoughInSVG(design, wall, pts) {
-  const elev = computeElevation(design, wall);
-  const L = elev.wallLen, H = elev.height;
-  const Y = (y) => H - y;
-  const out = [];
-
-  // wall face + heavier floor line (same frame as the elevations)
-  out.push(`<rect x="0" y="0" width="${n(L)}" height="${n(H)}" fill="none" stroke="${P.INK}" stroke-width="${P.W_WALL_IN}" vector-effect="non-scaling-stroke"/>`);
-  out.push(svgLine(-5, H, L + 5, H, P.W_WALL_OUT));
-
-  // ghosted cabinets + worktop line for context
-  for (const e of elev.items) {
-    out.push(`<rect x="${n(e.s0)}" y="${n(Y(e.y0 + e.h))}" width="${n(e.w)}" height="${n(e.h)}" fill="none" stroke="#c8bfae" stroke-width="${P.W_18}" vector-effect="non-scaling-stroke" stroke-dasharray="2.5 2"/>`);
-  }
-  for (const wt of elev.worktops) out.push(svgLine(wt.s0, Y(SURFACE_Y), wt.s1, Y(SURFACE_Y), P.W_18, '#c8bfae'));
-
-  // points: dashed riser, symbol at true height, leader to a staggered label row
-  pts.forEach((p, i) => {
-    const px = p.x, py = Y(Math.min(p.height, H));
-    const lane = i % 3;                              // stagger labels in 3 rows
-    const ly = -5 - lane * 7;
-    out.push(`<line x1="${n(px)}" y1="${n(H)}" x2="${n(px)}" y2="${n(py + 2.6)}" stroke="${P.DIM}" stroke-width="${P.W_DIM}" vector-effect="non-scaling-stroke" stroke-dasharray="2 2"/>`);
-    out.push(`<line x1="${n(px)}" y1="${n(py - 2.6)}" x2="${n(px)}" y2="${n(ly + 1.6)}" stroke="${P.DIM}" stroke-width="${P.W_DIM}" vector-effect="non-scaling-stroke" stroke-dasharray="2 2"/>`);
-    out.push(riSymbol(p.kind, px, py));
-    const hgt = p.height >= H ? 'AT CEILING' : `${fmtIn(p.height)} AFF`;
-    out.push(`<text x="${n(px)}" y="${n(ly - 3)}" font-size="2.7" font-weight="700" fill="${P.INK}" text-anchor="middle">${esc(p.label)}</text>`);
-    out.push(`<text x="${n(px)}" y="${n(ly)}" font-size="2.5" fill="${P.DIM}" text-anchor="middle">${esc(hgt)}</text>`);
-  });
-
-  // dimension chain from the LEFT wall corner through every point
-  const offChain = H + 7, offWall = H + 15;
-  const xs = [0, ...pts.map((p) => p.x)];
-  out.push(svgLine(0, offChain, Math.max(...xs), offChain, P.W_DIM, P.DIM));
-  const tick = (a) => out.push(svgLine(a - 1, offChain + 1, a + 1, offChain - 1, P.W_DIM, P.DIM));
-  xs.forEach(tick);
-  for (let i = 1; i < xs.length; i++) {
-    const len = xs[i] - xs[i - 1];
-    if (len < 4) continue;
-    out.push(`<text x="${n((xs[i] + xs[i - 1]) / 2)}" y="${n(offChain - 1.8)}" font-size="${P.F_DIM * 0.92}" fill="${P.DIM}" text-anchor="middle">${fmtIn(len)}</text>`);
-  }
-  out.push(svgDimH(0, L, offWall, fmtFeetIn(L)));
-
-  const vbX = -12, vbY = -27, vbW = L + 24, vbH = (H + 21) - vbY;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n(vbX)} ${n(vbY)} ${n(vbW)} ${n(vbH)}" font-family="ui-sans-serif, Arial, sans-serif">
-    <rect x="${n(vbX)}" y="${n(vbY)}" width="${n(vbW)}" height="${n(vbH)}" fill="#fff"/>
-    ${out.join('\n')}
-  </svg>`;
-}
-
 // ---- small SKU glyph for the cut sheets ------------------------------------
-export function skuGlyphSVG(cab) {
+export function skuGlyphSVG(cab, hinge = null) {
   const out = [];
   const Y = (y) => cab.h - y;
-  out.push(drawFront(cab, 0, 0, Y));
+  out.push(drawFront(cab, 0, 0, Y, { hinge }));
   const fp = frontParts(cab);           // corner returns widen the drawn extent
   out.push(svgDimH(fp.x0, fp.x1, cab.h + 7, fmtIn(fp.x1 - fp.x0)));
   out.push(svgDimV(0, cab.h, fp.x0 - 6, fmtIn(cab.h)));
@@ -188,17 +133,22 @@ function sheet(subtitle, metaHTML, bodyHTML, foot) {
     </header>
     <div class="body">${bodyHTML}</div>
     <footer>
-      <span class="disc"><strong>Please note:</strong> ${esc(DISCLAIMER.replace('Please note: ', ''))}</span>
-      <span class="stamp">${foot.rev === '-' ? '' : `Rev ${esc(foot.rev)} · `}${esc(foot.date)} · ${esc(foot.no)}<br>Made with PL/NNER, the PL/NTH kitchen planner · plinthmade.com</span>
+      <span class="disc"><strong>Please note:</strong> ${esc(DISCLAIMER_BODY)}</span>
+      <span class="stamp">${foot.rev === '-' ? '' : `Rev ${esc(foot.rev)} · `}${esc(foot.date)} · ${esc(foot.no)}<br>plinthmade.com</span>
     </footer>
   </section>`;
 }
 
+// Title block: project name and/or address when the Buyer has entered them —
+// never a placeholder name.
 function meta(project, uname, no, rev, date, address) {
   const revBit = rev === '-' ? '' : ` · Rev ${esc(rev)}`;
-  const addr = address ? `${esc(address)}<br>` : '';
-  return `${esc(project || 'PL/NTH trade project')}<br>${addr}${esc(uname)}<br>${esc(no)}${revBit} · ${esc(date)}`;
+  const lines = [project, address].filter(Boolean).map((t) => `${esc(t)}<br>`).join('');
+  return `${lines}${esc(uname)}<br>${esc(no)}${revBit} · ${esc(date)}`;
 }
+
+/** Cover headline: the project name, else its address, else a plain title. */
+const coverTitle = (project, pm) => project || pm.address || 'Cabinet submittal';
 
 // ---- cover blocks: project directory + approval stamp ----------------------
 function directoryHTML(pm = {}) {
@@ -209,7 +159,7 @@ function directoryHTML(pm = {}) {
       ${row('OWNER / DEVELOPER', pm.owner)}
       ${row('ARCHITECT OF RECORD', pm.architect)}
       ${row('GENERAL CONTRACTOR', pm.gc)}
-      ${row('CASEWORK VENDOR', 'PL/NTH · plinthmade.com')}
+      ${row('CABINET VENDOR', 'PL/NTH · plinthmade.com')}
       ${row('SPEC SECTION', SPEC_SECTION)}
     </table>`;
 }
@@ -227,18 +177,18 @@ function stampBoxHTML() {
 }
 
 // ---- compliance & product data (sheet A-600) --------------------------------
-// NOTE: statements below are submittal-coordination language; certificates and
-// test data are issued on request with the order confirmation package.
+// NOTE: statements below are submittal-coordination language (Imogen must
+// verify the claims with the workshop before first real issue).
 function complianceBody(design, pm = {}) {
   const finishLabel = design.finish === 'Custom RAL' && pm.finishRal
     ? `Custom: matched to RAL ${esc(pm.finishRal)}`
-    : `${esc(design.finish || '-')} (one of 15 PL/NTH standard colours)`;
+    : `${esc(design.finish || '-')} (one of 15 PL/NTH standard colors)`;
   const prodRows = [
-    ['Casework type', 'Painted face-frame (shaker) cabinetry: floor, wall, counter &amp; tall units'],
+    ['Cabinet type', 'Painted face-frame (shaker) cabinetry: floor, wall, counter &amp; tall units'],
     ['Carcass construction', '18mm panel construction, oak-veneer interior; 22mm front-frame legs'],
     ['Doors &amp; faces', 'Painted shaker fronts, 80mm stiles &amp; rails; glazed doors clear glass'],
-    ['Plinth', '115mm (4&#189;") painted plinth, flush to the cabinet face, site-scribed'],
-    ['Paint finish', `${finishLabel}, factory-applied in the PL/NTH workshop. Custom colour matched to any RAL on request.`],
+    ['Plinth', '115mm (4&#189;") painted plinth, flush to the cabinet face'],
+    ['Paint finish', `${finishLabel}, factory-applied in the PL/NTH workshop. Custom color matched to any RAL on request.`],
     ['Hardware', `${esc(HARDWARE_LABEL)}. ${esc(HARDWARE_NOTE)}.`],
     ['Country of origin', 'Made in England; supplied to the US by PL/NTH'],
   ].map((r) => `<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join('');
@@ -247,18 +197,18 @@ function complianceBody(design, pm = {}) {
     ['Surface burning', 'ASTM E84 surface-burning characteristics: panel product test data available on request.'],
     ['Specification section', esc(SPEC_SECTION)],
     ['Accessible units', 'ANSI A117.1 / ADA accessible-unit requirements. Coordinate variants with the PL/NTH trade team at spec stage.'],
-    ['Field verification', esc(DISCLAIMER.replace('Please note: ', ''))],
+    ['Field verification', esc(DISCLAIMER_BODY)],
   ].map((r) => `<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join('');
   return `<div class="two-col">
       <div><h3>PRODUCT DATA</h3><table class="fin comp">${prodRows}</table></div>
       <div><h3>COMPLIANCE STATEMENTS</h3><table class="fin comp">${compRows}</table></div>
     </div>
-    <div class="fig-note">Statements on this sheet are provided for submittal coordination. Certificates, declarations and test data are issued with the order confirmation package on request. Contact the PL/NTH trade team.</div>`;
+    <div class="fig-note">Statements on this sheet are provided for submittal coordination.</div>`;
 }
 
 // ---- the per-unit sheet set --------------------------------------------------
 /** All sheets for one unit type (cover → plan → elevations → schedule → cuts →
- *  rough-in → compliance). `pm` carries the project meta (address, architect,
+ *  compliance). `pm` carries the project meta (address, architect,
  *  gc, owner, finishRal) from the trade project. */
 export function buildUnitSheets({ project, unit, date, pm = {} }) {
   const design = unit.design;
@@ -266,7 +216,7 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
   const uname = unitName(unit);
   const qty = unitQty(unit);
   const rev = unitRev(unit);
-  const idx = drawingIndex(design);
+  const idx = drawingIndex(design);         // sheet numbering only — the cover carries no index
   const foot = (no) => ({ rev, date, no });
   const sheets = [];
   let iNo = 0;
@@ -280,24 +230,22 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
   const finish = getFinish(design.finish);
   const finishBit = design.finish === 'Custom RAL' && pm.finishRal
     ? `Custom: RAL ${esc(pm.finishRal)}` : esc(design.finish || '-');
-  sheets.push(sheet('TRADE SUBMITTAL', m(`${uname} × ${qty}`, 'A-000', rev), `
+  sheets.push(sheet('SUBMITTAL', m(`${uname} × ${qty}`, 'A-000', rev), `
     <div class="cover">
-      <div class="cover-kicker">CABINETRY SUBMITTAL SET · ${esc(SPEC_SECTION)} · FOR APPROVAL</div>
-      <h1>${esc(project || 'PL/NTH trade project')}</h1>
+      <div class="cover-kicker">CABINET SUBMITTAL SET · ${esc(SPEC_SECTION)} · FOR APPROVAL</div>
+      <h1>${esc(coverTitle(project, pm))}</h1>
       <h2>${esc(uname)} · ${qty} unit${qty === 1 ? '' : 's'}</h2>
-      <div class="cover-sub">Revision ${esc(rev)} · ${esc(date)} · Finish: ${finishBit} <span class="swatch" style="background:${finish.hex}"></span></div>
+      <div class="cover-sub">Revision ${esc(rev)} · ${esc(date)} · Color: ${finishBit} <span class="swatch" style="background:${finish.hex}"></span></div>
       <div class="cover-cols">
         <div>
           ${directoryHTML(pm)}
-          <h3>DRAWING INDEX</h3>
-          <table class="idx">${idx.map((d) => `<tr><td class="no">${esc(d.no)}</td><td>${esc(d.title)}</td></tr>`).join('')}</table>
         </div>
         <div>
           <h3>REVISION HISTORY</h3>
           <table class="idx"><tr><td class="no">Rev A</td><td>Initial issue</td><td></td></tr>${hist}</table>
           ${stampBoxHTML()}
           <h3>FIELD VERIFICATION</h3>
-          <p class="disc-block">${esc(DISCLAIMER)}</p>
+          <p class="disc-block">${esc(DISCLAIMER_BODY)}</p>
         </div>
       </div>
     </div>`, foot(no())));
@@ -312,24 +260,23 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
     const dNo = no();
     sheets.push(sheet(`ELEVATION: ${wallTitle(wall)}`, m(uname, dNo, rev), `
       <div class="fig">${buildElevationSVG(elev)}</div>
-      <div class="fig-note">Interior elevation, viewed facing the ${esc(wall)} wall. Dimensions in inches. Hatched panels are site-scribed fillers; dashed outlines are openings and appliances (appliances not supplied by PL/NTH).</div>`,
+      <div class="fig-note">Interior elevation, viewed facing the ${esc(wall)} wall. Dimensions in inches. Dashed diagonals on a door meet at its hinge side. Hatched panels are scribe fillers; dashed outlines are openings. Appliances are shown in grey for coordination only and are not supplied by PL/NTH.</div>`,
       foot(dNo)));
   }
 
   // ---- SCHEDULE SHEET ----
   const sched = scheduleRows(design);
-  const wtOpt = WORKTOP_OPTIONS[design.room?.worktop] || null;
   const crown = corniceOption(design.room?.cornice || 'none');
   const finRows = [
-    ['Paint finish', `${finishBit} <span class="swatch" style="background:${finish.hex}"></span> ${design.finish === 'Custom RAL' ? 'matched on order' : esc(finish.hex)}`, 'All exposed cabinet faces, painted in the PL/NTH workshop. Custom colour matched to any RAL on request.'],
-    ['Worktop', wtOpt ? esc(wtOpt.label) : '-', 'Shown for coordination only: worktop by others, not supplied by PL/NTH'],
+    ['Paint color', `${finishBit} <span class="swatch" style="background:${finish.hex}"></span>${design.finish === 'Custom RAL' ? ' matched on order' : ''}`, 'All exposed cabinet faces, painted in the PL/NTH workshop. Custom color matched to any RAL on request.'],
+    ['Worktop', 'By others', 'Shown on the drawings for coordination only, not supplied by PL/NTH'],
     ['Hardware', esc(HARDWARE_LABEL), esc(HARDWARE_NOTE)],
-    ['Crown molding', esc(crown.label), crown.label === 'No crown' ? '-' : 'Runs over wall, counter and tall cabinets incl. tall scribe fillers'],
-    ['Plinth', '115mm (4&#189;") painted plinth', 'Flush to the cabinet face, site-scribed to the floor'],
+    ['Crown molding', esc(crown.label), crown.label === 'No crown' ? '-' : 'Runs over wall, counter and tall cabinets'],
+    ['Plinth', '115mm (4&#189;") painted plinth', 'Flush to the cabinet face. Cabinets arrive ready to install.'],
   ].map((r) => `<tr><th>${r[0]}</th><td>${r[1]}</td><td class="mut">${r[2]}</td></tr>`).join('');
 
   const rowsHTML = sched.rows.map((r) => `<tr>
-      <td class="num">${r.qty}</td><td><strong>${esc(r.code)}</strong></td><td>${esc(FAMILY_LABEL[r.type] || r.type)}</td><td>${esc(r.desc)}</td>
+      <td class="num">${r.qty}</td><td><strong>${esc(r.code)}</strong></td><td>${esc(FAMILY_LABEL[r.type] || r.type)}</td><td>${esc(r.desc)}</td><td>${esc(r.hinge || '-')}</td>
       <td class="num">${fmtIn(r.w)}</td><td class="num">${fmtIn(r.d)}</td><td class="num">${fmtIn(r.h)}</td>
       <td class="num">${fmtUSD(r.each)}</td><td class="num"><strong>${fmtUSD(r.line)}</strong></td></tr>`).join('');
 
@@ -351,11 +298,11 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
     </div>
     <h3>CABINET SCHEDULE</h3>
     <table class="cab">
-      <thead><tr><th class="num">QTY</th><th>CODE</th><th>TYPE</th><th>DESCRIPTION</th><th class="num">W</th><th class="num">D</th><th class="num">H</th><th class="num">EACH</th><th class="num">LINE</th></tr></thead>
+      <thead><tr><th class="num">QTY</th><th>CODE</th><th>TYPE</th><th>DESCRIPTION</th><th>HINGE</th><th class="num">W</th><th class="num">D</th><th class="num">H</th><th class="num">EACH</th><th class="num">LINE</th></tr></thead>
       <tbody>${rowsHTML}</tbody>
-      <tfoot><tr><td colspan="8" class="tr">Per-unit cabinet subtotal</td><td class="num"><strong>${fmtUSD(sched.subtotal)}</strong></td></tr></tfoot>
+      <tfoot><tr><td colspan="9" class="tr">Per-unit cabinet subtotal</td><td class="num"><strong>${fmtUSD(sched.subtotal)}</strong></td></tr></tfoot>
     </table>
-    <div class="fig-note">Scribe fillers, crown molding and end panels are quantified at order from the final site dimensions. Appliances shown on plan are not supplied by PL/NTH. Cabinets are supplied undrilled, hardware and fitting by others.</div>`,
+    <div class="fig-note">Hinge side is as viewed facing the cabinet front; doors ship hung as scheduled. Scribe fillers, crown molding and end panels are quantified at order from the final site dimensions. Appliances and worktops shown on the drawings are not supplied by PL/NTH. Cabinets are supplied undrilled, hardware and fitting by others.</div>`,
     foot('A-300')));
 
   // ---- CUT SHEETS: 3 per page ----
@@ -366,7 +313,7 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
     const dNo = `A-4${String(p + 1).padStart(2, '0')}`;
     const cards = chunk.map((s) => `
       <div class="cut-card">
-        <div class="cut-glyph">${skuGlyphSVG(s.cab)}</div>
+        <div class="cut-glyph">${skuGlyphSVG(s.cab, s.hinge)}</div>
         <div class="cut-code">${esc(s.code)} <span class="cut-fam">${esc(FAMILY_LABEL[familyOf(s.cab)] || s.cab.type)}</span></div>
         <div class="cut-desc">${esc(s.cab.desc)}</div>
         <div class="cut-dims">W ${fmtIn(s.cab.w)} &middot; D ${fmtIn(s.cab.d)} &middot; H ${fmtIn(s.cab.h)} &middot; ${s.qty} per unit</div>
@@ -375,30 +322,6 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
     sheets.push(sheet(`CABINET CUT SHEETS ${p + 1}/${pages}`, m(uname, dNo, rev),
       `<div class="cut-grid">${cards || '<div class="fig-note">No PL/NTH cabinets in this design yet.</div>'}</div>`, foot(dNo)));
   }
-
-  // ---- MEP ROUGH-IN (A-5xx): one sheet per wall carrying utility points ----
-  const KIND_LABEL = {
-    sink: 'Plumbing: waste + hot/cold supply', dishwasher: 'Electrical: dishwasher outlet',
-    range: 'Gas / electrical: range point', wallOven: 'Electrical: wall-oven point (oven housing)',
-    hood: 'Ventilation: hood duct centerline', fridge: 'Electrical: refrigerator receptacle',
-  };
-  roughInWalls(design).forEach((wall, i) => {
-    const pts = roughInPointsOnWall(design, wall);
-    const dNo = `A-5${String(i).padStart(2, '0')}`;
-    const ptRows = pts.map((p) => `<tr>
-        <td><strong>${esc(p.label)}</strong></td><td>${esc(KIND_LABEL[p.kind] || p.kind)}</td>
-        <td class="num">${fmtIn(p.x)}</td>
-        <td class="num">${p.height >= (design.room?.height || 96) ? 'at ceiling' : `${fmtIn(p.height)} AFF`}</td>
-        <td class="mut">${esc(p.note || '')}</td></tr>`).join('');
-    sheets.push(sheet(`MEP ROUGH-IN: ${wallTitle(wall)}`, m(uname, dNo, rev), `
-      <div class="fig ri-fig">${buildRoughInSVG(design, wall, pts)}</div>
-      <table class="cab ri-tab">
-        <thead><tr><th>POINT</th><th>SERVICE</th><th class="num">FROM LEFT CORNER</th><th class="num">HEIGHT</th><th>NOTE</th></tr></thead>
-        <tbody>${ptRows}</tbody>
-      </table>
-      <div class="fig-note">Rough-in locations are measured from the LEFT wall corner (facing the ${esc(wall)} wall) to each point's centerline, heights above finished floor. Cabinets shown dashed for reference only. All rough-in work by others, verify locations, clearances and requirements with the appliance specifications and local code before installation.</div>`,
-      foot(dNo)));
-  });
 
   // ---- COMPLIANCE & PRODUCT DATA (A-600) ----
   sheets.push(sheet('COMPLIANCE & PRODUCT DATA', m(uname, 'A-600', rev),
@@ -422,10 +345,6 @@ const CSS = `
     .meta { text-align: right; font-size: 10px; line-height: 1.55; opacity: 0.92; }
     .body { flex: 1; margin-top: 8px; border: 1px solid #d9cfb8; border-radius: 6px; padding: 8px 12px; overflow: hidden; }
     .fig svg { display: block; width: 100%; height: auto; max-height: 136mm; margin: 0 auto; }
-    .ri-fig svg { max-height: 104mm; }
-    .ri-tab th:nth-child(1) { width: 20%; } .ri-tab th:nth-child(2) { width: 30%; }
-    .ri-tab th:nth-child(3) { width: 15%; } .ri-tab th:nth-child(4) { width: 10%; }
-    .ri-tab th.num { text-align: right; }
     .fig-note { font-size: 8.5px; color: #7d7558; margin-top: 4px; }
     footer { display: flex; justify-content: space-between; gap: 14px; margin-top: 6px;
       border-top: 1px solid #d9cfb8; padding-top: 5px; font-size: 8px; color: #7d7558; }
@@ -460,6 +379,7 @@ const CSS = `
     table.fin td.mut { color: #948e6e; font-size: 8.5px; }
     table.fin tr.hi td, table.fin tr.hi th { border-top: 2px solid #645b3d; border-bottom: none; }
     table.cab th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7d7558; border-bottom: 1px solid #645b3d; padding: 2px 6px 3px 0; }
+    table.cab th.num { text-align: right; }
     table.cab td { padding: 2.5px 6px 2.5px 0; border-bottom: 1px solid #ece4d2; }
     .num { text-align: right; }
     .tr { text-align: right; color: #7d7558; }
@@ -510,12 +430,12 @@ export function buildSubmittalPackHTML(trade, date) {
   const pm = projectMeta(trade);
   const finishBit = trade.finish === 'Custom RAL' && pm.finishRal
     ? `Custom: RAL ${esc(pm.finishRal)}` : esc(trade.finish || '-');
-  const cover = sheet('TRADE SUBMITTAL PACK', meta(trade.project, `${designed.length} unit type${designed.length === 1 ? '' : 's'} · ${totalUnits} units`, 'P-000', '-', date, pm.address), `
+  const cover = sheet('SUBMITTAL PACK', meta(trade.project, `${designed.length} unit type${designed.length === 1 ? '' : 's'} · ${totalUnits} units`, 'P-000', '-', date, pm.address), `
     <div class="cover">
-      <div class="cover-kicker">CABINETRY SUBMITTAL PACK · ${esc(SPEC_SECTION)} · FOR APPROVAL</div>
-      <h1>${esc(trade.project || 'PL/NTH trade project')}</h1>
+      <div class="cover-kicker">CABINET SUBMITTAL PACK · ${esc(SPEC_SECTION)} · FOR APPROVAL</div>
+      <h1>${esc(coverTitle(trade.project, pm))}</h1>
       <h2>${designed.length} unit type${designed.length === 1 ? '' : 's'} · ${totalUnits} units</h2>
-      <div class="cover-sub">${esc(date)} · Finish: ${finishBit}</div>
+      <div class="cover-sub">${esc(date)} · Color: ${finishBit}</div>
       <div class="cover-cols">
         <div>
           ${directoryHTML(pm)}
@@ -526,7 +446,7 @@ export function buildSubmittalPackHTML(trade, date) {
         <div>
           ${stampBoxHTML()}
           <h3>FIELD VERIFICATION</h3>
-          <p class="disc-block">${esc(DISCLAIMER)}</p>
+          <p class="disc-block">${esc(DISCLAIMER_BODY)}</p>
         </div>
       </div>
     </div>`, { rev: '-', date, no: 'P-000' });

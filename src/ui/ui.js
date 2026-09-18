@@ -16,6 +16,7 @@ import { TEMPLATES, applyTemplate, planWallInfill } from '../core/templates.js';
 import { cabinetSVG } from './icon.js';
 import { planRangeResize, rangeSizes } from '../core/resize.js';
 import { sinkSizes, sinkSpec, SINK_BASES, sinkBaseCombo } from '../core/sinkspec.js';
+import { canFlipHinge } from '../core/hinge.js';
 import { uiConfirm, uiAlert, mailFallback } from './dialog.js';
 import { genOrderNo } from '../core/orders.js';
 import { FLOORS, WALLS } from '../scene/Room.js';
@@ -916,11 +917,12 @@ export class UI {
         size.style.display = '';
       } else size.style.display = 'none';
     }
-    // hinge toggle: single-door cabinets only (catalogue lists them as 'L&R';
-    // corners are excluded — their hinge is fixed on the blank-return side)
+    // hinge toggle: single-leaf cabinets only, incl. fridge / oven housings
+    // (core/hinge.js; corners are excluded — their hinge is fixed on the
+    // blank-return side). The side prints on the plan KEY, schedule + cut sheets.
     const hingeBtn = document.getElementById('selHinge');
     if (hingeBtn) {
-      const canHinge = cab.hinge === 'L&R' && !cab.corner;
+      const canHinge = canFlipHinge(cab);
       hingeBtn.style.display = canHinge ? '' : 'none';
       if (canHinge) hingeBtn.textContent = `Hinge: ${it.hinge === 'R' ? 'Right' : 'Left'} ⇄`;
     }

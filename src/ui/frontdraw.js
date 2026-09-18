@@ -13,6 +13,13 @@
 // frontParts(cab) is pure geometry (node-tested); drawFront() turns the parts
 // into SVG in the shared PLAN_STYLE, and is used by the elevation sheets, the
 // cut sheets AND the Trade cabinet picker so all three always match.
+//
+// Appliances are NOT PL/NTH products: they draw in GREY (filled, never ink) as
+// what they are — a range with its oven door and control rail, a faucet where
+// a sink sits below the worktop, a cooktop slab, a hood, a fridge — so an
+// approver separates "by others" from the cabinetry at a glance.
+// opts.hinge ('L' | 'R' | 'PAIR', from core/hinge.js) adds the elevation
+// convention for door swing: dashed diagonals that MEET AT THE HINGE SIDE.
 
 import { mmToIn } from '../core/units.js';
 import { PLAN_STYLE as P, svgLine, svgN as n } from './floorplan.js';
@@ -214,14 +221,7 @@ export function drawFront(cab, s0, y0, Y, opts = {}) {
   const fp = frontParts(cab);
   const w = cab.w, h = cab.h;
 
-  if (fp.appliance) {
-    out.push(`<rect x="${n(s0)}" y="${n(Y(y0 + h))}" width="${n(w)}" height="${n(h)}" fill="none" stroke="${P.UPPER}" stroke-width="${P.W_CAB}" vector-effect="non-scaling-stroke" stroke-dasharray="3.5 2.5"/>`);
-    if (cab.appliance === 'range') out.push(rangeFrontLines(cab, s0, y0, Y));
-    if (opts.code) {
-      out.push(`<text x="${n(s0 + w / 2)}" y="${n(Y(y0 + h / 2))}" font-size="${P.F_CODE}" fill="${P.UPPER}" text-anchor="middle" dominant-baseline="central">${esc(opts.code)}</text>`);
-    }
-    return out.join('\n');
-  }
+  if (fp.appliance) return applianceFront(cab, s0, y0, Y, opts);
 
   const X = (x) => s0 + x;
   const fill = opts.fill ?? '#fff';
@@ -258,6 +258,18 @@ export function drawFront(cab, s0, y0, Y, opts = {}) {
     }
   }
 
+  // door swing, the elevation convention: dashed diagonals from the latch-side
+  // corners meeting at mid-height on the HINGE side. A pair hangs left + right.
+  if (opts.hinge) {
+    for (const p of fp.parts) {
+      if (p.k !== 'rect' || p.cls !== 'leaf') continue;
+      const side = opts.hinge === 'PAIR' ? (p.x + p.w / 2 < w / 2 ? 'L' : 'R') : opts.hinge;
+      const hx = X(side === 'L' ? p.x : p.x + p.w), lx = X(side === 'L' ? p.x + p.w : p.x);
+      const yT = Y(y0 + p.y + p.h), yB = Y(y0 + p.y), yM = (yT + yB) / 2;
+      out.push(`<polyline points="${n(lx)},${n(yT)} ${n(hx)},${n(yM)} ${n(lx)},${n(yB)}" fill="none" stroke="${LIGHT}" stroke-width="${P.W_18}" stroke-dasharray="2.2 1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`);
+    }
+  }
+
   if (opts.code) {
     const halo = ' paint-order="stroke" stroke="#fff" stroke-width="0.7"';
     const floorStanding = cab.type === 'FLOOR' || cab.type === 'TALL';
@@ -272,29 +284,88 @@ export function drawFront(cab, s0, y0, Y, opts = {}) {
   return out.join('\n');
 }
 
-/**
- * A standalone <svg> of one front (no dims) — used by the Trade picker cards
- * and the order-row mini glyphs. px = rendered height in CSS pixels (optional).
- */
-// A range drawn as a range, inside its dashed not-supplied outline: control
-// rail, knobs, oven door(s) with handle, kick. Light UPPER ink, so it stays
-// context beside the cabinets. Same rangeSpec as the 3D model and the icon.
-function rangeFrontLines(cab, s0, y0, Y) {
-  const sp = rangeSpec(cab), w = cab.w, o = [];
-  const L = (x1, ya, x2, yb, sw = P.W_UPPER) => o.push(`<line x1="${n(s0 + x1)}" y1="${n(Y(y0 + ya))}" x2="${n(s0 + x2)}" y2="${n(Y(y0 + yb))}" stroke="${P.UPPER}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/>`);
-  L(0, sp.kickH, w, sp.kickH);
-  L(0, sp.railY0, w, sp.railY0);
-  const ky = (sp.railY0 + sp.railY1) / 2;
-  for (let i = 0; i < sp.knobs; i++) {
-    o.push(`<circle cx="${n(s0 + 3.2 + i * ((w - 6.4) / (sp.knobs - 1)))}" cy="${n(Y(y0 + ky))}" r="0.8" fill="none" stroke="${P.UPPER}" stroke-width="${P.W_UPPER}" vector-effect="non-scaling-stroke"/>`);
-  }
-  for (const ov of sp.ovens) {
-    o.push(`<rect x="${n(s0 + ov.x0)}" y="${n(Y(y0 + sp.doorY1))}" width="${n(ov.x1 - ov.x0)}" height="${n(sp.doorY1 - sp.doorY0)}" fill="none" stroke="${P.UPPER}" stroke-width="${P.W_UPPER}" vector-effect="non-scaling-stroke"/>`);
-    L(ov.x0 + 1.5, sp.doorY1 - 2, ov.x1 - 1.5, sp.doorY1 - 2, P.W_CAB);      // handle
+// ---- appliances: grey, filled, recognisable -----------------------------------
+const A_FILL = '#ebebeb', A_INK = '#8f8f8f', A_PALE = '#f8f8f8', A_DARK = '#dcdcdc';
+
+/** One appliance front, in grey. Same rangeSpec as the 3D model, the plan and
+ *  the picker icon. Sinks mount BELOW the worktop, so what an elevation shows
+ *  is the faucet; a cooktop is a thin slab on the worktop. */
+function applianceFront(cab, s0, y0, Y, opts) {
+  const w = cab.w, h = cab.h, o = [];
+  const box = (x, ya, bw, bh, fill = A_FILL, sw = P.W_CAB, extra = '') => o.push(`<rect x="${n(s0 + x)}" y="${n(Y(y0 + ya + bh))}" width="${n(bw)}" height="${n(bh)}" fill="${fill}" stroke="${A_INK}" stroke-width="${sw}" vector-effect="non-scaling-stroke"${extra}/>`);
+  const ln = (x1, ya, x2, yb, sw = P.W_18) => o.push(`<line x1="${n(s0 + x1)}" y1="${n(Y(y0 + ya))}" x2="${n(s0 + x2)}" y2="${n(Y(y0 + yb))}" stroke="${A_INK}" stroke-width="${sw}" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`);
+  const code = (x, ya, size = 2.5) => {
+    if (opts.code) o.push(`<text x="${n(s0 + x)}" y="${n(Y(y0 + ya))}" font-size="${size}" fill="#777" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="0.7">${esc(opts.code)}</text>`);
+  };
+
+  switch (cab.appliance) {
+    case 'range': {
+      const sp = rangeSpec(cab);
+      box(0, 0, w, h);
+      ln(0, sp.kickH, w, sp.kickH);
+      box(0, sp.railY0, w, sp.railY1 - sp.railY0, A_PALE, P.W_18);          // control rail + knobs
+      const ky = (sp.railY0 + sp.railY1) / 2;
+      for (let i = 0; i < sp.knobs; i++) {
+        o.push(`<circle cx="${n(s0 + 3.2 + i * ((w - 6.4) / Math.max(1, sp.knobs - 1)))}" cy="${n(Y(y0 + ky))}" r="0.85" fill="#fff" stroke="${A_INK}" stroke-width="${P.W_18}" vector-effect="non-scaling-stroke"/>`);
+      }
+      for (const ov of sp.ovens) {                                          // oven door: window + bar handle
+        const dw = ov.x1 - ov.x0, dh = sp.doorY1 - sp.doorY0;
+        box(ov.x0, sp.doorY0, dw, dh, A_PALE, P.W_18);
+        box(ov.x0 + 2.4, sp.doorY0 + dh * 0.2, dw - 4.8, dh * 0.5, A_DARK, P.W_18, ' rx="0.6"');
+        ln(ov.x0 + 1.8, sp.doorY1 - 2.2, ov.x1 - 1.8, sp.doorY1 - 2.2, P.W_CAB * 1.8);
+      }
+      code(w / 2, sp.kickH / 2);                                             // on the kick, like a cabinet's plinth code
+      break;
+    }
+    case 'sink': {
+      // the bowl is under the worktop: show the faucet (gooseneck) on centre
+      const cx = w / 2, top = 15, r = 2.6;
+      o.push(`<path d="M ${n(s0 + cx)} ${n(Y(y0))} L ${n(s0 + cx)} ${n(Y(y0 + top - r))} A ${n(r)} ${n(r)} 0 0 1 ${n(s0 + cx + 2 * r)} ${n(Y(y0 + top - r))} L ${n(s0 + cx + 2 * r)} ${n(Y(y0 + top - r - 2.2))}" fill="none" stroke="${A_INK}" stroke-width="${P.W_CAB * 2}" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`);
+      box(cx - 1.1, 0, 2.2, 1.4, A_FILL, P.W_18);                             // base flange
+      ln(cx - 3.4, 2.6, cx - 1.1, 1.4, P.W_CAB * 1.6);                        // lever
+      code(cx, top + 2.4);
+      break;
+    }
+    case 'hob':
+      box(0, 0, w, Math.min(h, 1.2), A_FILL, P.W_18);
+      code(w / 2, 3.4);
+      break;
+    case 'hood': {
+      const canopy = Math.min(9, h * 0.34), cw = Math.max(10, w * 0.34);
+      box((w - cw) / 2, canopy, cw, h - canopy, A_FILL, P.W_18);             // chimney
+      box(0, 0, w, canopy);                                                  // canopy
+      ln(1.5, 1.4, w - 1.5, 1.4);
+      code(w / 2, canopy / 2 + 0.6);
+      break;
+    }
+    case 'oven':
+      box(0, 0, w, h);
+      box(2.2, h * 0.16, w - 4.4, h * 0.5, A_DARK, P.W_18, ' rx="0.6"');
+      ln(2, h * 0.78, w - 2, h * 0.78, P.W_CAB * 1.8);
+      code(w / 2, h * 0.9);
+      break;
+    case 'fridge': {
+      box(0, 0, w, h);
+      const drawer = cab.integrated ? h * 0.28 : 0;                          // freezer drawer under the door(s)
+      if (drawer) ln(0, drawer, w, drawer);
+      const french = cab.integrated ? !cab.overUnder : w >= 33;
+      if (french) { ln(w / 2, drawer, w / 2, h); ln(w / 2 - 1.4, h * 0.42, w / 2 - 1.4, h * 0.62, P.W_CAB * 1.6); ln(w / 2 + 1.4, h * 0.42, w / 2 + 1.4, h * 0.62, P.W_CAB * 1.6); }
+      else ln(w - 2.2, h * 0.42, w - 2.2, h * 0.62, P.W_CAB * 1.6);
+      if (drawer) ln(w * 0.3, drawer - 2.2, w * 0.7, drawer - 2.2, P.W_CAB * 1.6);
+      code(w / 2, h * 0.75, P.F_CODE * 0.85);
+      break;
+    }
+    default:
+      box(0, 0, w, h);
+      code(w / 2, h / 2);
   }
   return o.join('\n');
 }
 
+/**
+ * A standalone <svg> of one front (no dims) — used by the Trade picker cards
+ * and the order-row mini glyphs. px = rendered height in CSS pixels (optional).
+ */
 export function frontSVG(cab, px = 0) {
   const fp = frontParts(cab);
   if (!(cab.w > 0) || !(cab.h > 0)) return '';

@@ -14,6 +14,7 @@ import { rowsFromDesign } from './cost.js';
 import { computeFillers } from './fillers.js';
 import { openingCenter, openingWidth } from './openings.js';
 import { SPEC } from './units.js';
+import { hingeSummary, sharedHinge } from './hinge.js';
 
 // mount heights — MUST match src/models/cabinet.js MOUNT (the 3D truth)
 export const MOUNT = { FLOOR: 0, TALL: 0, WALL: 54, COUNTER: 36.5, SHELF: 54 };
@@ -228,13 +229,17 @@ export function computeElevation(design, wall) {
 }
 
 // ---- schedule + cut-sheet data ----------------------------------------------
-/** Cabinet schedule: the KEY-table data priced with rowsFromDesign quantities. */
+/** Cabinet schedule: the KEY-table data priced with rowsFromDesign quantities.
+ *  `hinge` says how the row's doors hang ('Left' | 'Right' | 'Pair' |
+ *  '1 Left · 2 Right' | '') — the workshop hangs the doors, so it is part of
+ *  the order. */
 export function scheduleRows(design) {
   const rows = rowsFromDesign(design.items).map((r) => {
     const cab = getCab(r.code);
     const each = sellUSD(cab);
     return {
       code: cab.code, desc: cab.desc, type: familyOf(cab),   // display family (stackers get their own)
+      hinge: hingeSummary(cab, (design.items || []).filter((it) => it.code === r.code), true),
       w: cab.w, d: cab.d, h: cab.h,
       qty: r.qty, each, line: each * r.qty,
     };
@@ -249,19 +254,20 @@ export function distinctSkus(design) {
   for (const it of design.items || []) {
     const cab = getCab(it.code);
     if (!cab || !cab.placeable || cab.notSupplied) continue;
-    seen.set(cab.code, (seen.get(cab.code) || 0) + 1);
+    seen.set(cab.code, (seen.get(cab.code) || []).concat([it]));
   }
   const order = { FLOOR: 0, WALL: 1, SHELF: 2, COUNTER: 3, TALL: 4 };
   return [...seen.entries()]
-    .map(([code, qty]) => {
-      const cab = getCab(code);
+    .map(([code, its]) => {
+      const cab = getCab(code), qty = its.length;
       const notes = [];
-      if (cab.hinge && cab.hinge !== 'n/a' && cab.hinge !== '') notes.push(`Hinge: ${cab.hinge} (site-selectable)`);
+      const hung = hingeSummary(cab, its);           // the side(s) AS DESIGNED — doors ship hung, never site-selectable
+      if (hung) notes.push(`Hinge: ${hung} (viewed facing the front)`);
       if (cab.corner) notes.push(`Corner unit — +${cab.type === 'FLOOR' ? 20 : 10}" blank return into the corner`);
       if (cab.notes) notes.push(cab.notes);
       if (cab.glazed) notes.push('Glazed door(s), clear glass');
       if (cab.type === 'FLOOR' || cab.type === 'TALL') notes.push('115mm (4½") painted plinth, flush fit');
-      return { cab, code, qty, notes };
+      return { cab, code, qty, notes, hinge: sharedHinge(cab, its) };
     })
     .sort((a, b) => ((order[a.cab.type] ?? 9) - (order[b.cab.type] ?? 9))
       || a.code.localeCompare(b.code, 'en', { numeric: true }));
@@ -277,58 +283,10 @@ export function drawingIndex(design) {
   idx.push({ no: 'A-300', title: 'FINISH, HARDWARE & CABINET SCHEDULE' });
   const pages = Math.max(1, Math.ceil(distinctSkus(design).length / 3));
   for (let i = 0; i < pages; i++) idx.push({ no: `A-4${String(i + 1).padStart(2, '0')}`, title: `CABINET CUT SHEETS ${i + 1}/${pages}` });
-  roughInWalls(design).forEach((w, i) => idx.push({ no: `A-5${String(i).padStart(2, '0')}`, title: `MEP ROUGH-IN — ${wallTitle(w)}` }));
   idx.push({ no: 'A-600', title: 'COMPLIANCE & PRODUCT DATA' });
   return idx;
 }
 
-// CSI MasterFormat section this submittal set is logged against.
-export const SPEC_SECTION = '06 41 00 — ARCHITECTURAL WOOD CASEWORK';
-
-// ---- MEP rough-in points (sheet A-500) ---------------------------------------
-// Every plumbing / electrical / duct point the trades need before the cabinets
-// arrive, located from the LEFT wall corner (the same left→right `s` frame as
-// computeElevation) with a height AFF. Positions derive from the placed items.
-export const ROUGHIN_HEIGHTS = {
-  sink: 20,        // waste + hot/cold stub-outs behind the sink base
-  dishwasher: 18,  // outlet in the adjacent cabinet zone
-  range: 4,        // range receptacle / gas point, low behind the range
-  wallOven: 48,    // wall-oven point when a T9 oven housing is placed
-  fridge: 36,      // refrigerator receptacle behind the fridge
-};
-
-/** All rough-in points for one wall: [{ kind, label, x, wall, height, note }]. */
-export function roughInPointsOnWall(design, wall) {
-  const items = itemsOnWall(design, wall);
-  const H = design.room?.height || 96;
-  const out = [];
-  const mid = (e) => e.s0 + e.w / 2;
-  for (const e of items) {
-    const ap = e.cab.appliance;
-    if (ap === 'sink') {
-      out.push({ kind: 'sink', wall, x: mid(e), height: ROUGHIN_HEIGHTS.sink, label: 'SINK — waste + hot/cold', note: 'centerline of sink' });
-    } else if (e.cab.form === 'dishwasher') {
-      out.push({ kind: 'dishwasher', wall, x: mid(e), height: ROUGHIN_HEIGHTS.dishwasher, label: 'DW outlet', note: 'in adjacent cabinet zone' });
-    } else if (ap === 'range' || ap === 'hob') {
-      out.push({ kind: 'range', wall, x: mid(e), height: ROUGHIN_HEIGHTS.range, label: 'RANGE point (gas/elec)', note: 'centered behind range' });
-    } else if (e.cab.form === 'ovenHousing') {
-      out.push({ kind: 'wallOven', wall, x: mid(e), height: ROUGHIN_HEIGHTS.wallOven, label: 'WALL-OVEN point', note: `${e.cab.code} oven housing` });
-    } else if (ap === 'hood') {
-      out.push({ kind: 'hood', wall, x: mid(e), height: H, label: 'HOOD duct — duct above', note: 'centered over range/hob' });
-    } else if (ap === 'fridge') {
-      out.push({ kind: 'fridge', wall, x: mid(e), height: ROUGHIN_HEIGHTS.fridge, label: 'FRIDGE receptacle', note: 'behind refrigerator' });
-    }
-  }
-  out.sort((a, b) => a.x - b.x);
-  return out;
-}
-
-/** Walls (drawing order) that carry at least one rough-in point. */
-export function roughInWalls(design) {
-  return WALL_ORDER.filter((w) => roughInPointsOnWall(design, w).length > 0);
-}
-
-/** Every rough-in point in the design, wall by wall. */
-export function roughInPoints(design) {
-  return roughInWalls(design).flatMap((w) => roughInPointsOnWall(design, w));
-}
+// CSI MasterFormat section this submittal set is logged against. PL/NTH says
+// CABINETS, never "casework" (Imogen's markup, 2026-09-18).
+export const SPEC_SECTION = '06 41 00 — CABINETS';
