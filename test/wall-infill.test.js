@@ -89,3 +89,21 @@ test('appliances and talls on the wall line are respected as blockers', () => {
   }
   assert.ok(out.length >= 2, 'gaps around the range left empty');
 });
+
+// ---- corner conversion (her rule 2026-09-17: filling a second wall must make a corner unit) ----
+test('fill two adjoining walls, either order: a corner unit at the junction, leg to leg, no overlaps', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const { getCab } = await import('../src/core/catalogue.js');
+  const { snapPosition } = await import('../src/interaction/snapping.js');
+  const box = (it) => { const c = getCab(it.code); const ret = c.corner ? 20 : 0, lR = (c.corner && c.cornerSide !== 'right') ? ret : 0, rR = (c.corner && c.cornerSide === 'right') ? ret : 0; const rad = (it.rotDeg || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad); const pts = [[-(c.w / 2 + lR), -c.d / 2], [c.w / 2 + rR, -c.d / 2], [c.w / 2 + rR, c.d / 2], [-(c.w / 2 + lR), c.d / 2]]; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const [lx, lz] of pts) { const wx = lx * cs + lz * sn, wz = -lx * sn + lz * cs; x0 = Math.min(x0, it.x + wx); x1 = Math.max(x1, it.x + wx); z0 = Math.min(z0, it.z + wz); z1 = Math.max(z1, it.z + wz); } return { x0, x1, z0, z1 }; };
+  for (const order of [['back', 'left'], ['left', 'back'], ['back', 'right'], ['right', 'back'], ['front', 'left'], ['left', 'front'], ['left', 'back', 'right']]) {
+    const st = new Store(); st.setRoom({ width: 144, depth: 120, height: 96 });
+    for (const wall of order) { const pl = planWallInfill(st.state, wall); for (const id of (pl.remove || [])) st.removeItem(id); for (const p of pl) st.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg }); }
+    const items = st.state.items;
+    const corners = items.filter((i) => getCab(i.code).corner);
+    assert.equal(corners.length, order.length - 1, `${order.join('>')}: one corner unit per junction`);
+    for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) { const a = box(items[i]), b = box(items[j]); const ix = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), iz = Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0); assert.ok(!(ix > 0.5 && iz > 0.5), `${order.join('>')}: ${items[i].code} overlaps ${items[j].code}`); }
+    const b = { minX: -72, maxX: 72, minZ: -60, maxZ: 60 };
+    for (const c of corners) assert.equal(snapPosition(st, c.id, c.x, c.z, b).flag, undefined, `${order.join('>')}: ${c.code} passes the corner rule where it was placed`);
+  }
+});
