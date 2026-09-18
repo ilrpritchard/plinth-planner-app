@@ -129,7 +129,7 @@ export class TradeUI {
             <button class="ghost sm" id="tOrders" title="Your quote requests and orders with live status">Orders</button>
           </div>` : ''}
         </header>
-        ${t.demo ? `<div class="trade-demo-note">This is an example building, sixty-two units across three kitchen types, priced live. Change the quantities and cabinets to match your project, or start over and enter your own.</div>` : ''}
+        ${t.demo ? `<div class="trade-demo-note">An example building: 62 units across three kitchen types, priced live. Adjust the quantities and cabinets to match the project, or start over with a blank unit mix.</div>` : ''}
 
         ${t.units.length > 1 ? `<div class="units-bar">
           <span>${t.units.length} kitchen types</span>
@@ -162,7 +162,7 @@ export class TradeUI {
         <section class="trade-order" id="tOrder">
           <h3>Request a fixed quote</h3>
           <div class="trade-fields">
-            <label>Your name<input id="tcName" value="${esc(this.store.state.customer.name)}"></label>
+            <label>Contact name<input id="tcName" value="${esc(this.store.state.customer.name)}"></label>
             <label>Email<input id="tcEmail" value="${esc(this.store.state.customer.email)}"></label>
             <label>Notes<input id="tcNotes" value="${esc(this.store.state.customer.notes)}"></label>
           </div>
@@ -213,22 +213,22 @@ export class TradeUI {
         </header>
         <section class="trade-welcome">
           <h2>Price a building.</h2>
-          <p>Tell us the unit mix and the kitchen in each type. The price is live, per unit and for the whole project, with tariffs and delivery to a warehouse in your project's city included.</p>
+          <p>Set the unit mix and specify the kitchen for each unit type. Pricing is live, per unit and for the whole project, with tariffs and delivery to a warehouse in the project's city included.</p>
           <div class="tw-opts">
             <button class="tw-opt" id="twDemo">
               <strong>Start from an example building</strong>
-              <span>${n} units, three kitchen types, cabinets already chosen. Change the quantities and cabinets to match your project.</span>
+              <span>${n} units across three kitchen types, cabinets already specified. Adjust the quantities and cabinets to match the project.</span>
             </button>
             <button class="tw-opt" id="twMix">
-              <strong>Enter my unit mix</strong>
-              <span>Add each kitchen type, pick its cabinets or lay it out in 3D, and say how many units it repeats across.</span>
+              <strong>Enter the unit mix</strong>
+              <span>Add each kitchen type, specify its cabinets or lay it out in 3D, and set the number of units it repeats across.</span>
             </button>
             <a class="tw-opt" id="twSend" href="${mail}">
               <strong>Send us the floor plans</strong>
-              <span>A plan per floor and the kitchen types. We lay out the kitchens and return a priced project within two working days.</span>
+              <span>A plan per floor and the kitchen types. PL/NTH lays out the kitchens and returns a priced project within two working days.</span>
             </a>
           </div>
-          <div class="tw-foot">Smaller project? Email anyway: <a href="mailto:imogen@plinthmade.com">imogen@plinthmade.com</a></div>
+          <div class="tw-foot">Smaller projects and one-off kitchens: <a href="mailto:imogen@plinthmade.com">imogen@plinthmade.com</a></div>
         </section>
       </div>`;
     const $ = (id) => document.getElementById(id);
@@ -350,20 +350,20 @@ export class TradeUI {
             <div class="uh-row">
               <label>Bedrooms<select data-act="u-beds">${BED_TYPES.map((b) => `<option ${b === u.beds ? 'selected' : ''}>${b}</option>`).join('')}</select></label>
               <label>Type<select data-act="u-letter">${LETTERS.map((l) => `<option ${l === u.letter ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-              <label>Your name for it (optional)<input data-act="u-name" value="${esc(u.name)}" placeholder="${esc(unitName(u))}"></label>
+              <label>Reference (optional)<input data-act="u-name" value="${esc(u.name)}" placeholder="${esc(unitName(u))}"></label>
             </div>
           </div>
           <div class="uh-group">
-            <span class="uh-legend">How many units of this type</span>
+            <span class="uh-legend">Unit count</span>
             <div class="uh-row">
               ${floorsOn ? `
               <label class="sm">From floor<input data-act="u-from" type="number" value="${u.floorFrom}"></label>
               <label class="sm">To floor<input data-act="u-to" type="number" value="${u.floorTo}"></label>
               <label class="sm">Units per floor<input data-act="u-per" type="number" value="${u.perFloor}"></label>
               <span class="uh-eq" id="uq-${u.id}">${this.floorsReadout(u)}</span>
-              <button type="button" class="tquiet" data-act="u-floors-off">Enter a total instead</button>` : `
+              <button type="button" class="tquiet" data-act="u-floors-off">Enter a total</button>` : `
               <label class="sm">Units<input data-act="u-qty" type="number" min="0" value="${q}"></label>
-              <button type="button" class="tquiet" data-act="u-floors-on" title="Floors 3 to 14, two per floor: the planner does the multiplication">Count by floor instead</button>`}
+              <button type="button" class="tquiet" data-act="u-floors-on" title="Floors 3 to 14, two per floor: the planner does the multiplication">Count by floor</button>`}
             </div>
           </div>
         </div>
@@ -906,7 +906,7 @@ export class TradeUI {
     document.getElementById('tcloudModal')?.remove();
     const m = document.createElement('div');
     m.id = 'tcloudModal';
-    m.innerHTML = `<div class="cloud-card"><h3>My trade projects</h3>
+    m.innerHTML = `<div class="cloud-card"><h3>Saved projects</h3>
       <p class="cloud-sub">Open a saved project. It replaces what's on screen.</p>
       <div class="cloud-list">${rows.length ? rows.map((r) => `
         <div class="design-row" data-id="${r.id}">
