@@ -260,5 +260,7 @@ ok('cut cards are a label / value grid', html.includes('<table class="cut-spec">
 
 ok('no surface-burning / ASTM E84 claim on the spec sheet (removed at her request: no test data held)', !/surface.burning|E84/i.test(html));
 
+ok('no formaldehyde / TSCA / CARB claim printed until the certificates are held', !/TSCA|CARB|formaldehyde/i.test(html));
+
 console.log(`\nsubmittal.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

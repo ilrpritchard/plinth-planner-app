@@ -237,7 +237,10 @@ function complianceBody(design, pm = {}) {
     ['Country of origin', 'Made in England; supplied to the US by PL/NTH'],
   ].map((r) => `<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join('');
   const compRows = [
-    ['Formaldehyde emissions', 'Composite wood components supplied compliant with TSCA Title VI (40 CFR Part 770) / CARB Phase 2 emission limits. Supplier declarations held on file; certificates issued on request.'],
+    // NO emissions / fire claims until the paperwork is in hand (her call
+    // 2026-09-18). When the workshop's board suppliers' TSCA Title VI
+    // certificates are on file, restore:
+    //   ['Formaldehyde emissions', 'Composite wood components supplied compliant with TSCA Title VI (40 CFR Part 770) / CARB Phase 2 emission limits. Supplier declarations held on file; certificates issued on request.'],
     ['Specification section', esc(SPEC_SECTION)],
     ['Accessible units', 'ANSI A117.1 / ADA accessible-unit requirements. Coordinate variants with the PL/NTH trade team at spec stage.'],
     ['Field verification', esc(DISCLAIMER_BODY)],
