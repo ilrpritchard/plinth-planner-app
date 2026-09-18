@@ -1,7 +1,7 @@
 import { buildCabinet, getMountY, OPEN_ANGLE } from '../src/models/cabinet.js';
 import { buildAppliance } from '../src/models/appliances.js';
 import { Worktop } from '../src/models/worktop.js';
-import { CATALOGUE, getCab, FINISHES } from '../src/core/catalogue.js';
+import { CATALOGUE, getCab, FINISHES, drawerInserts } from '../src/core/catalogue.js';
 
 let pass=0, fail=0;
 const ok=(n,c)=>{ c?pass++:(fail++,console.error('✗ '+n)); };
@@ -72,6 +72,16 @@ ok(`built all appliances (${apps})`, apps===20);   // AP10 prep sink + AP11/12 f
   const g15 = buildCabinet(t15, FINISHES[0].hex, {});
   ok('T15 has a door pair opening opposite ways', g15.userData.doors.length===2 &&
     Math.sign(g15.userData.doors[0].userData.openAngle)===-Math.sign(g15.userData.doors[1].userData.openAngle));
+}
+
+// drawer inserts: a drawer bank is offered the inserts made for ITS width, nothing else
+{
+  const codes = (c) => drawerInserts(c).map((a) => a.code).sort().join(',');
+  ok('28" drawers take the 28" cutlery and utensil inserts', codes('F19') === 'A3,A6');
+  ok('24" drawers take the 24" utensil insert', codes('F18') === 'A5');
+  ok('36" drawers take the 36" cutlery insert', codes('F20') === 'A4');
+  ok('no insert is made for 20" drawers', codes('F17') === '');
+  ok('cooktop drawers (fixed top front) and doors offer none', codes('F30') === '' && codes('F10') === '' && codes('AP1') === '');
 }
 
 // AP12/AP13 sized integrated fridges: 72" french-door and 30" over-under

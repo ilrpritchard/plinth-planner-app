@@ -2,7 +2,7 @@
 
 import {
   CATALOGUE, FAMILY_ORDER, FAMILY_LABEL, familyOf, FINISHES, getCab, sellUSD, fmtUSD, getFinish, WORKTOP_OPTIONS,
-  CORNICE_OPTIONS, corniceOption, orderableAccessories, swapAlternatives,
+  CORNICE_OPTIONS, corniceOption, orderableAccessories, swapAlternatives, drawerInserts,
 } from '../core/catalogue.js';
 import { planCornice } from '../core/cornice.js';
 import { fmtIn, fmtFeetIn, parseLength } from '../core/units.js';
@@ -852,6 +852,17 @@ export class UI {
       const cab = getCab(plan.code);
       this._toast(plan.note ? `${cab.desc} fitted. ${plan.note}.` : plan.moves.length > 1 ? `${cab.desc} fitted. The cabinets beside it moved over.` : `${cab.desc} fitted.`);
     });
+    // drawer inserts: a drawer bank offers the cutlery / utensil inserts made for its
+    // width right here (they also live under Room > Accessories, where she could not find them)
+    document.getElementById('selInsert')?.addEventListener('change', (e) => {
+      const id = this.controls.layer.selectedId, code = e.target.value;
+      if (id == null || !code) return;
+      const n = (this.store.state.accessories?.[code] || 0) + 1;
+      this.store.setAccessory(code, n);
+      this._refreshAccessories();
+      this.showSelbar(id);
+      this._toast(`${getCab(code).desc} added to the estimate (${n} in this kitchen). Change the number under Room, Accessories.`);
+    });
     document.getElementById('selHinge')?.addEventListener('click', () => {
       const id = this.controls.layer.selectedId; if (id == null) return;
       this.store.flipHinge(id);
@@ -916,6 +927,17 @@ export class UI {
         size.innerHTML = sizes.map((c) => `<option value="${c.code}" ${c.code === cab.code ? 'selected' : ''}>${c.code === cab.code ? 'Size: ' : ''}${label(c)}</option>`).join('');
         size.style.display = '';
       } else size.style.display = 'none';
+    }
+    // drawer inserts for this width
+    const ins = document.getElementById('selInsert');
+    if (ins) {
+      const opts = drawerInserts(it.code);
+      if (opts.length) {
+        const acc = this.store.state.accessories || {};
+        ins.innerHTML = `<option value="">+ Drawer insert…</option>` + opts.map((a) =>
+          `<option value="${a.code}">${a.desc} (+${fmtUSD(sellUSD(a))})${acc[a.code] ? ` · ${acc[a.code]} added` : ''}</option>`).join('');
+        ins.value = ''; ins.style.display = '';
+      } else ins.style.display = 'none';
     }
     // hinge toggle: single-leaf cabinets only, incl. fridge / oven housings
     // (core/hinge.js; corners are excluded — their hinge is fixed on the
