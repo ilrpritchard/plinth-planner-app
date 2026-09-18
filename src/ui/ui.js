@@ -14,6 +14,7 @@ import { isCloud, submitOrder } from '../core/cloud.js';
 import { exportJSON, importJSON } from '../core/persistence.js';
 import { TEMPLATES, applyTemplate, planWallInfill } from '../core/templates.js';
 import { cabinetSVG } from './icon.js';
+import { planRangeResize, rangeSizes } from '../core/resize.js';
 import { uiConfirm, uiAlert, mailFallback } from './dialog.js';
 import { genOrderNo } from '../core/orders.js';
 import { FLOORS, WALLS } from '../scene/Room.js';
@@ -453,6 +454,7 @@ export class UI {
     const TOL = 0.5;
     let html = '';
     let hiddenAny = false;
+    const tooWide = new Set();
     for (const fam of FAMILY_ORDER) {
       // an island is built from base cabinets plus the appliances that really
       // live in one — ranges, cooktops and sinks (Rockledge-style island
@@ -466,6 +468,9 @@ export class UI {
             !['range', 'hob', 'sink'].includes(c.appliance)) return false;
         if (!this._isBaseRun(c)) return true;
         const fits = c.w <= remaining + TOL;
+        // an appliance that will not fit stays on the shelf, dimmed, saying what it
+        // needs: a hidden 36" or 48" range reads as "PL/NNER has no 48-inch range"
+        if (!fits && c.type === 'APPLIANCES') { tooWide.add(c.code); return true; }
         if (!fits) hiddenAny = true;
         return fits;
       });
@@ -474,8 +479,10 @@ export class UI {
       const glyph = items[0] ? `<span class="cat-fam-ico" aria-hidden="true">${cabinetSVG(items[0])}</span>` : '';
       html += `<details class="cat-group" ${open}><summary>${glyph}${FAMILY_LABEL[fam]}<span class="cat-count">${items.length}</span></summary><div class="cat-grid">`;
       for (const c of items) {
-        const meta = c.notSupplied ? `${fmtIn(c.w)} &middot; <em>not supplied</em>` : `${fmtIn(c.w)} &middot; ${fmtUSD(sellUSD(c))}`;
-        html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}" data-code="${c.code}" title="Add ${c.code} · ${c.desc}${c.notes ? ', ' + c.notes : ''}">
+        const wide = tooWide.has(c.code);
+        const meta = wide ? `needs ${fmtIn(c.w)} of wall`
+          : c.notSupplied ? `${fmtIn(c.w)} &middot; <em>not supplied</em>` : `${fmtIn(c.w)} &middot; ${fmtUSD(sellUSD(c))}`;
+        html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}${wide ? ' is-toowide' : ''}" data-code="${c.code}" ${wide ? 'disabled' : ''} title="${wide ? `${c.code} · ${c.desc} is wider than the ${fmtIn(remaining)} left on this wall. Switch walls, make room, or use Island` : `Add ${c.code} · ${c.desc}${c.notes ? ', ' + c.notes : ''}`}">
           <span class="cat-thumb">${cabinetSVG(c)}</span>
           <span class="ci-code">${c.code}</span>
           <span class="ci-desc">${c.desc}</span>
@@ -771,6 +778,27 @@ export class UI {
       const code = e.target.value;
       if (code) { this.store.swapItem(id, code); this.showSelbar(id); }
     });
+    // range cooker size: pick 30 / 36 / 48 and the run beside it makes room
+    // (slides into free wall first, then a neighbour drops to a narrower twin)
+    document.getElementById('selSize')?.addEventListener('change', async (e) => {
+      const id = this.controls.layer.selectedId; if (id == null) return;
+      const plan = planRangeResize(this.store.state, id, e.target.value);
+      if (!plan.ok) { this._toast(plan.reason); this.showSelbar(id); return; }
+      // sliding and narrowing just happen; taking a cabinet OUT is asked first
+      if (plan.removes.length && !(await uiConfirm(
+        `This run is full. To fit the ${getCab(plan.code).desc}, the ${plan.removes.map((r) => r.desc).join(' and the ')} comes out and the rest of the run moves over. Undo puts it all back.`,
+        { title: 'Make room?', confirmLabel: 'Make room', cancelLabel: 'Keep this size' }))) { this.showSelbar(id); return; }
+      this.store.beginHistory();             // the whole reshuffle is ONE undo step
+      for (const r of plan.removes) this.store.removeItem(r.id);
+      this.store.swapItem(id, plan.code);
+      for (const s of plan.swaps) this.store.swapItem(s.id, s.code);
+      for (const m of plan.moves) this.store.updateItem(m.id, { x: m.x, z: m.z });
+      this.store.endHistory();
+      this.controls.layer.select(id);        // neighbour swaps reselect themselves; hand it back
+      this.showSelbar(id);
+      const cab = getCab(plan.code);
+      this._toast(plan.note ? `${cab.desc} fitted. ${plan.note}.` : plan.moves.length > 1 ? `${cab.desc} fitted. The cabinets beside it moved over.` : `${cab.desc} fitted.`);
+    });
     document.getElementById('selHinge')?.addEventListener('click', () => {
       const id = this.controls.layer.selectedId; if (id == null) return;
       this.store.flipHinge(id);
@@ -821,6 +849,15 @@ export class UI {
         swap.value = '';
         swap.style.display = '';
       } else swap.style.display = 'none';
+    }
+    // size picker: range cookers only
+    const size = document.getElementById('selSize');
+    if (size) {
+      const sizes = rangeSizes(it.code);
+      if (sizes.length > 1) {
+        size.innerHTML = sizes.map((c) => `<option value="${c.code}" ${c.code === cab.code ? 'selected' : ''}>${c.code === cab.code ? 'Size: ' : ''}${fmtIn(c.w)}</option>`).join('');
+        size.style.display = '';
+      } else size.style.display = 'none';
     }
     // hinge toggle: single-door cabinets only (catalogue lists them as 'L&R';
     // corners are excluded — their hinge is fixed on the blank-return side)

@@ -1558,3 +1558,8 @@ details.trade-fold > .trade-exports { display: block; padding: 6px 18px 20px; }
 .unit-sum .us-price i { font-style: normal; color: var(--dim); font-size: 12px; }
 .unit-sum .us-total { font-size: 16px; font-weight: 600; color: var(--cream-hi); font-variant-numeric: tabular-nums; min-width: 96px; text-align: right; }
 @media (max-width: 700px) { .unit-sum .us-price { margin-left: 26px; } }
+
+/* an appliance too wide for the wall that is left: still on the shelf, dimmed, says what it needs */
+.cat-item.is-toowide { opacity: 0.45; cursor: not-allowed; }
+.cat-item.is-toowide:hover { filter: none; box-shadow: none; transform: none; }
+.cat-item.is-toowide .ci-meta { font-style: italic; }

@@ -6,6 +6,7 @@
 // flush 115mm plinth, recessed door panels, flat drawer fronts.
 
 import { SPEC } from '../core/units.js';
+import { rangeSpec } from '../core/rangespec.js';
 
 // cream line-art so the catalogue elevations read on the dark brand cards
 const STROKE = '#645b3d';
@@ -240,11 +241,23 @@ function applianceSVG(cab) {
   const x = 14, y = 14, w = 72, h = 72;
   const disc = (cx, cy, r) => `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="none" stroke="${STROKE}" stroke-width="1.1"/>`;
   if (a === 'range') {
-    p.push(rect(x, y + 14, w, h - 14, 1.6));        // body
-    p.push(hline(x, x + w, y + 28, 0.9));            // cooktop line
-    [[-1, 0], [1, 0]].forEach(([sx]) => p.push(disc(50 + sx * 16, y + 21, 5)));
-    p.push(rect(x + 8, y + 34, w - 16, h - 30, 0.9, HAIR)); // oven door
-    p.push(hline(x + 14, x + w - 14, y + 40, 0.7));  // handle
+    // front elevation to scale (a 48" reads wider than a 30"): grates, control
+    // rail with knobs, oven door(s) with window and handle, kick. From rangeSpec.
+    const sp = rangeSpec(cab);
+    const k = 88 / 48, rw = cab.w * k, rh = cab.h * k, rx = 50 - rw / 2, by = 86;   // by = floor line
+    const Y = (in_) => by - in_ * k;
+    p.push(rect(rx, Y(cab.h), rw, rh, 1.6));                                  // body
+    p.push(rect(rx + 1.5, Y(cab.h) - 2.6, rw - 3, 2.6, 0.9, HAIR));           // grates above the top
+    p.push(hline(rx, rx + rw, Y(sp.railY0), 0.9));                            // under the control rail
+    p.push(hline(rx, rx + rw, Y(sp.kickH), 0.9));                             // kick
+    const ky = Y((sp.railY0 + sp.railY1) / 2);
+    for (let i = 0; i < sp.knobs; i++) p.push(`<circle cx="${f(rx + 4 + i * ((rw - 8) / (sp.knobs - 1)))}" cy="${f(ky)}" r="1.25" fill="${KNOB}" stroke="none"/>`);
+    for (const ov of sp.ovens) {
+      const dx = rx + ov.x0 * k, dw = (ov.x1 - ov.x0) * k, dy = Y(sp.doorY1), dh = (sp.doorY1 - sp.doorY0) * k;
+      p.push(rect(dx, dy, dw, dh, 0.9, HAIR));                                // door
+      p.push(rect(dx + dw * 0.19, dy + dh * 0.28, dw * 0.62, dh * 0.36, 0.8, HAIR)); // window
+      p.push(`<line x1="${f(dx + 3)}" y1="${f(dy + 4)}" x2="${f(dx + dw - 3)}" y2="${f(dy + 4)}" stroke="${STROKE}" stroke-width="1.4" stroke-linecap="round"/>`); // handle
+    }
   } else if (a === 'hob') {
     p.push(rect(x, y + 18, w, h - 34, 1.6));
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => p.push(disc(50 + sx * 16, 50 + sy * 13, 7)));

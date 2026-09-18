@@ -200,9 +200,9 @@ export function familyOf(cab) {
 // Each sits at its own mount height: ranges/fridges on the floor, hobs & sinks
 // in the worktop (36.5"). They snap to walls/runs like base units.
 const APPLIANCES = [
-  { code: 'AP1', appliance: 'range', desc: 'Range 30"', w: 30, d: 26, h: 36, mountY: 0 },
-  { code: 'AP2', appliance: 'range', desc: 'Range 36"', w: 36, d: 26, h: 36, mountY: 0 },
-  { code: 'AP3', appliance: 'range', desc: 'Range 48"', w: 48, d: 26, h: 36, mountY: 0 },
+  { code: 'AP1', appliance: 'range', desc: 'Range cooker 30"', w: 30, d: 26, h: 36, mountY: 0 },
+  { code: 'AP2', appliance: 'range', desc: 'Range cooker 36"', w: 36, d: 26, h: 36, mountY: 0 },
+  { code: 'AP3', appliance: 'range', desc: 'Range cooker 48"', w: 48, d: 26, h: 36, mountY: 0 },
   { code: 'AP4', appliance: 'hob', desc: 'Cooktop 30"', w: 30, d: 21, h: 2, mountY: 36.5 },
   { code: 'AP5', appliance: 'hob', desc: 'Cooktop 36"', w: 36, d: 21, h: 2, mountY: 36.5 },
   { code: 'AP6', appliance: 'sink', desc: 'Sink (Single)', w: 24, d: 20, h: 8, mountY: 36.5 },

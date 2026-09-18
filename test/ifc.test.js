@@ -108,7 +108,7 @@ test('every placed cabinet AND appliance is an IFCFURNISHINGELEMENT', () => {
   const got = (IFC.match(/^#\d+=IFCFURNISHINGELEMENT\(/gm) || []).length;
   assert.equal(got, want);
   // demoState definitely placed an AP2 range — its Tag must survive
-  assert.match(IFC, /IFCFURNISHINGELEMENT\('[^']{22}',\$,'AP2 - Range 36" \(36in\)',\$,\$,#\d+,#\d+,'AP2'\)/);
+  assert.match(IFC, /IFCFURNISHINGELEMENT\('[^']{22}',\$,'AP2 - Range cooker 36" \(36in\)',\$,\$,#\d+,#\d+,'AP2'\)/);
   // one solid + one placement per element
   const solids = (IFC.match(/=IFCEXTRUDEDAREASOLID\(/g) || []).length;
   assert.equal(solids, want);

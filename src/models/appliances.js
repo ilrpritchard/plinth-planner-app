@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { buildIntegratedFridge } from './cabinet.js';
+import { rangeSpec, rangeCooktop } from '../core/rangespec.js';
 
 function mat(color, metalness, roughness, env = 0.8) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), metalness, roughness, envMapIntensity: env });
@@ -73,52 +74,68 @@ export function buildAppliance(cab, finishHex = '#efece3') {
 
   switch (cab.appliance) {
     case 'range': {
-      // pro range in the Wolf idiom: all-stainless body and fascia, a SOLID
-      // stainless oven door with a stout tubular handle, signature RED knobs
-      // on a stainless rail, and continuous black cast grates over the burners
+      // pro range: brushed stainless body, oven door(s) with a dark glass
+      // window and a stout tube handle each, red knobs on a bullnosed control
+      // rail, continuous cast grates. Face and cooktop come from rangeSpec so
+      // the icon, elevation and plan draw the same appliance: 30" four
+      // burners, 36" six, 48" six + a griddle over twin ovens.
+      const spec = rangeSpec(cab), top = rangeCooktop(cab);
       const BRIGHT = () => mat(0xd6dade, 0.72, 0.36, 1.1);   // brushed stainless that reads bright in flat light
-      const body = box(w, h - 1.4, d, BRIGHT()); body.position.y = (h - 1.4) / 2 + 1.4; g.add(body);
-      const kick = box(w - 1.5, 1.5, d - 1.5, DARK()); kick.position.set(0, 0.75, -0.75); g.add(kick);
-      // solid door(s): a 48" gets the twin-oven split, narrower a single door
-      const doorW = w - 2.2, doorH = h * 0.52, doorY = h * 0.36;
-      const seamIn = box(doorW + 0.6, doorH + 0.6, 0.3, DARK()); seamIn.position.set(0, doorY, fz - 0.1); g.add(seamIn);
-      const door = box(doorW, doorH, 0.6, BRIGHT()); door.position.set(0, doorY, fz + 0.12); g.add(door);
-      if (w >= 40) { const vs = box(0.35, doorH, 0.2, DARK()); vs.position.set(w * 0.08, doorY, fz + 0.48); vs.castShadow = false; g.add(vs); }
-      // badge plate low-centre of the door
-      const badge = box(4.6, 1.1, 0.15, STEEL_DK()); badge.position.set(0, doorY - doorH * 0.28, fz + 0.5); badge.castShadow = false; g.add(badge);
-      // stout tubular handle across the door top on heavy posts
-      const railY = doorY + doorH / 2 - 1.2;
-      const rail = cyl(0.6, 0.6, doorW - 1.6, CHROME()); rail.rotation.z = Math.PI / 2; rail.position.set(0, railY, fz + 2.0); g.add(rail);
-      for (const sx of [-1, 1]) {
-        const pst = cyl(0.34, 0.42, 2.2, CHROME()); pst.rotation.x = Math.PI / 2;
-        pst.position.set(sx * (doorW - 4) / 2, railY, fz + 1.0); g.add(pst);
+      const body = box(w, h - spec.kickH, d - 0.6, BRIGHT()); body.position.set(0, (h - spec.kickH) / 2 + spec.kickH, -0.3); g.add(body);
+      const kick = box(w - 1.2, spec.kickH, d - 3.2, DARK()); kick.position.set(0, spec.kickH / 2, -1.0); g.add(kick);
+      for (const sx of [-1, 1]) {                           // front levelling feet
+        const foot = cyl(0.7, 0.85, spec.kickH, STEEL_DK()); foot.position.set(sx * (w / 2 - 2.2), spec.kickH / 2, fz - 2.4); g.add(foot);
       }
-      // stainless control rail with the red knobs
-      const panel = box(w, h * 0.14, 1.2, STEEL()); panel.position.set(0, h * 0.865, fz - 0.5); g.add(panel);
-      const nKnobs = w >= 40 ? 8 : w >= 34 ? 6 : 5;
-      for (let i = 0; i < nKnobs; i++) {
-        const kx = -w / 2 + 4 + i * ((w - 8) / (nKnobs - 1));
-        const bezel = cyl(0.85, 0.85, 0.35, STEEL_DK()); bezel.rotation.x = Math.PI / 2; bezel.position.set(kx, h * 0.865, fz + 0.2); bezel.castShadow = false; g.add(bezel);
-        const k = cyl(0.68, 0.78, 1.3, RED()); k.rotation.x = Math.PI / 2; k.position.set(kx, h * 0.865, fz + 0.75); g.add(k);
-        const mark = box(0.16, 0.55, 0.14, CHROME()); mark.position.set(kx, h * 0.865 + 0.3, fz + 1.3); mark.castShadow = false; g.add(mark);
+      // oven doors
+      const doorH = spec.doorY1 - spec.doorY0, doorY = (spec.doorY0 + spec.doorY1) / 2;
+      const recess = box(w - 1.2, doorH + 0.7, 0.3, DARK()); recess.position.set(0, doorY, fz - 0.42); g.add(recess);
+      for (const ov of spec.ovens) {
+        const dw = ov.x1 - ov.x0 - 0.04, dx = -cab.w / 2 + (ov.x0 + ov.x1) / 2;
+        const door = box(dw, doorH, 0.9, BRIGHT()); door.position.set(dx, doorY, fz + 0.1); g.add(door);
+        // glass window, upper-middle of the door, in a dark bezel
+        const winW = dw * 0.62, winH = doorH * 0.36, winY = doorY + doorH * 0.04;
+        const bezel = box(winW + 0.9, winH + 0.9, 0.2, STEEL_DK()); bezel.position.set(dx, winY, fz + 0.5); bezel.castShadow = false; g.add(bezel);
+        const glass = box(winW, winH, 0.2, GLASS()); glass.position.set(dx, winY, fz + 0.58); glass.castShadow = false; g.add(glass);
+        // tube handle across the door top on two posts
+        const railY = spec.doorY1 - 2.0, railW = dw - 3.0;
+        const rail = cyl(0.55, 0.55, railW, CHROME()); rail.rotation.z = Math.PI / 2; rail.position.set(dx, railY, fz + 2.3); g.add(rail);
+        for (const sx of [-1, 1]) {
+          const pst = cyl(0.32, 0.4, 1.9, CHROME()); pst.rotation.x = Math.PI / 2;
+          pst.position.set(dx + sx * (railW / 2 - 1.4), railY, fz + 1.4); g.add(pst);
+          const cap = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 10), CHROME()); cap.position.set(dx + sx * railW / 2, railY, fz + 2.3); g.add(cap);
+        }
+      }
+      // control rail, proud of the doors, with a bullnose along its top edge
+      const railH = spec.railY1 - spec.railY0, railYc = (spec.railY0 + spec.railY1) / 2;
+      const panel = box(w, railH, 1.6, STEEL()); panel.position.set(0, railYc, fz + 0.2); g.add(panel);
+      const nose = cyl(0.8, 0.8, w, STEEL(), 20); nose.rotation.z = Math.PI / 2; nose.position.set(0, h + 0.1, fz + 0.2); g.add(nose);
+      for (let i = 0; i < spec.knobs; i++) {
+        const kx = -w / 2 + 3.2 + i * ((w - 6.4) / (spec.knobs - 1));
+        const bez = cyl(0.95, 0.95, 0.3, STEEL_DK()); bez.rotation.x = Math.PI / 2; bez.position.set(kx, railYc, fz + 1.1); bez.castShadow = false; g.add(bez);
+        const k = cyl(0.66, 0.8, 1.3, RED()); k.rotation.x = Math.PI / 2; k.position.set(kx, railYc, fz + 1.8); g.add(k);
+        const mark = box(0.16, 0.55, 0.14, CHROME()); mark.position.set(kx, railYc + 0.3, fz + 2.4); mark.castShadow = false; g.add(mark);
       }
       // cooktop: stainless surround, black porcelain burner deck, ring burners
       // under CONTINUOUS cast grate sections (front-to-back rails + cross bars)
       const surround = box(w, 0.8, d, STEEL()); surround.position.set(0, h + 0.3, 0); g.add(surround);
       const deck = box(w - 1.4, 0.5, d - 2, CAST()); deck.position.set(0, h + 0.62, 0.2); g.add(deck);
-      const cols = w >= 40 ? 3 : 2;                       // 6 burners on a 48", else 4
-      const secW = (w - 2.6) / cols, secD = d - 3.2;
-      const ringR = Math.min(secW / 5.2, d / 5.8);
-      for (let c = 0; c < cols; c++) {
+      const secW = top.secW, secD = d - 3.2;
+      for (const b of top.burners) ringBurner(g, b.x, b.z, h + 0.8, b.r);
+      for (let c = 0; c < spec.cols; c++) {
         const cx = -w / 2 + 1.3 + secW * (c + 0.5);
-        for (const rz of [-1, 1]) ringBurner(g, cx, rz * d / 5.2, h + 0.8, ringR);
-        // continuous grate over the section: 2 side rails + 3 cross bars, cast black
         for (const gx of [-1, 1]) {
           const railG = box(0.5, 0.35, secD, CAST()); railG.position.set(cx + gx * (secW / 2 - 0.6), h + 1.28, 0.2); g.add(railG);
         }
         for (const gz of [-1, 0, 1]) {
           const bar = box(secW - 0.8, 0.35, 0.5, CAST()); bar.position.set(cx, h + 1.28, 0.2 + gz * (secD / 2 - 0.4)); g.add(bar);
         }
+      }
+      if (top.griddle) {
+        // griddle: a thick brushed plate in a raised steel frame, grease slot at the front
+        const gr = top.griddle;
+        const frame = box(gr.w + 0.9, 0.9, gr.d + 0.9, STEEL_DK()); frame.position.set(gr.x, h + 1.0, gr.z); g.add(frame);
+        const plate = box(gr.w, 0.5, gr.d - 1.6, mat(0xaeb3b8, 0.6, 0.5, 0.9)); plate.position.set(gr.x, h + 1.3, gr.z - 0.8); plate.castShadow = false; g.add(plate);
+        const slot = box(gr.w - 1.2, 0.2, 0.9, DARK()); slot.position.set(gr.x, h + 1.42, gr.z + gr.d / 2 - 0.75); slot.castShadow = false; g.add(slot);
       }
       // low back rail: slim steel upstand with a round top bar
       const up = box(w - 1.6, 2.4, 0.7, STEEL()); up.position.set(0, h + 1.6, -d / 2 + 0.6); g.add(up);

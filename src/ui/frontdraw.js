@@ -17,6 +17,7 @@
 import { mmToIn } from '../core/units.js';
 import { PLAN_STYLE as P, svgLine, svgN as n } from './floorplan.js';
 import { esc } from '../core/submittal.js';
+import { rangeSpec } from '../core/rangespec.js';
 
 // master-library constants, mm → inches (same numbers as core/dxf.js)
 export const FD = {
@@ -215,6 +216,7 @@ export function drawFront(cab, s0, y0, Y, opts = {}) {
 
   if (fp.appliance) {
     out.push(`<rect x="${n(s0)}" y="${n(Y(y0 + h))}" width="${n(w)}" height="${n(h)}" fill="none" stroke="${P.UPPER}" stroke-width="${P.W_CAB}" vector-effect="non-scaling-stroke" stroke-dasharray="3.5 2.5"/>`);
+    if (cab.appliance === 'range') out.push(rangeFrontLines(cab, s0, y0, Y));
     if (opts.code) {
       out.push(`<text x="${n(s0 + w / 2)}" y="${n(Y(y0 + h / 2))}" font-size="${P.F_CODE}" fill="${P.UPPER}" text-anchor="middle" dominant-baseline="central">${esc(opts.code)}</text>`);
     }
@@ -274,6 +276,25 @@ export function drawFront(cab, s0, y0, Y, opts = {}) {
  * A standalone <svg> of one front (no dims) — used by the Trade picker cards
  * and the order-row mini glyphs. px = rendered height in CSS pixels (optional).
  */
+// A range drawn as a range, inside its dashed not-supplied outline: control
+// rail, knobs, oven door(s) with handle, kick. Light UPPER ink, so it stays
+// context beside the cabinets. Same rangeSpec as the 3D model and the icon.
+function rangeFrontLines(cab, s0, y0, Y) {
+  const sp = rangeSpec(cab), w = cab.w, o = [];
+  const L = (x1, ya, x2, yb, sw = P.W_UPPER) => o.push(`<line x1="${n(s0 + x1)}" y1="${n(Y(y0 + ya))}" x2="${n(s0 + x2)}" y2="${n(Y(y0 + yb))}" stroke="${P.UPPER}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/>`);
+  L(0, sp.kickH, w, sp.kickH);
+  L(0, sp.railY0, w, sp.railY0);
+  const ky = (sp.railY0 + sp.railY1) / 2;
+  for (let i = 0; i < sp.knobs; i++) {
+    o.push(`<circle cx="${n(s0 + 3.2 + i * ((w - 6.4) / (sp.knobs - 1)))}" cy="${n(Y(y0 + ky))}" r="0.8" fill="none" stroke="${P.UPPER}" stroke-width="${P.W_UPPER}" vector-effect="non-scaling-stroke"/>`);
+  }
+  for (const ov of sp.ovens) {
+    o.push(`<rect x="${n(s0 + ov.x0)}" y="${n(Y(y0 + sp.doorY1))}" width="${n(ov.x1 - ov.x0)}" height="${n(sp.doorY1 - sp.doorY0)}" fill="none" stroke="${P.UPPER}" stroke-width="${P.W_UPPER}" vector-effect="non-scaling-stroke"/>`);
+    L(ov.x0 + 1.5, sp.doorY1 - 2, ov.x1 - 1.5, sp.doorY1 - 2, P.W_CAB);      // handle
+  }
+  return o.join('\n');
+}
+
 export function frontSVG(cab, px = 0) {
   const fp = frontParts(cab);
   if (!(cab.w > 0) || !(cab.h > 0)) return '';

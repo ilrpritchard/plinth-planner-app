@@ -7,6 +7,7 @@ import { getCab, FAMILY_LABEL, familyOf } from '../core/catalogue.js';
 import { fmtFeetIn, fmtIn, SPEC, mmToIn } from '../core/units.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
 import { computeFillers } from '../core/fillers.js';
+import { rangeCooktop } from '../core/rangespec.js';
 
 const FRONT_FRAME = mmToIn(22); // 22mm face frame at the front
 const PANEL18 = mmToIn(18);     // 18mm sides & back
@@ -220,6 +221,21 @@ function drawCabinet(out, it, cab) {
     out.push(seg(L(xi, dBack), L(xi, dFront), W_18, thinStroke, dash));
   }
 
+  // ---- a range reads as a range in plan: burner rings (and the griddle on a
+  // 48"), light ink, from the same rangeSpec as the 3D model ----
+  if (cab.appliance === 'range') {
+    const top = rangeCooktop(cab);
+    for (const b of top.burners) {
+      const q = L(b.x, b.z);
+      for (const r of [b.r * 0.92, b.r * 0.4]) out.push(`<circle cx="${n(q[0])}" cy="${n(q[1])}" r="${n(r)}" fill="none" stroke="${UPPER}" stroke-width="${W_18}" vector-effect="non-scaling-stroke"/>`);
+    }
+    if (top.griddle) {
+      const gr = top.griddle, hw = gr.w / 2, hd = gr.d / 2;
+      const c4 = [L(gr.x - hw, gr.z - hd), L(gr.x + hw, gr.z - hd), L(gr.x + hw, gr.z + hd), L(gr.x - hw, gr.z + hd)];
+      out.push(`<polygon points="${c4.map(pt).join(' ')}" fill="none" stroke="${UPPER}" stroke-width="${W_18}" vector-effect="non-scaling-stroke"/>`);
+    }
+  }
+
   // ---- door swings / drawer pull-outs (light grey, between the legs) ----
   if (!upper && !isAppliance) {
     const frontC = [c[0] + fx * d / 2, c[1] + fz * d / 2];
@@ -254,7 +270,7 @@ function drawCabinet(out, it, cab) {
     const lab = L(-w / 2 + 1.8, d / 2 - 1.2);
     out.push(`<text x="${n(lab[0])}" y="${n(lab[1])}" font-size="${F_CODE * 0.8}" fill="${UPPER}" dominant-baseline="central">${codeLabel}</text>`);
   } else {
-    const lab = L(0, -d * 0.18);
+    const lab = L(0, cab.appliance === 'range' ? 0 : -d * 0.18);   // a range's code sits between its burner rows
     out.push(`<text x="${n(lab[0])}" y="${n(lab[1])}" font-size="${F_CODE}" fill="#333" text-anchor="middle" dominant-baseline="central">${codeLabel}</text>`);
   }
 }
