@@ -76,8 +76,10 @@ export function checkOrder(rows, unit = null) {
 
   // ---- dishwasher panel (F7) ----
   const dwQty = qtyOf((c) => c.form === 'dishwasher');
+  // F7 IS the dishwasher position (her call 2026-09-18): the machine is assumed
+  // behind the door, so there is no dishwasher appliance and no "confirm a
+  // dishwasher" nag. Only the plumbing check stays.
   if (dwQty > 0) {
-    out.push({ level: 'warn', msg: 'F7 is a dishwasher door panel only — appliances are supply-your-own, so confirm a dishwasher is being supplied for each unit.' });
     const sinkBases = qtyOf(isSinkBase);
     if (dwQty > sinkBases) {
       out.push({ level: 'warn', msg: `${dwQty}× dishwasher panels but only ${sinkBases}× sink-capable base cabinet${sinkBases === 1 ? '' : 's'} (24"+ door/double, full depth) — dishwashers plumb in beside a sink base.` });
@@ -124,12 +126,6 @@ export function checkDesign(design) {
   const cabs = (design.items || [])
     .map((it) => getCab(it && it.code))
     .filter((c) => c && c.placeable);
-
-  // dishwasher panel with no dishwasher (appliances are supply-your-own; the
-  // catalogue has no dishwasher appliance, so this is always a confirm-note)
-  if (cabs.some((c) => c.form === 'dishwasher')) {
-    out.push({ level: 'warn', msg: 'F7 is a dishwasher door panel only — appliances are supply-your-own, so confirm a dishwasher is being supplied.' });
-  }
 
   // no sink placed → no sink run
   if (cabs.length && !cabs.some((c) => c.appliance === 'sink')) {

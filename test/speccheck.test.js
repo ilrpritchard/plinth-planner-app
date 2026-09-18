@@ -23,7 +23,7 @@ const wrong = checkOrder([
   { code: 'F7', qty: 1 },
   { code: 'F15', qty: 2 },
 ], { qty: 1 });
-ok('F7 → confirm a dishwasher is being supplied (warn)', has(wrong, 'warn', /confirm a dishwasher is being supplied/i));
+ok('F7 is the dishwasher: no "confirm a dishwasher" nag', !wrong.some((f) => /confirm a dishwasher/i.test(f.msg)));
 ok('F7 qty > sink bases (warn)', has(wrong, 'warn', /dishwasher panels but only 0/i));
 ok('corner needs a partner run (info)', has(wrong, 'info', /right angles/i));
 ok('2× same-hand corners (warn)', has(wrong, 'warn', /left-hand corner cabinets/i));
@@ -83,7 +83,7 @@ const designNoSink = {
   ],
 };
 const dFinds = checkDesign(designNoSink);
-ok('design: F7 → confirm dishwasher (warn)', has(dFinds, 'warn', /confirm a dishwasher/i));
+ok('design: F7 is the dishwasher, no confirm nag', !dFinds.some((f) => /confirm a dishwasher/i.test(f.msg)));
 ok('design: no sink placed → warn', has(dFinds, 'warn', /No sink in this design/i));
 
 const designWithSink = {
