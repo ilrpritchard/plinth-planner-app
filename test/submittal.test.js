@@ -258,5 +258,7 @@ ok('spec sheet: inches first with mm in brackets, headed PRODUCT SPECIFICATION',
   && html.includes('&#8542;" (22mm)') && !html.includes('80mm stiles'));
 ok('cut cards are a label / value grid', html.includes('<table class="cut-spec">') && html.includes('<th>Size</th>') && !html.includes('cut-notes'));
 
+ok('no surface-burning / ASTM E84 claim on the spec sheet (removed at her request: no test data held)', !/surface.burning|E84/i.test(html));
+
 console.log(`\nsubmittal.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
