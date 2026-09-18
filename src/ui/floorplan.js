@@ -33,7 +33,10 @@ const ARROW = 1.7;       // arrowhead size (in)
 const F_CODE = 3.4;      // cabinet code text
 const F_DIM = 3.4;       // dimension text
 
-export function buildFloorplanSVG(state, underlay = null) {
+/** opts.key === false leaves the KEY table out (the submittal sheet sets it
+ *  beside the drawing in HTML, from planKeyRows); opts.tight trims the blank
+ *  margins to just what the dimension tiers need, so the plan prints bigger. */
+export function buildFloorplanSVG(state, underlay = null, opts = {}) {
   const r = state.room;
   const W = r.width, D = r.depth;
   const minX = -W / 2, maxX = W / 2, minZ = -D / 2, maxZ = D / 2;
@@ -89,9 +92,12 @@ export function buildFloorplanSVG(state, underlay = null) {
   drawIslandDims(out, state);
 
   // ---- key: every code on the drawing → product name + nominal size ----
-  const keyW = drawKey(out, state, maxX + WALL_T + 18, minZ - WALL_T);
+  const keyW = opts.key === false ? 0 : drawKey(out, state, maxX + WALL_T + 18, minZ - WALL_T);
 
-  const vbX = minX - MARGIN, vbY = minZ - MARGIN, vbW = W + 2 * MARGIN + keyW, vbH = D + 2 * MARGIN;
+  // tight: dimension tiers live top + left (door dims reach 31" out), the
+  // far sides only ever carry a door's corner dimension
+  const mNear = opts.tight ? 42 : MARGIN, mFar = opts.tight ? 17 : MARGIN;
+  const vbX = minX - mNear, vbY = minZ - mNear, vbW = W + mNear + mFar + keyW, vbH = D + mNear + mFar;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n(vbX)} ${n(vbY)} ${n(vbW)} ${n(vbH)}" font-family="ui-sans-serif, Arial, sans-serif">
     <rect x="${n(vbX)}" y="${n(vbY)}" width="${n(vbW)}" height="${n(vbH)}" fill="#fff"/>
     ${out.join('\n')}
@@ -103,22 +109,28 @@ export function buildFloorplanSVG(state, underlay = null) {
 // 24 × 24 × 35" (the same SKU hung left AND right is two rows — the workshop
 // hangs the door, so the side is part of the order).
 // Returns the extra viewBox width it needs (0 when the plan is empty).
-function drawKey(out, state, x0, y0) {
+/** The KEY's rows: [{ code, cab, hinge, qty, family }], one per code + hinge side. */
+export function planKeyRows(state) {
   const counts = new Map();
-  for (const it of state.items) {
+  for (const it of state.items || []) {
     const c = getCab(it.code);
     if (!c || !c.placeable) continue;
     const hinge = hingeOf(c, it);
     const k = `${c.code}|${hinge || ''}`;
-    const row = counts.get(k) || { code: c.code, cab: c, hinge, qty: 0 };
+    const row = counts.get(k) || { code: c.baseCode || c.code, cab: c, hinge, qty: 0,
+      family: c.type === 'APPLIANCES' ? 'Appliance' : (FAMILY_LABEL[familyOf(c)] || FAMILY_LABEL[c.type]) };
     row.qty++;
     counts.set(k, row);
   }
-  if (!counts.size) return 0;
   const order = { FLOOR: 0, WALL: 1, SHELF: 2, COUNTER: 3, TALL: 4, APPLIANCES: 5 };
-  const rows = [...counts.values()]
-    .sort((a, b) => (order[a.cab.type] - order[b.cab.type]) || a.code.localeCompare(b.code, 'en', { numeric: true })
+  return [...counts.values()]
+    .sort((a, b) => (order[a.cab.type] - order[b.cab.type]) || a.cab.code.localeCompare(b.cab.code, 'en', { numeric: true })
       || String(a.hinge).localeCompare(String(b.hinge)));
+}
+
+function drawKey(out, state, x0, y0) {
+  const rows = planKeyRows(state);
+  if (!rows.length) return 0;
 
   // table columns (offsets from x0, in drawing inches)
   const COL = { qty: 0, code: 8, type: 20, desc: 38, hinge: 90, w: 104, d: 114, h: 124 };
@@ -135,9 +147,9 @@ function drawKey(out, state, x0, y0) {
   out.push(line(x0, y, x0 + TBL_W, y, W_DIM, INK));
   y += 4.6;
   for (const r of rows) {
-    const fam = r.cab.type === 'APPLIANCES' ? 'Appliance' : (FAMILY_LABEL[familyOf(r.cab)] || FAMILY_LABEL[r.cab.type]);
+    const fam = r.family;
     const td = (dx, t, opts = '') => `<tspan x="${n(x0 + dx)}"${opts}>${t}</tspan>`;
-    out.push(`<text y="${n(y)}" font-size="3" fill="#333">${td(COL.qty, r.qty)}${td(COL.code, r.cab.baseCode || r.code, ' font-weight="bold"')}${td(COL.type, fam + (r.cab.notSupplied ? ' *' : ''))}${td(COL.desc, esc(keyDesc(r.cab.desc)))}${td(COL.hinge, hingeLabel(r.hinge))}${r.cab.h ? `${td(COL.w + 6, fmtIn(r.cab.w), ' text-anchor="end"')}${td(COL.d + 6, fmtIn(r.cab.d), ' text-anchor="end"')}${td(COL.h + 6, fmtIn(r.cab.h), ' text-anchor="end"')}` : ''}</text>`);
+    out.push(`<text y="${n(y)}" font-size="3" fill="#333">${td(COL.qty, r.qty)}${td(COL.code, r.code, ' font-weight="bold"')}${td(COL.type, fam + (r.cab.notSupplied ? ' *' : ''))}${td(COL.desc, esc(keyDesc(r.cab.desc)))}${td(COL.hinge, hingeLabel(r.hinge))}${r.cab.h ? `${td(COL.w + 6, fmtIn(r.cab.w), ' text-anchor="end"')}${td(COL.d + 6, fmtIn(r.cab.d), ' text-anchor="end"')}${td(COL.h + 6, fmtIn(r.cab.h), ' text-anchor="end"')}` : ''}</text>`);
     y += 1.8;
     out.push(line(x0, y, x0 + TBL_W, y, W_DIM * 0.5, '#ddd6c8'));
     y += ROW - 1.8;
@@ -328,7 +340,9 @@ function drawCabinet(out, labels, it, cab, hosts) {
   }
   const hostCode = hosts.hostCode.get(it.id);
   // a cooktop's code sits in the clear band between its front burners and knobs
-  const lab = L(0, cab.appliance === 'hob' ? d * 0.24 : 0);
+  // …a cabinet's code sits a touch behind centre, clear of the dashed front
+  // edge of a 14"-deep upper hung over it
+  const lab = L(0, cab.appliance === 'hob' ? d * 0.24 : isAppliance ? 0 : -1.4);
   const halo = ` paint-order="stroke" stroke="${isAppliance ? APPL_FILL : '#fff'}" stroke-width="1.1" stroke-linejoin="round"`;
   const own = isAppliance
     ? `<tspan fill="${APPL_INK}"${hostCode ? ` font-size="${F_CODE * 0.82}"` : ''}>${hostCode ? ' · ' : ''}${codeLabel}</tspan>`

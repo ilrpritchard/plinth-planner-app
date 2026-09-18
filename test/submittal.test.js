@@ -2,6 +2,7 @@
 import {
   WALL_ORDER, wallsWithItems, itemsOnWall, computeElevation, scheduleRows,
   distinctSkus, drawingIndex, nextRev, bumpRev, unitRev, esc, mountY, alongWall,
+  islandFaces, islandSheets, computeIslandElevation, cutSheetPages, cutCardMM,
 } from '../src/core/submittal.js';
 import { rowsFromDesign } from '../src/core/cost.js';
 import { getCab, sellUSD } from '../src/core/catalogue.js';
@@ -118,7 +119,7 @@ ok('subtotal = sum of lines', near(sched.subtotal, sched.rows.reduce((t, r) => t
 const skus = distinctSkus(design);
 ok('distinct SKUs = 6, appliances excluded', skus.length === 6 && !skus.some((s) => s.code === 'AP1'));
 // MEP rough-in is NOT PL/NTH's responsibility: no A-5xx sheets, ever (her markup 2026-09-18)
-ok('drawing index covers plan + 2 elevations + schedule + cuts + compliance', drawingIndex(design).length === 1 + 1 + 2 + 1 + 2 + 1);
+ok('drawing index covers plan + 2 elevations + schedule + cuts (6 SKUs = ONE sheet) + compliance', drawingIndex(design).length === 1 + 1 + 2 + 1 + 1 + 1);
 ok('drawing index ends with A-600 compliance sheet', drawingIndex(design).at(-1).no === 'A-600' && drawingIndex(design).at(-1).title.includes('COMPLIANCE'));
 ok('drawing index carries NO rough-in sheets', !drawingIndex(design).some((d) => /^A-5/.test(d.no) || /ROUGH/i.test(d.title)));
 
@@ -166,6 +167,60 @@ ok('schedule carries a HINGE column', html.includes('<th>HINGE</th>') && sched.r
 const anon = buildSubmittalHTML({ unit, trade: { address: '12 Rockledge Rd' }, date: 'July 8, 2026' });
 ok('unnamed project: the address heads the cover', anon.includes('<h1>12 Rockledge Rd</h1>'));
 ok('elevation draws hinge swing marks + grey appliances', svg.includes('stroke-dasharray="2.2 1.6"') && svg.includes('#ebebeb'));
+
+
+// ---- cut sheets: six to a sheet, never past the sheet's height -------------------
+ok('6 base/wall SKUs share one cut sheet', cutSheetPages(skus).length === 1 && cutSheetPages(skus)[0].length === 6);
+{
+  const mk = (codes) => distinctSkus({ room: design.room, items: codes.map((code, i) => ({ id: i + 1, code, x: i * 40, z: 0, rotDeg: 0 })) });
+  const talls = cutSheetPages(mk(['T1', 'T5', 'T6', 'T10', 'T11', 'T12']));
+  ok('two rows of talls never share a sheet (the sheet clips, it cannot grow)', talls.length === 2 && talls.every((pg) => pg.length === 3));
+  const mixed = cutSheetPages(mk(['F2', 'F10', 'F18', 'T1', 'T3', 'T5']));
+  ok('a row of bases + a row of talls fit one sheet', mixed.length === 1);
+  const every = cutSheetPages(mk(['F1', 'F2', 'F3', 'F7', 'F10', 'F16', 'F18', 'F21', 'W1', 'W2', 'W5', 'C1', 'T1', 'T3', 'T6', 'T9', 'T10', 'T13']));
+  ok('every page holds <= 6 cards in rows that fit 150mm', every.every((pg) => {
+    const rows = [pg.slice(0, 3), pg.slice(3, 6)].filter((r) => r.length);
+    return pg.length <= 6 && rows.reduce((t, r) => t + Math.max(...r.map(cutCardMM)), 0) + (rows.length - 1) * 6 <= 150;
+  }));
+  ok('no SKU is lost or repeated by pagination', every.flat().length === 18 && new Set(every.flat().map((x) => x.code)).size === 18);
+  ok('empty design still gets one (empty) cut sheet', cutSheetPages([]).length === 1);
+}
+
+// ---- island elevations ---------------------------------------------------------------
+{
+  const isl = {
+    ...design,
+    items: design.items.concat([
+      { id: 20, code: 'F20', x: -36, z: 12, rotDeg: 0, island: true },
+      { id: 21, code: 'F10', x: 0, z: 12, rotDeg: 0, island: true, },
+      { id: 22, code: 'F2', x: 30, z: 12, rotDeg: 0, island: true, hinge: 'R' },
+      { id: 23, code: 'F20', x: 24, z: -12, rotDeg: 180, island: true },
+      { id: 24, code: 'F20', x: -12, z: -12, rotDeg: 180, island: true },
+      { id: 25, code: 'AP6', x: 0, z: 12, rotDeg: 0 },                       // a sink riding in the island's F10 (no island flag)
+    ]),
+  };
+  const faces = islandFaces(isl);
+  ok('a double-sided island has two faces', faces.length === 2 && faces[0].toward === 'FRONT WALL' && faces[1].toward === 'BACK WALL');
+  ok('the rider sink joins its base\'s face', faces[0].items.some((it) => it.code === 'AP6') && !faces[1].items.some((it) => it.code === 'AP6'));
+  ok('island items stay OFF the wall elevations', WALL_ORDER.every((w) => !itemsOnWall(isl, w).some((e) => e.it.island || e.it.id === 25)));
+  const f0 = computeIslandElevation(isl, faces[0]);
+  ok('face runs left to right from 0, as viewed facing the fronts', near(f0.items.find((e) => e.it.id === 20).s0, 0) && near(f0.wallLen, 96)
+    && f0.items.filter((e) => e.type === 'FLOOR').map((e) => e.code).join() === 'F20,F10,F2');
+  const f1 = computeIslandElevation(isl, faces[1]);
+  ok('the back face is mirrored (viewer stands on the other side)', f1.items[0].it.id === 23 && near(f1.wallLen, 72));
+  ok('island face: one worktop, a 3-bay chain, no wall / openings / crown', f0.island && f0.worktops.length === 1 && f0.chain.segs.length === 3
+    && !f0.openings.length && !f0.crowns.length);
+  ok('both faces share ONE island sheet, numbered after the walls', islandSheets(isl).length === 1
+    && drawingIndex(isl).some((d) => d.no === 'A-203' && d.title === 'ELEVATION — ISLAND'));
+  const islHtml = buildSubmittalHTML({ project: 'P', unit: { ...unit, design: isl }, date: 'July 8, 2026' });
+  ok('submittal carries the island sheet with both sides + the F2 swing', islHtml.includes('ELEVATION: ISLAND<') && islHtml.includes('SIDE FACING FRONT WALL')
+    && islHtml.includes('SIDE FACING BACK WALL'));
+  ok('no island → no island sheet', !html.includes('ELEVATION: ISLAND') && islandFaces(design).length === 0);
+}
+
+// ---- plan sheet: big drawing, KEY beside it in HTML -------------------------------------
+ok('plan sheet: KEY is an HTML table beside a key-less, tight-margin drawing', html.includes('class="plan-key"') && html.includes('<table class="cab key">')
+  && !html.slice(html.indexOf('plan-fig'), html.indexOf('</svg>', html.indexOf('plan-fig'))).includes('>KEY<'));
 
 console.log(`\nsubmittal.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

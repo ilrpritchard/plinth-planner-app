@@ -18,9 +18,10 @@ import { unitName, unitQty } from '../core/cost.js';
 import {
   computeElevation, wallsWithItems, scheduleRows, distinctSkus, drawingIndex,
   wallTitle, unitRev, esc, MOUNT, SURFACE_Y, WORKTOP_SLAB, CROWN_IN, SPEC_SECTION,
+  islandSheets, computeIslandElevation, cutSheetPages, CUT_MM_PER_IN,
 } from '../core/submittal.js';
-import { hingeOf } from '../core/hinge.js';
-import { buildFloorplanSVG, PLAN_STYLE as P, svgLine, svgDimH, svgDimV, svgN as n } from './floorplan.js';
+import { hingeOf, hingeLabel } from '../core/hinge.js';
+import { buildFloorplanSVG, planKeyRows, PLAN_STYLE as P, svgLine, svgDimH, svgDimV, svgN as n } from './floorplan.js';
 import { drawFront, frontParts } from './frontdraw.js';
 import { uiAlert } from './dialog.js';
 
@@ -53,9 +54,9 @@ export function buildElevationSVG(elev) {
   const Y = (y) => H - y;             // world Y (up) → SVG y (down)
   const out = [];
 
-  // wall face + heavier floor + ceiling line
-  out.push(`<rect x="0" y="0" width="${n(L)}" height="${n(H)}" fill="none" stroke="${P.INK}" stroke-width="${P.W_WALL_IN}" vector-effect="non-scaling-stroke"/>`);
-  out.push(svgLine(-5, H, L + 5, H, P.W_WALL_OUT));
+  // wall face + heavier floor + ceiling line (an island face has no wall: floor only)
+  if (!elev.island) out.push(`<rect x="0" y="0" width="${n(L)}" height="${n(H)}" fill="none" stroke="${P.INK}" stroke-width="${P.W_WALL_IN}" vector-effect="non-scaling-stroke"/>`);
+  out.push(svgLine(elev.island ? -10 : -5, H, L + (elev.island ? 10 : 5), H, P.W_WALL_OUT));
 
   // openings on this wall, dashed, at their true sill/head heights
   for (const o of elev.openings) {
@@ -84,7 +85,8 @@ export function buildElevationSVG(elev) {
   let vx = L + 7;
   if (elev.worktops.length) { out.push(svgDimV(Y(SURFACE_Y), Y(0), vx, fmtIn(SURFACE_Y))); vx += 8; }
   if (elev.items.some((i) => i.type === 'WALL')) { out.push(svgDimV(Y(MOUNT.WALL), Y(0), vx, fmtIn(MOUNT.WALL))); vx += 8; }
-  out.push(svgDimV(Y(H), Y(0), vx, fmtFeetIn(H)));
+  if (!elev.island) out.push(svgDimV(Y(H), Y(0), vx, fmtFeetIn(H)));
+  else vx -= 8;
 
   // bottom chain: unit widths (italic gaps) → overall run → wall length
   const offChain = H + 7, offRun = H + 15, offWall = H + 23;
@@ -102,10 +104,10 @@ export function buildElevationSVG(elev) {
     // overall run — skipped when the chain is a single unit (it would repeat the same figure)
     if (ch.hi - ch.lo > 0.5 && ch.segs.length > 1) out.push(svgDimH(ch.lo, ch.hi, offRun, fmtIn(ch.hi - ch.lo)));
   }
-  out.push(svgDimH(0, L, offWall, fmtFeetIn(L)));
+  if (!elev.island) out.push(svgDimH(0, L, offWall, fmtFeetIn(L)));
 
-  const vbX = -12, vbY = -8, vbW = vx + 8 - vbX, vbH = (H + 29) - vbY;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n(vbX)} ${n(vbY)} ${n(vbW)} ${n(vbH)}" font-family="ui-sans-serif, Arial, sans-serif">
+  const vbX = elev.island ? -16 : -12, vbY = -8, vbW = vx + 8 - vbX, vbH = (H + (elev.island ? 21 : 29)) - vbY;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n(vbX)} ${n(vbY)} ${n(vbW)} ${n(vbH)}"${elev.island ? ` style="max-width:${n(Math.min(100, (vbW / ((elev.refLen || vbW) + 43)) * 130))}%"` : ''} font-family="ui-sans-serif, Arial, sans-serif">
     <rect x="${n(vbX)}" y="${n(vbY)}" width="${n(vbW)}" height="${n(vbH)}" fill="#fff"/>
     ${out.join('\n')}
   </svg>`;
@@ -121,7 +123,7 @@ export function skuGlyphSVG(cab, hinge = null) {
   out.push(svgDimV(0, cab.h, fp.x0 - 6, fmtIn(cab.h)));
   const vb = `${n(fp.x0 - 16)} -4 ${n(fp.x1 - fp.x0 + 28)} ${n(cab.h + 18)}`;
   // constant mm-per-inch so every glyph on the sheet is mutually to scale
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" style="height:${((cab.h + 18) * 0.95).toFixed(1)}mm" font-family="ui-sans-serif, Arial, sans-serif">${out.join('\n')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" style="height:${((cab.h + 18) * CUT_MM_PER_IN).toFixed(1)}mm" font-family="ui-sans-serif, Arial, sans-serif">${out.join('\n')}</svg>`;
 }
 
 // ---- sheet scaffolding ------------------------------------------------------
@@ -206,6 +208,23 @@ function complianceBody(design, pm = {}) {
     <div class="fig-note">Statements on this sheet are provided for submittal coordination.</div>`;
 }
 
+// ---- plan sheet (A-100) -----------------------------------------------------------
+// The drawing takes the whole sheet height; the KEY is an HTML table beside it
+// (or under it, in two columns, when the room is very wide) instead of riding
+// inside the SVG, where it used to squeeze the plan into half the page.
+function planBody(design) {
+  const svg = buildFloorplanSVG(design, null, { key: false, tight: true });
+  const rows = planKeyRows(design);
+  const room = design.room || {};
+  const wide = (room.width + 59) / (room.depth + 59) > 1.75;
+  const tr = (r) => `<tr><td class="num">${r.qty}</td><td><strong>${esc(r.code)}</strong></td><td>${esc(r.family)}${r.cab.notSupplied ? ' *' : ''} &middot; ${esc(r.cab.desc)}</td><td>${esc(hingeLabel(r.hinge))}</td><td class="num">${fmtIn(r.cab.w)}</td><td class="num">${fmtIn(r.cab.d)}</td><td class="num">${fmtIn(r.cab.h)}</td></tr>`;
+  const table = (rs) => `<table class="cab key"><thead><tr><th class="num">QTY</th><th>CODE</th><th>DESCRIPTION</th><th>HINGE</th><th class="num">W</th><th class="num">D</th><th class="num">H</th></tr></thead><tbody>${rs.map(tr).join('')}</tbody></table>`;
+  const half = Math.ceil(rows.length / 2);
+  const notes = `<div class="fig-note">${rows.some((r) => r.hinge) ? 'Hinge side as viewed facing the cabinet front. Pair = left + right hung doors. ' : ''}${rows.some((r) => r.cab.notSupplied) ? '* Appliance, shown in grey for layout only, not supplied by PL/NTH.' : ''}</div>`;
+  const key = !rows.length ? '' : `<div class="plan-key"><h3>KEY</h3>${wide ? `<div class="key-cols">${table(rows.slice(0, half))}${table(rows.slice(half))}</div>` : table(rows)}${notes}</div>`;
+  return `<div class="plan-wrap${wide ? ' wide' : ''}"><div class="fig plan-fig">${svg}</div>${key}</div>`;
+}
+
 // ---- the per-unit sheet set --------------------------------------------------
 /** All sheets for one unit type (cover → plan → elevations → schedule → cuts →
  *  compliance). `pm` carries the project meta (address, architect,
@@ -251,8 +270,7 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
     </div>`, foot(no())));
 
   // ---- PLAN SHEET (the existing technical plan, KEY table included) ----
-  sheets.push(sheet('FLOOR PLAN & KEY', m(uname, 'A-100', rev),
-    `<div class="fig">${buildFloorplanSVG(design)}</div>`, foot(no())));
+  sheets.push(sheet('FLOOR PLAN & KEY', m(uname, 'A-100', rev), planBody(design), foot(no())));
 
   // ---- ELEVATIONS: one sheet per wall that has cabinets ----
   for (const wall of wallsWithItems(design)) {
@@ -263,6 +281,19 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
       <div class="fig-note">Interior elevation, viewed facing the ${esc(wall)} wall. Dimensions in inches. Dashed diagonals on a door meet at its hinge side. Hatched panels are scribe fillers; dashed outlines are openings. Appliances are shown in grey for coordination only and are not supplied by PL/NTH.</div>`,
       foot(dNo)));
   }
+
+  // ---- ISLAND ELEVATIONS: the island's faces, two to a sheet ----
+  const islSheets = islandSheets(design);
+  islSheets.forEach((faces, i) => {
+    const dNo = no();
+    const figs = faces.map((face) => `
+      <h3 class="isl-cap">ISLAND &middot; ${esc(face.title)}</h3>
+      <div class="fig isl-fig">${buildElevationSVG(computeIslandElevation(design, face))}</div>`).join('');
+    sheets.push(sheet(`ELEVATION: ISLAND${islSheets.length > 1 ? ` ${i + 1}/${islSheets.length}` : ''}`, m(uname, dNo, rev), `
+      ${figs}
+      <div class="fig-note">Island elevations: each side is viewed facing its cabinet fronts. Dimensions in inches. Dashed diagonals on a door meet at its hinge side. Exposed island backs and ends are finished with painted end panels, quantified at order. Appliances are shown in grey for coordination only and are not supplied by PL/NTH.</div>`,
+      foot(dNo)));
+  });
 
   // ---- SCHEDULE SHEET ----
   const sched = scheduleRows(design);
@@ -305,11 +336,11 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
     <div class="fig-note">Hinge side is as viewed facing the cabinet front; doors ship hung as scheduled. Scribe fillers, crown molding and end panels are quantified at order from the final site dimensions. Appliances and worktops shown on the drawings are not supplied by PL/NTH. Cabinets are supplied undrilled, hardware and fitting by others.</div>`,
     foot('A-300')));
 
-  // ---- CUT SHEETS: 3 per page ----
-  const skus = distinctSkus(design);
-  const pages = Math.max(1, Math.ceil(skus.length / 3));
+  // ---- CUT SHEETS: up to 6 per page (rows of three; core cutSheetPages) ----
+  const cutPages = cutSheetPages(distinctSkus(design));
+  const pages = cutPages.length;
   for (let p = 0; p < pages; p++) {
-    const chunk = skus.slice(p * 3, p * 3 + 3);
+    const chunk = cutPages[p];
     const dNo = `A-4${String(p + 1).padStart(2, '0')}`;
     const cards = chunk.map((s) => `
       <div class="cut-card">
@@ -345,6 +376,21 @@ const CSS = `
     .meta { text-align: right; font-size: 10px; line-height: 1.55; opacity: 0.92; }
     .body { flex: 1; margin-top: 8px; border: 1px solid #d9cfb8; border-radius: 6px; padding: 8px 12px; overflow: hidden; }
     .fig svg { display: block; width: 100%; height: auto; max-height: 136mm; margin: 0 auto; }
+    .isl-cap { text-align: center; margin: 6px 0 0; }
+    .isl-fig svg { max-height: 62mm; }
+    .plan-wrap { display: flex; gap: 6mm; align-items: flex-start; height: 100%; }
+    .plan-wrap .plan-fig { flex: 1 1 auto; min-width: 0; }
+    .plan-wrap .plan-fig svg { max-height: 150mm; }
+    .plan-key { flex: 0 0 76mm; }
+    .plan-key h3 { margin-top: 2px; }
+    .plan-wrap.wide { flex-direction: column; gap: 2mm; }
+    .plan-wrap.wide .plan-fig { width: 100%; flex: 0 0 auto; }
+    .plan-wrap.wide .plan-fig svg { max-height: 104mm; }
+    .plan-wrap.wide .plan-key { flex: 0 0 auto; width: 100%; }
+    .key-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; align-items: start; }
+    table.key { font-size: 8px; }
+    table.key td { padding: 2px 5px 2px 0; }
+    table.key th { font-size: 7px; }
     .fig-note { font-size: 8.5px; color: #7d7558; margin-top: 4px; }
     footer { display: flex; justify-content: space-between; gap: 14px; margin-top: 6px;
       border-top: 1px solid #d9cfb8; padding-top: 5px; font-size: 8px; color: #7d7558; }
@@ -383,9 +429,9 @@ const CSS = `
     table.cab td { padding: 2.5px 6px 2.5px 0; border-bottom: 1px solid #ece4d2; }
     .num { text-align: right; }
     .tr { text-align: right; color: #7d7558; }
-    .cut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; height: 100%; align-content: start; padding-top: 4mm; }
-    .cut-card { border: 1px solid #d9cfb8; border-radius: 6px; padding: 8px 10px; text-align: center; }
-    .cut-glyph { display: flex; justify-content: center; align-items: flex-end; min-height: 56mm; }
+    .cut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; align-content: start; padding-top: 3mm; }
+    .cut-card { border: 1px solid #d9cfb8; border-radius: 6px; padding: 6px 10px; text-align: center; }
+    .cut-glyph { display: flex; justify-content: center; align-items: flex-end; }
     .cut-glyph svg { max-width: 100%; }
     .cut-code { font-size: 15px; font-weight: 800; margin-top: 4px; }
     .cut-fam { font-size: 9px; font-weight: 400; color: #7d7558; letter-spacing: 1px; }

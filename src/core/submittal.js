@@ -95,27 +95,31 @@ export function itemsOnWall(design, wall) {
     if (rot !== WALL_ROT[wall]) continue;
     const gap = backGap(design.room, wall, it, cab);
     if (gap > WALL_TOL || gap < -1) continue;
-    const sc = alongWall(design.room, wall, it.x, it.z);
-    // corner units carry a blank return BEYOND the door (+20" floor / +10"
-    // wall) — retS0/retS1 report the full drawn run so worktop/crown/dims
-    // can cover it
-    const ret = cab.corner ? (cab.type === 'WALL' ? 10 : 20) : 0;
-    const retRight = cab.cornerSide === 'right';
-    const s0 = sc - cab.w / 2;
-    out.push({
-      it, cab,
-      code: cab.baseCode || cab.code,
-      s0, w: cab.w,
-      retW: ret, retSide: ret ? (retRight ? 'right' : 'left') : null,
-      runS0: ret && !retRight ? s0 - ret : s0,
-      runS1: ret && retRight ? s0 + cab.w + ret : s0 + cab.w,
-      y0: mountY(cab), h: cab.h,
-      type: cab.type, form: cab.form,
-      glazed: !!cab.glazed, notSupplied: !!cab.notSupplied,
-    });
+    out.push(elevEntry(it, cab, alongWall(design.room, wall, it.x, it.z)));
   }
   out.sort((a, b) => a.s0 - b.s0);
   return out;
+}
+
+/** One drawable elevation entry for a placed item centred at `sc` along the run. */
+function elevEntry(it, cab, sc) {
+  // corner units carry a blank return BEYOND the door (+20" floor / +10"
+  // wall) — retS0/retS1 report the full drawn run so worktop/crown/dims
+  // can cover it
+  const ret = cab.corner ? (cab.type === 'WALL' ? 10 : 20) : 0;
+  const retRight = cab.cornerSide === 'right';
+  const s0 = sc - cab.w / 2;
+  return {
+    it, cab,
+    code: cab.baseCode || cab.code,
+    s0, w: cab.w,
+    retW: ret, retSide: ret ? (retRight ? 'right' : 'left') : null,
+    runS0: ret && !retRight ? s0 - ret : s0,
+    runS1: ret && retRight ? s0 + cab.w + ret : s0 + cab.w,
+    y0: mountY(cab), h: cab.h,
+    type: cab.type, form: cab.form,
+    glazed: !!cab.glazed, notSupplied: !!cab.notSupplied,
+  };
 }
 
 /** Walls (in drawing order) that actually carry cabinets. */
@@ -192,12 +196,7 @@ export function computeElevation(design, wall) {
   const L = wallLength(room, wall);
   const H = room.height || 96;
 
-  // worktop spans: contiguous FLOOR cabinets (incl. corner returns) + base fillers
-  const wtSpans = items
-    .filter((i) => i.type === 'FLOOR')
-    .map((i) => ({ s0: i.runS0 ?? i.s0, w: (i.runS1 ?? i.s0 + i.w) - (i.runS0 ?? i.s0), top: 0 }))
-    .concat(fillers.filter((f) => f.h <= 40).map((f) => ({ s0: f.s0, w: f.w, top: 0 })));
-  const worktops = mergeSpans(wtSpans, 1.0).map((s) => ({ s0: s.s0, s1: s.s1 }));
+  const worktops = worktopSpans(items, fillers);
 
   // crown spans over WALL / TALL / COUNTER tops (+ tall scribe fillers)
   let crowns = [];
@@ -209,7 +208,20 @@ export function computeElevation(design, wall) {
     crowns = mergeSpans(spans, 2.5).map((s) => ({ s0: s.s0, s1: s.s1, top: s.top }));
   }
 
-  // bottom chain: floor-standing widths (talls, bases, ranges/fridges), gaps italic
+  return { wall, wallLen: L, height: H, items, fillers, openings, worktops, crowns, chain: dimChain(items) };
+}
+
+/** Worktop spans: contiguous FLOOR cabinets (incl. corner returns) + base fillers. */
+function worktopSpans(items, fillers = []) {
+  const wtSpans = items
+    .filter((i) => i.type === 'FLOOR')
+    .map((i) => ({ s0: i.runS0 ?? i.s0, w: (i.runS1 ?? i.s0 + i.w) - (i.runS0 ?? i.s0), top: 0 }))
+    .concat(fillers.filter((f) => f.h <= 40).map((f) => ({ s0: f.s0, w: f.w, top: 0 })));
+  return mergeSpans(wtSpans, 1.0).map((s) => ({ s0: s.s0, s1: s.s1 }));
+}
+
+/** Bottom chain: floor-standing widths (talls, bases, ranges/fridges), gaps italic. */
+function dimChain(items) {
   const baseline = items.filter((i) =>
     i.y0 === 0 && (i.type === 'FLOOR' || i.type === 'TALL' ||
       (i.type === 'APPLIANCES' && ['range', 'fridge'].includes(i.cab.appliance))));
@@ -221,11 +233,78 @@ export function computeElevation(design, wall) {
     segs.push({ a: Math.max(cur ?? s, s), b: e });
     cur = Math.max(cur ?? e, e);
   }
-  const chain = segs.length
+  return segs.length
     ? { segs, lo: segs[0].a, hi: segs[segs.length - 1].b }
     : { segs: [], lo: 0, hi: 0 };
+}
 
-  return { wall, wallLen: L, height: H, items, fillers, openings, worktops, crowns, chain };
+// ---- island elevations --------------------------------------------------------
+// An island belongs to no wall, so each FACE of it gets its own elevation: the
+// island cabinets sharing one rotation and one row line, seen from the side
+// their fronts face (a double-sided island = two faces, back to back). A sink or
+// cooktop riding in an island base is drawn with that base's face.
+const ROT_WALL = { 0: 'back', 90: 'left', 180: 'front', 270: 'right' };
+const FACES_TOWARD = { 0: 'FRONT WALL', 90: 'RIGHT WALL', 180: 'BACK WALL', 270: 'LEFT WALL' };
+const rotOf = (it) => (((Math.round(it.rotDeg || 0)) % 360) + 360) % 360;
+
+/** The island's faces, in a stable order: [{ rot, items, title, toward }]. */
+export function islandFaces(design) {
+  const faces = [];
+  const bases = (design.items || []).filter((it) => it.island && getCab(it.code)?.placeable && getCab(it.code).type !== 'APPLIANCES');
+  const perp = (it) => (rotOf(it) % 180 === 0 ? it.z : it.x);
+  for (const it of bases) {
+    if (!(rotOf(it) in ROT_WALL)) continue;
+    let f = faces.find((g) => g.rot === rotOf(it) && Math.abs(g.perp - perp(it)) <= 6);
+    if (!f) { f = { rot: rotOf(it), perp: perp(it), items: [] }; faces.push(f); }
+    f.items.push(it);
+  }
+  // riders (sink / cooktop / range) standing in or on a face's footprint
+  for (const r of design.items || []) {
+    const rc = getCab(r.code);
+    if (!rc || rc.type !== 'APPLIANCES' || !rc.placeable) continue;
+    const f = faces.find((g) => g.rot === rotOf(r) && g.items.some((b) => {
+      const bc = getCab(b.code), hz = g.rot % 180 === 0;
+      return Math.abs((hz ? r.x - b.x : r.z - b.z)) < bc.w / 2 && Math.abs((hz ? r.z - b.z : r.x - b.x)) < bc.d / 2;
+    }));
+    if (f) f.items.push(r);
+    else if (r.island && rotOf(r) in ROT_WALL) {                    // a free-standing island range
+      const g = faces.find((h) => h.rot === rotOf(r) && Math.abs(h.perp - perp(r)) <= 6);
+      if (g) g.items.push(r); else faces.push({ rot: rotOf(r), perp: perp(r), items: [r] });
+    }
+  }
+  faces.sort((a, b) => a.rot - b.rot || a.perp - b.perp);
+  const many = (rot) => faces.filter((f) => f.rot === rot).length > 1;
+  const count = {};
+  return faces.map((f) => {
+    count[f.rot] = (count[f.rot] || 0) + 1;
+    const toward = FACES_TOWARD[f.rot];
+    return { rot: f.rot, items: f.items, toward, title: `SIDE FACING ${toward}${many(f.rot) ? ` (${count[f.rot]})` : ''}` };
+  });
+}
+
+/** Island faces grouped onto sheets: two faces a sheet (a double-sided island
+ *  is ONE sheet, front over back). */
+export function islandSheets(design) {
+  const faces = islandFaces(design), out = [];
+  for (let i = 0; i < faces.length; i += 2) out.push(faces.slice(i, i + 2));
+  return out;
+}
+
+/** Same shape as computeElevation, for one island face: no wall, no openings,
+ *  no fillers or crown; `s` starts at the face's own left end. */
+export function computeIslandElevation(design, face) {
+  const wall = ROT_WALL[face.rot];
+  const raw = face.items.map((it) => elevEntry(it, getCab(it.code), alongWall(design.room, wall, it.x, it.z)));
+  const lo = Math.min(...raw.map((e) => e.runS0));
+  const items = raw.map((e) => ({ ...e, s0: e.s0 - lo, runS0: e.runS0 - lo, runS1: e.runS1 - lo })).sort((a, b) => a.s0 - b.s0);
+  const hi = Math.max(...items.map((e) => e.runS1));
+  const top = Math.max(SURFACE_Y, ...items.map((e) => e.y0 + (e.cab.appliance === 'sink' ? 18 : e.h)));
+  return {
+    wall: null, island: true, title: face.title, toward: face.toward,
+    refLen: Math.max(design.room.width, design.room.depth),   // draw at the wall elevations' scale, not blown up to the sheet
+    wallLen: hi, height: top + 8, items, fillers: [], openings: [],
+    worktops: worktopSpans(items), crowns: [], chain: dimChain(items),
+  };
 }
 
 // ---- schedule + cut-sheet data ----------------------------------------------
@@ -273,15 +352,49 @@ export function distinctSkus(design) {
       || a.code.localeCompare(b.code, 'en', { numeric: true }));
 }
 
+// ---- cut-sheet pagination -------------------------------------------------------
+// Up to SIX cards a page (rows of three), every glyph at ONE scale so the
+// cabinets stay mutually to scale. Talls are tall: a page takes as many rows
+// as fit its height budget, so two rows of bases share a page but two rows of
+// talls never overflow it (the sheet clips, it cannot grow).
+export const CUT_MM_PER_IN = 0.56;
+// measured in Chrome: the sheet body holds 154mm of cards under the tallest
+// (4-line) title block; a base card prints ~56mm, a tall ~87mm
+const CUT_PAGE_MM = 150, CUT_ROW_GAP_MM = 6;
+
+/** Estimated printed height (mm) of one cut card. */
+export function cutCardMM(sku) {
+  const lines = sku.notes.reduce((t, nt) => t + Math.ceil(nt.length / 58), 0);
+  return (sku.cab.h + 18) * CUT_MM_PER_IN + 19 + lines * 3.4;
+}
+
+/** skus → pages → the skus on each page (rows of 3, max 2 rows a page). */
+export function cutSheetPages(skus) {
+  const rows = [];
+  for (let i = 0; i < skus.length; i += 3) rows.push(skus.slice(i, i + 3));
+  const pages = [];
+  let cur = null, used = 0;
+  for (const row of rows) {
+    const h = Math.max(...row.map(cutCardMM));
+    if (!cur || cur.rows === 2 || used + CUT_ROW_GAP_MM + h > CUT_PAGE_MM) { cur = { rows: 0, skus: [] }; pages.push(cur); used = 0; }
+    used += (cur.rows ? CUT_ROW_GAP_MM : 0) + h;
+    cur.rows++; cur.skus.push(...row);
+  }
+  return pages.length ? pages.map((p) => p.skus) : [[]];
+}
+
 const WALL_TITLE = { back: 'BACK WALL', left: 'LEFT WALL', right: 'RIGHT WALL', front: 'FRONT WALL' };
 export function wallTitle(wall) { return WALL_TITLE[wall] || wall.toUpperCase(); }
 
 /** The drawing index shown on the cover: [{ no, title }]. */
 export function drawingIndex(design) {
   const idx = [{ no: 'A-000', title: 'COVER & DRAWING INDEX' }, { no: 'A-100', title: 'FLOOR PLAN & KEY' }];
-  wallsWithItems(design).forEach((w, i) => idx.push({ no: `A-2${String(i + 1).padStart(2, '0')}`, title: `ELEVATION — ${wallTitle(w)}` }));
+  const walls = wallsWithItems(design);
+  walls.forEach((w, i) => idx.push({ no: `A-2${String(i + 1).padStart(2, '0')}`, title: `ELEVATION — ${wallTitle(w)}` }));
+  const isl = islandSheets(design);           // an island's faces share sheets, two to a sheet
+  isl.forEach((_, i) => idx.push({ no: `A-2${String(walls.length + i + 1).padStart(2, '0')}`, title: `ELEVATION — ISLAND${isl.length > 1 ? ` ${i + 1}/${isl.length}` : ''}` }));
   idx.push({ no: 'A-300', title: 'FINISH, HARDWARE & CABINET SCHEDULE' });
-  const pages = Math.max(1, Math.ceil(distinctSkus(design).length / 3));
+  const pages = cutSheetPages(distinctSkus(design)).length;
   for (let i = 0; i < pages; i++) idx.push({ no: `A-4${String(i + 1).padStart(2, '0')}`, title: `CABINET CUT SHEETS ${i + 1}/${pages}` });
   idx.push({ no: 'A-600', title: 'COMPLIANCE & PRODUCT DATA' });
   return idx;
