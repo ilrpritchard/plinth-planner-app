@@ -275,3 +275,13 @@ test('wizard end-to-end: sized freestanding fridge lands at a run end, no overla
     }
   }
 });
+
+// Found while building a review pack 2026-09-18: the wall-oven layouts sat the cooktop
+// on F20 and then the planner's own warning told the user to swap it for F30.
+test('wall-oven layouts seat the cooktop on the cooktop drawer base (F30), never a working drawer bank', async () => {
+  const { generateKitchen } = await import('../src/core/layouts.js');
+  for (const shape of ['straight', 'l-shape', 'u-shape', 'island']) for (const [w, d] of [[168, 132], [192, 150], [240, 180]]) for (let seed = 1; seed <= 6; seed++) {
+    const { steps } = generateKitchen(shape, { width: w, depth: d, height: 96 }, seed, { cooking: 'wallOven' });
+    for (const st of steps.filter((x) => x.hob)) assert.equal(st.code, 'F30', `${shape} ${w}x${d} seed ${seed}: cooktop on ${st.code}`);
+  }
+});

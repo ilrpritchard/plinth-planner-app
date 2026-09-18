@@ -226,7 +226,7 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
   // wall-oven mode: the same slot takes a 36" drawer base + a hob on top.
   let cook, hob = null;
   if (wallOven) {
-    cook = 'F20';
+    cook = 'F30';   // the COOKTOP drawer base (fronts identical to F20, top front false): a working top drawer can't live under a cooktop
     hob = (cookOnBack && width - cornerUsed - 116 >= W('AP5')) ? 'AP5' : 'AP4';
   } else {
     cook =
@@ -427,7 +427,7 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
     // before the optional larder): the cooker, then the dishwasher.
     let sideCook = null, sideClear = null;
     if (cookOnSide && sremain >= cookMin) {
-      sideCook = wallOven ? { code: 'F20', hob: 'AP4' } : { code: 'AP1' };
+      sideCook = wallOven ? { code: 'F30', hob: 'AP4' } : { code: 'AP1' };
       sremain -= cookMin;
       // RANGE CLEARANCE: the talls close the leg's open end, so an exiled
       // cooker needs its 18"+ landing reserved BEFORE any optional fill — a

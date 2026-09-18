@@ -186,5 +186,15 @@ const lines = (code, cls) => parts(code).filter((p) => p.k === 'line' && p.cls =
   ok('no matches → empty list, no throw', filterCabinets(all, 'zzz-nothing').length === 0);
 }
 
+// ---- oven housings show their oven opening (never a plain full-height door) ----
+{
+  for (const code of ['T9', 'T14', 'T15']) {
+    const fp = frontParts(getCab(code));
+    const leafs = fp.parts.filter((p) => p.k === 'rect' && p.cls === 'leaf'), hole = fp.parts.find((p) => p.cls === 'void');
+    ok(`${code}: a low door${code === 'T15' ? ' PAIR' : ''} under an OVEN opening`, leafs.length === (code === 'T15' ? 2 : 1) && hole
+      && leafs.every((l) => l.y + l.h <= hole.y + 0.01) && hole.h === (code === 'T15' ? 24 : 29) && fp.parts.some((p) => p.k === 'text' && p.s === 'OVEN'));
+  }
+}
+
 console.log(`\nfrontdraw.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

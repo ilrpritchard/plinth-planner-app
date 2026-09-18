@@ -25,6 +25,7 @@ import { mmToIn } from '../core/units.js';
 import { PLAN_STYLE as P, svgLine, svgN as n } from './floorplan.js';
 import { esc } from '../core/submittal.js';
 import { rangeSpec } from '../core/rangespec.js';
+import { ovenSeat } from '../core/ovenseat.js';
 
 // master-library constants, mm → inches (same numbers as core/dxf.js)
 export const FD = {
@@ -149,7 +150,20 @@ export function frontParts(cab) {
     case 'drawers':
       drawerStack(dx0, dx1, zB, zT);
       break;
-    case 'larder': case 'housing': case 'ovenHousing': {
+    case 'ovenHousing': {                        // low door(s) · drawer panel · OVEN opening · blank panel
+      // same stack as the 3D (core/ovenseat.js) — an approver must see the oven
+      // aperture, never a plain full-height door
+      const seat = ovenSeat(cab), doorTop = seat.openY0 + seat.doorH;
+      const single = [[zB + F, doorTop - F]];
+      if (w >= 36) { vline('leaf', w / 2, zB, doorTop); leaf(dx0, w / 2, single, false, zB, doorTop); leaf(w / 2, dx1, single, false, zB, doorTop); }
+      else leaf(dx0, dx1, single, false, zB, doorTop);
+      rect('drawer', dx0, doorTop + FD.GAP, dx1 - dx0, seat.drawH - FD.GAP);
+      rect('void', dx0, seat.y0, dx1 - dx0, seat.ovenH);
+      parts.push({ k: 'text', x: w / 2, y: seat.y0 + seat.ovenH / 2, s: 'OVEN' });
+      if (zT - (seat.y0 + seat.ovenH) > 1) rect('drawer', dx0, seat.y0 + seat.ovenH + FD.GAP, dx1 - dx0, zT - (seat.y0 + seat.ovenH) - FD.GAP);
+      break;
+    }
+    case 'larder': case 'housing': {
       const zones = tallZones(zT);
       if (tallDouble) {
         vline('leaf', w / 2, zB, zT);
