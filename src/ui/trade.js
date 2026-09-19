@@ -1279,6 +1279,13 @@ export class TradeUI {
     });
   }
 
+  /** Straight to the Orders page from anywhere (the top bar's Orders button). */
+  showOrders() {
+    if (this.designingUnit()) { toast('Finish the unit layout first: Done or Cancel on the bar above.'); return; }
+    this.view = 'orders';
+    if (this.store.state.mode !== 'trade') this.store.setMode('trade'); else this.render();
+  }
+
   // ---- ORDERS view: the signed-in user's placed orders + live status --------
   async renderOrders() {
     this.root.innerHTML = `

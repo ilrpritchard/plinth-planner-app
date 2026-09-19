@@ -35,7 +35,13 @@ export class CloudUI {
     }
   }
 
-  _syncBtn() { if (this.btn) this.btn.textContent = this.user ? 'My designs' : 'Sign in'; }
+  _syncBtn() {
+    if (this.btn) this.btn.textContent = this.user ? 'My designs' : 'Sign in';
+    // Orders lives in the top bar for anyone signed in, in BOTH modes: from Kitchen mode
+    // there was no way back to an order (her catch: "I accidentally clicked and can't get back")
+    const ob = document.getElementById('btnOrders');
+    if (ob) ob.style.display = this.user ? '' : 'none';
+  }
   open() { this.modal.classList.add('show'); this.render(); }
   close() { this.modal.classList.remove('show'); this.view = null; }
   openReset() {
