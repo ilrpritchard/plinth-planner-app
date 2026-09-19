@@ -125,8 +125,9 @@ export function buildChangeOrderModel(order, liveTrade, opts = {}) {
   const now = opts.now != null ? opts.now : Date.now();
 
   const orderNo = (order && order.order_no) || d.orderNo || 'PL-0000-XXXX';
-  const suffix = String(orderNo).replace(/^PL-?/, '');
-  const coNo = `CO-${suffix}-${seq}`;
+  // ONE code on every document: the order number. A change is told apart in words.
+  const changeLabel = `Change ${seq}`;
+  const coNo = `${orderNo} - ${changeLabel}`;
 
   // match snapshot unit types ↔ live units by display name
   const liveByName = new Map((t.units || []).map((u) => [unitName(u), u]));
@@ -167,7 +168,7 @@ export function buildChangeOrderModel(order, liveTrade, opts = {}) {
   const newGrandCents = newSubtotalCents - newDiscountCents + newShippingCents;
 
   return {
-    coNo, seq, orderNo,
+    coNo, changeLabel, seq, orderNo,
     project: d.project || 'Untitled project',
     liveProject: t.project || '',
     projectMismatch: Boolean(t.project && d.project && t.project !== d.project),

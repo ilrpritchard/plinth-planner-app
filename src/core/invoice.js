@@ -67,9 +67,10 @@ export function buildInvoiceModel(order, opts = {}) {
   const depositPct = opts.depositPct != null ? Number(opts.depositPct) : DEFAULT_DEPOSIT_PCT;
   const now = opts.now != null ? opts.now : Date.now();
 
-  // 'PL-2607-K7WQ' → 'INV-2607-K7WQ-1' (deposit / full) or '-2' (balance)
-  const suffix = String(orderNo).replace(/^PL-?/, '');
-  const invoiceNo = `INV-${suffix}-${kind === 'balance' ? '2' : '1'}`;
+  // ONE code on every document: the order number (her call, W2W-141: INV-2607-K7WQ-1
+  // beside PL-2607-K7WQ was "too many codes"). An invoice is told apart in words.
+  const invoiceLabel = kind === 'full' ? 'Invoice 1 of 1' : kind === 'balance' ? 'Invoice 2 of 2' : 'Invoice 1 of 2';
+  const invoiceNo = `${orderNo} - ${invoiceLabel}`;
 
   // one invoice line per unit type — straight from the frozen snapshot
   const lines = (d.unitTypes || []).map((ut) => {
@@ -91,7 +92,14 @@ export function buildInvoiceModel(order, opts = {}) {
   const grandCents = t.grand != null ? toCents(t.grand)
     : subtotalCents - discountCents + shippingCents;
 
-  const { deposit, balance } = splitDeposit(grandCents, depositPct);
+  // APPROVED change requests (core/changerequest.js invoiceChanges): the deposit was
+  // struck on the original order and never moves; every approved net change, up or
+  // down, lands on the balance, exactly as the change-order sheet says it will.
+  const changes = (opts.changes || []).map((c) => ({ label: String(c.label || 'Change'), amountCents: Math.round(Number(c.netDeltaCents) || 0) }));
+  const changesCents = changes.reduce((x, c) => x + c.amountCents, 0);
+  const revisedGrandCents = grandCents + changesCents;
+  const split = splitDeposit(grandCents, depositPct);
+  const deposit = split.deposit, balance = split.balance + changesCents;
   const balDue = balanceDue(d);
   const issued = fmtDate(now);
 
@@ -105,18 +113,18 @@ export function buildInvoiceModel(order, opts = {}) {
     },
     {
       key: 'balance',
-      label: `Balance - ${100 - Math.round(depositPct)}% before first shipment`,
+      label: `Balance - ${100 - Math.round(depositPct)}% before first shipment${changes.length ? ', plus approved changes' : ''}`,
       amountCents: balance,
       due: balDue.label,
       billed: kind === 'balance' || kind === 'full',
     },
   ];
 
-  const amountDueCents = kind === 'deposit' ? deposit : kind === 'balance' ? balance : grandCents;
+  const amountDueCents = kind === 'deposit' ? deposit : kind === 'balance' ? balance : revisedGrandCents;
   const dueLabel = kind === 'balance' ? balDue.label : 'Due on receipt';
 
   return {
-    invoiceNo, orderNo, kind,
+    invoiceNo, invoiceLabel, orderNo, kind,
     kindLabel: kind === 'deposit' ? 'DEPOSIT INVOICE' : kind === 'balance' ? 'BALANCE INVOICE' : 'INVOICE',
     project: d.project || 'Untitled project',
     finish: d.finish || '',
@@ -136,7 +144,9 @@ export function buildInvoiceModel(order, opts = {}) {
     totals: {
       cabinets: Number(t.cabinets) || lines.reduce((x, l) => x + l.cabinets, 0),
       subtotalCents, shippingCents, discountCents, grandCents,
+      changesCents, revisedGrandCents,
     },
+    changes,
     schedule,
     depositPct,
     amountDueCents,

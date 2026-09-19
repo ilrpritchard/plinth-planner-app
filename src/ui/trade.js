@@ -44,6 +44,7 @@ import {
   ensureShareToken, submitApproval,
   placeOrder, listOrders, cancelOrder, adminSetStatus, isOrderAdmin,
   placeOrderPublic, fetchOrderByToken, findOrderToken,
+  listOrderChanges, requestOrderChange, decideOrderChange, withdrawOrderChange,
   logOrderDoc, listOrderDocs,
 } from '../core/tradecloud.js';
 import {
@@ -58,6 +59,8 @@ import { planRowsLayout, rowsNotInDesign } from '../core/rowlayout.js';
 import { trackURL, ORDER_NO } from '../core/ordertrack.js';
 import { trackingHTML, trackingPageHTML, findOrderHTML, buildTrackingDocHTML } from './ordertrack.js';
 import { looksLikeEmail } from './dxfgate.js';
+import { canRequestChange, invoiceChanges } from '../core/changerequest.js';
+import { openChangeEditor, changesHTML } from './changerequest.js';
 
 const BED_TYPES = ['Studio', '1 Bed', '2 Bed', '3 Bed', '4 Bed', 'Penthouse'];
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -1305,8 +1308,8 @@ export class TradeUI {
       return;
     }
 
-    let rows, admin = false;
-    try { [rows, admin] = await Promise.all([listOrders(), isOrderAdmin()]); }
+    let rows, admin = false, changeRows = null;
+    try { [rows, admin, changeRows] = await Promise.all([listOrders(), isOrderAdmin(), listOrderChanges().catch(() => null)]); }
     catch (e) {
       body.innerHTML = `<div class="orders-empty"><h3>Could not load your orders</h3>
         <p>${esc((e && e.message) || 'Are you online?')} Your projects and exports still work offline.</p></div>`;
@@ -1317,6 +1320,10 @@ export class TradeUI {
         <p>When you request a fixed quote while signed in, the project lands here with a PL- number and live status tracking.</p></div>`;
       return;
     }
+    // change requests by order. NULL = SUPABASE_CHANGES.sql not run: the card keeps the print-only change order
+    this._changesOn = Array.isArray(changeRows);
+    this._changes = new Map();
+    for (const c of changeRows || []) { if (!this._changes.has(c.order_id)) this._changes.set(c.order_id, []); this._changes.get(c.order_id).push(c); }
     body.innerHTML = rows.map((r) => this.orderCardHTML(r, admin)).join('');
     this.wireOrders(body, rows, admin);
   }
@@ -1325,7 +1332,9 @@ export class TradeUI {
     const d = row.data || {};
     const date = row.placed_at
       ? new Date(row.placed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-    const grand = d.totals ? fmtUSD(d.totals.grand) : '—';
+    // once a change is approved the card leads with the REVISED total (the snapshot itself stays frozen)
+    const chDelta = invoiceChanges(this._changes && this._changes.get(row.id)).reduce((n, c) => n + c.netDeltaCents, 0);
+    const grand = d.totals ? fmtUSD(d.totals.grand + chDelta / 100) + (chDelta ? ' <small class="order-revised">revised</small>' : '') : '—';
     const phases = mergedPhases(row);
     const cancellable = row.status === 'submitted';
     const statusSel = (cur, act, extra = '') => `<select class="status-sel" data-act="${act}" ${extra}>
@@ -1341,6 +1350,7 @@ export class TradeUI {
         ${row.status !== 'cancelled' ? `
           <button class="ghost sm" data-act="d-gen" data-kind="invoice_deposit" title="Pro-forma deposit invoice (50% on confirmation), regenerated from the frozen order, print to PDF">Invoice: Deposit</button>
           <button class="ghost sm" data-act="d-gen" data-kind="invoice_balance" title="Pro-forma balance invoice (50% before first shipment), regenerated from the frozen order, print to PDF">Invoice: Balance</button>` : ''}
+        ${this._changesOn && row.owner && !admin && canRequestChange(row, this._changes.get(row.id)).ok ? `<button class="ghost sm" data-act="c-new" title="Add or remove cabinets, or change unit counts, and send it to PL/NTH for approval">Request a change</button>` : ''}
         ${row.track_token ? `<button class="ghost sm" data-act="o-link" title="A private read-only link for the wider team: status only, never prices or invoices. No account needed.">Copy tracking link</button>` : ''}
         ${cancellable ? `<button class="danger sm" data-act="o-cancel" title="Cancel this order: only possible while it's still 'submitted'">Cancel order</button>` : ''}
         ${admin ? `<input class="adm-note" data-act="adm-note" maxlength="500" placeholder="Note to the buyer (shows on the order and its tracking page)" title="PL/NTH admin: post it on its own, or it goes with the next status change">
@@ -1348,6 +1358,7 @@ export class TradeUI {
       </div>
       ${admin && d.customer ? `<div class="order-who">${esc([d.customer.name, d.customer.email, row.owner ? '' : 'no account'].filter(Boolean).join(' · '))}</div>` : ''}
       ${trackingHTML(trackView(row))}
+      ${changesHTML(this._changes && this._changes.get(row.id), admin)}
       ${admin && phases.length ? `<div class="order-phases">${phases.map((p) => `
         <span class="phase-chip st-${esc(p.status)}" data-phase="${esc(p.id)}">
           <strong>${esc(p.id)}</strong> · ${esc(p.label)}
@@ -1385,7 +1396,7 @@ export class TradeUI {
         ${btn('csv', 'Order CSV', 'The order lines &amp; totals as a spreadsheet-ready CSV')}
         ${btn('invoice_deposit', 'Deposit invoice', 'Pro-forma deposit invoice, 50% due on confirmation', cancelled)}
         ${btn('invoice_balance', 'Balance invoice', 'Pro-forma balance invoice, 50% due before first shipment', cancelled)}
-        ${btn('change_order', 'Change order', 'Diff this frozen order against your CURRENT working spec, rev-to-rev changes, price delta &amp; sign-off sheet, print to PDF', cancelled)}
+        ${this._changesOn ? '' : btn('change_order', 'Change order', 'Diff this frozen order against your CURRENT working spec, rev-to-rev changes, price delta &amp; sign-off sheet, print to PDF', cancelled)}
       </div>
       <div class="doc-log" data-doclog><div class="doc-log-empty">Loading the issued log…</div></div>
     </details>`;
@@ -1432,7 +1443,7 @@ export class TradeUI {
       rev = model.changes.filter((x) => x.kind === 'changed' && x.oldRev !== x.newRev)
         .map((x) => `${x.oldRev}→${x.newRev}`).join('/') || null;
     } else if (kind === 'invoice_deposit' || kind === 'invoice_balance') {
-      const model = buildInvoiceModel(row, { kind: kind === 'invoice_deposit' ? 'deposit' : 'balance' });
+      const model = buildInvoiceModel(row, { kind: kind === 'invoice_deposit' ? 'deposit' : 'balance', changes: invoiceChanges(this._changes && this._changes.get(row.id)) });
       openPrintWindow(buildInvoiceHTML(model));
       toast(`${label} opened. Use the print dialog to save it as a PDF.`);
       rev = null;
@@ -1464,6 +1475,45 @@ export class TradeUI {
         const id = gen.closest('[data-oid]')?.dataset.oid;
         const row = id && rowById.get(id);
         if (row) this.issueDoc(row, gen.dataset.kind);
+        return;
+      }
+      const cAct = e.target.closest('[data-act^="c-"]');
+      if (cAct) {
+        const row = rowById.get(cAct.closest('[data-oid]')?.dataset.oid); if (!row) return;
+        const list = (this._changes && this._changes.get(row.id)) || [];
+        const act = cAct.dataset.act;
+        if (act === 'c-new') {
+          openChangeEditor({ order: row, changes: list, onSubmit: async (built, note) => {
+            await requestOrderChange(row.id, built, note);
+            toast(`Change ${built.seq} sent to PL/NTH for approval.`);
+            this.renderOrders();
+          } });
+          return;
+        }
+        const c = list.find((x) => x.id === cAct.closest('[data-cid]')?.dataset.cid); if (!c) return;
+        if (act === 'c-view') {
+          const line = c.status === 'approved' ? `approved by PL/NTH ${new Date(c.decided_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+            : c.status === 'pending' ? 'awaiting PL/NTH approval' : c.status;
+          openPrintWindow(buildChangeOrderHTML({ ...c.model, statusLine: line }));
+          toast(`Change ${c.seq} opened. Use the print dialog to save it as a PDF.`);
+          return;
+        }
+        if (act === 'c-withdraw') {
+          if (!(await uiConfirm('PL/NTH will no longer see this request.', { title: `Withdraw change ${c.seq}?`, confirmLabel: 'Withdraw', cancelLabel: 'Keep it' }))) return;
+          try { await withdrawOrderChange(c.id); toast('Change withdrawn.'); this.renderOrders(); }
+          catch (err) { toast(`Could not withdraw: ${err.message || 'are you online?'}`); }
+          return;
+        }
+        if (act === 'c-approve' || act === 'c-decline') {
+          const approve = act === 'c-approve';
+          const note = (cAct.closest('[data-oid]')?.querySelector('.adm-note')?.value || '').trim();
+          const net = Number(c.model?.totals?.netDeltaCents) || 0;
+          if (!(await uiConfirm(`${approve ? 'The net change goes onto the balance invoice' : 'The order stays as it is'}${note ? `, and the buyer sees your note: "${note}"` : '. Type a note in the box on this card first if the buyer should see one'}.`,
+            { title: `${approve ? 'Approve' : 'Decline'} change ${c.seq} (${net >= 0 ? '+' : '-'}${fmtUSD(Math.abs(net) / 100)})?`, confirmLabel: approve ? 'Approve' : 'Decline', cancelLabel: 'Not yet', danger: !approve }))) return;
+          try { await decideOrderChange(c.id, approve, note); toast(`Change ${c.seq} ${approve ? 'approved' : 'declined'} ✓`); this.renderOrders(); }
+          catch (err) { toast(`Could not save: ${err.message || 'are you online?'}`); }
+          return;
+        }
         return;
       }
       const ns = e.target.closest('[data-act="adm-note-send"]');

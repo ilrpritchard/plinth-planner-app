@@ -103,9 +103,9 @@ export function buildChangeOrderHTML(m) {
     <header>
       <div class="brand">PL<span class="slash">/</span>NTH<small>CHANGE ORDER</small></div>
       <div class="meta">
-        <strong>${esc(m.coNo)}</strong><br>
-        Amends order ${esc(m.orderNo)} - placed ${esc(m.dates.placed)}<br>
-        Issued ${esc(m.dates.issued)} - awaiting countersignature
+        <strong>${esc(m.orderNo)}</strong><br>
+        ${esc(m.changeLabel)} - amends the order placed ${esc(m.dates.placed)}<br>
+        Issued ${esc(m.dates.issued)} - ${esc(m.statusLine || 'awaiting countersignature')}
       </div>
     </header>
     <div class="body">
@@ -140,7 +140,7 @@ export function buildChangeOrderHTML(m) {
       </table>
 
       <div class="due-box">
-        <div class="lbl">NET CHANGE - ${esc(m.coNo)}<small>${t.netDeltaCents >= 0 ? 'Added to the balance installment on countersignature' : 'Credited against the balance installment on countersignature'}</small></div>
+        <div class="lbl">NET CHANGE - ${esc(m.changeLabel.toUpperCase())}<small>${t.netDeltaCents >= 0 ? 'Added to the balance installment on countersignature' : 'Credited against the balance installment on countersignature'}</small></div>
         <div class="amt">${fmtDelta(t.netDeltaCents)}</div>
       </div>
 

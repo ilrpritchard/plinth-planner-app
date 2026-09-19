@@ -342,3 +342,35 @@ export async function findOrderToken(orderNo, email) {
   return typeof out === 'string' && out.length >= 32 ? out : null;
 }
 
+
+// ---- change requests (SUPABASE_CHANGES.sql) -----------------------------------------
+// The buyer asks to change a placed order; PL/NTH approves or declines. Function-only
+// access. listOrderChanges() answers NULL (not []) when the SQL has not been run, so
+// the Orders page can keep the old print-only change order instead of a dead button.
+export async function listOrderChanges() {
+  const token = await authed();
+  const res = await fetch(rest('rpc/list_order_changes'), { method: 'POST', headers: headers(token), body: '{}' });
+  if (res.status === 404) return null;
+  return (await parse(res)) || [];
+}
+export async function requestOrderChange(orderId, { seq, proposal, model }, note = '') {
+  const token = await authed();
+  const res = await fetch(rest('rpc/request_order_change'), {
+    method: 'POST', headers: headers(token),
+    body: JSON.stringify({ p_order_id: orderId, p_seq: seq, p_proposal: proposal, p_model: model, p_note: String(note || '').trim() || null }),
+  });
+  return parse(res);
+}
+export async function decideOrderChange(changeId, approve, note = '') {
+  const token = await authed();
+  const res = await fetch(rest('rpc/decide_order_change'), {
+    method: 'POST', headers: headers(token),
+    body: JSON.stringify({ p_change_id: changeId, p_approve: !!approve, p_note: String(note || '').trim() || null }),
+  });
+  await parse(res); return true;
+}
+export async function withdrawOrderChange(changeId) {
+  const token = await authed();
+  const res = await fetch(rest('rpc/withdraw_order_change'), { method: 'POST', headers: headers(token), body: JSON.stringify({ p_change_id: changeId }) });
+  await parse(res); return true;
+}

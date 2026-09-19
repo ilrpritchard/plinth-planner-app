@@ -75,8 +75,8 @@ export function buildInvoiceHTML(m) {
     <header>
       <div class="brand">PL<span class="slash">/</span>NTH<small>PRO-FORMA ${esc(m.kindLabel)}</small></div>
       <div class="meta">
-        <strong>${esc(m.invoiceNo)}</strong><br>
-        Order ${esc(m.orderNo)} - placed ${esc(m.dates.placed)}<br>
+        <strong>${esc(m.orderNo)}</strong><br>
+        ${esc(m.invoiceLabel)} - order placed ${esc(m.dates.placed)}<br>
         Issued ${esc(m.dates.issued)} - ${esc(m.dates.dueLabel)}
       </div>
     </header>
@@ -105,6 +105,8 @@ export function buildInvoiceHTML(m) {
         <tr><td class="l">Cabinets subtotal</td><td class="num">${fmtCents(m.totals.subtotalCents)}</td></tr>
         ${m.charges.map((ch) => `<tr><td class="l">${esc(ch.label)}</td><td class="num">${fmtCents(ch.amountCents)}</td></tr>`).join('')}
         <tr class="hi"><td class="l">Order total</td><td class="num">${fmtCents(m.totals.grandCents)}</td></tr>
+        ${(m.changes || []).map((ch) => `<tr><td class="l">${esc(ch.label)}</td><td class="num">${ch.amountCents >= 0 ? '+' : '-'}${fmtCents(Math.abs(ch.amountCents))}</td></tr>`).join('')}
+        ${(m.changes || []).length ? `<tr class="hi"><td class="l">Revised order total</td><td class="num">${fmtCents(m.totals.revisedGrandCents)}</td></tr>` : ''}
       </table>
 
       <div class="due-box">

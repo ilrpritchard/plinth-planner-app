@@ -75,13 +75,14 @@ test('identical spec: no changes, zero net delta', () => {
   assert.equal(m.totals.oldGrandCents, m.totals.newGrandCents);
 });
 
-test('CO number: CO-<order suffix>-<seq>', () => {
+test('one code only: a change order carries the ORDER number + "Change N"', () => {
   const tower = makeTower();
   const snap = buildOrderSnapshot(tower, { now: NOW, orderNo: 'PL-2607-K7WQ' });
   const m1 = buildChangeOrderModel(snap, clone(tower), { now: NOW });
   const m3 = buildChangeOrderModel(snap, clone(tower), { now: NOW, seq: 3 });
-  assert.equal(m1.coNo, 'CO-2607-K7WQ-1');
-  assert.equal(m3.coNo, 'CO-2607-K7WQ-3');
+  assert.equal(m1.coNo, 'PL-2607-K7WQ - Change 1');
+  assert.equal(m3.coNo, 'PL-2607-K7WQ - Change 3');
+  assert.equal(m3.changeLabel, 'Change 3');
 });
 
 test('rev bump + line changes: the changed type is reported rev-to-rev', () => {
@@ -189,7 +190,7 @@ test('accepts a Supabase row shape ({ order_no, placed_at, data })', () => {
   const live = clone(tower);
   live.units[0].rows[0].qty = 4;
   const m = buildChangeOrderModel(row, live, { now: NOW, seq: 2 });
-  assert.equal(m.coNo, 'CO-2607-ABCD-2');
+  assert.equal(m.coNo, 'PL-2607-ABCD - Change 2');
   assert.equal(m.orderNo, 'PL-2607-ABCD');
   assert.equal(m.changes.length, 1);
 });
@@ -211,7 +212,7 @@ test('change-order HTML: key blocks, both signatures, correct money', () => {
   const html = buildChangeOrderHTML(m);
   assert.ok(html.includes('CHANGE ORDER'));
   assert.ok(html.includes(m.coNo));
-  assert.ok(html.includes('Amends order PL-2607-K7WQ'));
+  assert.ok(html.includes('Change 1 - amends the order placed') && html.includes('PL-2607-K7WQ') && !html.includes('CO-2607'));
   assert.ok(html.includes('NET CHANGE'));
   assert.ok(html.includes('SIGN-OFF'));
   assert.equal((html.match(/SIGNATURE/g) || []).length, 2, 'client + PL/NTH signature blocks');

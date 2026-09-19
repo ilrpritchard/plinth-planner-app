@@ -99,9 +99,9 @@ test('balance due: unphased order → on notice, no fixed date', () => {
 // ---- the invoice model -------------------------------------------------------------
 
 test('invoice numbering: order suffix + -1 (deposit) / -2 (balance)', () => {
-  assert.equal(buildInvoiceModel(row, { kind: 'deposit', now: NOW }).invoiceNo, 'INV-2607-K7WQ-1');
-  assert.equal(buildInvoiceModel(row, { kind: 'balance', now: NOW }).invoiceNo, 'INV-2607-K7WQ-2');
-  assert.equal(buildInvoiceModel(row, { kind: 'full', now: NOW }).invoiceNo, 'INV-2607-K7WQ-1');
+  assert.equal(buildInvoiceModel(row, { kind: 'deposit', now: NOW }).invoiceNo, 'PL-2607-K7WQ - Invoice 1 of 2');
+  assert.equal(buildInvoiceModel(row, { kind: 'balance', now: NOW }).invoiceNo, 'PL-2607-K7WQ - Invoice 2 of 2');
+  assert.equal(buildInvoiceModel(row, { kind: 'full', now: NOW }).invoiceNo, 'PL-2607-K7WQ - Invoice 1 of 1');
   assert.deepEqual(INVOICE_KINDS, ['deposit', 'balance', 'full']);
 });
 
@@ -258,7 +258,8 @@ test('invoice HTML: one portrait page with the key blocks + correct money', () =
   const m = buildInvoiceModel(row, { kind: 'deposit', now: NOW });
   const html = buildInvoiceHTML(m);
   assert.match(html, /letter portrait/);
-  assert.match(html, /INV-2607-K7WQ-1/);
+  assert.match(html, /Invoice 1 of 2/);
+  assert.doesNotMatch(html, /INV-/);
   assert.match(html, /AMOUNT DUE/);
   assert.match(html, /PAYMENT SCHEDULE/);
   assert.match(html, /PAYMENT INSTRUCTIONS/);

@@ -1656,3 +1656,33 @@ body.mode-trade #keepCard, body.printing-quote #keepCard { display: none; }
 @media (max-width: 700px) { .trk-label { font-size: 11px; } .trk-phase { grid-template-columns: 64px minmax(0, 1fr) auto; } .trk-phase .trk-bar { display: none; } }
 
 .order-who { font-size: 12px; color: var(--dim); margin-top: 6px; }
+
+/* ---- change requests on an order ---- */
+.chg-list { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.chg-list-h { padding: 8px 14px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); border-bottom: 1px solid var(--line); background: var(--paper); }
+.chg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--line); }
+.chg-row:last-child { border-bottom: 0; }
+.chg-meta { color: var(--dim); flex: 1 1 240px; font-variant-numeric: tabular-nums; }
+.chg-note { flex: 1 1 100%; font-size: 12.5px; color: var(--cream-hi); line-height: 1.45; }
+.chg-note span { display: inline-block; min-width: 54px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+.chg-pending { background: rgba(217,164,65,0.28); border-color: rgba(217,164,65,0.5); color: #7d5c14; }
+.chg-approved { background: rgba(134,165,100,0.22); border-color: rgba(134,165,100,0.5); color: var(--green); }
+.chg-declined, .chg-withdrawn { background: rgba(100,91,61,0.10); }
+/* under the cabinet picker (#pickModal, 70), which opens from inside it */
+#tChangeModal { position: fixed; inset: 0; z-index: 68; display: flex; align-items: flex-start; justify-content: center; padding: 5vh 16px; overflow-y: auto; background: rgba(40,36,22,0.45); }
+.cloud-card.chg-card { width: 760px; max-width: 96vw; }
+.chg-unit { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; background: #fff; }
+.chg-unit-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; font-size: 14px; color: var(--cream-hi); }
+.chg-unit-h label { display: flex; align-items: center; gap: 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.chg-card input[type="number"] { width: 72px; font-family: inherit; font-size: 13px; padding: 5px 7px; text-align: right; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--cream-hi); }
+.chg-unit .ghost.sm { margin-top: 8px; }
+.chg-sum { border: 1px solid var(--line-strong); border-radius: 8px; padding: 12px 14px; margin: 12px 0; background: var(--paper); font-size: 13px; }
+.chg-sum-h { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+.chg-sum ul { margin: 6px 0 8px; padding-left: 18px; line-height: 1.5; }
+.chg-sum em { font-style: normal; color: var(--dim); font-variant-numeric: tabular-nums; }
+.chg-sum-tot { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 8px; color: var(--cream-hi); }
+.chg-sum-tot strong { font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chg-sum-empty { color: var(--dim); }
+.chg-note-l { display: flex; flex-direction: column; gap: 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.chg-note-l textarea { font-family: inherit; font-size: 13px; text-transform: none; letter-spacing: 0; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--cream-hi); resize: vertical; }
+.order-revised { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
