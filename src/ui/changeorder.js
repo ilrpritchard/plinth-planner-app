@@ -9,7 +9,7 @@ import { esc } from '../core/submittal.js';
 import { fmtCents } from '../core/invoice.js';
 import { fmtDelta } from '../core/changeorder.js';
 
-const DISCLAIMER = 'This change order amends the referenced trade order. Once countersigned by both parties the revised totals below supersede the original order value; unchanged lines keep their original pricing and are not re-billed. Removed quantities are credited at the ordered price; added or changed lines are priced at the current catalogue rate. All amounts are in USD. Dimensions and site measurements remain as entered by the client - the client is responsible for confirming every measurement on site.';
+const DISCLAIMER = 'This change order amends the referenced trade order. Once countersigned by both parties the revised totals below supersede the original order value; unchanged lines keep their original pricing and are not re-billed. Removed quantities are credited at the ordered price; added or changed lines are priced at the current catalogue rate. All amounts are in USD. Dimensions and site measurements remain as entered by the Buyer - the Buyer is responsible for confirming every measurement on site.';
 
 const CSS = `
     @page { size: letter portrait; margin: 12mm; }
@@ -111,7 +111,7 @@ export function buildChangeOrderHTML(m) {
     <div class="body">
       <div class="co-top">
         <div class="co-box">
-          <h3 style="margin-top:0">CLIENT</h3>
+          <h3 style="margin-top:0">BUYER</h3>
           <div class="who">${esc(c.name || 'Trade customer')}</div>
           <div>${esc(c.email || '')}</div>
           <div class="mut">Project: ${esc(m.project)}</div>
@@ -156,7 +156,7 @@ export function buildChangeOrderHTML(m) {
     </div>
     <footer>
       <span class="disc"><strong>Please note:</strong> ${esc(DISCLAIMER)}</span>
-      <span class="stamp">${esc(m.dates.issued)} - ${esc(m.coNo)}<br>Made with PL/NNER - the PL/NTH kitchen planner - plinthmade.com</span>
+      <span class="stamp">${esc(m.dates.issued)} - ${esc(m.coNo)}<br>plinthmade.com</span>
     </footer>
   </section>`;
 

@@ -76,12 +76,18 @@ test('splitDeposit: deposit + balance always equals the grand total', () => {
 
 // ---- due dates -------------------------------------------------------------------
 
-test('balance due: phased order → 14 days before the Phase 1 window opens', () => {
+test('balance due: a phased order is on notice too, and never prints a delivery date', () => {
   assert.ok(snap.phases.length >= 1, 'tower snapshot should be phased');
   const due = balanceDue(snap);
-  const expected = Date.parse(snap.phases[0].window.from) - BALANCE_LEAD_DAYS * 24 * 3600 * 1000;
-  assert.equal(due.date, new Date(expected).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
-  assert.match(due.label, /14 days before the Phase 1 delivery window/);
+  assert.equal(due.date, null);
+  assert.match(due.label, /on notice/i);
+  for (const kind of ['deposit', 'balance']) {
+    const html = buildInvoiceHTML(buildInvoiceModel({ order_no: 'PL-2607-K7WQ', placed_at: new Date(NOW).toISOString(), data: snap }, { kind, now: NOW }));
+    assert.doesNotMatch(html, /delivery window/i);
+    assert.doesNotMatch(html, /Made with/);
+    assert.doesNotMatch(html, /the client/i);
+    assert.doesNotMatch(html, /confirmation email/i);
+  }
 });
 
 test('balance due: unphased order → on notice, no fixed date', () => {
@@ -152,12 +158,12 @@ test('kind full bills the whole grand total', () => {
   assert.ok(m.schedule.every((s) => s.billed));
 });
 
-test('deposit is due on receipt; phased balance carries the derived date', () => {
+test('deposit is due on receipt; every balance is due on notice (no delivery-date promise)', () => {
   const dep = buildInvoiceModel(row, { kind: 'deposit', now: NOW });
   assert.equal(dep.dates.dueLabel, 'Due on receipt');
   const bal = buildInvoiceModel(row, { kind: 'balance', now: NOW });
-  assert.ok(bal.dates.due, 'phased balance should have a concrete due date');
-  assert.match(bal.dates.dueLabel, /14 days before the Phase 1/);
+  assert.equal(bal.dates.due, null, 'a phased balance is not dated off a delivery window');
+  assert.match(bal.dates.dueLabel, /on notice/i);
   // unphased → on notice
   const flatRow = { order_no: flatSnap.orderNo, placed_at: flatSnap.placedAt, data: flatSnap };
   const flatBal = buildInvoiceModel(flatRow, { kind: 'balance', now: NOW });
@@ -256,7 +262,7 @@ test('invoice HTML: one portrait page with the key blocks + correct money', () =
   assert.match(html, /AMOUNT DUE/);
   assert.match(html, /PAYMENT SCHEDULE/);
   assert.match(html, /PAYMENT INSTRUCTIONS/);
-  assert.match(html, /order confirmation email/);
+  assert.match(html, /sends payment details when the order is confirmed/);
   assert.ok(html.includes(fmtCents(m.amountDueCents)), 'amount due printed');
   assert.ok(html.includes(fmtCents(m.totals.grandCents)), 'grand total printed');
   assert.ok(html.includes('Imogen'), 'bill-to name printed');

@@ -27,7 +27,7 @@ export function trackingHTML(order) {
       <div class="trk-phases-h">Delivery phases</div>
       ${phases.map((p) => `<div class="trk-phase">
         <strong>${esc(p.id.replace(/^P/, 'Phase '))}</strong>
-        <span class="trk-phase-l">${esc(p.label)}${p.units ? ` · ${p.units} unit${p.units === 1 ? '' : 's'}` : ''}</span>
+        <span class="trk-phase-l">${esc([p.label, p.units ? `${p.units} unit${p.units === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '))}</span>
         <span class="trk-bar"><i style="width:${p.pct}%"></i></span>
         <span class="status-pill st-${esc(p.status)}">${esc(p.statusLabel)}</span>
       </div>`).join('')}
@@ -43,7 +43,7 @@ export function trackingPageHTML(order) {
   return `<div class="trade-wrap orders-wrap trk-page">
     <header class="trade-head">
       <div>
-        <div class="trade-title">PL<span class="slash">/</span>NTH <span>Order tracking</span></div>
+        <div class="trade-title">Order tracking</div>
         <div class="trade-sub">Read-only. Anyone with this link can follow the order.</div>
       </div>
       <div class="trade-meta"><a class="ghost sm tlink" href="${esc(location.pathname)}?mode=trade">Open the planner</a></div>

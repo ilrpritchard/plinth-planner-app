@@ -191,7 +191,7 @@ export function buildChangeOrderModel(order, liveTrade, opts = {}) {
       netDeltaCents: newGrandCents - oldGrandCents,
     },
     signoff: [
-      { party: 'Client / Buyer', name: (d.customer && d.customer.name) || '' },
+      { party: 'Buyer', name: (d.customer && d.customer.name) || '' },
       { party: 'PL/NTH', name: '' },
     ],
   };

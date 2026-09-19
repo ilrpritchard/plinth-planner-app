@@ -49,7 +49,7 @@ export function trackingSteps(order) {
 export function phaseRows(order) {
   return mergedPhases(order).map((p) => {
     const rank = Math.max(0, statusRank(p.status));
-    return { id: p.id, label: p.label || '', units: p.units || 0, cabinets: p.cabinets || 0, status: p.status, statusLabel: p.status === 'submitted' ? 'Not started' : (TRACK_LABELS[p.status] || statusLabel(p.status)), pct: Math.round((rank / (STATUSES.length - 1)) * 100) };
+    return { id: p.id, label: /^unassigned/i.test(p.label || '') ? '' : (p.label || ''), units: p.units || 0, cabinets: p.cabinets || 0, status: p.status, statusLabel: p.status === 'submitted' ? 'Not started' : (TRACK_LABELS[p.status] || statusLabel(p.status)), pct: Math.round((rank / (STATUSES.length - 1)) * 100) };
   });
 }
 

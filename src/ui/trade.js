@@ -1024,7 +1024,7 @@ export class TradeUI {
         </div>
         <header class="trade-head">
           <div>
-            <div class="trade-title">PL<span class="slash">/</span>NTH <span>Project</span></div>
+            <div class="trade-title">Project</div>
             <div class="trade-sub">Project spec shared for approval</div>
           </div>
           <div class="trade-meta approval-meta">
@@ -1240,7 +1240,7 @@ export class TradeUI {
     else {
       this.root.innerHTML = `<div class="trade-wrap orders-wrap trk-page">
         <header class="trade-head"><div>
-          <div class="trade-title">PL<span class="slash">/</span>NTH <span>Order tracking</span></div>
+          <div class="trade-title">Order tracking</div>
         </div><div class="trade-meta"><button class="ghost sm" id="trkBack">Open the planner</button></div></header>
         <div class="orders-empty">${tr.state === 'loading'
           ? '<div class="cloud-msg">Loading the order…</div>'
@@ -1277,7 +1277,7 @@ export class TradeUI {
       <div class="trade-wrap orders-wrap">
         <header class="trade-head">
           <div>
-            <div class="trade-title">PL<span class="slash">/</span>NTH <span>Orders</span></div>
+            <div class="trade-title">Orders</div>
             <div class="trade-sub">Your placed trade orders, with live status from PL/NTH</div>
           </div>
           <div class="trade-meta"><button class="ghost sm" id="oBack">← Back to project</button></div>

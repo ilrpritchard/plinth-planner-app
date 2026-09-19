@@ -9,9 +9,9 @@
 import { esc } from '../core/submittal.js';
 import { fmtCents } from '../core/invoice.js';
 
-const DISCLAIMER = 'This pro-forma invoice is issued for payment against the referenced trade order and is not a tax invoice. All amounts are in USD. Cabinet quantities, dimensions and site measurements are as entered by the client at the time of order - the client is responsible for confirming every measurement on site.';
+const DISCLAIMER = 'This pro-forma invoice is issued for payment against the referenced trade order and is not a tax invoice. All amounts are in USD. Cabinet quantities, dimensions and site measurements are as entered by the Buyer at the time of order - the Buyer is responsible for confirming every measurement on site.';
 
-const PAYMENT_NOTE = 'Payment details are included on your order confirmation email - reference your order number.';
+const PAYMENT_NOTE = 'PL/NTH sends payment details when the order is confirmed.';
 
 const CSS = `
     @page { size: letter portrait; margin: 12mm; }
@@ -123,7 +123,7 @@ export function buildInvoiceHTML(m) {
     </div>
     <footer>
       <span class="disc"><strong>Please note:</strong> ${esc(DISCLAIMER)}</span>
-      <span class="stamp">${esc(m.dates.issued)} - ${esc(m.invoiceNo)}<br>Made with PL/NNER - the PL/NTH kitchen planner - plinthmade.com</span>
+      <span class="stamp">${esc(m.dates.issued)} - ${esc(m.invoiceNo)}<br>plinthmade.com</span>
     </footer>
   </section>`;
 

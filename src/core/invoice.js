@@ -12,12 +12,12 @@
 // Payment terms (the default schedule):
 //   50% deposit on order confirmation — due on receipt
 //   50% balance before the first shipment — when the order is phased, due
-//   14 days before the Phase 1 delivery window opens; otherwise on notice.
+//   on notice before the first shipment (never dated off a delivery window).
 
 export const INVOICE_KINDS = ['deposit', 'balance', 'full'];
 
 export const DEFAULT_DEPOSIT_PCT = 50;
-export const BALANCE_LEAD_DAYS = 14;         // balance due this long before phase 1
+export const BALANCE_LEAD_DAYS = 14;         // kept for callers; no longer printed (no delivery-date promises)
 
 /** Dollars (number) → integer cents, safely. */
 export function toCents(usd) { return Math.round((Number(usd) || 0) * 100); }
@@ -46,22 +46,12 @@ export function splitDeposit(grandCents, depositPct = DEFAULT_DEPOSIT_PCT) {
 }
 
 /**
- * When is the BALANCE due? Phased orders: 14 days before the Phase 1 window
- * opens (both dates come from the immutable snapshot, so this never drifts).
- * Unphased orders ship as one delivery on a lead time confirmed later, so the
- * balance is simply due on notice, before the first shipment.
+ * When is the BALANCE due? On notice, before the first shipment, for EVERY order.
+ * It used to be dated 14 days before the Phase 1 delivery window: that printed a
+ * delivery date on the invoice, and the planner makes no delivery-date promises
+ * (her rule, W2W-113 / 138). PL/NTH gives the date when production is scheduled.
  */
-export function balanceDue(snapshot) {
-  const phases = (snapshot && snapshot.phases) || [];
-  const from = phases.length && phases[0].window && phases[0].window.from;
-  if (from) {
-    const t = Date.parse(from);
-    if (!Number.isNaN(t)) {
-      const due = t - BALANCE_LEAD_DAYS * 24 * 3600 * 1000;
-      return { date: fmtDate(due), iso: new Date(due).toISOString(),
-        label: `Due ${fmtDate(due)} - ${BALANCE_LEAD_DAYS} days before the Phase 1 delivery window (${from})` };
-    }
-  }
+export function balanceDue() {
   return { date: null, iso: null, label: 'Due on notice, before the first shipment' };
 }
 

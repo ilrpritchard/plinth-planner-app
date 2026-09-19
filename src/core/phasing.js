@@ -108,7 +108,7 @@ export function planPhases(trade, opts = {}) {
       if (entry.qty === 0) first.byType = first.byType.filter((t) => t !== entry);
       batches.unshift({
         floors: null,
-        label: 'Show kitchen — first delivery',
+        label: 'Show kitchen, first delivery',
         units: 1, cabinets: cabs,
         byType: [{ name: entry.name, qty: 1 }],
         showKitchen: true,
