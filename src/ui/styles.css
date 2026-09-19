@@ -1587,3 +1587,26 @@ details.trade-fold > .trade-exports { display: block; padding: 6px 18px 20px; }
 
 /* floor swatches carry a patch of the painted floor: tall enough to read the pattern */
 .rs-chip.rs-chip-floor { height: 46px; }
+
+/* ---- "Keep this layout?" card: top-left of the stage, never a modal ---- */
+#keepCard {
+  position: fixed; top: 70px; left: calc(var(--panel-w) + 16px); z-index: 40; width: 320px; max-width: calc(100vw - 32px);
+  background: #fff; border: 1px solid var(--line-strong); border-radius: 12px; padding: 18px 18px 14px;
+  box-shadow: 0 14px 40px rgba(60,52,30,0.18); color: var(--cream);
+  opacity: 0; transform: translateY(-8px); transition: opacity 0.2s ease, transform 0.2s ease;
+}
+#keepCard.show { opacity: 1; transform: none; }
+#keepCard h3 { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 22px; line-height: 1.15; color: var(--cream-hi); margin: 0 22px 8px 0; letter-spacing: 0; }
+#keepCard .kc-sub { font-size: 13px; line-height: 1.5; margin: 0 0 12px; }
+#keepCard input { width: 100%; box-sizing: border-box; font-family: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--cream-hi); }
+#keepCard input:focus { outline: none; border-color: var(--cream); background: #fff; }
+#keepCard .kc-link { font-size: 12px; }
+#keepCard .kc-err { min-height: 0; margin: 6px 0 0; font-size: 12px; color: var(--red); }
+#keepCard .kc-btns { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+#keepCard .kc-later { background: none; border: 0; padding: 8px 2px; font-size: 13px; color: var(--dim); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+#keepCard .kc-later:hover { color: var(--cream-hi); filter: none; }
+#keepCard .kc-acct { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.5; color: var(--dim); }
+#keepCard .kc-x { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--dim); font-size: 18px; line-height: 1; cursor: pointer; }
+#keepCard .kc-x:hover { background: var(--paper); color: var(--cream-hi); filter: none; }
+body.mode-trade #keepCard, body.printing-quote #keepCard { display: none; }
+@media (max-width: 820px) { #keepCard { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; max-width: none; } }

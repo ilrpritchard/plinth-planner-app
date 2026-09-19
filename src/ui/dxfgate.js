@@ -48,6 +48,20 @@ async function recordLead(email, source) {
   }
 }
 
+export const looksLikeEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
+
+/** An email left somewhere other than the gate modal (the Keep-this-layout card):
+ *  remembered exactly like a gate email, so no later gate asks again, and recorded
+ *  as a lead with the usual design context. */
+export function captureEmail(email, source) {
+  const e = String(email || '').trim();
+  if (!looksLikeEmail(e)) return false;
+  try { localStorage.setItem(KEY, e); } catch { /* private mode: the lead still records */ }
+  markGated();
+  recordLead(e, source);
+  return true;
+}
+
 /**
  * Resolves true once we have an email for this visitor; false if they bail.
  * copy = { title, sub, cta } tailors the card to the action being gated.

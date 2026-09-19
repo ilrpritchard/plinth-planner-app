@@ -8,6 +8,8 @@ import { planWallInfill } from './core/templates.js';
 import { parseLength, fmtFeetIn } from './core/units.js';
 import { autosave, loadSaved, loadFromHash, buildShareURL } from './core/persistence.js';
 import { shortShareURL, fetchShortDesign } from './core/sharelink.js';
+import { createKeepTracker } from './core/keepprompt.js';
+import { showKeepCard } from './ui/keepcard.js';
 import { Scene } from './scene/Scene.js';
 import { Room } from './scene/Room.js';
 import { Worktop } from './models/worktop.js';
@@ -32,7 +34,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-135 · very short share links (?s=code), falling back to the self-contained link';
+const BUILD = 'W2W-136 · Keep this layout? card: email for a link, once a session';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -490,21 +492,32 @@ if (cloudUI && isCloud()) {
   });
 }
 
-// gentle reminder to sign in + save after 5 minutes of unsaved work
-// (home voice only — never in TRADE, and never mid unit-design session,
-// where saving goes through the unit's Done banner / trade project save)
-setInterval(() => {
-  if (store.state.mode === 'trade' || tradeUI?.designingUnit()) return;
-  if (isCloud() && !cloudUI.user && store.state.items.length > 0) {
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.innerHTML = 'Don’t lose this layout, <strong>sign in to save it.</strong>';
-    t.style.cursor = 'pointer';
-    t.addEventListener('click', () => { cloudUI.open(); t.remove(); });
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 7000);
-  }
-}, 5 * 60 * 1000);
+// ----- "Keep this layout?" -----
+// One quiet card per session for a visitor who is not signed in, timed by
+// core/keepprompt.js: 5 ACTIVE minutes with a kitchen in the room, or a they-care
+// moment (Start editing, an idea kept, a second re-roll) plus 2 more. Email only;
+// the link is shown on the card (the planner cannot email customers yet). It
+// replaces a toast that fired every 5 minutes on the clock and vanished in 7s.
+const keepTracker = createKeepTracker();
+{
+  let asked = false;
+  try { asked = sessionStorage.getItem('plnr-keep-asked') === '1'; } catch { /* private mode */ }
+  if (asked) keepTracker.finish();
+  let lastNote = 0;
+  const note = () => { const t = Date.now(); if (t - lastNote > 1000) { lastNote = t; keepTracker.activity(); } };
+  for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart']) window.addEventListener(ev, note, { passive: true, capture: true });
+  const busy = () => !!document.querySelector('#wizard.show, #uiDialog.show, #cloudModal.show, #orderCheckModal.show, #dxfGate.show, #pickModal, #keepCard')
+    || document.body.classList.contains('wz-reviewing') || planActive || quoteOverlay?.classList.contains('show');
+  const cabinets = () => store.state.items.filter((it) => { const c = getCab(it.code); return c && c.placeable && !c.notSupplied; }).length;
+  setInterval(() => {
+    if (keepTracker.finished || !isCloud()) return;
+    const ok = keepTracker.shouldShow({ cabinets: cabinets(), mode: store.state.mode, designing: !!tradeUI?.designingUnit(), signedIn: !!cloudUI?.user, busy: busy() });
+    if (!ok) return;
+    keepTracker.finish();
+    try { sessionStorage.setItem('plnr-keep-asked', '1'); } catch { /* ignore */ }
+    showKeepCard({ getLink: () => shortShareURL(store), onAccount: () => cloudUI.open() });
+  }, 10e3);
+}
 
 // ----- compare tray: keep up to 3 generated ideas with live thumbnails -----
 const ideas = [];
@@ -531,6 +544,7 @@ function keepIdeaForCompare() {
     if (ideas.length > 3) ideas.pop();
     renderIdeaTray();
     toast(`Kept: ${ideas.length} of 3 ideas in your compare tray.`);
+    keepTracker.signal('kept-idea');
   } catch { room.setGridVisible(true); }
 }
 
@@ -553,7 +567,7 @@ const wizard = new Wizard({
   store,
   controls,
   // "Start editing" clears any cabinet the sketch left selected, so the swap bar does not appear unasked
-  onEdit: () => { layer.select(null); ui.showSelbar(null); },
+  onEdit: () => { layer.select(null); ui.showSelbar(null); keepTracker.signal('start-editing'); },
   // while a TRADE unit-design session is open, the wizard speaks to the pro
   tradeUnit: () => tradeUI?.designingUnit() || null,
   onCompare: keepIdeaForCompare,
@@ -566,7 +580,7 @@ const wizard = new Wizard({
 });
 document.getElementById('wzOpen')?.addEventListener('click', () => wizard.open());
 document.getElementById('wzTopOpen')?.addEventListener('click', () => wizard.open());
-document.getElementById('wzAgain')?.addEventListener('click', () => { if (wizard.lastShape) wizard.regenerate(); else wizard.open(); });
+document.getElementById('wzAgain')?.addEventListener('click', () => { keepTracker.signal('reroll'); if (wizard.lastShape) wizard.regenerate(); else wizard.open(); });
 // first-time visitor (nothing restored, empty room) → open the guided wizard
 // (skipped when the site's trade CTAs land here with ?mode=trade — pros go
 // straight to the TRADE workspace, not the homeowner drawing board)
