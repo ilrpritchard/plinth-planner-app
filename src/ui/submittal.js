@@ -491,7 +491,7 @@ const CSS = `
     .cover h2 { font-size: 17px; margin: 4px 0 0; font-weight: 600; color: #5c5535; }
     .cover-sub { font-size: 11px; margin-top: 6px; color: #5c5535; }
     .cover-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; margin-top: 7mm; }
-    .swatch { display: inline-block; width: 10px; height: 10px; border: 1px solid #b8ab90; border-radius: 2px; vertical-align: -1px; }
+    .swatch { display: inline-block; width: 9px; height: 9px; border: 1px solid #b8ab90; border-radius: 2px; vertical-align: -1px; margin-left: 3px; }
     table { border-collapse: collapse; width: 100%; font-size: 9.5px; }
     table.idx td { padding: 3px 6px 3px 0; border-bottom: 1px solid #ece4d2; }
     table.idx td.no { width: 52px; font-weight: 700; }
@@ -511,8 +511,8 @@ const CSS = `
     table.fin:not(.comp) td:nth-child(2) { width: 122px; }
     table.cab { table-layout: fixed; }
     table.key { table-layout: auto; }
-    table.fin th { text-align: left; padding: 3px 8px 3px 0; width: 118px; color: #7d7558; font-weight: 600; vertical-align: top; }
-    table.fin td { padding: 3px 8px 3px 0; border-bottom: 1px solid #ece4d2; vertical-align: top; }
+    table.fin th { text-align: left; padding: 3px 8px 3px 0; width: 118px; color: #7d7558; font-weight: 600; vertical-align: baseline; }
+    table.fin td { padding: 3px 8px 3px 0; border-bottom: 1px solid #ece4d2; vertical-align: baseline; }
     table.fin td.mut { color: #948e6e; font-size: 8.5px; }
     table.fin tr.hi td, table.fin tr.hi th { border-top: 2px solid #645b3d; border-bottom: none; }
     table.cab th { text-align: left; font-size: 8px; letter-spacing: 0.8px; color: #7d7558; border-bottom: 1px solid #645b3d; padding: 2px 6px 3px 0; }
@@ -522,7 +522,7 @@ const CSS = `
     .tr { text-align: right; color: #7d7558; }
     .cut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; align-content: start; padding-top: 3mm; }
     .cut-card { border: 1px solid #d9cfb8; border-radius: 6px; padding: 6px 10px; text-align: center; }
-    .cut-glyph { display: flex; justify-content: center; align-items: flex-end; }
+    .cut-glyph { display: flex; justify-content: flex-start; align-items: flex-end; }
     .cut-glyph svg { max-width: 100%; }
     .cut-card { text-align: left; }
     .cut-head { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; border-bottom: 1px solid #645b3d; padding-bottom: 2px; }

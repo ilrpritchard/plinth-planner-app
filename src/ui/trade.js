@@ -56,7 +56,7 @@ import { buildChangeOrderModel } from '../core/changeorder.js';
 import { buildChangeOrderHTML } from './changeorder.js';
 import { planRowsLayout, rowsNotInDesign } from '../core/rowlayout.js';
 import { trackURL, ORDER_NO } from '../core/ordertrack.js';
-import { trackingHTML, trackingPageHTML, findOrderHTML } from './ordertrack.js';
+import { trackingHTML, trackingPageHTML, findOrderHTML, buildTrackingDocHTML } from './ordertrack.js';
 import { looksLikeEmail } from './dxfgate.js';
 
 const BED_TYPES = ['Studio', '1 Bed', '2 Bed', '3 Bed', '4 Bed', 'Penthouse'];
@@ -1236,8 +1236,13 @@ export class TradeUI {
 
   renderTracking() {
     const tr = this._track || { state: 'missing' };
-    if (tr.state === 'ok') this.root.innerHTML = trackingPageHTML(tr.order);
-    else {
+    if (tr.state === 'ok') {
+      this.root.innerHTML = trackingPageHTML(tr.order);
+      this.root.querySelector('#trkPrint')?.addEventListener('click', () => {
+        openPrintWindow(buildTrackingDocHTML(tr.order));
+        toast('Order status opened. Use the print dialog to save it as a PDF.');
+      });
+    } else {
       this.root.innerHTML = `<div class="trade-wrap orders-wrap trk-page">
         <header class="trade-head"><div>
           <div class="trade-title">Order tracking</div>

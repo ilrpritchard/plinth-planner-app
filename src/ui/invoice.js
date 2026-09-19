@@ -119,7 +119,7 @@ export function buildInvoiceHTML(m) {
       </table>
 
       <h3>PAYMENT INSTRUCTIONS</h3>
-      <div class="pay-note">${esc(PAYMENT_NOTE)} Wire / ACH remittances should quote <strong>${esc(m.invoiceNo)}</strong> and order <strong>${esc(m.orderNo)}</strong>.</div>
+      <div class="pay-note">${esc(PAYMENT_NOTE)} Payment reference: <strong>${esc(m.orderNo)}</strong>.</div>
     </div>
     <footer>
       <span class="disc"><strong>Please note:</strong> ${esc(DISCLAIMER)}</span>

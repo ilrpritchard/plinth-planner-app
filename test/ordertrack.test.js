@@ -56,3 +56,16 @@ test('the public tracking view is built field by field: no prices, customer, des
   assert.ok(fn.includes('length(p_token) >= 32'), 'short tokens are refused');
   assert.ok(/find_order[\s\S]*contact_email = lower\(trim\(p_email\)\)/.test(sql), 'find my order needs the email as well as the number');
 });
+
+test('the printable order status: US Letter, branded, and no prices or page chrome', async () => {
+  globalThis.location = globalThis.location || { pathname: '/', origin: 'https://planner.plinthmade.com' };
+  const { buildTrackingDocHTML } = await import('../src/ui/ordertrack.js');
+  const html = buildTrackingDocHTML({ order_no: 'PL-2609-K7M2', project: 'Harbor Row', status: 'confirmed', placed_at: '2026-09-02T14:00:00Z',
+    status_log: [{ at: '2026-09-02T14:00:00Z', status: 'submitted' }, { at: '2026-09-05T10:00:00Z', status: 'confirmed' }],
+    phases: [{ id: 'P1', label: 'Show kitchen, first delivery', units: 1 }, { id: 'P2', label: 'Unassigned floors', units: 23 }],
+    unitTypes: [{ name: 'A', rev: 'A', units: 24, lines: [{ code: 'F2', desc: 'Single 24"', qty: 2 }] }] }, Date.parse('2026-09-19T12:00:00Z'));
+  assert.match(html, /size: letter portrait/);
+  assert.match(html, /ORDER STATUS/);
+  assert.match(html, /Current status: <strong>Confirmed/);
+  assert.doesNotMatch(html, /\$|Open the planner|Read-only|Unassigned|—/);
+});

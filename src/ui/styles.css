@@ -182,7 +182,10 @@ button.cta:hover { background: var(--cream-hi); filter: none; }
 .sd-val:empty { display: none; }
 .setup-drop[open] > summary::after { content: '⌃'; }
 .setup-drop[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 12px; }
-.setup-drop > *:last-child { margin-bottom: 14px; }
+/* the foot gap belongs to the panel, not to its last child: Floorplan underlay's last
+   child is a HIDDEN controls block, so its button sat hard against the bottom edge */
+.setup-drop[open] { padding-bottom: 14px; }
+.setup-drop > *:last-child { margin-bottom: 0; }
 
 /* left panel: BUILD / ROOM segmented tabs (styled like the mode-switch) */
 #leftBody { display: flex; flex-direction: column; }
