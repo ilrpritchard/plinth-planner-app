@@ -34,7 +34,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-137 · ?reset=1 starts the planner fresh in this browser (asks first)';
+const BUILD = 'W2W-138 · order tracking: a private link per order, find an order by number + email, no account needed';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -46,6 +46,8 @@ const TSHARE = new URLSearchParams(location.search).get('tshare');
 const BOOK = new URLSearchParams(location.search).get('book') === '1';
 // ?s=code — a very short share link: the design is fetched after boot (see below)
 const SHORT = new URLSearchParams(location.search).get('s');
+// ?order=<token> — a private order-tracking link: read-only status page, no sign-in (see below)
+const ORDER = new URLSearchParams(location.search).get('order');
 // Load the last local session FIRST, then let a shared #d= design replace the
 // visible design on top of it. Order matters: the saved trade project must be
 // in the store before the hash load so preserveTrade can keep it — a share
@@ -562,6 +564,12 @@ if (TSHARE && tradeUI) {
   });
 }
 
+// ----- order tracking link (?order=<token>) -----
+// The token is the key (an order number alone is guessable, so it never is).
+// The param STAYS in the address bar: people reload and bookmark a tracking page.
+// A malformed token never reaches the network: the page says "Order not found".
+if (ORDER && !TSHARE && tradeUI) tradeUI.showTracking(ORDER);
+
 // ----- guided setup wizard -----
 const wizard = new Wizard({
   store,
@@ -584,7 +592,7 @@ document.getElementById('wzAgain')?.addEventListener('click', () => { keepTracke
 // first-time visitor (nothing restored, empty room) → open the guided wizard
 // (skipped when the site's trade CTAs land here with ?mode=trade — pros go
 // straight to the TRADE workspace, not the homeowner drawing board)
-if (!TSHARE && !BOOK && !SHORT && new URLSearchParams(location.search).get('reset') !== '1' && !fromHash && !fromSave && store.state.items.length === 0 && store.state.mode !== 'trade') {
+if (!TSHARE && !BOOK && !SHORT && !ORDER && new URLSearchParams(location.search).get('reset') !== '1' && !fromHash && !fromSave && store.state.items.length === 0 && store.state.mode !== 'trade') {
   mobileHold.then(() => setTimeout(() => wizard.open(), 400));
 }
 

@@ -198,9 +198,10 @@ export async function placeOrder(snapshot) {
 /** The signed-in user's orders, newest first (RLS scopes to owner). */
 export async function listOrders() {
   const token = await authed();
-  const res = await fetch(rest('trade_orders?select=id,order_no,project,status,phase_status,placed_at,data&order=placed_at.desc'), {
-    headers: headers(token),
-  });
+  const cols = 'id,owner,order_no,project,status,phase_status,placed_at,data';
+  let res = await fetch(rest(`trade_orders?select=${cols},track_token,status_log,update_note,update_note_at&order=placed_at.desc`), { headers: headers(token) });
+  // before SUPABASE_TRACKING.sql the extra columns do not exist (400): ask for the original set
+  if (res.status === 400) res = await fetch(rest(`trade_orders?select=${cols}&order=placed_at.desc`), { headers: headers(token) });
   return (await parse(res)) || [];
 }
 
@@ -228,12 +229,15 @@ export async function cancelOrder(id) {
  * PL/NTH-only: move an order (and/or its phases) through the pipeline.
  * `status` or `phaseStatus` may be null to leave that side untouched.
  */
-export async function adminSetStatus(id, status, phaseStatus = null) {
+export async function adminSetStatus(id, status, phaseStatus = null, note = '') {
   const token = await authed();
-  const res = await fetch(rest('rpc/set_order_status'), {
-    method: 'POST', headers: headers(token),
-    body: JSON.stringify({ order_id: id, new_status: status || null, phase: phaseStatus || null }),
+  const body = { order_id: id, new_status: status || null, phase: phaseStatus || null };
+  const n = String(note || '').trim();
+  let res = await fetch(rest('rpc/set_order_status'), {
+    method: 'POST', headers: headers(token), body: JSON.stringify(n ? { ...body, note: n } : body),
   });
+  // SUPABASE_TRACKING.sql not run yet: the old function has no `note` argument
+  if (n && res.status === 404) res = await fetch(rest('rpc/set_order_status'), { method: 'POST', headers: headers(token), body: JSON.stringify(body) });
   await parse(res);
   return true;
 }
@@ -298,3 +302,43 @@ export async function submitApproval({ name, email, project, revs }) {
   await parse(res);
   return true;
 }
+
+// ---- order tracking without an account (run SUPABASE_TRACKING.sql once) ----------
+// Every call DEGRADES to null: before the SQL is run, offline, or a wrong token.
+async function anonRpc(fn, body) {
+  if (!cloudEnabled()) return null;
+  try {
+    const res = await fetch(rest(`rpc/${fn}`), { method: 'POST', headers: headers(null), body: JSON.stringify(body) });
+    if (res.status === 409) return { conflict: true };
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+/** A quote request from someone who is not signed in becomes a real, trackable
+ *  order. Returns { orderNo, token } or null (the caller falls back to email). */
+export async function placeOrderPublic(snapshot) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const out = await anonRpc('place_order_public', { p_order_no: snapshot.orderNo, p_project: snapshot.project || 'Untitled project', p_data: snapshot });
+    if (out && out.conflict) { snapshot.orderNo = genOrderNo(); continue; }
+    return typeof out === 'string' && out.length >= 32 ? { orderNo: snapshot.orderNo, token: out } : null;
+  }
+  return null;
+}
+
+/** The read-only tracking view for a private link (no prices, no customer). */
+export async function fetchOrderByToken(token) {
+  const t = String(token || '').trim().toLowerCase();
+  if (!/^[a-f0-9]{32,64}$/.test(t)) return null;
+  const out = await anonRpc('get_order_by_token', { p_token: t });
+  return out && typeof out === 'object' && out.order_no ? out : null;
+}
+
+/** "Find my order": the number AND the email it was placed with -> token | null. */
+export async function findOrderToken(orderNo, email) {
+  const no = String(orderNo || '').trim().toUpperCase(), em = String(email || '').trim().toLowerCase();
+  if (!/^PL-\d{4}-[A-Z2-9]{4}$/.test(no) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return null;
+  const out = await anonRpc('find_order', { p_order_no: no, p_email: em });
+  return typeof out === 'string' && out.length >= 32 ? out : null;
+}
+

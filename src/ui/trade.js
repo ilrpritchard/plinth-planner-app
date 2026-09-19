@@ -43,6 +43,7 @@ import {
   saveTradeProject, listTradeProjects, loadTradeProject,
   ensureShareToken, submitApproval,
   placeOrder, listOrders, cancelOrder, adminSetStatus, isOrderAdmin,
+  placeOrderPublic, fetchOrderByToken, findOrderToken,
   logOrderDoc, listOrderDocs,
 } from '../core/tradecloud.js';
 import {
@@ -54,6 +55,9 @@ import { buildInvoiceHTML } from './invoice.js';
 import { buildChangeOrderModel } from '../core/changeorder.js';
 import { buildChangeOrderHTML } from './changeorder.js';
 import { planRowsLayout, rowsNotInDesign } from '../core/rowlayout.js';
+import { trackURL, ORDER_NO } from '../core/ordertrack.js';
+import { trackingHTML, trackingPageHTML, findOrderHTML } from './ordertrack.js';
+import { looksLikeEmail } from './dxfgate.js';
 
 const BED_TYPES = ['Studio', '1 Bed', '2 Bed', '3 Bed', '4 Bed', 'Penthouse'];
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -64,7 +68,7 @@ export class TradeUI {
     this.onDesignLoad = onDesignLoad || null;
     this.openAccount = openAccount || null;  // opens the existing sign-in modal
     this.approval = false;                   // read-only ?tshare= approval view
-    this.view = 'build';                     // 'build' | 'orders'
+    this.view = 'build';                     // 'build' | 'orders' | 'track' (read-only, from a tracking link)
     this._lastOrder = null;                  // snapshot placed this session
     this._detailsOpen = false;               // project details fold (UI only)
     this._exportsOpen = false;               // downloads fold (UI only)
@@ -116,6 +120,7 @@ export class TradeUI {
   render() {
     if (!this.root) return;
     if (this.approval) { this.renderApproval(); return; }
+    if (this.view === 'track') { this.renderTracking(); return; }
     if (this.view === 'orders') { this.renderOrders(); return; }
     const t = this.t;
     if (!t.units.length) { this.renderWelcome(); return; }
@@ -1094,7 +1099,20 @@ export class TradeUI {
     let user = null;
     try { user = await currentUser(); } catch { user = null; }
     if (!user) {
-      // signed out: the request goes to plinthmade.com, which emails PL/NTH (no account needed)
+      // signed out, no account needed: a real order record with a private tracking
+      // link (SUPABASE_TRACKING.sql). Until that SQL is run, or if the cloud is
+      // unreachable, the request goes to plinthmade.com, which emails PL/NTH.
+      const anonSnap = buildOrderSnapshot(this.t, { customer: this.store.state.customer });
+      const placed = await placeOrderPublic(anonSnap).catch(() => null);
+      if (placed && placed.token) {
+        anonSnap.orderNo = placed.orderNo || anonSnap.orderNo;
+        this._lastOrder = anonSnap;
+        // PL/NTH still gets the website's email (best effort): the order row alone
+        // only reaches an inbox once the notify function has its mail key
+        this.quoteByWeb(anonSnap.orderNo).catch(() => {});
+        this.showOrderSuccess(anonSnap, placed.token, { signedOut: true });
+        return;
+      }
       try {
         await this.quoteByWeb();
         await uiAlert('Your project and the full cabinet list are with PL/NTH. We reply by email with the fixed price. Sign in any time to track it under Orders.', { title: 'Quote requested', okLabel: 'Done' });
@@ -1104,9 +1122,9 @@ export class TradeUI {
 
     const snapshot = buildOrderSnapshot(this.t, { customer: this.store.state.customer });
     try {
-      await placeOrder(snapshot);            // may re-mint orderNo on collision
+      const row = await placeOrder(snapshot); // may re-mint orderNo on collision
       this._lastOrder = snapshot;
-      this.showOrderSuccess(snapshot);
+      this.showOrderSuccess(snapshot, row && row.track_token);
     } catch (e) {
       this.orderFallback('cloud', e && e.message);
     }
@@ -1128,12 +1146,12 @@ export class TradeUI {
 
   /** Signed-out path: POST the request to the website's endpoint (WPCode
    *  snippet on plinthmade.com), which emails PL/NTH with the order text. */
-  async quoteByWeb() {
+  async quoteByWeb(orderNo = '') {
     const mail = buildTradeOrderEmail(this.store.state);
     const cu = this.store.state.customer;
     const r = await fetch('https://plinthmade.com/wp-json/plinth/v1/quote', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: cu.name, email: cu.email, notes: cu.notes || '', project: this.t.project || '', summary: mail.body || '' }),
+      body: JSON.stringify({ name: cu.name, email: cu.email, notes: cu.notes || '', project: this.t.project || '', summary: (orderNo ? `Order ${orderNo} (tracked in the planner, Orders)\n\n` : '') + (mail.body || '') }),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
@@ -1164,7 +1182,8 @@ export class TradeUI {
     m.querySelector('#omEmail').addEventListener('click', () => { m.remove(); this.emailOrder(); });
   }
 
-  showOrderSuccess(snapshot) {
+  showOrderSuccess(snapshot, token = null, { signedOut = false } = {}) {
+    const link = token ? trackURL(token) : '';
     document.getElementById('tOrderModal')?.remove();
     const m = document.createElement('div');
     m.id = 'tOrderModal';
@@ -1173,11 +1192,14 @@ export class TradeUI {
       <div class="order-no-big">${esc(snapshot.orderNo)}</div>
       <p class="cloud-sub">Your project <strong>${esc(snapshot.project)}</strong>
         (${snapshot.totals.cabinets} cabinets · ${fmtUSD(snapshot.totals.grand)}) is with PL/NTH.
-        We reply by email with the fixed price. Track it any time under Orders.</p>
+        We reply by email with the fixed price. ${link
+          ? 'Keep the tracking link below: anyone on the team can follow the order with it, no account needed. It shows status only, never prices.'
+          : 'Track it any time under Orders.'}</p>
+      ${link ? `<div class="trk-link-row"><input id="osLink" readonly value="${esc(link)}" aria-label="Tracking link"><button class="ghost sm" id="osCopy">Copy link</button></div>` : ''}
       <div class="order-modal-btns">
         <button class="ghost" id="osCsv">Download CSV</button>
         <button class="ghost" id="osXlsx">Download workbook</button>
-        <button class="cta" id="osView">View orders</button>
+        <button class="cta" id="osView">${signedOut && token ? 'Open tracking page' : 'View orders'}</button>
       </div>
       <button class="linkbtn order-email-alt" id="osEmail">Send order by email instead</button>
       <button class="cloud-x" id="osClose">×</button></div>`;
@@ -1189,8 +1211,64 @@ export class TradeUI {
       toast('Order CSV downloaded.');
     });
     m.querySelector('#osXlsx').addEventListener('click', () => this.downloadWorkbook());
-    m.querySelector('#osView').addEventListener('click', () => { m.remove(); this.view = 'orders'; this.render(); });
+    m.querySelector('#osView').addEventListener('click', () => {
+      m.remove();
+      if (signedOut && token) return this.showTracking(token);
+      this.view = 'orders'; this.render();
+    });
+    m.querySelector('#osLink')?.addEventListener('focus', (e) => e.target.select());
+    m.querySelector('#osCopy')?.addEventListener('click', () => copyText(link, 'Tracking link copied.'));
     m.querySelector('#osEmail').addEventListener('click', () => this.emailOrder());
+  }
+
+  // ---- TRACKING view: what a private link (?order=<token>) opens. Read-only,
+  // no sign-in, and by design no prices, invoices or customer details: the
+  // server function only ever returns the reduced view (SUPABASE_TRACKING.sql).
+  async showTracking(token) {
+    this._track = { token, order: null, state: 'loading' };
+    this.view = 'track';
+    if (this.store.state.mode !== 'trade') this.store.setMode('trade'); else this.render();
+    const order = await fetchOrderByToken(token).catch(() => null);
+    if (!this._track || this._track.token !== token) return;
+    this._track = { token, order, state: order ? 'ok' : 'missing' };
+    if (this.view === 'track') this.render();
+  }
+
+  renderTracking() {
+    const tr = this._track || { state: 'missing' };
+    if (tr.state === 'ok') this.root.innerHTML = trackingPageHTML(tr.order);
+    else {
+      this.root.innerHTML = `<div class="trade-wrap orders-wrap trk-page">
+        <header class="trade-head"><div>
+          <div class="trade-title">PL<span class="slash">/</span>NTH <span>Order tracking</span></div>
+        </div><div class="trade-meta"><button class="ghost sm" id="trkBack">Open the planner</button></div></header>
+        <div class="orders-empty">${tr.state === 'loading'
+          ? '<div class="cloud-msg">Loading the order…</div>'
+          : `<h3>Order not found</h3><p>This tracking link is not recognised. Check that the whole link was copied, or look the order up by its number and email.</p>${findOrderHTML()}`}</div>
+      </div>`;
+      this.root.querySelector('#trkBack')?.addEventListener('click', () => { this.view = 'build'; this._track = null; this.render(); });
+      this.wireFindOrder(this.root);
+    }
+  }
+
+  /** "Find an order": number + the email it was requested with -> its tracking page. */
+  wireFindOrder(scope) {
+    const form = scope.querySelector('#trkFind'); if (!form) return;
+    const msg = form.querySelector('#trkFindMsg');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const no = form.querySelector('#trkNo').value.trim().toUpperCase();
+      const email = form.querySelector('#trkEmail').value.trim();
+      msg.className = 'cloud-msg err';
+      if (!ORDER_NO.test(no)) { msg.textContent = 'An order number looks like PL-2609-K7M2.'; return; }
+      if (!looksLikeEmail(email)) { msg.textContent = 'Enter the email the quote was requested with.'; return; }
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true; msg.className = 'cloud-msg'; msg.textContent = 'Looking…';
+      const token = await findOrderToken(no, email).catch(() => null);
+      btn.disabled = false;
+      if (!token) { msg.className = 'cloud-msg err'; msg.textContent = 'No order matches that number and email.'; return; }
+      this.showTracking(token);
+    });
   }
 
   // ---- ORDERS view: the signed-in user's placed orders + live status --------
@@ -1214,10 +1292,11 @@ export class TradeUI {
     if (!user) {
       body.innerHTML = `<div class="orders-empty">
         <h3>Sign in to see your orders</h3>
-        <p>Orders placed from your PL/NTH account show up here with their order number and live status.</p>
+        <p>Orders placed from your PL/NTH account show up here with their status, invoices and documents.</p>
         <button class="cta" id="oSignin">Sign in</button>
-      </div>`;
+      </div>${findOrderHTML()}`;
       body.querySelector('#oSignin').addEventListener('click', () => this.openAccount?.());
+      this.wireFindOrder(body);
       return;
     }
 
@@ -1257,12 +1336,16 @@ export class TradeUI {
         ${row.status !== 'cancelled' ? `
           <button class="ghost sm" data-act="d-gen" data-kind="invoice_deposit" title="Pro-forma deposit invoice (50% on confirmation), regenerated from the frozen order, print to PDF">Invoice: Deposit</button>
           <button class="ghost sm" data-act="d-gen" data-kind="invoice_balance" title="Pro-forma balance invoice (50% before first shipment), regenerated from the frozen order, print to PDF">Invoice: Balance</button>` : ''}
+        ${row.track_token ? `<button class="ghost sm" data-act="o-link" title="A private read-only link for the wider team: status only, never prices or invoices. No account needed.">Copy tracking link</button>` : ''}
         ${cancellable ? `<button class="danger sm" data-act="o-cancel" title="Cancel this order: only possible while it's still 'submitted'">Cancel order</button>` : ''}
+        ${admin ? `<input class="adm-note" data-act="adm-note" maxlength="500" placeholder="Note to the buyer (shows on the order and its tracking page)" title="PL/NTH admin: post it on its own, or it goes with the next status change">
+          <button class="ghost sm" data-act="adm-note-send">Post note</button>` : ''}
       </div>
-      ${phases.length ? `<div class="order-phases">${phases.map((p) => `
+      ${admin && d.customer ? `<div class="order-who">${esc([d.customer.name, d.customer.email, row.owner ? '' : 'no account'].filter(Boolean).join(' · '))}</div>` : ''}
+      ${trackingHTML(trackView(row))}
+      ${admin && phases.length ? `<div class="order-phases">${phases.map((p) => `
         <span class="phase-chip st-${esc(p.status)}" data-phase="${esc(p.id)}">
-          <strong>${esc(p.id)}</strong> · ${esc(p.label)} · ${esc(p.window ? `${p.window.from} – ${p.window.to}` : '')} ·
-          <em>${esc(statusLabel(p.status))}</em>
+          <strong>${esc(p.id)}</strong> · ${esc(p.label)}
           ${admin ? statusSel(p.status, 'adm-phase', `data-phase-id="${esc(p.id)}" title="PL/NTH admin: set this phase's status"`) : ''}
         </span>`).join('')}</div>` : ''}
       <details class="order-detail">
@@ -1378,6 +1461,22 @@ export class TradeUI {
         if (row) this.issueDoc(row, gen.dataset.kind);
         return;
       }
+      const ns = e.target.closest('[data-act="adm-note-send"]');
+      if (ns) {
+        const id = ns.closest('[data-oid]')?.dataset.oid;
+        const note = (ns.closest('[data-oid]')?.querySelector('.adm-note')?.value || '').trim();
+        if (!id || !note) return toast('Write the note first.');
+        ns.disabled = true;
+        try { await adminSetStatus(id, null, null, note); toast('Note posted ✓'); this.renderOrders(); }
+        catch (err) { ns.disabled = false; toast(`Could not post: ${err.message || 'are you online?'}`); }
+        return;
+      }
+      const lk = e.target.closest('[data-act="o-link"]');
+      if (lk) {
+        const row = rowById.get(lk.closest('[data-oid]')?.dataset.oid);
+        if (row && row.track_token) copyText(trackURL(row.track_token), 'Tracking link copied. It shows status only, never prices.');
+        return;
+      }
       const btn = e.target.closest('[data-act="o-cancel"]'); if (!btn) return;
       const id = btn.closest('[data-oid]')?.dataset.oid; if (!id) return;
       const row = rowById.get(id);
@@ -1403,14 +1502,15 @@ export class TradeUI {
       const id = sel.closest('[data-oid]')?.dataset.oid; if (!id) return;
       const row = rowById.get(id); if (!row) return;
       sel.disabled = true;
+      const note = (sel.closest('[data-oid]')?.querySelector('.adm-note')?.value || '').trim();
       try {
         if (sel.dataset.act === 'adm-status') {
-          await adminSetStatus(id, sel.value, null);
+          await adminSetStatus(id, sel.value, null, note);
         } else {
           const map = {};
           for (const p of mergedPhases(row)) map[p.id] = p.status;
           map[sel.dataset.phaseId] = sel.value;
-          await adminSetStatus(id, null, map);
+          await adminSetStatus(id, null, map, note);
         }
         toast('Status updated ✓');
         this.renderOrders();
@@ -1419,6 +1519,12 @@ export class TradeUI {
   }
 }
 
+/** An owner's order row in the shape core/ordertrack.js reads. */
+function trackView(row) { return { ...row, unitTypes: (row.data && row.data.unitTypes) || [] }; }
+async function copyText(text, done) {
+  try { await navigator.clipboard.writeText(text); toast(done); }
+  catch { await uiAlert(text, { title: 'Copy this link', okLabel: 'Done' }); }
+}
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function download(name, content, mime) {
   const blob = new Blob([content], { type: mime });
