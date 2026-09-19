@@ -34,7 +34,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-136 · Keep this layout? card: email for a link, once a session';
+const BUILD = 'W2W-137 · ?reset=1 starts the planner fresh in this browser (asks first)';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -584,7 +584,7 @@ document.getElementById('wzAgain')?.addEventListener('click', () => { keepTracke
 // first-time visitor (nothing restored, empty room) → open the guided wizard
 // (skipped when the site's trade CTAs land here with ?mode=trade — pros go
 // straight to the TRADE workspace, not the homeowner drawing board)
-if (!TSHARE && !BOOK && !SHORT && !fromHash && !fromSave && store.state.items.length === 0 && store.state.mode !== 'trade') {
+if (!TSHARE && !BOOK && !SHORT && new URLSearchParams(location.search).get('reset') !== '1' && !fromHash && !fromSave && store.state.items.length === 0 && store.state.mode !== 'trade') {
   mobileHold.then(() => setTimeout(() => wizard.open(), 400));
 }
 
@@ -712,6 +712,25 @@ if (SHORT && !TSHARE) {
       history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : '') + location.hash);
     } catch { /* ignore */ }
   });
+}
+
+// ?reset=1 — forget this browser's planner data and start like a first-time
+// visitor (her testing shortcut). It ASKS first: a link that silently wiped a
+// customer's kitchen would be a trap. Clears the autosave, the unit-design stash,
+// the gate email and the once-only flags. It does NOT sign anyone out, and
+// nothing saved to an account or shared by link is touched.
+if (new URLSearchParams(location.search).get('reset') === '1') {
+  const clean = () => { try { const q = new URLSearchParams(location.search); q.delete('reset'); const rest = q.toString(); return location.pathname + (rest ? `?${rest}` : ''); } catch { return location.pathname; } };
+  uiConfirm('Forget everything this browser has saved for the planner? The kitchen, the project, and the email you gave are cleared, and the planner opens as it does for a first-time visitor. Anything saved to your PL/NTH account or shared by link is not touched, and you stay signed in.',
+    { title: 'Start fresh?', confirmLabel: 'Forget and restart', cancelLabel: 'Keep my work', danger: true })
+    .then((ok) => {
+      if (!ok) { try { history.replaceState(null, '', clean() + location.hash); } catch { /* ignore */ } return; }
+      // stop the debounced autosave writing the old state back before the reload
+      try { Storage.prototype.setItem = function noop() {}; } catch { /* ignore */ }
+      for (const k of ['plinth-planner-v1', 'plnr-trade-stash', 'plinthDxfEmail', 'plnnerTourSeen']) { try { localStorage.removeItem(k); } catch { /* ignore */ } }
+      for (const k of ['plnr-mobile-notice', 'plnr-keep-asked']) { try { sessionStorage.removeItem(k); } catch { /* ignore */ } }
+      location.replace(clean());
+    });
 }
 
 window.PlinthPlanner = {
