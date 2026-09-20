@@ -58,7 +58,6 @@ body {
 /* the way back to the website, first thing in the action row */
 .topbar-site { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--dim); text-decoration: none; margin-right: 6px; white-space: nowrap; }
 .topbar-site:hover { color: var(--cream); }
-@media (max-width: 900px) { .topbar-site { display: none; } }
 .brand .sub { font-size: 9.5px; letter-spacing: 0.22em; color: var(--dim); text-transform: uppercase; margin-left: 16px; font-weight: 500; }
 /* the product wordmark — PL/NNER, sister mark to PL/NTH */
 .brand .sub.brandmark { color: var(--cream); font-weight: 800; font-size: 23px; letter-spacing: 0.14em; opacity: 0.85; margin-left: 2px; }
@@ -87,6 +86,34 @@ body {
 }
 .mode-switch button:hover { color: var(--cream); }
 .mode-switch button.active { background: var(--cream); color: var(--brown-deep); }
+
+/* THE BAR NEVER WRAPS (her catch, W2W-143: at a resized window "Draft a layout" and "My
+   designs" broke onto two lines and the build tag dropped under the wordmark). Things
+   step out of the way as the window narrows instead: the website link and build tag
+   first, then the sizes tighten, and as a last resort the bar scrolls sideways. */
+#topbar > *, #topbar .brand, .topbar-actions button, .mode-switch button { white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 1400px) { .topbar-site, #buildTag { display: none !important; } }
+@media (max-width: 1240px) {
+  #topbar { padding: 0 14px; gap: 10px; }
+  #topbar .brand, #topbar .brand .sub.brandmark { font-size: 19px; letter-spacing: 0.11em; }
+  .topbar-actions { gap: 6px; }
+  .topbar-actions button { padding: 7px 10px; font-size: 10px; letter-spacing: 0.07em; }
+  .mode-switch button { padding: 7px 12px; }
+}
+@media (max-width: 1080px) {
+  #topbar { overflow-x: auto; scrollbar-width: none; justify-content: flex-start; }
+  #topbar::-webkit-scrollbar { display: none; }
+  #topbar .brand, #topbar .brand .sub.brandmark { font-size: 16px; }
+  .topbar-actions { margin-left: auto; }
+}
+@media (max-width: 960px) {
+  #topbar { padding: 0 10px; gap: 6px; }
+  .mode-switch { margin-left: 6px; }
+  .mode-switch button { padding: 6px 9px; font-size: 10px; }
+  .topbar-actions { gap: 5px; }
+  .topbar-actions button { padding: 6px 8px; font-size: 9.5px; letter-spacing: 0.05em; }
+}
+
 
 /* trade panel hidden by default; toggled by body.mode-trade */
 #tradePanel { display: none; }
