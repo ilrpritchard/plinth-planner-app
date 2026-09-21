@@ -7,6 +7,9 @@ import {
 import { planCornice } from '../core/cornice.js';
 import { fmtIn, fmtFeetIn, parseLength, parseRoomLength } from '../core/units.js';
 import { findGaps, suggestForGap, placementsFor } from '../core/gaps.js';
+import { planEvenOut } from '../core/evenout.js';
+import { planIslandBack } from '../core/islandback.js';
+import { planMirror, mirrorTargets } from '../core/mirror.js';
 import { summarizeState, deliveryEstimate } from '../core/cost.js';
 import { computeWarnings } from '../core/warnings.js';
 import { openingWallLen, openingNearEdge } from '../core/openings.js';
@@ -81,6 +84,29 @@ export class UI {
     return Math.max(0, this._wallLength(this.activeWall) - this._usedOnWall(this.activeWall));
   }
 
+  // ---------- uneven scribes: even them out (her ask 2026-09-21) ----------
+  // Offered ONLY when core/evenout.js says sliding the whole wall along spoils nothing.
+  _evenHTML() {
+    this._even = null;
+    if (this.activeWall === 'island') return '';
+    for (const wall of (this.activeWall === 'back' ? ['back'] : ['left', 'right'])) {
+      const p = planEvenOut(this.store.state, wall);
+      if (!p.ok) {
+        // uneven, but evening it out would spoil something: say what, offer nothing
+        const why = { 'sink under window': 'the sink sits centred under the window and would come off it', window: 'a tall or wall cabinet would slide over the window', door: 'a cabinet would end up across the door' }[p.reason];
+        if (why && p.left != null) return `<div class="wf-even"><div class="wf-gap-h"><strong>Uneven ends</strong> ${fmtIn(p.left)} one side, ${fmtIn(p.right)} the other. Left as they are: ${why}.</div></div>`;
+        continue;
+      }
+      this._even = p;
+      const dir = wall === 'back' ? (p.shift > 0 ? 'right' : 'left') : (p.shift > 0 ? 'toward the front' : 'toward the back');
+      return `<div class="wf-even"><div class="wf-gap-h"><strong>Uneven ends</strong> ${fmtIn(p.left)} one side, ${fmtIn(p.right)} the other.</div>
+        <button type="button" class="wf-gap-opt" id="wfEven" title="Slides everything on this wall ${fmtIn(Math.abs(p.shift))} ${dir}: cabinets, the range, uppers and the hood move together.">
+          <span class="wf-gap-codes">Even them out: ${fmtIn(p.each)} each side</span>
+          <span class="wf-gap-meta">moves the wall ${fmtIn(Math.abs(p.shift))} ${dir}</span></button></div>`;
+    }
+    return '';
+  }
+
   // ---------- gaps: "there is a gap here, this is what would fit" (her ask 2026-09-21) ----------
   // Shown for the wall being worked on (Side wall covers the left AND right walls). Every
   // option is one tap: the pieces stand exactly in the gap, butted from the range side.
@@ -119,7 +145,13 @@ export class UI {
     } else {
       bar = `<div class="wf-stats" style="justify-content:flex-start"><span>Free-standing: no length limit</span></div>`;
     }
-    el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}${this._gapsHTML()}`;
+    el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}${this._evenHTML()}${this._gapsHTML()}`;
+    el.querySelector('#wfEven')?.addEventListener('click', () => {
+      const p = this._even; if (!p) return;
+      const ok = this.controls.evenOut(p);
+      this._renderWallFit(); this._refreshCost();          // the moves are quiet updates: redraw the card and the fillers in the estimate
+      this._toast(ok ? `Evened out: ${fmtIn(p.each)} each side.${p.notes.includes('island') ? ' The island has not moved: it was lined up with the run, so check it.' : ''} Undo puts it back.` : 'That wall has changed. Try again.');
+    });
     el.querySelector('.wf-gaps')?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-gap]'); if (!btn) return;
       const g = (this._gaps || [])[Number(btn.dataset.gap)], o = g && g.options[Number(btn.dataset.opt)];
@@ -902,6 +934,27 @@ export class UI {
       this.store.flipHinge(id);
       this.showSelbar(id);
     });
+    // one press: a storage row behind the island row (her ask 2026-09-21)
+    document.getElementById('selDouble').addEventListener('click', () => {
+      const id = this.controls.layer.selectedId; if (id == null) return;
+      const p = planIslandBack(this.store.state, id);
+      if (!p.ok) { this._toast({ 'already double': 'This island is already double sided.', 'no room': 'There is no room behind it for a second row. Move the island forward first.', 'no fit': 'No storage row makes exactly this length. Drag a cabinet in behind it instead.' }[p.reason] || 'This is not an island cabinet.'); return; }
+      const done = this.controls.placeInGap(p.placements);
+      this._toast(done ? `Double sided: ${p.placements.map((q) => q.code).join(' + ')} behind it.${p.note === 'walkway' ? ` Only ${fmtIn(p.walkway)} of walkway is left behind it: 44" is the minimum.` : ''} Undo takes them back out.` : 'Something is in the way behind it.');
+      if (done) this.showSelbar(id);
+    });
+    // wall cabinets matched about the range, or about the middle of the wall
+    const mirror = (about) => () => {
+      const id = this.controls.layer.selectedId; if (id == null) return;
+      const p = planMirror(this.store.state, id, about);
+      if (!p.ok) { this._toast({ already: 'They already match.', blocked: 'Something is in the way of that spot (another cabinet, a tall or the window).', 'no range': 'There is no range on this wall.' }[p.reason] || 'Select a wall cabinet first.'); return; }
+      this.controls.applyMoves(p.moves);
+      const what = about === 'range' ? 'the range' : 'the middle of the wall';
+      this._toast(p.partner ? `Matched: both are now ${fmtIn(p.dist)} from ${what}, edge to centre. Undo puts it back.` : `Centred on ${what}. Undo puts it back.`);
+      this.showSelbar(id);
+    };
+    document.getElementById('selMirrorRange').addEventListener('click', mirror('range'));
+    document.getElementById('selMirrorWall').addEventListener('click', mirror('wall'));
     document.getElementById('selOpen').addEventListener('click', () => {
       const id = this.controls.layer.selectedId; if (id == null) return;
       this.controls.layer.toggleOpen(id);
@@ -988,6 +1041,15 @@ export class UI {
     const openBtn = document.getElementById('selOpen');
     openBtn.style.display = hasDoors ? '' : 'none';
     openBtn.textContent = it.open ? 'Close doors' : 'Open doors';
+    // island: "Make double sided" while it is a single row; wall cabinets: match about a point
+    const dbl = planIslandBack(this.store.state, id);
+    document.getElementById('selDouble').style.display = (dbl.ok || ['no room', 'no fit'].includes(dbl.reason)) ? '' : 'none';
+    const mt = mirrorTargets(this.store.state, id);
+    const alone = mt && !planMirror(this.store.state, id, 'wall').partner;
+    const mr = document.getElementById('selMirrorRange'), mw = document.getElementById('selMirrorWall');
+    mr.style.display = mt && mt.range != null ? '' : 'none';
+    mw.style.display = mt ? '' : 'none';
+    if (mt) { mr.textContent = mt.range != null && !planMirror(this.store.state, id, 'range').partner ? 'Centre over the range' : 'Match across the range'; mw.textContent = alone ? 'Centre on the wall' : 'Match across the wall'; }
     bar.classList.add('show');
   }
 

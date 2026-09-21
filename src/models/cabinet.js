@@ -53,7 +53,7 @@ function box(w, h, d, mat, name) {
 // "shadow gap". Bars are centred ON the piece's edges (half over the leaf,
 // half over the gap/frame beside it) so a crisp dark reveal line appears at
 // every junction. Static — attached to the carcass, never to a door pivot.
-function edgeRing(parent, cx, cy, w, h, z, lw, depth, mat) {
+function edgeRing(parent, cx, cy, w, h, z, lw, depth, mat, skip = null) {
   const mk = (bw, bh, x, y) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, depth), mat);
     m.position.set(x, y, z);
@@ -62,13 +62,13 @@ function edgeRing(parent, cx, cy, w, h, z, lw, depth, mat) {
   };
   mk(w + lw, lw, cx, cy + h / 2);   // top
   mk(w + lw, lw, cx, cy - h / 2);   // bottom
-  mk(lw, h - lw, cx - w / 2, cy);   // left
-  mk(lw, h - lw, cx + w / 2, cy);   // right
+  if (skip !== 'left') mk(lw, h - lw, cx - w / 2, cy);   // left
+  if (skip !== 'right') mk(lw, h - lw, cx + w / 2, cy);  // right
 }
 // Reveal for a RECESSED front (doors sit 0.18 behind the carcass face): the
 // ring floats in the reveal depth, in front of the leaf but behind the frame.
-function revealRing(parent, cx, cy, w, h, doorFrontZ, lw = 0.17) {
-  edgeRing(parent, cx, cy, w, h, doorFrontZ + 0.10, lw, 0.06, shadowMat());
+function revealRing(parent, cx, cy, w, h, doorFrontZ, lw = 0.17, skip = null) {
+  edgeRing(parent, cx, cy, w, h, doorFrontZ + 0.10, lw, 0.06, shadowMat(), skip);
 }
 // Reveal for a FLUSH front (drawer banks): a hairline ring a whisker proud.
 function flushRing(parent, cx, cy, w, h, faceZ, lw = 0.11) {
@@ -155,9 +155,17 @@ function hingedDoor(parent, doors, { w, h, mat, glazed, frontZ, hingeX, centerY,
   pivot.add(leaf);
   pivot.userData.openAngle = hingeSign * OPEN_ANGLE;
   parent.add(pivot);     // attach so the door actually renders
-  // dark shadow-gap ring around the (closed) leaf — static, on the carcass,
-  // so each door reads as a separate piece against its neighbours
-  revealRing(parent, hingeX - hingeSign * (w / 2), centerY, w, h, frontZ);
+  // dark shadow-gap ring around the (closed) leaf, so each door reads as a separate piece
+  // against its neighbours. Top, bottom and the HINGE side are static on the carcass. The
+  // LEADING edge rides on the leaf: on a pair that edge is the line where the two doors
+  // meet, and left on the carcass it hung in mid-air across the open cabinet (her catch
+  // 2026-09-21: "when I open the doors of a double it shouldn't have this line").
+  const lw = 0.17;
+  revealRing(parent, hingeX - hingeSign * (w / 2), centerY, w, h, frontZ, lw, hingeSign > 0 ? 'left' : 'right');
+  const meet = new THREE.Mesh(new THREE.BoxGeometry(lw, h - lw, 0.06), shadowMat());
+  meet.position.set(-hingeSign * (w / 2), 0, DOOR_T / 2 + 0.10);
+  meet.castShadow = false; meet.receiveShadow = false;
+  leaf.add(meet);
   doors.push(pivot);
   return pivot;
 }

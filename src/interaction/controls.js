@@ -329,6 +329,29 @@ export class PointerControls {
   }
 
   // along-axis coordinate where the current run on `wall` ends
+  /** Slide a whole wall along so both ends get the same scribe (core/evenout.js planEvenOut
+   *  has already decided it spoils nothing). ONE undo step; riders follow their hosts. */
+  evenOut(plan) {
+    if (!plan || !plan.ok) return false;
+    this.store.beginHistory();
+    for (const m of plan.moves) this.store.updateItem(m.id, { x: m.x, z: m.z }, { quiet: true });
+    this.store.endHistory();
+    this.layer.rebuildAll?.();
+    this.onCommit();
+    return true;
+  }
+
+  /** Move cabinets to planned spots (core/mirror.js): ONE undo step. */
+  applyMoves(moves) {
+    if (!moves || !moves.length) return false;
+    this.store.beginHistory();
+    for (const m of moves) this.store.updateItem(m.id, { x: m.x, z: m.z }, { quiet: true });
+    this.store.endHistory();
+    this.layer.rebuildAll?.();
+    this.onCommit();
+    return true;
+  }
+
   /** Stand a gap suggestion (core/gaps.js placementsFor) exactly where it says: ONE undo step.
    *  Each piece is checked first; if anything has moved into the gap since it was offered,
    *  nothing is added. */
@@ -342,7 +365,7 @@ export class PointerControls {
       virt.items.push({ id: `gap${i}`, ...p });
     }
     this.store.beginHistory();
-    const added = placements.map((p) => this.store.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg }));
+    const added = placements.map((p) => this.store.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg, ...(p.island ? { island: true } : {}) }));
     this.store.endHistory();
     const last = added[added.length - 1];
     if (last) { this.layer.select(last.id); this.onSelect(last.id); }
