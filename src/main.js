@@ -3,6 +3,7 @@
 import { Store } from './core/store.js';
 import { getCab, getFinish, fmtUSD } from './core/catalogue.js';
 import { wallsInUse } from './core/placement.js';
+import { planBringInside, anyOutside } from './core/roomresize.js';
 import { summarizeState } from './core/cost.js';
 import { computeFillers } from './core/fillers.js';
 import { planWallInfill } from './core/templates.js';
@@ -35,7 +36,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-152 · room resize keeps cabinets on walls, islands recognised automatically, real elevations on project cards, New design';
+const BUILD = 'W2W-153 · a resized room always keeps every cabinet inside it and flags the wall that is too short';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -87,9 +88,18 @@ rebuildWorktop();
 rebuildFillers();
 rebuildCornice();
 
+// nothing is ever left through a wall (her rule 2026-09-21). Quiet moves: no undo step, no re-entry.
+function bringInside() {
+  if (!anyOutside(store.state)) return;
+  const plan = planBringInside(store.state);
+  for (const m of plan.moves) store.updateItem(m.id, { x: m.x, z: m.z }, { quiet: true });
+  setTimeout(() => { try { layer.rebuildAll(); rebuildWorktop(); rebuildFillers(); rebuildCornice(); ui.flagRoomFit(plan); } catch (e) { /* still starting up */ } }, 0);
+}
+
 // keep the worktop + fillers + cornice reflowed whenever the layout changes
 store.subscribe((s, c) => {
   if (c.quiet) return;
+  if (c.type === 'load') bringInside();          // a design saved with cabinets through a wall is put right as it opens
   if (['add', 'remove', 'update', 'swap', 'load', 'reset', 'finish'].includes(c.type)) { store.syncIslands();   // the island flag follows where a cabinet stands
     rebuildWorktop(); rebuildFillers(); rebuildCornice(); }
   else if (c.type === 'room') { rebuildCornice(); } // cornice profile / wall changes

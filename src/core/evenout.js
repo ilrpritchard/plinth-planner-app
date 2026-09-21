@@ -47,6 +47,9 @@ function context(state, wall) {
   // longer than the wall: nothing to slide. ONE end through the wall while the run still fits
   // (the room was made narrower after the run was stood) is exactly what sliding repairs.
   if (left + right < -0.3) return { ok: false, reason: 'over the wall', left, right };
+  // packed inside the room by a resize (core/roomresize.js) its cabinets OVERLAP: count what they need
+  const need = line.reduce((a, t) => a + (a1(t) - a0(t)), 0);
+  if (need > hi - lo + 0.3) return { ok: false, reason: 'over the wall', left: 0, right: (hi - lo) - need };
   if (left + right > MAX_SLACK) return { ok: false, reason: 'too much slack' };
   // what pins this run where it is (the caller decides whether that is worth explaining)
   let fixed = null;

@@ -99,7 +99,7 @@ export class UI {
       if (!p.ok) {
         // something could be lined up, but sliding the wall would spoil something: say what, offer nothing
         const why = { window: 'a tall or wall cabinet would slide over the window', door: 'a cabinet would end up across the door', 'adjoining run': 'a cabinet on the side wall meets this run, and sliding it would open that joint', 'corner unit': 'a corner unit fixes this run to its corner', 'gap in the run': 'there is a gap in the run. Fill it first (see below), then line it up' }[p.reason];
-        if (p.reason === 'over the wall') return `<div class="wf-even"><div class="wf-gap-h"><strong>Longer than the wall</strong> This run is ${fmtIn(-(p.left + p.right))} longer than the wall it stands on, so part of it is through the wall. Take a cabinet out, swap one for a narrower size, or make the room wider.</div></div>`;
+        if (p.reason === 'over the wall') return `<div class="wf-even"><div class="wf-gap-h"><strong>Longer than the wall</strong> This run needs ${fmtIn(-(p.left + p.right))} more than the wall it stands on, so its cabinets overlap or pass through the wall. Take a cabinet out, swap one for a narrower size, or make the room bigger.</div></div>`;
         if (why && p.left != null) return `<div class="wf-even"><div class="wf-gap-h"><strong>Line up this wall</strong> ${fmtIn(p.left)} one side, ${fmtIn(p.right)} the other. Left as it is: ${why}.</div></div>`;
         continue;
       }
@@ -653,7 +653,7 @@ export class UI {
           this.store.endHistory();
           if (plan && plan.moves.length) this.controls.layer.rebuildAll?.();
           this.onRoomChange(true);   // dimensions changed → re-frame camera
-          if (plan && plan.outside) this._toast(`${plan.outside} cabinet${plan.outside === 1 ? ' no longer fits' : 's no longer fit'} inside the room at that size. Nothing has been removed: make the room bigger again, or move or swap them. Undo puts the size back.`);
+          if (plan) this.flagRoomFit(plan, true);
           this._renderWallFit();
           this._refreshCatalogue();
         }
@@ -664,6 +664,22 @@ export class UI {
     bind('roomD', 'depth');
     bind('roomH', 'height');
     this._renderRoomPlan();
+  }
+
+  /** After cabinets were brought back inside the room (core/roomresize.js): say what moved and
+   *  WHERE the dimension problem is, and open that wall's tab so its red bar and card are in view. */
+  flagRoomFit(plan, resized = false) {
+    const NAME = { back: 'back wall', front: 'front wall', left: 'left wall', right: 'right wall', island: 'island' };
+    if (plan.issues.length) {
+      const first = plan.issues[0], tab = first.wall === 'back' ? 'back' : first.wall === 'island' ? 'island' : 'left';
+      if (this.activeWall !== tab && first.wall !== 'front') { this.activeWall = tab; this._refreshCatalogue(); }
+      this._renderWallFit();
+      const list = plan.issues.map((i) => (i.wall === 'island' ? `the island is ${fmtIn(i.over)} longer than the room` : `the run on the ${NAME[i.wall]} is ${fmtIn(i.over)} longer than the space it has`)).join(', and ');
+      this._toast(`Everything has been kept inside the room, but ${list}, so cabinets overlap at the far end. Take one out, swap one for a narrower size${resized ? ', or make the room bigger again. Undo puts the size back' : ', or make the room bigger'}.`);
+    } else if (plan.inside) {
+      this._renderWallFit();
+      this._toast(resized ? `${plan.inside} cabinet${plan.inside === 1 ? ' was' : 's were'} moved to stay inside the room. Undo puts the size back.` : `${plan.inside} cabinet${plan.inside === 1 ? ' was' : 's were'} outside the room and ${plan.inside === 1 ? 'has' : 'have'} been moved back inside.`);
+    }
   }
 
   _refreshRoomInputs() {
