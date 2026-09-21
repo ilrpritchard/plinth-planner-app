@@ -9,6 +9,8 @@ import { fmtIn, fmtFeetIn, parseLength, parseRoomLength } from '../core/units.js
 import { findGaps, suggestForGap, placementsFor } from '../core/gaps.js';
 import { planLineUp } from '../core/evenout.js';
 import { planIslandCentre } from '../core/islandcentre.js';
+import { planRoomResize } from '../core/roomresize.js';
+import { canFileIsland } from '../core/islands.js';
 import { planIslandBack } from '../core/islandback.js';
 import { planMirror, mirrorTargets } from '../core/mirror.js';
 import { summarizeState, deliveryEstimate } from '../core/cost.js';
@@ -97,6 +99,7 @@ export class UI {
       if (!p.ok) {
         // something could be lined up, but sliding the wall would spoil something: say what, offer nothing
         const why = { window: 'a tall or wall cabinet would slide over the window', door: 'a cabinet would end up across the door', 'adjoining run': 'a cabinet on the side wall meets this run, and sliding it would open that joint', 'corner unit': 'a corner unit fixes this run to its corner', 'gap in the run': 'there is a gap in the run. Fill it first (see below), then line it up' }[p.reason];
+        if (p.reason === 'over the wall') return `<div class="wf-even"><div class="wf-gap-h"><strong>Longer than the wall</strong> This run is ${fmtIn(-(p.left + p.right))} longer than the wall it stands on, so part of it is through the wall. Take a cabinet out, swap one for a narrower size, or make the room wider.</div></div>`;
         if (why && p.left != null) return `<div class="wf-even"><div class="wf-gap-h"><strong>Line up this wall</strong> ${fmtIn(p.left)} one side, ${fmtIn(p.right)} the other. Left as it is: ${why}.</div></div>`;
         continue;
       }
@@ -104,14 +107,16 @@ export class UI {
       const name = { even: 'Even ends', sink: 'Sink centred under the window', range: 'Range centred on the wall' };
       const also = { even: 'evens the ends', sink: 'centres the sink under the window', range: 'centres the range on the wall' };
       const ends = (o) => (Math.abs(o.left - o.right) < 0.13 ? `${fmtIn((o.left + o.right) / 2)} each side` : `${fmtIn(Math.max(0, o.left))} one side, ${fmtIn(Math.max(0, o.right))} the other`);
+      const through = Math.min(p.left, p.right) < -0.3;      // one end is THROUGH the wall (the room was made narrower after the run was stood)
       const btns = p.options.map((o, i) => {
         const dir = wall === 'back' ? (o.shift > 0 ? 'right' : 'left') : (o.shift > 0 ? 'toward the front' : 'toward the back');
         const costs = o.notes.map((n) => (n === 'island' ? 'the island stays where it is' : n.what === 'sink' ? `the sink comes ${fmtIn(n.off)} off the window` : `the range comes ${fmtIn(n.off)} off the middle of the wall`));
         const meta = [o.key === 'even' ? `moves the wall ${fmtIn(Math.abs(o.shift))} ${dir}` : `leaves ${ends(o)}`, ...o.also.map((k) => `also ${also[k]}`), ...costs].join(' · ');
         return `<button type="button" class="wf-gap-opt" data-even="${i}" title="Slides everything on this wall ${fmtIn(Math.abs(o.shift))} ${dir}: cabinets, the range, uppers and the hood move together.">
-          <span class="wf-gap-codes">${name[o.key]}${o.key === 'even' ? `: ${ends(o)}` : ''}</span><span class="wf-gap-meta">${meta}</span></button>`;
+          <span class="wf-gap-codes">${o.key === 'even' && through ? 'Bring it back inside' : name[o.key]}${o.key === 'even' ? `: ${ends(o)}` : ''}</span><span class="wf-gap-meta">${meta}</span></button>`;
       }).join('');
-      return `<div class="wf-even"><div class="wf-gap-h"><strong>Line up this wall</strong> ${fmtIn(p.left)} one side, ${fmtIn(p.right)} the other.${p.options.length > 1 ? ' The spare inches can only go one way. Pick what matters most:' : ''}</div>${btns}</div>`;
+      const head = through ? `<strong>Through the wall</strong> This run sits ${fmtIn(-Math.min(p.left, p.right))} past the end of its wall, with ${fmtIn(Math.max(p.left, p.right))} spare at the other end.` : `<strong>Line up this wall</strong> ${fmtIn(p.left)} one side, ${fmtIn(p.right)} the other.`;
+      return `<div class="wf-even"><div class="wf-gap-h">${head}${p.options.length > 1 ? ' The spare inches can only go one way. Pick what matters most:' : ''}</div>${btns}</div>`;
     }
     return '';
   }
@@ -636,8 +641,19 @@ export class UI {
         const [lo, hi] = key === 'height' ? [72, 240] : [48, 720];
         if (isFinite(v) && (v < lo || v > hi)) this._toast(`That reads as ${fmtFeetIn(v)}. Try feet and inches like 16' 0", 16 ft, or plain inches like 192.`);
         if (isFinite(v) && v >= lo && v <= hi) {
+          // the kitchen stays ON ITS WALLS (core/roomresize.js): the room grows and shrinks at its right and front
+          const plan = key === 'height' ? null : planRoomResize(this.store.state, { [key]: v });
+          this.store.beginHistory();             // ONE undo step
           this.store.setRoom({ [key]: v });
+          if (plan) {
+            for (const m of plan.moves) this.store.updateItem(m.id, { x: m.x, z: m.z }, { quiet: true });
+            for (const o of plan.openings) this.store.updateOpening(o.id, { pos: o.pos });
+            for (const bx of plan.boxings) this.store.updateBoxing(bx.id, { pos: bx.pos });
+          }
+          this.store.endHistory();
+          if (plan && plan.moves.length) this.controls.layer.rebuildAll?.();
           this.onRoomChange(true);   // dimensions changed → re-frame camera
+          if (plan && plan.outside) this._toast(`${plan.outside} cabinet${plan.outside === 1 ? ' no longer fits' : 's no longer fit'} inside the room at that size. Nothing has been removed: make the room bigger again, or move or swap them. Undo puts the size back.`);
           this._renderWallFit();
           this._refreshCatalogue();
         }
@@ -977,6 +993,15 @@ export class UI {
     const arrange = document.getElementById('selArrange');
     arrange.addEventListener('click', (e) => { if (e.target.closest('button')) arrange.open = false; });
     document.addEventListener('pointerdown', (e) => { if (arrange.open && !arrange.contains(e.target)) arrange.open = false; });
+    // the planner files islands itself (core/islands.js); this is the by-hand correction
+    document.getElementById('selFileIsland').addEventListener('click', () => {
+      const id = this.controls.layer.selectedId; if (id == null) return;
+      const it = this.store.state.items.find((i) => i.id === id); if (!it) return;
+      const to = !it.island;
+      this.store.fileIsland(id, to);
+      this._toast(to ? 'Filed with the island: the island drawing, its worktop and the ISLAND list now include it. Undo puts it back.' : 'Filed with the wall run, no longer part of the island. Undo puts it back.');
+      this.showSelbar(id);
+    });
     document.getElementById('selCentreRoom').addEventListener('click', centre('room'));
     document.getElementById('selCentreRange').addEventListener('click', centre('range'));
     document.getElementById('selMirrorRange').addEventListener('click', mirror('range'));
@@ -1073,6 +1098,9 @@ export class UI {
     const cRoom = planIslandCentre(this.store.state, id, 'room'), cRange = planIslandCentre(this.store.state, id, 'range');
     document.getElementById('selCentreRoom').style.display = cRoom.reason === 'not island' ? 'none' : '';
     document.getElementById('selCentreRange').style.display = (cRange.ok && !(cRoom.ok && Math.abs(cRoom.dx - cRange.dx) < 0.25)) || (cRange.reason === 'blocked') ? '' : 'none';
+    const fi = document.getElementById('selFileIsland');
+    fi.style.display = canFileIsland(this.store.state, id) ? '' : 'none';
+    fi.textContent = it.island ? 'Not part of the island' : 'Part of the island';
     const mt = mirrorTargets(this.store.state, id);
     const alone = mt && !planMirror(this.store.state, id, 'wall').partner;
     const mr = document.getElementById('selMirrorRange'), mw = document.getElementById('selMirrorWall');

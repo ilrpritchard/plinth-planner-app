@@ -12,6 +12,7 @@ import { openingCenter, openingWidth } from '../core/openings.js';
 import { makeFloorTexture, floorSurface } from './floorTexture.js';
 
 const WALL_T = 4;
+const KERB_H = 3;   // the footprint left behind by a wall that is hidden to let you see in
 
 // key -> label + base colour; scene/floorTexture.js PAINT says how each is drawn.
 // Keys are saved in designs: never rename one (tile / ash keep theirs).
@@ -112,6 +113,26 @@ export class Room {
     this._buildWall('left', 'z', -width / 2 - WALL_T / 2, -depth / 2, depth / 2, height, gapsFor('left'), wallMat);
     this._buildWall('right', 'z', width / 2 + WALL_T / 2, -depth / 2, depth / 2, height, gapsFor('right'), wallMat);
 
+    // ---- the FOOTPRINT of each wall: a low kerb that shows only while its wall is auto-hidden.
+    // Without it a cabinet standing hard against a hidden wall looks like it is hanging off
+    // the edge of the floor (her screenshot 2026-09-21: a tall at the end of a run, seen from
+    // outside the right wall). Only for walls something stands against (core/placement.js
+    // wallsInUse), so an open-plan front stays open. A doorway stays a gap in it. ----
+    this.kerbs = { back: [], front: [], left: [], right: [] };
+    const kerb = (name, axis, perp, start, end) => {
+      let cursor = start;
+      const seg = (c0, c1) => { if (c1 - c0 <= 0.5) return;
+        const geo = axis === 'x' ? new THREE.BoxGeometry(c1 - c0, KERB_H, WALL_T) : new THREE.BoxGeometry(WALL_T, KERB_H, c1 - c0);
+        const m = mesh(geo, wallMat); m.position.set(axis === 'x' ? (c0 + c1) / 2 : perp, KERB_H / 2, axis === 'x' ? perp : (c0 + c1) / 2);
+        m.receiveShadow = true; m.visible = false; m.name = 'kerb-' + name; this.group.add(m); this.kerbs[name].push(m); };
+      for (const g of [...gapsFor(name)].sort((p, q) => p.c0 - q.c0)) { seg(cursor, Math.max(start, g.c0)); cursor = Math.max(cursor, Math.min(end, g.c1)); }
+      seg(cursor, end);
+    };
+    kerb('back', 'x', -depth / 2 - WALL_T / 2, -(width / 2 + ext), width / 2 + ext);
+    kerb('front', 'x', depth / 2 + WALL_T / 2, -(width / 2 + ext), width / 2 + ext);
+    kerb('left', 'z', -width / 2 - WALL_T / 2, -depth / 2, depth / 2);
+    kerb('right', 'z', width / 2 + WALL_T / 2, -depth / 2, depth / 2);
+
     const openings = Array.isArray(opts.openings) ? opts.openings : [];
     for (const o of openings) this._addOpening(o, width, depth, height);
 
@@ -165,7 +186,7 @@ export class Room {
    * in (dolls-house view). A manually-hidden wall stays hidden; in 2D drawings
    * every wall shows.
    */
-  updateWallVisibility(camPos, view) {
+  updateWallVisibility(camPos, view, inUse = null) {
     const d = this._dims; if (!d) return;
     const drawing = view && view !== '3d';
     const auto = {
@@ -183,6 +204,8 @@ export class Room {
       const vis = auto[name] && !this._hidden.has(name);
       for (const m of (this.walls[name] || [])) m.visible = vis;
       for (const m of ((this.wallAttached && this.wallAttached[name]) || [])) m.visible = vis;
+      // hidden only so you can see in (never in a drawing, never a wall she hid herself): leave its footprint
+      for (const m of ((this.kerbs && this.kerbs[name]) || [])) m.visible = !drawing && !auto[name] && !this._hidden.has(name) && (!inUse || inUse.has(name));
     }
   }
 

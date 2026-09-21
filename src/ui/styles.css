@@ -1487,6 +1487,11 @@ button.linkish { font: inherit; color: var(--cream); background: none; border: 0
 .unit-lead-elev { flex: 1 1 auto; min-width: 0; overflow-x: auto; }
 .unit-elev { display: flex; flex-direction: column; gap: 10px; justify-content: flex-end; min-height: 120px; }
 .unit-elev-empty { min-height: 56px; align-items: flex-start; justify-content: center; color: var(--muted); font-style: italic; font-size: 13px; }
+.unit-elev-walls { flex-direction: row; flex-wrap: wrap; align-items: flex-end; justify-content: flex-start; gap: 22px 30px; }
+.ue-view { margin: 0; display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
+.ue-draw { display: block; max-width: 100%; }
+.ue-draw svg { display: block; width: 100%; height: 100%; }
+.ue-view figcaption { font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .ue-row { display: flex; align-items: flex-end; gap: 3px; }
 .ue-cab { display: inline-block; flex: 0 0 auto; }
 .ue-cab svg { display: block; height: 100%; width: auto; }

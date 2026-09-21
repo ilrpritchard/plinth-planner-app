@@ -12,6 +12,7 @@
 // file only turns those numbers into SVG + HTML, reusing the floorplan.js
 // drawing style so every sheet in the set matches.
 
+import { withIslandFlags } from '../core/islands.js';
 import { getFinish, corniceOption, FAMILY_LABEL, familyOf, fmtUSD } from '../core/catalogue.js';
 import { fmtIn, fmtFeetIn } from '../core/units.js';
 import { unitName, unitQty } from '../core/cost.js';
@@ -50,7 +51,10 @@ function drawFiller(out, f, Y) {
 }
 
 // ---- the elevation drawing for one wall ------------------------------------
-export function buildElevationSVG(elev) {
+// opts.thumb: the same drawing with nothing written on it (no codes, dimensions or labels) and a
+// tight frame, for the unit cards in Project mode.
+export function buildElevationSVG(elev, opts = {}) {
+  const thumb = !!opts.thumb;
   const L = elev.wallLen, H = elev.height;
   const Y = (y) => H - y;             // world Y (up) → SVG y (down)
   const out = [];
@@ -62,12 +66,12 @@ export function buildElevationSVG(elev) {
   // openings on this wall, dashed, at their true sill/head heights
   for (const o of elev.openings) {
     out.push(`<rect x="${n(o.s0)}" y="${n(Y(o.y0 + o.h))}" width="${n(o.w)}" height="${n(o.h)}" fill="none" stroke="${P.UPPER}" stroke-width="${P.W_UPPER}" vector-effect="non-scaling-stroke" stroke-dasharray="3.5 2.5"/>`);
-    out.push(`<text x="${n(o.s0 + o.w / 2)}" y="${n(Y(o.y0 + o.h) - 1.6)}" font-size="2.6" fill="${P.UPPER}" text-anchor="middle" letter-spacing="0.5">${esc(o.type.toUpperCase())}${o.type === 'window' ? ` · SILL ${fmtIn(o.y0)}` : ''}</text>`);
+    if (!thumb) out.push(`<text x="${n(o.s0 + o.w / 2)}" y="${n(Y(o.y0 + o.h) - 1.6)}" font-size="2.6" fill="${P.UPPER}" text-anchor="middle" letter-spacing="0.5">${esc(o.type.toUpperCase())}${o.type === 'window' ? ` · SILL ${fmtIn(o.y0)}` : ''}</text>`);
   }
 
   // cabinets at their true x + mount height, drawn with their full
   // master-library fronts (shaker panels, drawer stacks, glazing, returns)
-  for (const e of elev.items) out.push(drawFront(e.cab, e.s0, e.y0, Y, { code: e.code, hinge: hingeOf(e.cab, e.it), marks: true }));
+  for (const e of elev.items) out.push(drawFront(e.cab, e.s0, e.y0, Y, thumb ? {} : { code: e.code, hinge: hingeOf(e.cab, e.it), marks: true }));
 
   // worktop slab over the base runs (35" carcass + 1½" slab = 36½")
   // — it stops DEAD at a butting tall / range / fridge / wall; only an open
@@ -92,6 +96,12 @@ export function buildElevationSVG(elev) {
     }
   }
 
+  if (thumb) {
+    const xs = [...elev.items.map((e) => [e.s0, e.s0 + e.cab.w]), ...elev.fillers.map((f) => [f.s0, f.s0 + f.w])].flat();
+    const lo = elev.island ? Math.min(...xs) - 4 : -1, hi = elev.island ? Math.max(...xs) + 4 : L + 1;
+    const top = elev.island ? H - 42 : -1;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n(lo)} ${n(top)} ${n(hi - lo)} ${n(H + 1.5 - top)}" data-w="${n(hi - lo)}" data-h="${n(H + 1.5 - top)}">${out.join('\n')}</svg>`;
+  }
   // right-hand vertical datums: worktop, upper underside, ceiling
   let vx = L + 7;
   if (elev.worktops.length) { out.push(svgDimV(Y(SURFACE_Y), Y(0), vx, fmtIn(SURFACE_Y))); vx += 8; }
@@ -288,8 +298,8 @@ function planBody(design) {
  *  product specification). `pm` carries the project meta (address, architect,
  *  gc, owner, finishRal) from the trade project. */
 export function buildUnitSheets({ project, unit, date, pm = {} }) {
-  const design = unit.design;
-  if (!design) return '';
+  if (!unit.design) return '';
+  const design = withIslandFlags(unit.design);      // a design stored before the planner filed islands itself
   const uname = unitName(unit);
   const qty = unitQty(unit);
   const rev = unitRev(unit);

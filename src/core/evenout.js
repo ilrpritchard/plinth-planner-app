@@ -44,7 +44,9 @@ function context(state, wall) {
   const a0 = (t) => (horiz ? t.box.x0 : t.box.z0), a1 = (t) => (horiz ? t.box.x1 : t.box.z1);
   const start = Math.min(...line.map(a0)), end = Math.max(...line.map(a1));
   const left = start - lo, right = hi - end;
-  if (left < -0.3 || right < -0.3) return { ok: false, reason: 'over the wall' };
+  // longer than the wall: nothing to slide. ONE end through the wall while the run still fits
+  // (the room was made narrower after the run was stood) is exactly what sliding repairs.
+  if (left + right < -0.3) return { ok: false, reason: 'over the wall', left, right };
   if (left + right > MAX_SLACK) return { ok: false, reason: 'too much slack' };
   // what pins this run where it is (the caller decides whether that is worth explaining)
   let fixed = null;

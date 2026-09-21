@@ -61,7 +61,7 @@ export function encodeDesign(state) {
   const boxes = (r.boxings || []).map((b) => [WALL_KEY[b.wall || 'back'] || 'b', Math.round((b.pos ?? 0.5) * 10000).toString(36), n36(b.w), n36(b.d), b.h != null ? n36(b.h) : ''].join('.').replace(/\.+$/, ''));
   const its = items.map((it) => {
     const rot = ((((it.rotDeg || 0) % 360) + 360) % 360);
-    let flags = (it.island ? 'i' : '') + (it.backPanel ? 'b' : '') + (it.seating ? 's' : '') + (it.hinge === 'R' ? 'R' : it.hinge === 'L' ? 'L' : '');
+    let flags = (it.island ? 'i' : '') + (it.islandLock ? 'k' : '') + (it.backPanel ? 'b' : '') + (it.seating ? 's' : '') + (it.hinge === 'R' ? 'R' : it.hinge === 'L' ? 'L' : '');
     if (it.hostId != null && idx.has(it.hostId)) flags += `h${idx.get(it.hostId).toString(36)}`;
     const extra = [flags, it.worktop ? txt(it.worktop) : '', it.finish ? txt(it.finish) : ''].join('.').replace(/\.+$/, '');
     return [txt(it.code), n36(it.x), n36(it.z), rot % 90 === 0 ? String(rot / 90) : `d${n36(rot)}`].join('.') + (extra ? '.' + extra : '');
@@ -94,7 +94,8 @@ export function decodeDesign(code) {
     const f = t.split('.'), rot = f[3] || '0';
     const it = { id: i + 1, code: untxt(f[0]), x: p36(f[1]), z: p36(f[2]), rotDeg: rot[0] === 'd' ? p36(rot.slice(1)) : Number(rot) * 90, finish: f[6] ? untxt(f[6]) : null };
     const flags = f[4] || '', hm = flags.match(/h([0-9a-z]+)$/);
-    if (flags.includes('i')) it.island = true; if (flags.includes('b')) it.backPanel = true; if (flags.includes('s')) it.seating = true;
+    const fl = hm ? flags.slice(0, hm.index) : flags;      // the host index is base 36: never read ITS letters as flags
+    if (fl.includes('i')) it.island = true; if (fl.includes('k')) it.islandLock = true; if (fl.includes('b')) it.backPanel = true; if (fl.includes('s')) it.seating = true;
     if (/R/.test(flags)) it.hinge = 'R'; else if (/L/.test(flags)) it.hinge = 'L';
     if (hm) hosts.push([it, parseInt(hm[1], 36)]);
     if (f[5]) it.worktop = untxt(f[5]);

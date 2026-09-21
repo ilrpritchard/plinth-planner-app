@@ -86,3 +86,19 @@ export function findFreeSpot(state, cab, bounds, wall = 'back', ignoreId = null)
   for (const [x, z] of spots) if (spotOk(state, cab, x, z, 0, bounds, ignoreId)) return { x, z, rotDeg: 0, wall: 'floor' };
   return null;
 }
+
+/** Which walls have something standing (or hanging) hard against them: Set of 'back' | 'front' |
+ *  'left' | 'right'. The 3D room leaves a low footprint for these when the wall itself is hidden
+ *  to let you see in, so a cabinet at the end of a run never looks like it hangs off the floor. */
+export function wallsInUse(state, near = 12) {   // 12": a run that stops a scribe filler short still counts
+  const r = (state && state.room) || {}, W = r.width || 144, D = r.depth || 120, out = new Set();
+  for (const it of (state && state.items) || []) {
+    const cab = getCab(it.code); if (!cab || !cab.placeable || it.island) continue;
+    const b = boxAt(cab, it.x, it.z, it.rotDeg);
+    if (b.z0 + D / 2 < near) out.add('back');
+    if (D / 2 - b.z1 < near) out.add('front');
+    if (b.x0 + W / 2 < near) out.add('left');
+    if (W / 2 - b.x1 < near) out.add('right');
+  }
+  return out;
+}

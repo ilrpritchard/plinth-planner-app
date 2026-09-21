@@ -15,10 +15,11 @@ import { ensureDxfEmail, ensureEmailGate } from './dxfgate.js';
 const DOC_GATE = { title: 'Where should we send updates?', sub: 'Leave your email to download the submittal. One email unlocks every document.', cta: 'Download' };
 import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
-import { bumpRev, unitRev } from '../core/submittal.js';
+import { bumpRev, unitRev, wallsWithItems, computeElevation, islandFaces, computeIslandElevation } from '../core/submittal.js';
 import { saveNow } from '../core/persistence.js';
 import { uiConfirm, uiChoice, uiAlert, mailFallback } from './dialog.js';
 import { frontSVG } from './frontdraw.js';
+import { withIslandFlags } from '../core/islands.js';
 import { buildDemoUnits, demoUnitCount, DEMO_PROJECT } from '../core/tradedemo.js';
 
 /** Shared walls/cabinets-only chooser for every plan-DXF download. */
@@ -33,7 +34,7 @@ function chooseDxfVariant() {
       ],
     });
 }
-import { buildSubmittalHTML, buildSubmittalPackHTML, openPrintWindow } from './submittal.js';
+import { buildSubmittalHTML, buildSubmittalPackHTML, openPrintWindow, buildElevationSVG } from './submittal.js';
 import { checkOrder, checkDesign } from '../core/speccheck.js';
 import { planPhases, DEFAULT_MAX_PER_BATCH } from '../core/phasing.js';
 import { buildXlsx } from '../core/xlsxmini.js';
@@ -296,6 +297,10 @@ export class TradeUI {
   // ---- the elevation strip on each unit card: every front drawn by frontdraw,
   // wall cabinets above floor cabinets, never hand-drawn -----------------------
   elevationHTML(u) {
+    // a type that has been LAID OUT shows its real walls (the submittal's own elevation drawing,
+    // nothing written on it): what stands where, uppers over their bases, the window, the range.
+    // A row of every cabinet said nothing about the kitchen (her note 2026-09-21).
+    if (u.design) { const d = this.designElevationsHTML(u.design); if (d) return d; }
     const MAX = 18;
     const up = [], down = [];
     let n = 0;
@@ -316,6 +321,22 @@ export class TradeUI {
       ${up.length ? `<div class="ue-row ue-up">${up.join('')}</div>` : ''}
       ${down.length ? `<div class="ue-row ue-down">${down.join('')}</div>` : ''}
     </div>`;
+  }
+
+  designElevationsHTML(stored) {
+    try {
+      const design = withIslandFlags(stored);
+      const NAME = { back: 'Back wall', left: 'Left wall', right: 'Right wall', front: 'Front wall' }, PX = 1.55;
+      const views = wallsWithItems(design).map((w) => ({ name: NAME[w] || w, elev: computeElevation(design, w) }));
+      const faces = islandFaces(design);
+      if (faces.length) views.push({ name: 'Island', elev: computeIslandElevation(design, [...faces].sort((p, q) => q.items.length - p.items.length)[0]) });   // its fullest side
+      const out = views.filter((v) => v.elev && v.elev.items.length).map((v) => {
+        const svg = buildElevationSVG(v.elev, { thumb: true });
+        const w = Number((svg.match(/data-w="([\d.]+)"/) || [])[1]) || 100, h = Number((svg.match(/data-h="([\d.]+)"/) || [])[1]) || 96;
+        return `<figure class="ue-view"><span class="ue-draw" style="width:${Math.round(w * PX)}px;height:${Math.round(h * PX)}px">${svg}</span><figcaption>${esc(v.name)}</figcaption></figure>`;
+      });
+      return out.length ? `<div class="unit-elev unit-elev-walls" aria-label="Elevations of this kitchen as laid out">${out.join('')}</div>` : '';
+    } catch (e) { return ''; }                     // an old or odd design falls back to the row of fronts
   }
 
   // a folded card: one line, the whole line opens it again

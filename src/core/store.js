@@ -3,6 +3,7 @@
 // Everything in inches. The scene and the UI both subscribe; whenever the
 // state changes they get told what changed so they can update cheaply.
 
+import { planIslandFlags } from './islands.js';
 import { DEFAULT_FINISH, getCab } from './catalogue.js';
 import { housingTakes } from './ovenseat.js';
 
@@ -188,6 +189,22 @@ export class Store {
   /** Trade UI mutates state.trade then calls this to broadcast. */
   touchTrade(opts = {}) {
     this._emit({ type: 'trade', quiet: !!opts.quiet });
+  }
+
+  /** Put every cabinet's island flag where it STANDS (core/islands.js). A derived fact, so it
+   *  is never an undo step of its own and emits nothing: callers redraw. Returns how many changed. */
+  syncIslands() {
+    const ch = planIslandFlags(this.state);
+    for (const c of ch) { const it = this.state.items.find((i) => i.id === c.id); if (!it) continue; if (c.island) it.island = true; else delete it.island; }
+    return ch.length;
+  }
+  /** File a cabinet with the island (or with the wall run) BY HAND: the planner stops guessing for it. */
+  fileIsland(id, island) {
+    const it = this.state.items.find((i) => i.id === id); if (!it) return;
+    this._record();
+    if (island) it.island = true; else delete it.island;
+    it.islandLock = true;
+    this._emit({ type: 'update', id });
   }
 
   addItem(code, pos = {}) {

@@ -2,6 +2,7 @@
 
 import { Store } from './core/store.js';
 import { getCab, getFinish, fmtUSD } from './core/catalogue.js';
+import { wallsInUse } from './core/placement.js';
 import { summarizeState } from './core/cost.js';
 import { computeFillers } from './core/fillers.js';
 import { planWallInfill } from './core/templates.js';
@@ -34,7 +35,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-151 · layout helpers folded into one Arrange menu on the selection bar';
+const BUILD = 'W2W-152 · room resize keeps cabinets on walls, islands recognised automatically, real elevations on project cards, New design';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -89,7 +90,8 @@ rebuildCornice();
 // keep the worktop + fillers + cornice reflowed whenever the layout changes
 store.subscribe((s, c) => {
   if (c.quiet) return;
-  if (['add', 'remove', 'update', 'swap', 'load', 'reset', 'finish'].includes(c.type)) { rebuildWorktop(); rebuildFillers(); rebuildCornice(); }
+  if (['add', 'remove', 'update', 'swap', 'load', 'reset', 'finish'].includes(c.type)) { store.syncIslands();   // the island flag follows where a cabinet stands
+    rebuildWorktop(); rebuildFillers(); rebuildCornice(); }
   else if (c.type === 'room') { rebuildCornice(); } // cornice profile / wall changes
 });
 
@@ -187,7 +189,7 @@ const controls = new PointerControls({
   cabinetLayer: layer,
   room,
   store,
-  onCommit: rebuildWorktop,
+  onCommit: () => { store.syncIslands(); rebuildWorktop(); },
   onSelect: (id) => ui.showSelbar(id),
   onWallClick: (info) => showWallMenu(info),
   onOpeningClick: (info) => { hideWallMenu(); showOpeningMenu(info); },
@@ -197,7 +199,7 @@ ui.controls = controls; // late-bind so UI buttons can drive the controls
 // per-frame: grounding guard + auto-hide the walls between camera and room
 scene.onBeforeRender(() => {
   layer.groundTick();
-  room.updateWallVisibility(scene.camera.position, scene.view);
+  room.updateWallVisibility(scene.camera.position, scene.view, wallsInUse(store.state));
 });
 
 // ----- undo / redo -----

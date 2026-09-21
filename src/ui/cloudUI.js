@@ -166,7 +166,8 @@ export class CloudUI {
         <button class="cta" id="saveBtn">Save current design</button>
       </div>
       <div class="cloud-list" id="designList"><div class="cloud-msg">Loading…</div></div>
-      <div class="cloud-foot" style="margin-top:14px;text-align:right">
+      <div class="cloud-foot" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+        ${document.getElementById('designBanner') ? '<span></span>' : '<button type="button" class="ghost sm" id="newDesign" title="Takes every cabinet off the plan so you can start again. The room and the finish stay">+ New design</button>'}
         <button type="button" class="ghost sm" id="signOut">Sign out</button>
       </div>`;
   }
@@ -176,6 +177,13 @@ export class CloudUI {
       const name = this.modal.querySelector('#saveName').value.trim() || 'Untitled kitchen';
       try { await saveDesign(name, this.store.serialize()); this._refreshList('Saved ✓'); }
       catch (err) { this._refreshList(err.message, true); }
+    });
+    // start again from an empty room (her ask 2026-09-21); undo brings the kitchen back
+    this.modal.querySelector('#newDesign')?.addEventListener('click', async () => {
+      const has = (this.store.state.items || []).length > 0;
+      if (has && !(await uiConfirm('The kitchen on screen comes off the plan. Save it first if you want to keep it. The room and the finish stay, and Undo brings it back.', { title: 'Start a new design?', confirmLabel: 'Start new' }))) return;
+      if (has) this.store.clear();
+      this.onLoaded(); this.close();
     });
     this._refreshList(this._note);
     this._note = null;
