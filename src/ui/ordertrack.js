@@ -48,7 +48,7 @@ export function trackingPageHTML(order) {
       </div>
       <div class="trade-meta">
         <button class="ghost sm" id="trkPrint" title="The order status as a US Letter document: print it, or save it as a PDF">Print / Save as PDF</button>
-        <a class="ghost sm tlink" href="${esc(location.pathname)}?mode=trade">Open the planner</a>
+        <a class="ghost sm tlink" href="${esc(location.pathname)}?mode=project">Open the planner</a>
       </div>
     </header>
     <section class="order-card trk-card">

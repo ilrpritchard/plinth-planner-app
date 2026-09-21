@@ -34,7 +34,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-144 · list to 3D: a dishwasher front always stands between two cabinets, never at a run end';
+const BUILD = 'W2W-145 · ?mode=project opens Project mode (the old ?mode=trade still works)';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -473,7 +473,12 @@ const mobileHold = (() => {
   ).then(() => document.body.classList.remove('notice-up'));
 })();
 
-if (new URLSearchParams(location.search).get('mode') === 'trade' && !TSHARE) {
+// ?mode=project opens straight into Project mode. `trade` is the OLD word for the same
+// thing (the mode was renamed Project in the UI long ago; the link still said trade, and it
+// shows in the visitor's address bar). Both work forever: old links on the site, in emails
+// and in people's bookmarks must never break. New links should say ?mode=project.
+// NOTE the parameter is FUNCTIONAL: without it the planner opens in Kitchen mode.
+if (['project', 'trade'].includes(new URLSearchParams(location.search).get('mode')) && !TSHARE) {
   store.setMode('trade');
 }
 void tradeUI;
