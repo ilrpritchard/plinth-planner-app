@@ -188,15 +188,80 @@ export function planRowsLayout(rows, room, existing = []) {
   const needL = cL ? cL.w + CORNER_OUT : 0, needR = cR ? cR.w + CORNER_OUT : 0;
   if (cL && W >= needL + needR && free('back', minX, minX + needL, cL)) { putAt(cL, 'floor', 'back', minX); legs.push('left'); } else if (cL) spareCorners.unshift(cL);
   if (cR && W >= needL + needR && free('back', maxX - needR, maxX, cR)) { putAt(cR, 'floor', 'back', maxX - needR); legs.push('right'); } else if (cR) spareCorners.push(cR);
-  const partners = [];
-  for (const leg of legs) if (floors.length > 1) partners.push([floors.pop(), leg]);
   // overflow turns onto a wall that HAS a corner unit first
   const order = ['back', ...legs, ...['left', 'right'].filter((w) => !legs.includes(w))];
-  for (const [cab, leg] of partners) stand(cab, 'floor', [leg, ...order]);
   // with only a right-hand corner the run packs against IT, so the slack lands at the open left end
   const fromHigh = legs.length === 1 && legs[0] === 'right';
-  const line = legs.length ? [...floors, ...spareCorners, ...talls] : [...talls, ...floors, ...spareCorners];
-  for (const c of line) stand(c, 'floor', order, fromHigh && c.type === 'FLOOR');
+
+  // ---- the floor line. HARD RULE 15: a dishwasher front (F7 / F29) is LEGLESS, so it
+  // must stand BETWEEN two cabinets that have legs: never at the end of a run, never
+  // first on a side leg, never beside another dishwasher front. (Her catch 2026-09-19:
+  // the example building's list stood its F7 last on the wall.) List order put it there,
+  // so the order is searched instead: each dishwasher is tried in every interior slot,
+  // nearest its place in the list first, the whole line is stood as a dry run, and the
+  // first order with every dishwasher flanked wins. No such order (two cabinets and a
+  // dishwasher in a tiny room): the least-bad one stands and the live warning says so.
+  const isDW = (c) => c.form === 'dishwasher';
+  const standLine = (seq, skip = 0) => {
+    const fl = [...seq], partners = [];
+    for (const leg of legs) {
+      if (fl.length <= 1) break;
+      // a partner run never opens with a dishwasher; `skip` tries a different partner
+      // (a tight wall sometimes only works when a WIDER cabinet goes round the corner)
+      const able = fl.map((c, i) => i).filter((i) => !isDW(fl[i]));
+      if (!able.length) break;
+      const k = able[Math.max(0, able.length - 1 - skip)];
+      partners.push([fl.splice(k, 1)[0], leg]);
+    }
+    for (const [cab, leg] of partners) stand(cab, 'floor', [leg, ...order]);
+    const line = legs.length ? [...fl, ...spareCorners, ...talls] : [...talls, ...fl, ...spareCorners];
+    for (const c of line) stand(c, 'floor', order, fromHigh && c.type === 'FLOOR');
+  };
+  const legged = (h) => (h.cab.type === 'FLOOR' || h.cab.type === 'TALL') && !isDW(h.cab);
+  const unflanked = (from) => placed.slice(from).filter((h) => isDW(h.cab)).filter((h) => {
+    const run = placed.filter((o) => o !== h && o.wall === h.wall && legged(o));
+    return !(run.some((o) => Math.abs(o.hi - h.lo) < 0.5) && run.some((o) => Math.abs(o.lo - h.hi) < 0.5));
+  }).length;
+  const snap = () => ({ p: placed.length, q: placements.length, lost: new Map(lost), occ: JSON.stringify(occ), tall: ['back', 'left', 'right'].map((w) => occ.floor[w].map((sp) => !!sp.tall)) });
+  const restore = (k) => {
+    placed.length = k.p; placements.length = k.q; lost.clear(); for (const [a, b] of k.lost) lost.set(a, b);
+    const o = JSON.parse(k.occ);
+    for (const ln of ['floor', 'upper']) for (const w of ['back', 'left', 'right']) { occ[ln][w].length = 0; o[ln][w].forEach((sp, i) => { if (ln === 'floor' && k.tall[['back', 'left', 'right'].indexOf(w)][i]) sp.tall = true; occ[ln][w].push(sp); }); }
+  };
+  const orders = function* () {
+    yield floors;                                                          // list order, when it is already right
+    const dws = floors.filter(isDW), rest = floors.filter((c) => !isDW(c));
+    if (!dws.length || rest.length < 2) return;
+    const want = dws.map((d) => floors.slice(0, floors.indexOf(d)).filter((c) => !isDW(c)).length);   // cabinets ahead of it in the list
+    // interior slots first, nearest its place in the list; the two END slots last (an end
+    // only works beside an anchored corner unit's door side, and the dry run decides)
+    const cost = (at, i) => Math.abs(at - want[i]) + (at === 0 || at === rest.length ? 100 : 0);
+    const slots = (i) => Array.from({ length: rest.length + 1 }, (_, n) => n).sort((a, b) => cost(a, i) - cost(b, i));
+    let n = 0;
+    const walk = function* (i, chosen) {
+      if (n > 60) return;
+      if (i === dws.length) { n++; const out = [...rest]; [...chosen.entries()].sort((a, b) => b[1] - a[1]).forEach(([di, at]) => out.splice(at, 0, dws[di])); yield out; return; }
+      for (const at of slots(i)) { if (chosen.includes(at)) continue; yield* walk(i + 1, [...chosen, at]); }   // one dishwasher per slot: never two side by side
+    };
+    yield* walk(0, []);
+  };
+  const start = snap();
+  let best = null;
+  const lostNow = () => [...lost.values()].reduce((a, b) => a + b, 0);
+  const lost0 = lostNow();
+  search: for (let skip = 0; skip < (legs.length ? 4 : 1); skip++) {
+    for (const seq of orders()) {
+      restore(start);
+      const from = placed.length;
+      standLine(seq, skip);
+      // a dishwasher left unflanked is worse than anything; then cabinets that found no wall;
+      // then straying from the list's own order (skip 0, first order = exactly as listed)
+      const score = unflanked(from) * 1000 + (lostNow() - lost0) * 10 + skip;
+      if (!best || score < best.score) best = { seq, skip, score };
+      if (score === skip) break search;
+    }
+  }
+  if (best && best.score !== best.skip) { restore(start); standLine(best.seq, best.skip); }   // no perfect order: stand the least-bad one
 
   for (const c of [...counters, ...uppers]) stand(c, 'upper');
 

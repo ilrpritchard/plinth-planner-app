@@ -160,3 +160,60 @@ test('a corner unit that cannot reach its corner (a door in the way) joins the r
   assertClean(r.placements, rm, 'door in the corner');
   assert.equal(r.placements.length + r.unplaced.reduce((n, x) => n + x.qty, 0), 3);
 });
+
+// ---- HARD RULE 15 in the list layout: a dishwasher front is never the end of a run ----
+// (Her catch 2026-09-19: the example building's list stood its F7 last on the wall.)
+const isDW = (c) => c && c.form === 'dishwasher';
+function dwProblems(placements) {
+  const spans = placements.map((p) => {
+    const c = getCab(p.code); if (!c || (c.type !== 'FLOOR' && c.type !== 'TALL')) return null;
+    const wall = p.rotDeg === 0 ? 'back' : p.rotDeg === 90 ? 'left' : 'right', along = wall === 'back' ? p.x : p.z;
+    const ret = c.corner && c.type === 'FLOOR' ? 24.25 : 0, retLeft = c.corner && c.cornerSide !== 'right', retLow = wall === 'left' ? !retLeft : retLeft;
+    return { c, wall, lo: along - c.w / 2 - (ret && retLow ? ret : 0), hi: along + c.w / 2 + (ret && !retLow ? ret : 0) };
+  }).filter(Boolean);
+  return spans.filter((h) => isDW(h.c)).filter((h) => {
+    const run = spans.filter((o) => o !== h && o.wall === h.wall && !isDW(o.c));
+    return !(run.some((o) => Math.abs(o.hi - h.lo) < 0.5) && run.some((o) => Math.abs(o.lo - h.hi) < 0.5));
+  }).map((h) => h.c.code);
+}
+
+test('the example building: every dishwasher front stands between two cabinets with legs', () => {
+  const rooms = [room(150, 120), room(168, 132), room(192, 144)];
+  buildDemoUnits().units.forEach((u, i) => {
+    const r = planRowsLayout(u.rows, rooms[i]);
+    assert.deepEqual(r.unplaced, [], `${u.beds}: everything stands`);
+    assert.deepEqual(dwProblems(r.placements), [], `${u.beds}: F7 is flanked`);
+    assertClean(r.placements, rooms[i], `demo ${u.beds}`);
+  });
+});
+
+test('wherever the dishwasher sits in the LIST, it never ends a run (sweep: orders x rooms x corners)', () => {
+  const others = ['F2', 'F10', 'F17', 'F21'];
+  let runs = 0;
+  for (const corner of [null, 'F16', 'F16R']) for (const w of [144, 168, 200]) for (const dws of [['F7'], ['F7', 'F7'], ['F7', 'F29']]) {
+    for (let at = 0; at <= others.length; at++) {
+      const codes = [...others]; dws.forEach((d, k) => codes.splice(Math.min(codes.length, at + k), 0, d));
+      if (corner) codes.unshift(corner);
+      const rows = codes.map((code) => ({ code, qty: 1 }));
+      const rm = room(w, 130);
+      const r = planRowsLayout(rows, rm);
+      assertClean(r.placements, rm, `dw sweep ${codes.join(' ')} @${w}`);
+      assert.deepEqual(r.unplaced, [], `nothing dropped: ${codes.join(' ')} @${w}`);
+      assert.deepEqual(dwProblems(r.placements), [], `flanked: ${codes.join(' ')} @${w}`);
+      runs++;
+    }
+  }
+  assert.ok(runs >= 100, `swept ${runs} lists`);
+});
+
+test('a list that cannot flank its dishwasher still stands everything (the live warning covers it)', () => {
+  const r = planRowsLayout([{ code: 'F7', qty: 1 }, { code: 'F2', qty: 1 }], room(150, 120));
+  assert.deepEqual(r.unplaced, []);
+  assert.equal(r.placements.length, 2);
+});
+
+test('list order is kept when it already obeys the rule', () => {
+  const r = planRowsLayout(['F2', 'F7', 'F10', 'F17'].map((code) => ({ code, qty: 1 })), room(168, 130));
+  const back = r.placements.filter((p) => p.rotDeg === 0).sort((a, b) => a.x - b.x).map((p) => p.code);
+  assert.deepEqual(back, ['F2', 'F7', 'F10', 'F17']);
+});
