@@ -9,6 +9,7 @@ import { measureRun } from '../core/measure.js';
 import { fmtIn } from '../core/units.js';
 import { isOven, findOvenHost, housingCodeFor } from '../core/ovenseat.js';
 import { bestBaseFor } from '../core/sinkspec.js';
+import { spotOk, findFreeSpot } from '../core/placement.js';
 
 export class PointerControls {
   constructor({ scene, cabinetLayer, room, store, onCommit, onSelect, onWallClick, onOpeningClick }) {
@@ -233,7 +234,7 @@ export class PointerControls {
   }
 
   /** Place a new cabinet against the active wall, appended to the run end. */
-  placeNew(code, wall = 'back') {
+  placeNew(code, wall = 'back', opts = {}) {
     const cab = getCab(code);
     if (!cab || !cab.placeable) return null;
     if (isOven(cab)) return this._placeOven(cab, wall);
@@ -262,7 +263,22 @@ export class PointerControls {
     const item = this.store.addItem(code, { x: startX, z: startZ, rotDeg });
     // no feature-snap on placement: keep the run exactly butted (a range must
     // never be pulled to the wall centre on top of its neighbour).
-    const snapped = snapPosition(this.store, item.id, startX, startZ, b, { noFeature: true });
+    let snapped = snapPosition(this.store, item.id, startX, startZ, b, { noFeature: true });
+    // SAFE placement (a person tapping a tile; the wizard and templates lay out their own
+    // runs and keep the old behaviour exactly). The end of the run can be PAST the end of
+    // the wall (her fridge, 2026-09-21: 14" left on the back wall, so it started outside
+    // the room and a refused snap handed that start point straight back). When the result
+    // is not somewhere the thing can stand, find somewhere it can: the first free space
+    // on this wall, then another wall, then free-standing on the floor.
+    let moved = null;
+    if (opts.safe && wall !== 'island' && !cab.corner && !spotOk(this.store.state, cab, snapped.x, snapped.z, snapped.rotDeg, b, item.id)) {
+      const spot = findFreeSpot(this.store.state, cab, b, wall, item.id);
+      if (!spot) { this.store.removeItem(item.id); this.store.endHistory(); this.onCommit(); return { refused: true, noRoom: true, code }; }
+      this.store.updateItem(item.id, { x: spot.x, z: spot.z, rotDeg: spot.rotDeg }, { quiet: true });
+      const again = snapPosition(this.store, item.id, spot.x, spot.z, b, { noFeature: true });
+      snapped = spotOk(this.store.state, cab, again.x, again.z, again.rotDeg, b, item.id) ? again : spot;   // a snap may only improve a good spot
+      if (spot.wall !== wall) moved = spot.wall;
+    }
     this.store.updateItem(item.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg }, { quiet: false });
     this.store.endHistory();
 
@@ -273,7 +289,7 @@ export class PointerControls {
     this.layer.select(item.id);
     this.onSelect(item.id);
     this.onCommit();
-    return item;
+    return moved ? { ...item, movedTo: moved } : item;
   }
 
   // "Sink base" shortcut: the base cabinet goes in like any other, then its sink
@@ -313,6 +329,27 @@ export class PointerControls {
   }
 
   // along-axis coordinate where the current run on `wall` ends
+  /** Stand a gap suggestion (core/gaps.js placementsFor) exactly where it says: ONE undo step.
+   *  Each piece is checked first; if anything has moved into the gap since it was offered,
+   *  nothing is added. */
+  placeInGap(placements) {
+    const b = this.room.bounds();
+    let st = this.store.state;
+    const virt = { ...st, items: [...st.items] };
+    for (const [i, p] of placements.entries()) {
+      const cab = getCab(p.code);
+      if (!cab || !spotOk(virt, cab, p.x, p.z, p.rotDeg, b)) return null;
+      virt.items.push({ id: `gap${i}`, ...p });
+    }
+    this.store.beginHistory();
+    const added = placements.map((p) => this.store.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg }));
+    this.store.endHistory();
+    const last = added[added.length - 1];
+    if (last) { this.layer.select(last.id); this.onSelect(last.id); }
+    this.onCommit();
+    return added;
+  }
+
   _runEnd(wall, b) {
     const vert = wall === 'left' || wall === 'right';
     const along = (it) => (vert ? it.z : it.x);

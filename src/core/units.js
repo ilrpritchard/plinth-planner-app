@@ -85,11 +85,17 @@ export function fmtFeetIn(value) {
   return `${sign}${ft}' ${fmtIn(inch)}`;
 }
 
-/** Parse a user string like 96, 96", 8', 8'6", 8' 6 1/2" into inches. */
+/** Parse a user string like 96, 96", 8', 8'6", 8' 6 1/2" into inches. Also takes what
+ *  people really type: 16ft, 16 ft 6 in, 16 feet, 16-6, and the CURLY quotes / primes a Mac
+ *  keyboard or a phone swaps in for ' and " (12’ 6” used to read as 12 INCHES). */
 export function parseLength(input) {
   if (typeof input === 'number') return input;
   if (!input) return NaN;
-  let s = String(input).trim().toLowerCase();
+  let s = String(input).trim().toLowerCase()
+    .replace(/[\u2018\u2019\u2032\u02b9`\u00b4]/g, "'").replace(/[\u201c\u201d\u2033\u02ba]/g, '"').replace(/''/g, '"')
+    .replace(/\s*(feet|foot|ft)\.?\s*/g, "' ").replace(/\s*(inches|inch|in)\.?\s*$/g, '"').replace(/\s*(inches|inch|in)\.?\s+/g, '" ')
+    .replace(/^(\d+)\s*-\s*(\d+(?:\s+\d+\/\d+)?)\s*"?$/, "$1' $2")          // 16-6 = 16' 6"
+    .trim();
   // feet'inches"
   const ftMatch = s.match(/^(\d+(?:\.\d+)?)\s*'\s*(.*)$/);
   if (ftMatch) {
@@ -111,6 +117,18 @@ function parseLoose(s) {
   if (frac) return parseInt(frac[1]) / parseInt(frac[2]);
   const n = parseFloat(s);
   return isNaN(n) ? NaN : n;
+}
+
+/** A ROOM dimension, as typed. Same as parseLength, plus: a BARE number under 36 is FEET.
+ *  (Her catch 2026-09-21: the box shows 12' 6", she types 16 to make it 16 ft, and it
+ *  became a 16 INCH room. No kitchen wall or ceiling is under 3 ft, so 8, 10, 12, 16 can
+ *  only mean feet; 150 still means inches.) Used by the Room panel AND the drafting wizard. */
+export function parseRoomLength(input) {
+  const raw = String(input ?? '').trim();
+  const v = parseLength(raw);
+  if (!isFinite(v) || v <= 0) return NaN;
+  const bare = /^\d+(?:\.\d+)?$/.test(raw);
+  return bare && v < 36 ? v * 12 : v;
 }
 
 /** Clamp helper. */

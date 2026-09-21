@@ -5,7 +5,8 @@ import {
   CORNICE_OPTIONS, corniceOption, orderableAccessories, swapAlternatives, drawerInserts,
 } from '../core/catalogue.js';
 import { planCornice } from '../core/cornice.js';
-import { fmtIn, fmtFeetIn, parseLength } from '../core/units.js';
+import { fmtIn, fmtFeetIn, parseLength, parseRoomLength } from '../core/units.js';
+import { findGaps, suggestForGap, placementsFor } from '../core/gaps.js';
 import { summarizeState, deliveryEstimate } from '../core/cost.js';
 import { computeWarnings } from '../core/warnings.js';
 import { openingWallLen, openingNearEdge } from '../core/openings.js';
@@ -80,6 +81,24 @@ export class UI {
     return Math.max(0, this._wallLength(this.activeWall) - this._usedOnWall(this.activeWall));
   }
 
+  // ---------- gaps: "there is a gap here, this is what would fit" (her ask 2026-09-21) ----------
+  // Shown for the wall being worked on (Side wall covers the left AND right walls). Every
+  // option is one tap: the pieces stand exactly in the gap, butted from the range side.
+  _gapsHTML() {
+    if (this.activeWall === 'island') { this._gaps = []; return ''; }
+    const walls = this.activeWall === 'back' ? ['back'] : ['left', 'right'];
+    this._gaps = findGaps(this.store.state).filter((g) => walls.includes(g.wall)).map((g) => ({ ...g, options: suggestForGap(g) })).filter((g) => g.options.length);
+    if (!this._gaps.length) return '';
+    const side = (g) => (this.activeWall === 'back' ? '' : g.wall === 'left' ? 'Left wall, ' : 'Right wall, ');
+    return `<div class="wf-gaps">${this._gaps.map((g, gi) => `<div class="wf-gap">
+      <div class="wf-gap-h"><strong>${fmtIn(g.width)} gap</strong> ${side(g)}${g.label}</div>
+      ${g.options.map((o, oi) => `<button type="button" class="wf-gap-opt" data-gap="${gi}" data-opt="${oi}" title="${o.kind}. Tap to stand ${o.codes.length === 1 ? 'it' : 'them'} in the gap.">
+        <span class="wf-gap-codes">${o.codes.map((c) => `${c} ${getCab(c).desc.replace(/ \(3\)/, '')} ${fmtIn(getCab(c).w)}`).join(' + ')}</span>
+        <span class="wf-gap-meta">${o.left > 0.5 ? `leaves ${fmtIn(o.left)}${o.filler ? ' filler' : ''}` : 'exact fit'} · ${fmtUSD(o.usd)}</span>
+      </button>`).join('')}
+    </div>`).join('')}</div>`;
+  }
+
   _renderWallFit() {
     const el = document.getElementById('wallFit');
     if (!el) return;
@@ -100,7 +119,14 @@ export class UI {
     } else {
       bar = `<div class="wf-stats" style="justify-content:flex-start"><span>Free-standing: no length limit</span></div>`;
     }
-    el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}`;
+    el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}${this._gapsHTML()}`;
+    el.querySelector('.wf-gaps')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-gap]'); if (!btn) return;
+      const g = (this._gaps || [])[Number(btn.dataset.gap)], o = g && g.options[Number(btn.dataset.opt)];
+      if (!o) return;
+      const done = this.controls.placeInGap(placementsFor(g, o, this.store.state));
+      this._toast(done ? `${o.codes.join(' + ')} stood in the gap.${o.filler ? ` The ${fmtIn(o.left)} left over is a scribe filler.` : ''} Undo takes it back out.` : 'That gap has changed. Pick again.');
+    });
     el.querySelector('.wf-tabs').addEventListener('click', (e) => {
       const b = e.target.closest('[data-wall]'); if (!b) return;
       this.activeWall = b.dataset.wall;
@@ -535,7 +561,7 @@ export class UI {
         if (res) this._toast(`${getCab(combo.base).desc} ${fmtIn(getCab(combo.base).w)} added with its sink. Click the sink to change its size.`);
         return;
       }
-      this._announcePlaced(this.controls.placeNew(row.dataset.code, this.activeWall));
+      this._announcePlaced(this.controls.placeNew(row.dataset.code, this.activeWall, { safe: true }));   // a person tapping: never outside the room
     });
   }
 
@@ -543,6 +569,11 @@ export class UI {
   // when the room has none its housing arrives with it (a priced cabinet, so say so)
   _announcePlaced(res) {
     if (!res) return;
+    if (res.noRoom) { this._toast(`There is no space left for ${getCab(res.code)?.desc || 'that'}. Make room, or make the room bigger.`); return; }
+    if (res.movedTo) {
+      const where = { back: 'the back wall', left: 'the left wall', right: 'the right wall', front: 'the front wall', floor: 'the floor, free-standing' }[res.movedTo];
+      this._toast(`That wall is full, so it is on ${where}. Drag it where it belongs.`);
+    }
     if (res.refused) {
       const h = res.needs && getCab(res.needs);
       this._toast(h ? `A wall oven lives in an oven housing. Pick a wall, then add it again and the ${h.code} ${h.desc} comes with it.` : 'A wall oven lives in an oven housing.');
@@ -557,8 +588,11 @@ export class UI {
     const bind = (id, key) => {
       const el = document.getElementById(id);
       el.addEventListener('change', () => {
-        const v = parseLength(el.value);
-        if (isFinite(v) && v > 12) {
+        const v = parseRoomLength(el.value);
+        // a wall is 4 ft to 60 ft, a ceiling 6 ft to 20 ft: anything else is a slip of the keys
+        const [lo, hi] = key === 'height' ? [72, 240] : [48, 720];
+        if (isFinite(v) && (v < lo || v > hi)) this._toast(`That reads as ${fmtFeetIn(v)}. Try feet and inches like 16' 0", 16 ft, or plain inches like 192.`);
+        if (isFinite(v) && v >= lo && v <= hi) {
           this.store.setRoom({ [key]: v });
           this.onRoomChange(true);   // dimensions changed → re-frame camera
           this._renderWallFit();

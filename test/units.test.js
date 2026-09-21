@@ -50,5 +50,22 @@ eq("parseLength(\"8' 6 1/2\\\"\")", parseLength(`8' 6 1/2"`), 102.5);
 eq('parseLength("28 1/2")', parseLength('28 1/2'), 28.5);
 eq('parseLength("1/2")', parseLength('1/2'), 0.5);
 
+// ---- what people really type into a size box (her catch 2026-09-21: 16 meant 16 INCHES) ----
+{
+  const { parseRoomLength } = await import('../src/core/units.js');
+  const cases = [
+    ['16', 192], ['8', 96], ['12.5', 150], ['150', 150], ['36', 36], ['35', 420],
+    ["16'", 192], ["16' 6\"", 198], ["16'6", 198], ['16 ft', 192], ['16ft', 192], ['16 feet', 192], ['16ft 6in', 198], ['16 ft 6 in', 198], ['16 foot 6 inches', 198],
+    ['16-6', 198], ['192"', 192], ['192 in', 192], ['192 inches', 192],
+    ['16’', 192], ['16’ 6”', 198], ['16′ 6″', 198], ["12' 6 1/2\"", 150.5], ["16''", 16],
+  ];
+  for (const [input, want] of cases) eq(`parseRoomLength(${JSON.stringify(input)})`, parseRoomLength(input), want);
+  eq('parseRoomLength("")', Number.isNaN(parseRoomLength('')), true);
+  eq('parseRoomLength("abc")', Number.isNaN(parseRoomLength('abc')), true);
+  // parseLength itself stays inches for a bare number: a window is 36, never 36 feet
+  eq('parseLength("36") stays inches', parseLength('36'), 36);
+  eq('parseLength curly quotes', parseLength('8’ 6”'), 102);
+}
+
 console.log(`\nunits.test.js — ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

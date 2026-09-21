@@ -6,7 +6,7 @@ import { TEMPLATES } from '../core/templates.js';
 import { generateKitchen, wallFreeSpan } from '../core/layouts.js';
 import { TALL_PROUD } from '../interaction/snapping.js';
 import { FINISHES, getFinish, getCab, FRIDGE_SIZE_LIMITS } from '../core/catalogue.js';
-import { parseLength, fmtFeetIn, fmtIn } from '../core/units.js';
+import { parseLength, parseRoomLength, fmtFeetIn, fmtIn } from '../core/units.js';
 import { getMountY } from '../models/cabinet.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
 import { planBudgetSwaps } from '../core/budget.js';
@@ -355,10 +355,8 @@ export class Wizard {
   // since a kitchen wall is never 10 inches). Falls back to the current value.
   _dim(sel, fallback) {
     const raw = (this.el.querySelector(sel)?.value || '').trim();
-    let v = parseLength(raw);
-    if (!isFinite(v) || v <= 0) return fallback;
-    if (v < 36 && !/['"ft]/i.test(raw)) v *= 12;  // bare small number → feet
-    return v;
+    const v = parseRoomLength(raw);              // one rule for the wizard AND the Room panel (core/units.js)
+    return isFinite(v) && v > 0 ? v : fallback;
   }
 
   _build() {

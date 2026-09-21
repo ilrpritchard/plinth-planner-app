@@ -1713,3 +1713,13 @@ body.mode-trade #keepCard, body.printing-quote #keepCard { display: none; }
 .chg-note-l { display: flex; flex-direction: column; gap: 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .chg-note-l textarea { font-family: inherit; font-size: 13px; text-transform: none; letter-spacing: 0; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--cream-hi); resize: vertical; }
 .order-revised { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+
+/* ---- gap suggestions under the wall bar ---- */
+.wf-gaps { margin-top: 12px; display: grid; gap: 10px; }
+.wf-gap { border: 1px dashed var(--line-strong); border-radius: 9px; padding: 10px 10px 8px; background: var(--brown-soft); }
+.wf-gap-h { font-size: 12px; color: var(--cream); margin-bottom: 7px; line-height: 1.35; }
+.wf-gap-h strong { color: var(--cream-hi); }
+.wf-gap-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left; padding: 7px 9px; margin-top: 5px; background: #fff; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; text-transform: none; letter-spacing: 0; }
+.wf-gap-opt:hover { border-color: var(--cream); background: var(--paper); }
+.wf-gap-codes { font-size: 12.5px; color: var(--cream-hi); font-weight: 600; line-height: 1.3; }
+.wf-gap-meta { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
