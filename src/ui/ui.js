@@ -973,6 +973,10 @@ export class UI {
       this._toast(`Island centred ${about === 'range' ? 'on the range' : 'in the room'}: moved ${fmtIn(Math.abs(p.dx))} ${p.dx > 0 ? 'right' : 'left'}. Its distance from the run has not changed. Undo puts it back.`);
       this.showSelbar(id);
     };
+    // the menu shuts when one of its buttons is pressed, or on a click anywhere else
+    const arrange = document.getElementById('selArrange');
+    arrange.addEventListener('click', (e) => { if (e.target.closest('button')) arrange.open = false; });
+    document.addEventListener('pointerdown', (e) => { if (arrange.open && !arrange.contains(e.target)) arrange.open = false; });
     document.getElementById('selCentreRoom').addEventListener('click', centre('room'));
     document.getElementById('selCentreRange').addEventListener('click', centre('range'));
     document.getElementById('selMirrorRange').addEventListener('click', mirror('range'));
@@ -1075,6 +1079,10 @@ export class UI {
     mr.style.display = mt && mt.range != null ? '' : 'none';
     mw.style.display = mt ? '' : 'none';
     if (mt) { mr.textContent = mt.range != null && !planMirror(this.store.state, id, 'range').partner ? 'Centre over the range' : 'Match across the range'; mw.textContent = alone ? 'Centre on the wall' : 'Match across the wall'; }
+    // "Arrange" appears only when it has something in it, and always starts closed
+    const arr = document.getElementById('selArrange');
+    arr.open = false;
+    arr.style.display = [...arr.querySelectorAll('button')].some((b) => b.style.display !== 'none') ? '' : 'none';
     bar.classList.add('show');
   }
 

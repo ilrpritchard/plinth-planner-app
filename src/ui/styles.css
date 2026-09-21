@@ -381,8 +381,17 @@ button.cta:hover { background: var(--cream-hi); filter: none; }
 #selbar select {
   background: rgba(100,91,61,0.12); color: var(--cream);
   border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;
-  padding: 5px 8px; font-size: 12px; max-width: 240px; cursor: pointer;
+  padding: 5px 8px; font-size: 12px; max-width: 200px; cursor: pointer;
 }
+/* "Arrange": the one-press layout helpers, folded into a menu */
+.sel-menu { position: relative; }
+.sel-menu > summary { list-style: none; cursor: pointer; padding: 6px 11px; border-radius: 6px; background: rgba(100,91,61,0.12); font-size: 12px; white-space: nowrap; user-select: none; }
+.sel-menu > summary::-webkit-details-marker { display: none; }
+.sel-menu > summary::after { content: ' ⌄'; color: var(--dim); }
+.sel-menu[open] > summary { background: rgba(100,91,61,0.22); }
+.sel-menu-list { position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; min-width: 220px; display: flex; flex-direction: column; gap: 4px; padding: 7px;
+  background: var(--brown-deep); border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.sel-menu-list button { width: 100%; text-align: left; white-space: nowrap; }
 #selbar select option { background: var(--brown-deep, #fffdf4); color: var(--cream); }
 
 .hint { font-size: 11px; color: var(--dim); line-height: 1.6; }
