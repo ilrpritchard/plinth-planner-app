@@ -7,7 +7,8 @@ import {
 import { planCornice } from '../core/cornice.js';
 import { fmtIn, fmtFeetIn, parseLength, parseRoomLength } from '../core/units.js';
 import { findGaps, suggestForGap, placementsFor } from '../core/gaps.js';
-import { planEvenOut } from '../core/evenout.js';
+import { planLineUp } from '../core/evenout.js';
+import { planIslandCentre } from '../core/islandcentre.js';
 import { planIslandBack } from '../core/islandback.js';
 import { planMirror, mirrorTargets } from '../core/mirror.js';
 import { summarizeState, deliveryEstimate } from '../core/cost.js';
@@ -86,23 +87,31 @@ export class UI {
 
   // ---------- uneven scribes: even them out (her ask 2026-09-21) ----------
   // Offered ONLY when core/evenout.js says sliding the whole wall along spoils nothing.
+  // "Which rule would you like?": even ends, the sink under its window, or the range centred
+  // on the wall. The slack can only go one way, so every rule it allows is offered (core/evenout.js).
   _evenHTML() {
     this._even = null;
     if (this.activeWall === 'island') return '';
     for (const wall of (this.activeWall === 'back' ? ['back'] : ['left', 'right'])) {
-      const p = planEvenOut(this.store.state, wall);
+      const p = planLineUp(this.store.state, wall);
       if (!p.ok) {
-        // uneven, but evening it out would spoil something: say what, offer nothing
-        const why = { 'sink under window': 'the sink sits centred under the window and would come off it', window: 'a tall or wall cabinet would slide over the window', door: 'a cabinet would end up across the door' }[p.reason];
-        if (why && p.left != null) return `<div class="wf-even"><div class="wf-gap-h"><strong>Uneven ends</strong> ${fmtIn(p.left)} one side, ${fmtIn(p.right)} the other. Left as they are: ${why}.</div></div>`;
+        // something could be lined up, but sliding the wall would spoil something: say what, offer nothing
+        const why = { window: 'a tall or wall cabinet would slide over the window', door: 'a cabinet would end up across the door', 'adjoining run': 'a cabinet on the side wall meets this run, and sliding it would open that joint', 'corner unit': 'a corner unit fixes this run to its corner', 'gap in the run': 'there is a gap in the run. Fill it first (see below), then line it up' }[p.reason];
+        if (why && p.left != null) return `<div class="wf-even"><div class="wf-gap-h"><strong>Line up this wall</strong> ${fmtIn(p.left)} one side, ${fmtIn(p.right)} the other. Left as it is: ${why}.</div></div>`;
         continue;
       }
       this._even = p;
-      const dir = wall === 'back' ? (p.shift > 0 ? 'right' : 'left') : (p.shift > 0 ? 'toward the front' : 'toward the back');
-      return `<div class="wf-even"><div class="wf-gap-h"><strong>Uneven ends</strong> ${fmtIn(p.left)} one side, ${fmtIn(p.right)} the other.</div>
-        <button type="button" class="wf-gap-opt" id="wfEven" title="Slides everything on this wall ${fmtIn(Math.abs(p.shift))} ${dir}: cabinets, the range, uppers and the hood move together.">
-          <span class="wf-gap-codes">Even them out: ${fmtIn(p.each)} each side</span>
-          <span class="wf-gap-meta">moves the wall ${fmtIn(Math.abs(p.shift))} ${dir}</span></button></div>`;
+      const name = { even: 'Even ends', sink: 'Sink centred under the window', range: 'Range centred on the wall' };
+      const also = { even: 'evens the ends', sink: 'centres the sink under the window', range: 'centres the range on the wall' };
+      const ends = (o) => (Math.abs(o.left - o.right) < 0.13 ? `${fmtIn((o.left + o.right) / 2)} each side` : `${fmtIn(Math.max(0, o.left))} one side, ${fmtIn(Math.max(0, o.right))} the other`);
+      const btns = p.options.map((o, i) => {
+        const dir = wall === 'back' ? (o.shift > 0 ? 'right' : 'left') : (o.shift > 0 ? 'toward the front' : 'toward the back');
+        const costs = o.notes.map((n) => (n === 'island' ? 'the island stays where it is' : n.what === 'sink' ? `the sink comes ${fmtIn(n.off)} off the window` : `the range comes ${fmtIn(n.off)} off the middle of the wall`));
+        const meta = [o.key === 'even' ? `moves the wall ${fmtIn(Math.abs(o.shift))} ${dir}` : `leaves ${ends(o)}`, ...o.also.map((k) => `also ${also[k]}`), ...costs].join(' · ');
+        return `<button type="button" class="wf-gap-opt" data-even="${i}" title="Slides everything on this wall ${fmtIn(Math.abs(o.shift))} ${dir}: cabinets, the range, uppers and the hood move together.">
+          <span class="wf-gap-codes">${name[o.key]}${o.key === 'even' ? `: ${ends(o)}` : ''}</span><span class="wf-gap-meta">${meta}</span></button>`;
+      }).join('');
+      return `<div class="wf-even"><div class="wf-gap-h"><strong>Line up this wall</strong> ${fmtIn(p.left)} one side, ${fmtIn(p.right)} the other.${p.options.length > 1 ? ' The spare inches can only go one way. Pick what matters most:' : ''}</div>${btns}</div>`;
     }
     return '';
   }
@@ -146,11 +155,13 @@ export class UI {
       bar = `<div class="wf-stats" style="justify-content:flex-start"><span>Free-standing: no length limit</span></div>`;
     }
     el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}${this._evenHTML()}${this._gapsHTML()}`;
-    el.querySelector('#wfEven')?.addEventListener('click', () => {
-      const p = this._even; if (!p) return;
-      const ok = this.controls.evenOut(p);
+    el.querySelector('.wf-even')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-even]'); if (!btn) return;
+      const o = this._even && this._even.options[Number(btn.dataset.even)]; if (!o) return;
+      const ok = this.controls.evenOut({ ok: true, moves: o.moves });
       this._renderWallFit(); this._refreshCost();          // the moves are quiet updates: redraw the card and the fillers in the estimate
-      this._toast(ok ? `Evened out: ${fmtIn(p.each)} each side.${p.notes.includes('island') ? ' The island has not moved: it was lined up with the run, so check it.' : ''} Undo puts it back.` : 'That wall has changed. Try again.');
+      const done = { even: 'Evened out', sink: 'Sink centred under the window', range: 'Range centred on the wall' }[o.key];
+      this._toast(ok ? `${done}: ${fmtIn(Math.max(0, o.left))} and ${fmtIn(Math.max(0, o.right))} at the ends.${o.notes.includes('island') ? ' The island has not moved: select it to centre it again.' : ''} Undo puts it back.` : 'That wall has changed. Try again.');
     });
     el.querySelector('.wf-gaps')?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-gap]'); if (!btn) return;
@@ -953,6 +964,17 @@ export class UI {
       this._toast(p.partner ? `Matched: both are now ${fmtIn(p.dist)} from ${what}, edge to centre. Undo puts it back.` : `Centred on ${what}. Undo puts it back.`);
       this.showSelbar(id);
     };
+    // the whole island, sideways, to the middle of the floor or onto the range
+    const centre = (about) => () => {
+      const id = this.controls.layer.selectedId; if (id == null) return;
+      const p = planIslandCentre(this.store.state, id, about);
+      if (!p.ok) { this._toast({ already: 'It is already centred.', blocked: 'Something is in the way of that spot.', 'no range': 'There is no range on the back wall.' }[p.reason] || 'Select an island cabinet first.'); return; }
+      this.controls.applyMoves(p.moves);
+      this._toast(`Island centred ${about === 'range' ? 'on the range' : 'in the room'}: moved ${fmtIn(Math.abs(p.dx))} ${p.dx > 0 ? 'right' : 'left'}. Its distance from the run has not changed. Undo puts it back.`);
+      this.showSelbar(id);
+    };
+    document.getElementById('selCentreRoom').addEventListener('click', centre('room'));
+    document.getElementById('selCentreRange').addEventListener('click', centre('range'));
     document.getElementById('selMirrorRange').addEventListener('click', mirror('range'));
     document.getElementById('selMirrorWall').addEventListener('click', mirror('wall'));
     document.getElementById('selOpen').addEventListener('click', () => {
@@ -1044,6 +1066,9 @@ export class UI {
     // island: "Make double sided" while it is a single row; wall cabinets: match about a point
     const dbl = planIslandBack(this.store.state, id);
     document.getElementById('selDouble').style.display = (dbl.ok || ['no room', 'no fit'].includes(dbl.reason)) ? '' : 'none';
+    const cRoom = planIslandCentre(this.store.state, id, 'room'), cRange = planIslandCentre(this.store.state, id, 'range');
+    document.getElementById('selCentreRoom').style.display = cRoom.reason === 'not island' ? 'none' : '';
+    document.getElementById('selCentreRange').style.display = (cRange.ok && !(cRoom.ok && Math.abs(cRoom.dx - cRange.dx) < 0.25)) || (cRange.reason === 'blocked') ? '' : 'none';
     const mt = mirrorTargets(this.store.state, id);
     const alone = mt && !planMirror(this.store.state, id, 'wall').partner;
     const mr = document.getElementById('selMirrorRange'), mw = document.getElementById('selMirrorWall');

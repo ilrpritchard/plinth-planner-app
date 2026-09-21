@@ -2,7 +2,7 @@
 // but only when that spoils nothing.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planEvenOut } from '../src/core/evenout.js';
+import { planEvenOut, planLineUp } from '../src/core/evenout.js';
 import { getCab } from '../src/core/catalogue.js';
 
 const W = 230, D = 150, x0 = -W / 2;
@@ -36,7 +36,8 @@ test('refused when it would spoil the design', () => {
   // a run on the left wall meets this one
   assert.equal(why({ room: room(), items: [...base, { id: 70, code: 'F10', x: x0 + 12.25, z: -D / 2 + 24.3 + 18, rotDeg: 90 }] }), 'adjoining run');
   // a corner unit on the wall
-  nid = 1; const withCorner = [at('F16', x0 + 24.25), at('F10', x0 + 48.25), at('F10', x0 + 84.25)];
+  nid = 1; const withCorner = [at('F16', x0 + 20)];                       // its blank return reaches back to the left wall
+  for (let k = 0; k < 5; k++) withCorner.push(at('F10', x0 + 44 + 36 * k));  // 224" of run: 0" left, 6" right
   assert.equal(why({ room: room(), items: withCorner }), 'corner unit');
   // too much slack is a gap, not a scribe
   nid = 1; assert.equal(why({ room: room(), items: [at('F10', x0), at('F10', x0 + 36)] }), 'too much slack');
@@ -72,4 +73,41 @@ test('sweep: whatever the slack, an accepted plan ends with equal scribes and no
     assert.ok(Math.abs((lo - x0) - (W / 2 - hi)) < 1e-6, 'equal both ends'); assert.ok(lo >= x0 - 1e-6 && hi <= W / 2 + 1e-6); n++;
   }
   assert.ok(n >= 12, `swept ${n}`);
+});
+
+test('which rule would you like: even ends, the sink under its window, or the range on the wall', () => {
+  const items = run(), sb = items[5], range = items[2];                   // F10 sink base, AP2 range
+  const sink = { id: 91, code: 'AP6', x: sb.x, z: sb.z, rotDeg: 0 };
+  // the window sits 2" right of the sink: even ends (4") would overshoot it
+  const win = { id: 1, type: 'window', wall: 'back', pos: (sb.x + 2 - x0) / W, width: 36 };
+  const p = planLineUp({ room: room([win]), items: [...items, sink] }, 'back');
+  assert.equal(p.ok, true, p.reason);
+  const by = Object.fromEntries(p.options.map((o) => [o.key, o]));
+  assert.ok(by.even && Math.abs(by.even.shift - 4) < 0.01 && Math.abs(by.even.left - 4) < 0.01 && Math.abs(by.even.right - 4) < 0.01);
+  assert.ok(by.sink && Math.abs(by.sink.shift - 2) < 0.01 && Math.abs(by.sink.left - 2) < 0.01 && Math.abs(by.sink.right - 6) < 0.01);
+  assert.ok(!by.range, 'the range is 69" from the middle of the wall: the slack cannot centre it');
+  for (const o of p.options) assert.equal(o.moves.length, items.length + 1, 'everything on the wall moves, whichever rule');
+  // a sink that IS centred is never refused now: the even option says what it costs
+  const on = { ...win, pos: (sb.x - x0) / W };
+  const q = planLineUp({ room: room([on]), items: [...items, sink] }, 'back');
+  assert.deepEqual(q.options.map((o) => o.key), ['even']);
+  assert.ok(q.options[0].notes.some((n) => n.what === 'sink' && Math.abs(n.off - 4) < 0.01));
+  // even ends already, sink 3" off its window with 4" to spare each side: still offered
+  const even = items.map((it) => ({ ...it, x: it.x + 4 })), s2 = { ...sink, x: sink.x + 4 };
+  const w3 = { ...win, pos: (s2.x + 3 - x0) / W };
+  const e = planLineUp({ room: room([w3]), items: [...even, s2] }, 'back');
+  assert.deepEqual(e.options.map((o) => o.key), ['sink']);
+  assert.ok(Math.abs(e.options[0].left - 7) < 0.01 && Math.abs(e.options[0].right - 1) < 0.01);
+  // nothing to line up
+  assert.equal(planLineUp({ room: room(), items: even }, 'back').reason, 'already even');
+  // two rules that ask for the same slide are one button
+  nid = 1; const sym = []; let x = x0; for (const code of ['F10', 'F10', 'AP2', 'F10', 'F10']) { sym.push(at(code, x)); x += getCab(code).w; }
+  const Wd = x - x0 + 6, rm = { width: Wd, depth: D, height: 96, openings: [] };
+  const symItems = sym.map((it) => ({ ...it, x: it.x - x0 - Wd / 2 }));    // hard against the left wall of a room 6" longer
+  const m = planLineUp({ room: rm, items: symItems }, 'back');
+  assert.deepEqual(m.options.map((o) => o.key), ['even']);
+  assert.deepEqual(m.options[0].also, ['range']);
+  // a gap in the run still pins it, and says so
+  nid = 1; const holed = [at('T10', x0), at('F10', x0 + 27 + 12), at('F10', x0 + 27 + 48), at('F10', x0 + 27 + 84), at('F10', x0 + 27 + 120), at('F10', x0 + 27 + 156)];
+  assert.equal(planLineUp({ room: room(), items: holed }, 'back').reason, 'gap in the run');
 });

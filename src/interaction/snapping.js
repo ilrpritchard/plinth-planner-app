@@ -220,6 +220,27 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     if (bestBack != null) {
       const newPerp = bestBack + sgn * (d / 2);                   // my back == neighbour back
       if (horizontal) z = newPerp; else x = newPerp;
+      // ...and line up ALONG the island too (her ask 2026-09-21: "make them snap... so it is
+      // aligned at the end"): either end of this cabinet grabs the nearest END or JOINT of the
+      // row behind it, so the island's two sides finish flush and the joints run through.
+      const END_SNAP = 5;
+      const myLo = along - w / 2, myHi = along + w / 2;
+      let bestD = null;
+      for (const o of others) {
+        const oc = getCab(o.code); if (!oc) continue;
+        if (((o.rotDeg || 0) % 180) !== (rotDeg % 180)) continue;
+        const oRad = (o.rotDeg || 0) * Math.PI / 180;
+        const oSgn = horizontal ? (Math.cos(oRad) >= 0 ? 1 : -1) : (Math.sin(oRad) >= 0 ? 1 : -1);
+        if (oSgn === sgn) continue;
+        const oFp = getFootprint(oc), oPerp = horizontal ? o.z : o.x;
+        if (Math.abs((oPerp - oSgn * (oFp.d / 2)) - bestBack) > 0.75) continue;   // only the row whose backs we touch
+        const oAlong = horizontal ? o.x : o.z;
+        for (const oe of [oAlong - oFp.w / 2, oAlong + oFp.w / 2]) for (const me of [myLo, myHi]) {
+          const dlt = oe - me;
+          if (Math.abs(dlt) < END_SNAP && (bestD == null || Math.abs(dlt) < Math.abs(bestD))) bestD = dlt;
+        }
+      }
+      if (bestD != null) { if (horizontal) x += bestD; else z += bestD; }
     }
   }
 
