@@ -52,6 +52,11 @@ export function cabinetSVG(cab, opts = {}) {
   const ob = y0 + dh - (hasPlinth ? plinth : leg);
   const oh = ob - oy;
 
+  // the End Leg is ONE solid upright: no opening, no leg lines (they would cross)
+  if (cab.form === 'leg') {
+    p.push(rect(x0, y0, dw, dh, 1.2, STROKE, STROKE));
+    if (hasPlinth) p.push(hline(x0 - 2, x0 + dw + 2, y0 + dh - plinth, 1.1));
+  } else {
   // leg + top-rail lines (light)
   p.push(vline(x0 + leg, y0, y0 + dh, 0.7));
   p.push(vline(x0 + dw - leg, y0, y0 + dh, 0.7));
@@ -59,6 +64,7 @@ export function cabinetSVG(cab, opts = {}) {
   if (hasPlinth) p.push(hline(x0, x0 + dw, y0 + dh - plinth, 1.1)); // flush plinth
 
   drawFront(p, cab, { ox, oy, ow, oh, frame, s });
+  }
 
   if (sink) {
     const sp = sinkSpec(sink), wt = 1.5 * s, cx = BOX / 2;
@@ -156,7 +162,6 @@ function drawFront(p, cab, a) {
     case 'drawers': stackDrawers(p, ox + rev, oy + rev, ow - 2 * rev, oh - 2 * rev, drawerFront, rev); break;
     case 'open': openShelves(p, ox, oy, ow, oh, 2); break;
     case 'tray': openShelves(p, ox, oy, ow, oh, 1); break;
-    case 'leg': p.push(rect(ox, oy, ow, oh, 1.2, STROKE, STROKE)); break;   // the end leg: a solid upright
     case 'dishwasher': {
       // the appliance DOOR PANEL: one shaker leaf, knob centred on the top rail, like the pull-out
       // bin (her call 2026-09-22: it was drawn as a bare rectangle)

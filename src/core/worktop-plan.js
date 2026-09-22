@@ -164,6 +164,82 @@ export function planWorktopSlabs(items, getCab, defaultMat = 'marble', room = nu
     slabs.push({ x0, x1, z0, z1, mat, horiz: cluster[0].horiz });
   }
 
+  // ---- the DEAD CORNER: a run that reaches a room corner turns it. When the adjoining wall
+  // has nothing standing in the corner but a cabinet further along it (a tall, a base, a
+  // boxing), the top continues round the corner along that wall up to its flank, as one
+  // worktop does on site (her call 2026-09-22: "the worktop will need to continue round the
+  // corner", an F32 on the side wall, an upper over the dead corner, a tall beyond it).
+  // Never past RETURN_MAX, never where another run already fills the corner.
+  const RETURN_MAX = 36;
+  if (room) {
+    const minX = -room.width / 2, maxX = room.width / 2, minZ = -room.depth / 2, maxZ = room.depth / 2;
+    const standing = [];                               // everything on the floor that a return can meet
+    for (const it of items) {
+      const cab = getCab(it.code);
+      if (!cab || (cab.type !== 'FLOOR' && cab.type !== 'TALL' && !(cab.type === 'APPLIANCES' && (cab.mountY || 0) === 0))) continue;
+      const horiz = ((it.rotDeg || 0) % 180) === 0;
+      const hw = (horiz ? cab.w : cab.d) / 2, hd = (horiz ? cab.d : cab.w) / 2;
+      standing.push({ x0: it.x - hw, x1: it.x + hw, z0: it.z - hd, z1: it.z + hd });
+    }
+    for (const bx of room.boxings || []) {
+      const wall = bx.wall || 'back', len = wall === 'back' || wall === 'front' ? room.width : room.depth;
+      const w = bx.w || 8, d = bx.d || 8, along = Math.max(-len / 2 + w / 2, Math.min(len / 2 - w / 2, -len / 2 + (bx.pos ?? 0.5) * len));
+      standing.push(wall === 'back' ? { x0: along - w / 2, x1: along + w / 2, z0: minZ, z1: minZ + d } : wall === 'front' ? { x0: along - w / 2, x1: along + w / 2, z0: maxZ - d, z1: maxZ }
+        : wall === 'left' ? { x0: minX, x1: minX + d, z0: along - w / 2, z1: along + w / 2 } : { x0: maxX - d, x1: maxX, z0: along - w / 2, z1: along + w / 2 });
+    }
+    const covered = (px, pz, self) => slabs.some((s) => s !== self && px > s.x0 + 0.5 && px < s.x1 - 0.5 && pz > s.z0 + 0.5 && pz < s.z1 - 0.5);
+    const returns = [];
+    for (const S of slabs) {
+      // a V slab (along z) reaching the back or front wall; an H slab (along x) reaching a side wall
+      const ends = S.horiz
+        ? [{ hit: Math.abs(S.x0 - minX) < 0.6, cornerX: minX, cornerZ: null }, { hit: Math.abs(S.x1 - maxX) < 0.6, cornerX: maxX, cornerZ: null }]
+        : [{ hit: Math.abs(S.z0 - minZ) < 0.6, cornerX: null, cornerZ: minZ }, { hit: Math.abs(S.z1 - maxZ) < 0.6, cornerX: null, cornerZ: maxZ }];
+      for (const e of ends) {
+        if (!e.hit) continue;
+        if (S.horiz) {
+          // H reaches a side wall at x = cornerX: the corner is at the slab's back edge (z0 near a wall) or front edge
+          const atBack = Math.abs(S.z0 - minZ) < 14, atFront = Math.abs(S.z1 - maxZ) < 14;
+          if (!atBack && !atFront) continue;
+          const cz = atBack ? minZ : maxZ, dir = atBack ? +1 : -1, depth = S.x1 - S.x0 > 0 ? (S.z1 - S.z0) : 0;
+          // along the side wall, away from the corner: the nearest thing standing against that wall
+          let flank = null;
+          for (const o of standing) {
+            const onWall = e.cornerX === minX ? o.x0 - minX < 14 : maxX - o.x1 < 14; if (!onWall) continue;
+            const near = dir > 0 ? o.z0 : o.z1, off = dir > 0 ? near - cz : cz - near;
+            if (off < 0.6 || off > RETURN_MAX) continue;
+            if (flank == null || off < flank.off) flank = { off, near };
+          }
+          if (!flank) continue;
+          const from = atBack ? S.z1 : S.z0;                                              // the slab's own edge, into the room
+          if ((dir > 0 && flank.near <= from + 0.5) || (dir < 0 && flank.near >= from - 0.5)) continue;   // the slab already reaches it
+          const midZ = (from + flank.near) / 2;
+          if (covered(e.cornerX === minX ? minX + 2 : maxX - 2, midZ, S)) continue;      // another run already fills it
+          const rx0 = e.cornerX === minX ? minX : maxX - depth, rx1 = e.cornerX === minX ? minX + depth : maxX;
+          returns.push({ x0: rx0, x1: rx1, z0: Math.min(from, flank.near), z1: Math.max(from, flank.near), mat: S.mat, horiz: false });
+        } else {
+          const atLeft = Math.abs(S.x0 - minX) < 14, atRight = Math.abs(S.x1 - maxX) < 14;
+          if (!atLeft && !atRight) continue;
+          const cx = atLeft ? minX : maxX, dir = atLeft ? +1 : -1, depth = S.x1 - S.x0;
+          let flank = null;
+          for (const o of standing) {
+            const onWall = e.cornerZ === minZ ? o.z0 - minZ < 14 : maxZ - o.z1 < 14; if (!onWall) continue;
+            const near = dir > 0 ? o.x0 : o.x1, off = dir > 0 ? near - cx : cx - near;
+            if (off < 0.6 || off > RETURN_MAX) continue;
+            if (flank == null || off < flank.off) flank = { off, near };
+          }
+          if (!flank) continue;
+          const from = atLeft ? S.x1 : S.x0;                                              // the slab's own edge, into the room
+          if ((dir > 0 && flank.near <= from + 0.5) || (dir < 0 && flank.near >= from - 0.5)) continue;
+          const midX = (from + flank.near) / 2;
+          if (covered(midX, e.cornerZ === minZ ? minZ + 2 : maxZ - 2, S)) continue;
+          const rz0 = e.cornerZ === minZ ? minZ : maxZ - depth, rz1 = e.cornerZ === minZ ? minZ + depth : maxZ;
+          returns.push({ x0: Math.min(from, flank.near), x1: Math.max(from, flank.near), z0: rz0, z1: rz1, mat: S.mat, horiz: true });
+        }
+      }
+    }
+    slabs.push(...returns);
+  }
+
   // ---- corner joins: where a run along X (H) meets a perpendicular run along
   // Z (V), fill the corner square so the surface is continuous into the room
   // corner: V extends over the corner to H's far (wall) edge, and H trims /

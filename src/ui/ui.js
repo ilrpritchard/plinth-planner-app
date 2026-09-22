@@ -626,7 +626,19 @@ export class UI {
         }
       }
       const ceiling = this.store.state.room.height || 96;
+      // sub-headings inside the big families, so like sits with like (her ask 2026-09-22: "group the
+      // floor cabinets in a better way, the dishwashers next to each other, more intuitive")
+      const SUB = { FLOOR: (c) => (c.form === 'corner' ? 'Corners' : c.form === 'drawers' && !/cooktop/i.test(c.desc) ? 'Drawers' : c.form === 'dishwasher' ? 'Appliance fronts' : c.form === 'ovenBase' || /cooktop/i.test(c.desc) ? 'Cooking' : c.form === 'bin' || c.form === 'tray' ? 'Pull-outs and trays' : c.form === 'open' ? 'Open shelves' : c.form === 'leg' ? 'End leg' : c.halfDepth ? 'Doors, half depth' : 'Doors'),
+        WALL: (c) => (c.corner ? 'Corners' : c.form === 'open' ? 'Open shelves' : c.glazed ? 'Glazed' : 'Doors'), HIGH: (c) => (c.form === 'open' ? 'Open shelves' : c.glazed ? 'Glazed' : 'Doors'),
+        COUNTER: (c) => (c.form === 'open' ? 'Open shelves' : c.glazed ? 'Glazed' : 'Doors'), TALL: (c) => (c.form === 'ovenHousing' ? 'Oven housings' : c.form === 'housing' ? 'Fridge housings' : c.corner ? 'Corners' : 'Larders'),
+        STACKER: (c) => (c.onTall ? 'On a tall' : /fits C/.test(c.desc || '') ? 'On a counter cabinet' : 'On a wall cabinet'),
+        APPLIANCES: (c) => (c.appliance === 'range' ? 'Ranges' : c.appliance === 'hob' ? 'Cooktops' : c.appliance === 'oven' ? 'Ovens' : c.appliance === 'sink' ? 'Sinks' : c.appliance === 'hood' ? 'Hoods' : 'Fridges') };
+      const ORDER = { FLOOR: ['Doors', 'Doors, half depth', 'Drawers', 'Corners', 'Pull-outs and trays', 'Open shelves', 'Appliance fronts', 'Cooking', 'End leg'], WALL: ['Doors', 'Glazed', 'Corners', 'Open shelves'], HIGH: ['Doors', 'Glazed', 'Open shelves'], COUNTER: ['Doors', 'Glazed', 'Open shelves'], TALL: ['Larders', 'Fridge housings', 'Oven housings', 'Corners'], STACKER: ['On a tall', 'On a wall cabinet', 'On a counter cabinet'], APPLIANCES: ['Ranges', 'Cooktops', 'Ovens', 'Hoods', 'Sinks', 'Fridges'] };
+      const subOf = SUB[fam];
+      if (subOf) { const rank = (c) => { const o = ORDER[fam] || [], i = o.indexOf(subOf(c)); return i === -1 ? 99 : i; }; items.sort((p, q) => rank(p) - rank(q) || (subOf(p) < subOf(q) ? -1 : subOf(p) > subOf(q) ? 1 : 0)); }
+      let lastSub = null;
       for (const c of items) {
+        if (subOf) { const sub = subOf(c); if (sub !== lastSub) { html += `<div class="cat-sub">${sub}</div>`; lastSub = sub; } }
         // a full-height wall cabinet the ceiling cannot take stays on the shelf, dimmed, saying what it needs
         if (c.high && 56 + c.h + 3 > ceiling) tooWide.add(c.code);
         const wide = tooWide.has(c.code);

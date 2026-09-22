@@ -1,4 +1,5 @@
 // Auto-filler: gap detection + cost inclusion.
+import { planWorktopSlabs } from '../src/core/worktop-plan.js';
 import { computeFillers } from '../src/core/fillers.js';
 import { summarize } from '../src/core/cost.js';
 import { getCab, sellUSD, FILLER_SELL } from '../src/core/catalogue.js';
@@ -54,7 +55,6 @@ ok('fillers not counted as cabinets', sum.totalCabs === 1);
   ok('scribe from a tall to a base flank stops under the counter', !!corner && corner.h === 35);
 }
 
-console.log(`\nfillers.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
 
 // ---- mid-run fillers -----------------------------------------------------------
@@ -79,3 +79,16 @@ _t('mid-run gap between neighbours gets a filler; worktop spans it', async () =>
   _assert.equal(slabs.length, 1, 'one continuous slab across the filler');
 });
 
+
+// worktop round the dead corner (her call 2026-09-22): an F32 on the right wall reaching the back
+// corner, nothing standing in the corner on the back wall, a tall 30" along it: the top continues
+// along the back wall from the corner to the tall's flank
+{
+  const W = 150, D = 120, f = getCab('F32'), t = getCab('T1');
+  const items = [{ id: 1, code: 'F32', x: W / 2 - f.d / 2 - 0.25, z: -D / 2 + f.w / 2 + 0.25, rotDeg: 270 }, { id: 2, code: 'T1', x: W / 2 - 30 - t.w / 2, z: -D / 2 + t.d / 2 + 0.25 + 1.18, rotDeg: 0 }];
+  const slabs = planWorktopSlabs(items, getCab, 'marble', { width: W, depth: D, height: 96, openings: [], boxings: [] });
+  const over = (px, pz) => slabs.some((s) => px > s.x0 - 0.01 && px < s.x1 + 0.01 && pz > s.z0 - 0.01 && pz < s.z1 + 0.01);
+  ok('worktop covers the dead corner', over(W / 2 - 12, -D / 2 + 12));
+  ok('...and runs along the back wall to the tall\'s flank', over(W / 2 - 28, -D / 2 + 12) && !over(W / 2 - 31, -D / 2 + 12));
+}
+console.log(`\nfillers.test.js — ${pass} passed, ${fail} failed`);

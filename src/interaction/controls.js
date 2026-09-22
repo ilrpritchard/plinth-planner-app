@@ -86,11 +86,15 @@ export class PointerControls {
   /** Raw drag position for a cabinet that lives on a wall: on the wall the pointer is over, at
    *  the point along it the pointer shows. Sliding along a run follows the hand exactly, and
    *  the cabinet hops to another wall only when the pointer is actually over that wall. */
-  _wallRaw(hit, cab) {
+  _wallRaw(hit, cab, p) {
     const b = this.room.bounds(), touch = cab.d / 2 + 0.25 + (cab.type === 'TALL' ? 1.18 : 0);
     const along = hit.along + (hit.wall === this.drag.wall ? this.drag.oa : 0);
-    return hit.wall === 'back' ? { x: along, z: b.minZ + touch } : hit.wall === 'front' ? { x: along, z: b.maxZ - touch }
-      : hit.wall === 'left' ? { x: b.minX + touch, z: along } : { x: b.maxX - touch, z: along };
+    // the perpendicular comes from the pointer's own plane point, so the snap can offer "flush
+    // with the tall" as well as "back on the wall"; the snap decides which
+    return hit.wall === 'back' ? { x: along, z: p ? Math.min(Math.max(p.z + this.drag.oz, b.minZ + touch), b.minZ + touch + 30) : b.minZ + touch }
+      : hit.wall === 'front' ? { x: along, z: p ? Math.max(Math.min(p.z + this.drag.oz, b.maxZ - touch), b.maxZ - touch - 30) : b.maxZ - touch }
+      : hit.wall === 'left' ? { x: p ? Math.min(Math.max(p.x + this.drag.ox, b.minX + touch), b.minX + touch + 30) : b.minX + touch, z: along }
+      : { x: p ? Math.max(Math.min(p.x + this.drag.ox, b.maxX - touch), b.maxX - touch - 30) : b.maxX - touch, z: along };
   }
 
   _rootItemId(obj) {
@@ -179,7 +183,7 @@ export class PointerControls {
     let rawZ = p.z + this.drag.oz;
     if (this.drag.onWall) {
       const hit = this._wallHit(), cab = getCab(this.store.getItem(this.drag.id)?.code);
-      if (hit && cab) ({ x: rawX, z: rawZ } = this._wallRaw(hit, cab));
+      if (hit && cab) ({ x: rawX, z: rawZ } = this._wallRaw(hit, cab, p));
     }
     const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds());
     this.store.updateItem(this.drag.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg, ...(snapped.hostId != null ? { hostId: snapped.hostId } : {}) }, { quiet: true });

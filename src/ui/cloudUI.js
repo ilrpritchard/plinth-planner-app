@@ -9,14 +9,18 @@ import {
 import { uiConfirm } from './dialog.js';
 
 export class CloudUI {
-  constructor({ store, onLoaded }) {
+  constructor({ store, onLoaded, onSaved }) {
     this.store = store;
+    this.onSaved = onSaved || null;
     // the design that is OPEN from My designs (id + name): Save writes it in place, and the
     // autosave keeps it current (her ask 2026-09-22: "it needs to autosave every few mins")
     this.currentId = null; this.currentName = null;
     this._lastSaved = null;                 // JSON of the state as last written to the account
     this._saving = false;
-    store.subscribe((s, c) => { if ((c.type === 'load' && !this._opening) || c.type === 'reset') { this.currentId = null; this.currentName = null; } });
+    // the open design survives a reload (her catch 2026-09-22: Save asked her to name Evie's
+    // Kitchen again, because the link to it was lost when the page reloaded)
+    try { const j = JSON.parse(localStorage.getItem('plnr-current-design') || 'null'); if (j && j.id) { this.currentId = j.id; this.currentName = j.name || null; } } catch { /* private mode */ }
+    store.subscribe((s, c) => { if ((c.type === 'load' && !this._opening) || c.type === 'reset') this._setCurrent(null, null); });
     this._startAutosave();
     this.onLoaded = onLoaded || (() => {});
     this.user = null;
@@ -169,8 +173,8 @@ export class CloudUI {
     return `<h3>My designs</h3>
       <p class="cloud-sub">Signed in as ${esc(this.user.email)}</p>
       <div class="cloud-save">
-        <input id="saveName" placeholder="Design name (e.g. Smith kitchen)">
-        <button class="cta" id="saveBtn">Save current design</button>
+        <input id="saveName" placeholder="Design name (e.g. Smith kitchen)" value="${esc(this.currentName && this.currentName !== 'Autosave' ? this.currentName : '')}">
+        <button class="cta" id="saveBtn">${this.currentId && this.currentName !== 'Autosave' ? 'Save' : 'Save current design'}</button>
       </div>
       <div class="cloud-list" id="designList"><div class="cloud-msg">Loading…</div></div>
       <div class="cloud-foot" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -184,10 +188,11 @@ export class CloudUI {
       const typed = this.modal.querySelector('#saveName').value.trim();
       const name = typed || this.currentName || 'Untitled kitchen';
       try {
-        // the same name as the design that is open: write it in place, never a second copy
-        const inPlace = this.currentId && name === this.currentName;
+        // the same name as the design that is open: write it in place, never a second copy.
+        // Naming the Autosave RENAMES it in place, so no stale 'Autosave' is left behind.
+        const inPlace = this.currentId && (name === this.currentName || this.currentName === 'Autosave');
         const row = await saveDesign(name, this.store.serialize(), inPlace ? this.currentId : null);
-        this.currentId = row.id; this.currentName = row.name; this._lastSaved = JSON.stringify(this.store.serialize());
+        this._setCurrent(row.id, row.name); this._lastSaved = JSON.stringify(this.store.serialize());
         this._note2(`Saved ${this._clock()}`);
         this._refreshList(inPlace ? 'Saved ✓ (updated in place)' : 'Saved ✓');
       } catch (err) { this._refreshList(err.message, true); }
@@ -197,11 +202,27 @@ export class CloudUI {
       const has = (this.store.state.items || []).length > 0;
       if (has && !(await uiConfirm('The kitchen on screen comes off the plan. Save it first if you want to keep it. The room and the finish stay, and Undo brings it back.', { title: 'Start a new design?', confirmLabel: 'Start new' }))) return;
       if (has) this.store.clear();
-      this.currentId = null; this.currentName = null; this._lastSaved = null; this._note2('');
+      this._setCurrent(null, null); this._lastSaved = null; this._note2('');
       this.onLoaded(); this.close();
     });
     this._refreshList(this._note);
     this._note = null;
+  }
+  _setCurrent(id, name) {
+    this.currentId = id; this.currentName = name;
+    try { if (id) localStorage.setItem('plnr-current-design', JSON.stringify({ id, name })); else localStorage.removeItem('plnr-current-design'); } catch { /* private mode */ }
+  }
+  /** The SAVE button: the open design is written in place, no questions asked; only a design
+   *  that has never been saved (or is only the Autosave) asks for a name. */
+  async quickSave() {
+    if (!this.user) { this.open(); return; }
+    if (!this.currentId || this.currentName === 'Autosave') { this._note = null; this.open(); setTimeout(() => this.modal.querySelector('#saveName')?.focus(), 50); return; }
+    try {
+      const row = await saveDesign(this.currentName, this.store.serialize(), this.currentId);
+      this._setCurrent(row.id, row.name); this._lastSaved = JSON.stringify(this.store.serialize());
+      this._note2(`Saved ${this._clock()}`);
+      this.onSaved?.(`Saved to ${row.name}.`);
+    } catch (err) { this._note = err.message; this.open(); }
   }
   _clock() { return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
   _note2(text) { const el = document.getElementById('saveNote'); if (el) el.textContent = text; }
@@ -230,7 +251,7 @@ export class CloudUI {
         id = (rows.find((r) => r.name === 'Autosave') || {}).id || null;
       }
       const row = await saveDesign(name, st, id);
-      if (!this.currentId) { this.currentId = row.id; this.currentName = row.name; }
+      if (!this.currentId) this._setCurrent(row.id, row.name);
       this._lastSaved = json;
       this._note2(`${name === 'Autosave' ? 'Autosaved' : 'Saved'} ${this._clock()}`);
       return true;
@@ -251,14 +272,14 @@ export class CloudUI {
         row.querySelector('[data-act="open"]').addEventListener('click', async () => {
           const data = await loadDesign(id);
           this._opening = true;
-          try { if (data && this.store.replace(data)) { this.currentId = id; this.currentName = (rows.find((r) => r.id === id) || {}).name || null; this._lastSaved = JSON.stringify(this.store.serialize()); this._note2(''); this.onLoaded(); this.close(); } }
+          try { if (data && this.store.replace(data)) { this._setCurrent(id, (rows.find((r) => r.id === id) || {}).name || null); this._lastSaved = JSON.stringify(this.store.serialize()); this._note2(''); this.onLoaded(); this.close(); } }
           finally { this._opening = false; }
         });
         row.querySelector('[data-act="del"]').addEventListener('click', async () => {
           const name = row.querySelector('span')?.textContent?.trim() || 'this design';
           if (await uiConfirm(`"${name}" will be gone for good.`, {
             title: 'Delete this design?', confirmLabel: 'Delete', danger: true,
-          })) { await deleteDesign(id); this._refreshList('Deleted'); }
+          })) { await deleteDesign(id); if (id === this.currentId) { this._setCurrent(null, null); this._lastSaved = null; this._note2(''); } this._refreshList('Deleted'); }
         });
       });
     } catch (err) { el.innerHTML = `<div class="cloud-msg err">${esc(err.message)}</div>`; }

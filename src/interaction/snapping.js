@@ -65,10 +65,27 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     const match = cands.find((c) => (c.rot % 180) === ((item.rotDeg || 0) % 180));
     const pick = (match && match.err <= cands[0].err + 6) ? match : cands[0];
     wall = pick.wall; rotDeg = pick.rot;
-    if (wall === 'back') z = bounds.minZ + touch;
-    else if (wall === 'front') z = bounds.maxZ - touch;
-    else if (wall === 'left') x = bounds.minX + touch;
-    else x = bounds.maxX - touch;
+    // a WALL / COUNTER cabinet beside a TALL in the same run has TWO snap points: its back on the
+    // wall, or its FRONT flush with the tall's front (her ask 2026-09-22: "you should be able to
+    // pull it forward to sit flush with the tall cabinet, as an option"). Whichever the pointer
+    // is nearer. Only with a tall butted beside it (within 2"), never mid-air.
+    let out = 0;
+    if (cab.type === 'WALL' || cab.type === 'COUNTER') {
+      const along = pick.rot % 180 === 0 ? rawX : rawZ, rawPerp = pick.rot === 0 ? rawZ - bounds.minZ : pick.rot === 180 ? bounds.maxZ - rawZ : pick.rot === 90 ? rawX - bounds.minX : bounds.maxX - rawX;
+      let flush = null;
+      for (const o of others) {
+        const oc = getCab(o.code); if (!oc || oc.type !== 'TALL' || (((o.rotDeg || 0) % 360) + 360) % 360 !== pick.rot) continue;
+        const oAlong = pick.rot % 180 === 0 ? o.x : o.z;
+        if (Math.abs(oAlong - along) > (w + oc.w) / 2 + 2) continue;                      // must stand beside it
+        const oPerp = pick.rot === 0 ? o.z - bounds.minZ : pick.rot === 180 ? bounds.maxZ - o.z : pick.rot === 90 ? o.x - bounds.minX : bounds.maxX - o.x;
+        flush = oPerp + oc.d / 2 - d / 2;                                                  // my front on the tall's front
+      }
+      if (flush != null && Math.abs(rawPerp - flush) < Math.abs(rawPerp - touch)) out = flush - touch;
+    }
+    if (wall === 'back') z = bounds.minZ + touch + out;
+    else if (wall === 'front') z = bounds.maxZ - touch - out;
+    else if (wall === 'left') x = bounds.minX + touch + out;
+    else x = bounds.maxX - touch - out;
   }
 
   // ---- 1b. a CORNER unit may be pulled off its wall to BUTT the adjoining
@@ -95,7 +112,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
         const gap = (near - front) * sgn0;                       // my front face to its nearest edge
         const overlap = horiz0 ? Math.min(me0.x1, ob.x1) - Math.max(me0.x0, ob.x0) : Math.min(me0.z1, ob.z1) - Math.max(me0.z0, ob.z0);
         // an overshoot into the neighbour (up to a body depth) still lands on the butt joint
-        if (overlap > 0.5 && gap > -d && gap <= 8 && (bestGap == null || Math.abs(gap) < Math.abs(bestGap))) bestGap = gap;
+        if (overlap > 0.5 && gap > -d && gap <= 40 && (bestGap == null || Math.abs(gap) < Math.abs(bestGap))) bestGap = gap;   // any run within a body's reach, not just 8" (her drag 2026-09-22)
       }
       if (bestGap != null) {
         const shift = sgn0 * (bestGap - WALL_GAP);
@@ -495,7 +512,14 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       const xOverlap = Math.min(me2.x1, ob.x1) - Math.max(me2.x0, ob.x0);
       return Math.abs(near - doorEdgeZ) <= TOUCH && xOverlap > 0.5;
     });
-    if (!(backOk && tipOk) && !(tipOk && buttsRun) && !(backOk && buttsDoorSide)) { x = item.x; z = item.z; rotDeg = item.rotDeg || 0; flag = 'corner'; }
+    // …OR pulled FORWARD off its own wall, the return still on the side wall (her drag
+    // 2026-09-22: "it won't let me drag this corner cabinet forward"): up to 30" out, so it
+    // can come to meet a deeper run or leave room behind; 1b above lands it on the run's face.
+    const offWall = horiz
+      ? (cc >= 0 ? z - (bounds.minZ + touch) : (bounds.maxZ - touch) - z)
+      : (ss >= 0 ? x - (bounds.minX + touch) : (bounds.maxX - touch) - x);
+    const forward = tipOk && offWall > -0.5 && offWall <= 30;
+    if (!(backOk && tipOk) && !(tipOk && buttsRun) && !(backOk && buttsDoorSide) && !forward) { x = item.x; z = item.z; rotDeg = item.rotDeg || 0; flag = 'corner'; }
   }
 
   return { x, z, rotDeg, flag };

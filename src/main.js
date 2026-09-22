@@ -36,7 +36,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-170 · bases slide under their sink again, the End Leg (F34), the 24in hood, a flank scribe stops under the counter';
+const BUILD = 'W2W-171 · Save in place, the worktop turns a dead corner, corner units come forward, flush-with-the-tall snap, catalogue sub-groups';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -504,16 +504,14 @@ document.getElementById('btnOrders')?.addEventListener('click', () => tradeUI?.s
 const cloudUI = new CloudUI({
   store,
   onLoaded: () => { buildRoom(true); rebuildWorktop(); rebuildFillers(); applyMode(); },
+  onSaved: (msg) => toast(msg),
 });
 
 // when cloud is on, Save/Open go to the account (file export is the offline fallback)
 if (cloudUI && isCloud()) {
-  ['btnExport', 'btnImport'].forEach((id) => {
-    document.getElementById(id)?.addEventListener('click', (e) => {
-      e.stopImmediatePropagation();   // preempt the file export/import handler
-      cloudUI.open();
-    }, true);
-  });
+  // SAVE writes the open design in place (a never-saved design asks for a name); OPEN lists them
+  document.getElementById('btnExport')?.addEventListener('click', (e) => { e.stopImmediatePropagation(); cloudUI.quickSave(); }, true);
+  document.getElementById('btnImport')?.addEventListener('click', (e) => { e.stopImmediatePropagation(); cloudUI.open(); }, true);
 }
 
 // ----- "Keep this layout?" -----
