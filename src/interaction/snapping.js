@@ -27,8 +27,9 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     if (!host) return { x: item.x, z: item.z, rotDeg: item.rotDeg || 0, flag: 'oven' };
     return { x: host.x, z: host.z, rotDeg: host.rotDeg || 0, hostId: host.id };
   }
-  // a range hood RIDES the cooker: centred over the range or cooktop nearest the pointer
-  if (cab.appliance === 'hood') {
+  // a range hood RIDES the cooker: centred over the range or cooktop nearest the pointer; so does
+  // the hood COVER (W26), which sits over the hood at its own fixed height (top on the crown line)
+  if (cab.appliance === 'hood' || cab.hoodCover) {
     const seat = findHoodSeat(store.state, rawX, rawZ, id, cab);
     if (!seat) return { x: item.x, z: item.z, rotDeg: item.rotDeg || 0, flag: 'hood' };
     return { x: seat.x, z: seat.z, rotDeg: seat.rotDeg };
@@ -80,7 +81,31 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
         const oPerp = pick.rot === 0 ? o.z - bounds.minZ : pick.rot === 180 ? bounds.maxZ - o.z : pick.rot === 90 ? o.x - bounds.minX : bounds.maxX - o.x;
         flush = oPerp + oc.d / 2 - d / 2;                                                  // my front on the tall's front
       }
-      if (flush != null && Math.abs(rawPerp - flush) < Math.abs(rawPerp - touch)) out = flush - touch;
+      // ...and a THIRD point for a WALL cabinet (her ask 2026-09-22, "pull the open shelves forward to
+      // cover the oak part"): its front on the BODY edge of a corner wall unit on the adjoining wall
+      // whose blank return runs toward this wall, so the shelf hides that return
+      let cover = null;
+      if (cab.type === 'WALL' && flush != null) {
+        const perpOf = (px, pz) => pick.rot === 0 ? pz - bounds.minZ : pick.rot === 180 ? bounds.maxZ - pz : pick.rot === 90 ? px - bounds.minX : bounds.maxX - px;
+        const me = worldBox({ ...item, x: rawX, z: rawZ, rotDeg: pick.rot }, cab);
+        for (const o of others) {
+          const oc = getCab(o.code); if (!oc || !oc.corner || oc.type !== 'WALL') continue;
+          if ((((o.rotDeg || 0) - pick.rot) % 180 + 180) % 180 !== 90) continue;
+          const ob = worldBox(o, oc), horizO = ((o.rotDeg || 0) % 180) === 0;
+          const bodyLo = horizO ? o.x - oc.w / 2 : o.z - oc.w / 2, bodyHi = horizO ? o.x + oc.w / 2 : o.z + oc.w / 2;
+          const boxLo = horizO ? ob.x0 : ob.z0, boxHi = horizO ? ob.x1 : ob.z1;
+          // the return must extend toward MY wall: the body edge nearer my wall is the one to land on
+          const pLo = horizO ? perpOf(bodyLo, o.z) : perpOf(o.x, bodyLo), pHi = horizO ? perpOf(bodyHi, o.z) : perpOf(o.x, bodyHi);
+          const nearer = pLo < pHi ? { p: pLo, ret: (horizO ? bodyLo - boxLo : bodyLo - boxLo) } : { p: pHi, ret: (horizO ? boxHi - bodyHi : boxHi - bodyHi) };
+          if (nearer.ret < 1) continue;                                                     // its return faces away
+          // and it must sit at my end: its box next to mine along my run, not somewhere else on the wall
+          const gapAlong = pick.rot % 180 === 0 ? Math.max(ob.x0 - me.x1, me.x0 - ob.x1) : Math.max(ob.z0 - me.z1, me.z0 - ob.z1);
+          if (gapAlong > 4) continue;
+          cover = nearer.p - d / 2;
+        }
+      }
+      const opts = [{ out: 0, err: Math.abs(rawPerp - touch) }, ...(flush != null ? [{ out: flush - touch, err: Math.abs(rawPerp - flush) }] : []), ...(cover != null ? [{ out: cover - touch, err: Math.abs(rawPerp - cover) }] : [])];
+      out = opts.sort((a, b) => a.err - b.err)[0].out;
     }
     if (wall === 'back') z = bounds.minZ + touch + out;
     else if (wall === 'front') z = bounds.maxZ - touch - out;
@@ -172,7 +197,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     const meNow = worldBox({ ...item, x: freeAxis === 'x' ? rawX : x, z: freeAxis === 'z' ? rawZ : z, rotDeg }, cab);
     for (const o of others) {
       const oc = getCab(o.code);
-      if (!oc || oc.corner || oc.notSupplied || oc.type === 'WALL' || oc.type === 'COUNTER') continue;
+      if (!oc || oc.notSupplied || oc.type === 'WALL' || oc.type === 'COUNTER') continue;   // corner units too: a tall starts on the corner base's face
       if ((((o.rotDeg || 0) - rotDeg) % 180 + 180) % 180 !== 90) continue;         // perpendicular only
       const ob = worldBox(o, oc);
       const oRad = ((o.rotDeg || 0) * Math.PI) / 180;
@@ -399,7 +424,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     // worktop-mounted appliances (sink, hob) belong IN FRONT of a window —
     // the classic sink-under-the-window — so the glass isn't solid to them
     const winSolid = cab.appliance !== 'sink' && cab.appliance !== 'hob';
-    const overCooker = cab.type === 'COUNTER' || (cab.type === 'WALL' && !cab.stacker);
+    const overCooker = cab.type === 'COUNTER' || (cab.type === 'WALL' && !cab.stacker && !cab.hoodCover);
     const hitAt = (px, pz) => {
       const me = worldBox({ x: px, z: pz, rotDeg }, cab);
       const test = (ob) =>
@@ -411,6 +436,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       for (const o of others) {
         const oc = getCab(o.code);
         if (!oc || !oc.placeable) continue;
+        if ((cab.hoodCover && oc.appliance === 'hood') || (cab.appliance === 'hood' && oc.hoodCover)) continue;   // the cover wraps the hood
         const ob = worldBox(o, oc);
         // RULE (17 Sep 2026): nothing sits over the cooker. A range or hob is
         // solid through its whole column to a counter dresser or an upper, so a

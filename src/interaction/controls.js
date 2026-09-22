@@ -295,8 +295,8 @@ export class PointerControls {
     if (isOven(cab)) return this._placeOven(cab, wall);
     if (cab.form === 'ovenBase' && !opts.plain) return this._placeOvenBase(code, wall);
     if (/cooktop/i.test(cab.desc || '') && !opts.plain) return this._placeCooktopBase(code, wall);
-    // a range hood goes straight over the cooker (core/hoodseat.js); with none, it waits on the wall
-    if (cab.appliance === 'hood') {
+    // a range hood (or its cover, W26) goes straight over the cooker (core/hoodseat.js); with none, it waits on the wall
+    if (cab.appliance === 'hood' || cab.hoodCover) {
       const seat = findHoodSeat(this.store.state, 0, 0, null, cab);
       if (seat) {
         const item = this.store.addItem(code, { x: seat.x, z: seat.z, rotDeg: seat.rotDeg });

@@ -94,6 +94,11 @@ const RAW = [
   // 10": on the wall BESIDE the tall, pulled forward flush with its face (her ask 2026-09-22); between the
   // tall's near end (24.25" out) and the front of a corner wall unit's return (14.25" out) there is 10"
   { code: 'W25', type: 'WALL', desc: 'Open Shelves', w: 10, d: 14, h: 30, hinge: 'n/a', usd: 0, priceTBC: true },
+  // HOOD COVER (her ask 2026-09-22, "a vent / extractor cover to go here, same door panel as the cabinets"):
+  // a hung box over the cooker with one FIXED shaker panel, no knob, no hinge; it conceals a 24" extractor
+  // insert (supply your own: the AP23 canopy sits inside it) and its top lands on the 86" crown line, so
+  // the flue above is a 24" wall stacker. 20" deep to take the canopy. It RIDES the cooker like the hood.
+  { code: 'W26', type: 'WALL', desc: 'Hood Cover', w: 24, d: 20, h: 16, hinge: 'n/a', usd: 0, priceTBC: true, mountY: 70, hoodCover: true, notes: 'Fixed shaker panel over a built-in canopy extractor up to 54cm wide, such as the AEG DGE5661HM (supplied by others): only its liner shows underneath. Sits between the wall cabinets with its top on the crown line; add a stacker above to hide the flue.' },
   // WALL — S-series STACKERS: boxes that sit ON TOP of an existing run for
   // tall ceilings, matched per family so every wall/tall/counter cabinet has
   // a stacker with the SAME width, the right depth, and its mountY exactly at
@@ -119,14 +124,14 @@ const RAW = [
   { code: 'S14', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T7, T8, T13)', w: 44, d: 24, onTall: true, h: 21, hinge: 'n/a', usd: 2482, mountY: 86, notes: 'Sits on the 44" double larder. For 10\'+ ceilings.' },
   // fits the WALL run (20/24/28/36/42 wide, d 14, mount 86 — stacked uppers)
   { code: 'S15', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W1, W3, W11)', w: 20, d: 14, h: 15, hinge: 'L&R', usd: 1419, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
-  { code: 'S16', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W2, W4, W12)', w: 24, d: 14, h: 15, hinge: 'L&R', usd: 1495, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
+  { code: 'S16', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W2, W4, W12, W26)', w: 24, d: 14, h: 15, hinge: 'L&R', usd: 1495, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S17', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W13)', w: 28, d: 14, h: 15, hinge: 'L&R', usd: 1601, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S33', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W25)', w: 10, d: 14, h: 15, hinge: 'L&R', usd: 0, priceTBC: true, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S34', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W25)', w: 10, d: 14, h: 21, hinge: 'L&R', usd: 0, priceTBC: true, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 107".' },
   { code: 'S18', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W5, W7)', w: 36, d: 14, h: 15, hinge: 'n/a', usd: 1981, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S19', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W6, W8)', w: 42, d: 14, h: 15, hinge: 'n/a', usd: 2148, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S20', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W1, W3, W11)', w: 20, d: 14, h: 21, hinge: 'L&R', usd: 1586, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
-  { code: 'S21', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W2, W4, W12)', w: 24, d: 14, h: 21, hinge: 'L&R', usd: 1662, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
+  { code: 'S21', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W2, W4, W12, W26)', w: 24, d: 14, h: 21, hinge: 'L&R', usd: 1662, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   { code: 'S22', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W13)', w: 28, d: 14, h: 21, hinge: 'L&R', usd: 1768, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   { code: 'S23', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W5, W7)', w: 36, d: 14, h: 21, hinge: 'n/a', usd: 2148, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   { code: 'S24', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W6, W8)', w: 42, d: 14, h: 21, hinge: 'n/a', usd: 2315, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
@@ -201,6 +206,7 @@ function classify(it) {
   if (d.includes('dishwasher')) return 'dishwasher';
   if (d.includes('tray')) return 'tray';
   if (d.includes('bin')) return 'bin';
+  if (d.includes('hood cover')) return 'hoodCover';
   if (d.includes('open shelves')) return 'open';
   if (d.includes('double')) return it.glazed ? 'glazedDouble' : 'double';
   if (it.glazed) return 'glazed';            // single glazed

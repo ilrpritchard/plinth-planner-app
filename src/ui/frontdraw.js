@@ -216,6 +216,9 @@ export function frontParts(cab) {
     case 'dishwasher':                           // full-width panel, no legs
       leaf(0, w, singleZone);
       break;
+    case 'hoodCover':                            // one fixed shaker panel between the legs, no swing mark
+      leaf(dx0, dx1, singleZone);
+      break;
     default:
       break;
   }

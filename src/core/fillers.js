@@ -41,15 +41,17 @@ function bandFillers(state, band, out) {
   const r = state.room;
   const minX = -r.width / 2, maxX = r.width / 2, minZ = -r.depth / 2, maxZ = r.depth / 2;
 
+  // PROUD_TOL: a hung cabinet pulled forward flush with a tall (10" + 30mm off its wall) is still in that wall's run
+  const PROUD_TOL = 12;
   const onWall = (wall) => state.items
     .map((it) => ({ it, cab: getCab(it.code) }))
     .filter(({ it, cab }) => {
       if (!cab || !band.has(cab)) return false;
       const horiz = ((it.rotDeg || 0) % 180) === 0;
-      if (wall === 'back') return horiz && Math.abs(it.z - (minZ + cab.d / 2 + WALL_GAP)) < RUN_TOL;
-      if (wall === 'front') return horiz && Math.abs(it.z - (maxZ - cab.d / 2 - WALL_GAP)) < RUN_TOL;
-      if (wall === 'right') return !horiz && Math.abs(it.x - (maxX - cab.d / 2 - WALL_GAP)) < RUN_TOL;
-      return !horiz && Math.abs(it.x - (minX + cab.d / 2 + WALL_GAP)) < RUN_TOL; // left
+      if (wall === 'back') return horiz && Math.abs(it.z - (minZ + cab.d / 2 + WALL_GAP)) < PROUD_TOL;
+      if (wall === 'front') return horiz && Math.abs(it.z - (maxZ - cab.d / 2 - WALL_GAP)) < PROUD_TOL;
+      if (wall === 'right') return !horiz && Math.abs(it.x - (maxX - cab.d / 2 - WALL_GAP)) < PROUD_TOL;
+      return !horiz && Math.abs(it.x - (minX + cab.d / 2 + WALL_GAP)) < PROUD_TOL; // left
     });
 
   // A run's end scribes to the WALL, or, where a run on the adjoining wall owns the corner, to

@@ -92,13 +92,22 @@ export class CabinetLayer {
         if (!!rec.ovenIn !== !!ovenIn(this.store.state, it.id)) { this._dispose(it.id); this._addOrUpdate(it); }
         continue;
       }
+      if (cab.appliance === 'hood') {                // a W26 cover arrives over it / leaves: the hood hides / shows
+        const covered = this.store.state.items.some((o) => { const oc = getCab(o.code); return oc?.hoodCover && Math.abs(o.x - it.x) < oc.w / 2 && Math.abs(o.z - it.z) < oc.d / 2 + 4; });
+        if (!!rec.covered !== covered) { this._dispose(it.id); this._addOrUpdate(it); const r2 = this.map.get(it.id); if (r2) r2.covered = covered; }
+        continue;
+      }
       if (cab.type !== 'FLOOR') continue;
       if (!!rec.sinkOver !== this._sinkOver(it, cab)) { this._dispose(it.id); this._addOrUpdate(it); }
     }
   }
 
   _build(cab, item) {
-    if (cab.type === 'APPLIANCES') return buildAppliance(cab, this.finishHexFor(item, this.store.state), { ceiling: this.store.state.room?.height || 96 });
+    if (cab.type === 'APPLIANCES') {
+      // a hood under a W26 hood cover is hidden: a canopy liner inside the cover is all that shows
+      const covered = cab.appliance === 'hood' && this.store.state.items.some((o) => { const oc = getCab(o.code); return oc?.hoodCover && Math.abs(o.x - item.x) < oc.w / 2 && Math.abs(o.z - item.z) < oc.d / 2 + 4; });
+      return buildAppliance(cab, this.finishHexFor(item, this.store.state), { ceiling: this.store.state.room?.height || 96, covered });
+    }
     if (cab.type === 'SHELF') return buildFloatingShelf(cab);
     // hardware is not user-choosable: every Plinth cabinet ships with knobs
     // an exposed island back is a FINISHED (painted) panel — the cost side

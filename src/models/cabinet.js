@@ -573,6 +573,21 @@ function buildFront(g, cab, ctx) {
     case 'glazedDouble': doublePair(true); return true;
     case 'drawers': drawers(SPEC.DRAWER_FACES_IN); return false;
     case 'open': openShelves(2); return false;
+    case 'hoodCover': {          // one FIXED shaker panel, no knob, no pivot: the extractor's cover (2026-09-22)
+      const leaf = shakerLeaf(faceW, openH, mat, false, 1);
+      leaf.position.set(0, cy, frontZ - DOOR_T / 2);
+      g.add(leaf);
+      revealRing(g, 0, cy, faceW, openH, frontZ);
+      // the canopy LINER under it (a 54cm built-in like the AEG DGE5661HM, her reference): a slim
+      // stainless plate with a grease filter and two lamps, all you see of the extractor
+      const steel = new THREE.MeshStandardMaterial({ color: 0xbcc1c5, metalness: 0.7, roughness: 0.4 });
+      const dark = new THREE.MeshStandardMaterial({ color: 0x3a3d40, metalness: 0.3, roughness: 0.7 });
+      const lw = Math.min(faceW - 1, 21.3), ld = ctx.inD - 3;
+      const plate = box(lw, 0.8, ld, steel); plate.position.set(0, -0.4, -0.5); g.add(plate);
+      const filt = box(lw * 0.7, 0.12, ld * 0.55, dark); filt.position.set(0, -0.85, -0.5); g.add(filt);
+      for (const sx of [-1, 1]) { const lamp = box(1.6, 0.1, 1.6, new THREE.MeshStandardMaterial({ color: 0xfff4d6, emissive: 0xfff0c0, emissiveIntensity: 0.6 })); lamp.position.set(sx * (lw / 2 - 2.2), -0.85, ld * 0.2); g.add(lamp); }
+      return false;
+    }
     case 'tray': return false;   // open slot for trays/boards to LEAN in — NO shelf
     case 'dishwasher': {
       // appliance DOOR PANEL only: it always sits BETWEEN two cabinets, so it

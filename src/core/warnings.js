@@ -99,6 +99,7 @@ export function computeWarnings(state) {
   for (let i = 0; i < solid.length; i++) {
     for (let j = i + 1; j < solid.length; j++) {
       const a = solid[i], b = solid[j];
+      if ((a.cab.hoodCover && b.cab.appliance === 'hood') || (b.cab.hoodCover && a.cab.appliance === 'hood')) continue;   // the cover wraps the hood
       const ox = (a.hx + b.hx) - Math.abs(a.x - b.x);
       const oz = (a.hz + b.hz) - Math.abs(a.z - b.z);
       const [ay0, ay1] = yBand(a.cab), [by0, by1] = yBand(b.cab);
@@ -242,7 +243,7 @@ export function computeWarnings(state) {
   // range or cooktop's edges either side (the hood over it is the exception)
   {
     const isCookBox = (b) => b.cab.appliance === 'range' || b.cab.appliance === 'hob';
-    const isUpper = (b) => b.cab.type === 'WALL' && !b.cab.stacker;
+    const isUpper = (b) => b.cab.type === 'WALL' && !b.cab.stacker && !b.cab.hoodCover;   // the cover sits over the cooker by design
     for (const c of boxes.filter(isCookBox)) {
       for (const u of boxes.filter(isUpper)) {
         const dx = Math.abs(c.x - u.x) - (c.hx + u.hx);

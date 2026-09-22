@@ -101,3 +101,26 @@ test('a WALL corner unit snaps its body edge onto the flank of a tall on the adj
   assert.ok(Math.abs((f.z + 5) - (-6.85 - t1.w / 2)) < 0.01, 'butted to the tall');
   assert.ok(Math.abs((f.z - 5) - (bb.minZ + 0.25 + 14)) < 0.01, 'its back end meets the front of the return: nothing shows');
 });
+
+// her share link gsq2cza (2026-09-22): the tall stood 3.65" off the corner base's face; a shelf pulled forward
+// beside the tall belongs to the wall run (scribe to the upper on the adjoining wall); and it can be pulled
+// further to cover a corner wall unit's return
+test('a tall snaps its end onto a corner base\'s face; a flush shelf still scribes; a shelf can cover a corner wall unit\'s return', async () => {
+  const { computeFillers } = await import('../src/core/fillers.js');
+  const store = new Store(); store.setRoom({ width: 118.9, depth: 86.2, height: 96 });
+  const bb = { minX: -118.9 / 2, maxX: 118.9 / 2, minZ: -86.2 / 2, maxZ: 86.2 / 2 };
+  store.addItem('F15', { x: -24.02, z: -30.85, rotDeg: 0 });                         // corner base, front at z -18.85
+  const t1 = store.addItem('T1', { x: -46.02, z: -3.2, rotDeg: 90 });                // starts at z -15.2: 3.65" off
+  const r = snapPosition(store, t1.id, -46.02, -5, bb);
+  assert.ok(Math.abs((r.z - 12) - (-18.85)) < 0.01, `the tall's end lands on the corner base's face (${(r.z - 12).toFixed(2)})`);
+  // a shelf flush with the tall, its back end 3.65" short of a W1's front on the back wall: an upper scribe
+  store.addItem('W1', { x: -26.34, z: -35.85, rotDeg: 0 });
+  const sh = store.addItem('W25', { x: -41.02, z: -20.2, rotDeg: 90 });
+  const up = computeFillers(store.state).filter((f) => f.band === 'upper');
+  assert.ok(up.some((f) => Math.abs(f.w - 3.65) < 0.05 && f.rotDeg === 90), `scribe between the shelf and the upper: ${JSON.stringify(up.map((f) => [+f.w.toFixed(2), f.rotDeg]))}`);
+  // swap the W1 for a W9 corner unit moved out along the back wall: its return runs toward the left wall
+  store.removeItem(store.state.items.find((i) => i.code === 'W1').id);
+  store.addItem('W9', { x: -18, z: -35.85, rotDeg: 0 });                             // body edge -28, return to -38
+  const c = snapPosition(store, sh.id, -33, -20.2, bb);                                // pulled forward (the drag keeps the pointer on the wall's own side)
+  assert.ok(Math.abs((c.x + 7) - (-28)) < 0.01, `the shelf's front lands on the W9's body edge, covering the return (${(c.x + 7).toFixed(2)})`);
+});

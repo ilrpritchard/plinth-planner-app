@@ -253,6 +253,7 @@ export function buildAppliance(cab, finishHex = '#efece3', opts = {}) {
       break;
     }
     case 'hood': {
+      if (opts.covered) break;                                      // inside a W26 hood cover: the cover's liner is all you see (her call 2026-09-22)
       // a wall-mount chimney hood in the ZLINE / Broan idiom (her reference 2026-09-22): a
       // shallow flat box canopy, baffle filters and a control strip underneath, and a plain
       // rectangular two-piece chimney rising from its back half

@@ -227,6 +227,7 @@ function drawFront(p, cab, a) {
       stackDrawers(p, ox + rev, oy + oh - baseH, ow - 2 * rev, baseH - rev, drawerFront, rev);
       break;
     }
+    case 'hoodCover': doorPanel(ox + rev, oy + rev, ow - 2 * rev, oh - 2 * rev, 0); break;   // fixed panel, no knob
     default: doorPanel(ox + rev, oy + rev, ow - 2 * rev, oh - 2 * rev, +1);
   }
 }

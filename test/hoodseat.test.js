@@ -49,3 +49,23 @@ test('the washing machine stands on the floor in the run and the worktop runs ov
   const withRange = planWorktopSlabs([items[0], { id: 2, code: 'AP1', x: 3, z: -D2 / 2 + 13.25, rotDeg: 0 }, items[2]], getCab, 'marble', { width: 144, depth: D2, height: 96, openings: [], boxings: [] });
   assert.ok(!withRange.some((s) => s.x0 < 3 && s.x1 > 3 && s.z0 < z && s.z1 > z), 'no slab over the range');
 });
+
+// the HOOD COVER W26 (her ask 2026-09-22): rides the cooker like the hood, wraps it without an overlap error
+test('W26 hood cover seats centred over the cooktop, coexists with the hood, no upper-clearance or overlap warning', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const { snapPosition } = await import('../src/interaction/snapping.js');
+  const { computeWarnings } = await import('../src/core/warnings.js');
+  const { getCab } = await import('../src/core/catalogue.js');
+  const store = new Store(); store.setRoom({ width: 200, depth: 140, height: 96 });
+  const b = { minX: -100, maxX: 100, minZ: -70, maxZ: 70 };
+  store.addItem('F32', { x: 0, z: -70 + 12.25, rotDeg: 0 }); store.addItem('AP22', { x: 0, z: -70 + 12.25, rotDeg: 0 });
+  store.addItem('AP23', { x: 0, z: -70 + 19.7 / 2 + 0.25, rotDeg: 0 });
+  const cover = store.addItem('W26', { x: 40, z: -50, rotDeg: 0 });
+  const r = snapPosition(store, cover.id, 6, -60, b);
+  assert.equal(r.flag, undefined); assert.ok(Math.abs(r.x) < 0.01, `centred over the hob (${r.x})`);
+  store.updateItem(cover.id, { x: r.x, z: r.z, rotDeg: r.rotDeg });
+  const w = computeWarnings(store.state).map((x) => x.msg);
+  assert.ok(!w.some((m) => /overlap|50mm/.test(m)), `no overlap / clearance warning: ${w.join(' | ')}`);
+  const c = getCab('W26');
+  assert.equal(c.mountY + c.h, 86, 'its top lands on the crown line, so a 24in wall stacker fits above');
+});
