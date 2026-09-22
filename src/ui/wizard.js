@@ -724,7 +724,12 @@ export class Wizard {
           if (t0 >= base.x && t0 < hi) hi = t0;
         }
         const ww = Math.min(48, hi - lo - 2);
-        if (ww >= 20) {
+        // AUTO-LAYOUT of a project unit never touches the windows: they are already on the
+        // plan (her rule 2026-09-22: "don't add a window, the window will already be there from
+        // the plan"). Only the Kitchen-mode wizard, drafting a room from nothing, adds or
+        // recentres one over the sink.
+        const fromPlan = !!(this.tradeUnit && this.tradeUnit());      // the app always passes the function; it answers a name only while a unit is open
+        if (ww >= 20 && !fromPlan) {
           const cx = Math.max(lo + ww / 2 + 1, Math.min(hi - ww / 2 - 1, base.x));
           const pos = (cx + rw / 2) / rw;
           const win = (room0.openings || []).find((o) => o.type === 'window' && (o.wall || 'back') === 'back');
