@@ -627,6 +627,31 @@ function buildFront(g, cab, ctx) {
       revealRing(g, 0, oy0 + ovenH + REVEAL + bh / 2, faceW, bh, frontZ);
       return false;
     }
+    case 'ovenBase': {
+      // the UNDER-COUNTER oven housing (F32): a slim drawer panel at the bottom, the oven
+      // aperture right under the top rail. The oven (AP21) rides here and draws itself; empty,
+      // the same gallery-style placeholder front the tall housing shows.
+      const steel = new THREE.MeshStandardMaterial({ color: 0xb9bdc2, metalness: 0.85, roughness: 0.3 });
+      const steelDk = new THREE.MeshStandardMaterial({ color: 0x8f959b, metalness: 0.85, roughness: 0.35 });
+      const dkGlass = new THREE.MeshStandardMaterial({ color: 0x131518, metalness: 0.3, roughness: 0.15 });
+      const y0 = openCenterY - openH / 2;
+      const seat = ovenSeat(cab);
+      g.add(flatDrawer(faceW, seat.drawH - REVEAL, mat, ctx.frontFlush, y0 + (seat.drawH - REVEAL) / 2, handle));
+      const oy0 = seat.y0, ovenH = seat.ovenH;
+      if (ctx.ovenFitted) {
+        const ovenFace = seat.ovenW - 0.25, stile = Math.max(0, (faceW - ovenFace) / 2);
+        const cavity = box(faceW, ovenH, 0.3, new THREE.MeshStandardMaterial({ color: 0x17181a, roughness: 0.9 }));
+        cavity.position.set(0, oy0 + ovenH / 2, frontZ - 1.2); cavity.castShadow = false; g.add(cavity);
+        if (stile > 0.2) for (const sx of [-1, 1]) { const st = box(stile - 0.06, ovenH, DOOR_T, mat); st.position.set(sx * (faceW / 2 - stile / 2), oy0 + ovenH / 2, frontZ - DOOR_T / 2); g.add(st); }
+      } else {
+        const fascia = box(faceW, ovenH, 0.5, steelDk); fascia.position.set(0, oy0 + ovenH / 2, frontZ - 0.28); g.add(fascia);
+        const glassFront = box(faceW - 0.7, ovenH - 0.7, 0.45, dkGlass); glassFront.position.set(0, oy0 + ovenH / 2, frontZ + 0.02); glassFront.castShadow = false; g.add(glassFront);
+        const display = box(Math.min(faceW * 0.35, 9), 0.9, 0.12, steel); display.position.set(0, oy0 + ovenH - 2.0, frontZ + 0.32); display.castShadow = false; g.add(display);
+        const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, faceW - 3, 12), steel);
+        rail.rotation.z = Math.PI / 2; rail.position.set(0, oy0 + ovenH - 4.6, frontZ + 1.0); rail.castShadow = true; g.add(rail);
+      }
+      return false;
+    }
     case 'larder': larderDoors(cab.w >= 40 ? 2 : 1); return true; // full-height door(s)
     case 'larderDrawers': {
       const baseH = openH * 0.4;

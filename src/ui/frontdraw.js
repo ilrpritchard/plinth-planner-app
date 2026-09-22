@@ -166,6 +166,13 @@ export function frontParts(cab) {
       if (zT - (seat.y0 + seat.ovenH) > 1) rect('drawer', dx0, seat.y0 + seat.ovenH + FD.GAP, dx1 - dx0, zT - (seat.y0 + seat.ovenH) - FD.GAP);
       break;
     }
+    case 'ovenBase': {                           // drawer panel · OVEN opening, right under the top rail
+      const seat = ovenSeat(cab);
+      rect('drawer', dx0, zB, dx1 - dx0, seat.drawH - FD.GAP);
+      rect('void', dx0, seat.y0, dx1 - dx0, seat.ovenH);
+      parts.push({ k: 'text', x: w / 2, y: seat.y0 + seat.ovenH / 2, s: 'OVEN' });
+      break;
+    }
     case 'larder': case 'housing': {
       const zones = tallZones(zT);
       if (tallDouble) {

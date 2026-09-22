@@ -23,6 +23,7 @@
 
 import { CATALOGUE, getCab } from './catalogue.js';
 import { MOUNT, counterShelfTops } from './units.js';
+import { ovenSeat } from './ovenseat.js';
 import { openingCenter, openingWidth } from './openings.js';
 
 // ---- low-level group-code helpers ----------------------------------------
@@ -301,6 +302,11 @@ function frontEntities(cab) {
     }
     case 'drawers': {
       drawerSlabs(out, dx0, dx1, zB, zT);
+      break;
+    }
+    case 'ovenBase': {                           // a drawer slab at the bottom; the oven aperture stays open
+      const seat = ovenSeat(cab), drawTop = zB + seat.drawH * 25.4;
+      out.push(...box(dx0, dx1, 0, M.BACK, zB, drawTop - M.GAP, 'FRONT'));
       break;
     }
     case 'larder': case 'housing': case 'ovenHousing': {

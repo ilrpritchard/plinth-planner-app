@@ -12,9 +12,9 @@ import { buildFloorplanSVG } from '../src/ui/floorplan.js';
 const room = (st) => { st.setRoom({ width: 168, depth: 130, height: 96 }); return { minX: -84, maxX: 84, minZ: -65, maxZ: 65 }; };
 const tallZ = -65 + 12 + 0.25 + 30 / 25.4;      // a tall stands 30mm proud of the wall line
 
-test('three wall ovens in the catalogue, each with a housing made for it', () => {
+test('three wall ovens and the under-counter oven in the catalogue, each with a housing made for it', () => {
   const ovens = CATALOGUE.filter(isOven);
-  assert.deepEqual(ovens.map((o) => [o.code, o.ovenW]), [['AP14', 24], ['AP15', 30], ['AP16', 36]]);
+  assert.deepEqual(ovens.map((o) => [o.code, o.ovenW]), [['AP14', 24], ['AP15', 30], ['AP16', 36], ['AP21', 24]]);
   for (const o of ovens) {
     const h = getCab(housingCodeFor(o));
     assert.ok(housingTakes(h, o), `${o.code} fits ${h.code}`);

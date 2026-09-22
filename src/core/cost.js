@@ -119,7 +119,7 @@ export function summarize(items, fillers = [], cornice = null, endPanels = 0, ac
     lines.push({
       code: cab.code, type: cab.type, desc: cab.desc, qty, w: cab.w, stacker: !!cab.stacker,
       dims: cab.h ? `${fmtIn(cab.w)} × ${fmtIn(cab.d)} × ${fmtIn(cab.h)}` : '—',
-      each, line, notSupplied: !supplied,
+      each, line, notSupplied: !supplied, priceTBC: !!cab.priceTBC,
     });
   }
   // auto fillers (one priced line)

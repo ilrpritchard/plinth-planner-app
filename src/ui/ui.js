@@ -631,7 +631,7 @@ export class UI {
         if (c.high && 56 + c.h + 3 > ceiling) tooWide.add(c.code);
         const wide = tooWide.has(c.code);
         const meta = wide ? (c.high ? `needs a ${fmtFeetIn(56 + c.h + 3)} ceiling` : `needs ${fmtIn(c.w)} of wall`)
-          : c.notSupplied ? `${fmtIn(c.w)} &middot; <em>not supplied</em>` : `${fmtIn(c.w)} &middot; ${fmtUSD(sellUSD(c))}`;
+          : c.notSupplied ? `${fmtIn(c.w)} &middot; <em>not supplied</em>` : c.priceTBC ? `${fmtIn(c.w)} &middot; <em>price to confirm</em>` : `${fmtIn(c.w)} &middot; ${fmtUSD(sellUSD(c))}`;
         html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}${wide ? ' is-toowide' : ''}" data-code="${c.code}" ${wide ? 'disabled' : ''} title="${wide ? (c.high ? `${c.code} · ${c.desc} tops out at ${fmtIn(56 + c.h)} and needs ${fmtFeetIn(56 + c.h + 3)} of ceiling for its crown. The room is ${fmtFeetIn(ceiling)}: change it under Room` : `${c.code} · ${c.desc} needs ${fmtIn(c.w)} of wall and this one has ${fmtIn(remaining)} left. Make room, switch walls, or use Island`) : `Add ${c.code} · ${c.desc}${c.notes ? ', ' + c.notes : ''}`}">
           <span class="cat-thumb">${cabinetSVG(c)}</span>
           <span class="ci-code">${c.code}</span>
@@ -679,6 +679,7 @@ export class UI {
       this._toast(`${getCab(res.code).desc} added in a ${h.code} ${h.desc} (${fmtUSD(sellUSD(h))}). Undo takes both out.`);
     } else if (getCab(res.code)?.appliance === 'oven') this._toast(`${getCab(res.code).desc} fitted into the empty oven housing.`);
     else if (res.overCooker) this._toast('Range hood centred over the cooker, 800mm above it. Drag it to another cooker if you have more than one.');
+    else if (res.ovenStack) this._toast('Oven housing added with its oven inside and a 24" cooktop on the worktop over it. Oven and cooktop are supply your own. Undo takes all three out.');
     else if (getCab(res.code)?.appliance === 'hood') this._toast('No range or cooktop yet: add one and the hood will move over it when you drag it.');
   }
 
@@ -825,7 +826,7 @@ export class UI {
       };
       body.innerHTML = lines.map((l) => `<div class="cost-line">
         <span><strong>${l.qty}×</strong> ${label(l)}</span>
-        <span>${l.notSupplied ? '<em style="color:var(--muted)">supply your own</em>' : fmtUSD(l.line)}</span></div>`).join('');
+        <span>${l.notSupplied ? '<em style="color:var(--muted)">supply your own</em>' : l.priceTBC ? '<em style="color:var(--muted)">price to confirm</em>' : fmtUSD(l.line)}</span></div>`).join('');
     }
     document.getElementById('costTotal').innerHTML =
       `<span>${totalCabs} cabinet${totalCabs === 1 ? '' : 's'}</span><span>${fmtUSD(subtotal)}</span>`;

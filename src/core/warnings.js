@@ -220,7 +220,7 @@ export function computeWarnings(state) {
   // neighbours AND a tall lurking just around a corner.
   {
     const RANGE_CLEAR = 18;
-    const isCookBox = (b) => /^AP[1-5]$/.test(b.cab.code);   // AP1-3 ranges, AP4-5 hobs
+    const isCookBox = (b) => b.cab.appliance === 'range' || b.cab.appliance === 'hob';   // every range and cooktop, incl. the 24" over the F32
     const isTallish = (b) => b.cab.type === 'TALL' || b.cab.type === 'COUNTER' || b.cab.appliance === 'fridge';
     const seen = new Set();
     for (const c of boxes.filter(isCookBox)) {

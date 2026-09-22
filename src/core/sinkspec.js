@@ -89,7 +89,7 @@ export function canHost(baseCab, rider) {
   if (!hostable(baseCab) || baseCab.form === 'dishwasher') return false;
   if (!rider) return true;
   if (rider.appliance === 'sink') return (baseCab.form === 'door' || baseCab.form === 'double') && !/cooktop/i.test(baseCab.desc || '');
-  if (rider.appliance === 'hob') return baseCab.form === 'drawers' || baseCab.form === 'double' || /cooktop/i.test(baseCab.desc || '');
+  if (rider.appliance === 'hob') return baseCab.form === 'drawers' || baseCab.form === 'double' || baseCab.form === 'ovenBase' || /cooktop/i.test(baseCab.desc || '');   // the under-counter oven housing takes its cooktop
   return true;
 }
 

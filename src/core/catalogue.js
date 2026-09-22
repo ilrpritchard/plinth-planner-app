@@ -55,6 +55,13 @@ const RAW = [
   // work). Fronts are IDENTICAL to F20 / F10; the difference is inside: the
   // cooktop body drops into the top of the carcass.
   { code: 'F30', type: 'FLOOR', desc: 'Cooktop Drawers (3)', w: 36, d: 24, h: 35, hinge: 'n/a', usd: 3696, notes: 'Drawer bank prepped for a 36" cooktop over. Fronts identical to F20, the top front is FALSE (fixed in the workshop) so the cooktop body drops in; lower two drawers work as normal. Cooktop not supplied.' },
+  // UNDER-COUNTER OVEN HOUSING (her ask 2026-09-22, Miele H7660BP as the example: a 60cm single
+  // oven, 23.4" high, that sits in a base cabinet under the worktop with a cooktop over it).
+  // Same principles as every floor cabinet: legs, the flush 115mm plinth, the 35mm top rail.
+  // Front, bottom to top: a slim drawer panel, then the oven aperture right under the rail.
+  // ovenKind 'under' pairs it with AP21 (core/ovenseat.js), never with a 29" wall oven.
+  // PRICE (her call 2026-09-22): the same as the 24" single floor cabinet (F2) for now.
+  { code: 'F32', type: 'FLOOR', desc: 'Oven Housing, under counter (24")', w: 24, d: 24, h: 35, hinge: 'n/a', usd: 2117, ovenW: 24, ovenKind: 'under', notes: 'Base housing for a 24" (60cm) single oven under the worktop, a cooktop over it. Oven and cooktop not supplied: sized to the Miele H7660BP (23.4" high) and a 60cm hob. Confirm the cutout against the oven chosen.' },
   { code: 'F31', type: 'FLOOR', desc: 'Cooktop Double', w: 36, d: 24, h: 35, hinge: 'n/a', usd: 3210, notes: 'Double door base prepped for a 36" cooktop over, top of the carcass is cut back for the cooktop body. Cooktop not supplied.' },
 
   // WALL
@@ -169,7 +176,7 @@ function classify(it) {
   if (d.includes('drawers (3)')) return 'drawers';
   if (d.includes('larder (drawers)')) return 'larderDrawers';
   if (d.includes('larder')) return 'larder';
-  if (d.includes('oven housing')) return 'ovenHousing';
+  if (d.includes('oven housing')) return it.type === 'FLOOR' ? 'ovenBase' : 'ovenHousing';
   if (d.includes('housing')) return 'housing';
   if (d.includes('undercounter appliance')) return 'dishwasher'; // legless panel front, same rules as F7
   if (d.includes('dishwasher')) return 'dishwasher';
@@ -230,6 +237,13 @@ const OVEN_SEAT_Y = (() => {
   const openY0 = SPEC.PLINTH_IN + SPEC.PANEL_IN, openH = 86 - mmToIn(35) - openY0;
   return openY0 + openH * 0.35 + 2 * SPEC.REVEAL_IN;
 })();
+// floor to the bottom of a 23.4" oven sitting right under the top rail of a 35" base housing
+// (F32): the aperture's top is the opening's top. core/ovenseat.js derives the same number.
+const UNDER_OVEN_H = mmToIn(595);
+const UNDER_OVEN_SEAT_Y = (() => {
+  const openY0 = SPEC.PLINTH_IN + SPEC.PANEL_IN, openH = 35 - mmToIn(35) - openY0;
+  return openY0 + openH - UNDER_OVEN_H;
+})();
 const APPLIANCES = [
   { code: 'AP1', appliance: 'range', desc: 'Range cooker 30"', w: 30, d: 26, h: 36, mountY: 0 },
   { code: 'AP2', appliance: 'range', desc: 'Range cooker 36"', w: 36, d: 26, h: 36, mountY: 0 },
@@ -240,8 +254,12 @@ const APPLIANCES = [
   { code: 'AP15', appliance: 'oven', ovenW: 30, desc: 'Wall oven 30"', w: 30, d: 23.7, h: 29, mountY: OVEN_SEAT_Y },
   // 36": wide and short (Wolf / BlueStar / Gaggenau), rides in T15 whose seat is 24" tall
   { code: 'AP16', appliance: 'oven', ovenW: 36, desc: 'Wall oven 36"', w: 36, d: 23.7, h: 24, mountY: OVEN_SEAT_Y },
+  // the under-counter single oven (Miele H7660BP: 595 x 595 x 570mm), a RIDER in the F32 base housing
+  { code: 'AP21', appliance: 'oven', ovenW: 24, ovenKind: 'under', desc: 'Oven, under counter 24"', w: 23.4, d: 22.4, h: UNDER_OVEN_H, mountY: UNDER_OVEN_SEAT_Y },
   { code: 'AP4', appliance: 'hob', desc: 'Cooktop 30"', w: 30, d: 21, h: 2, mountY: SURFACE_Y },
   { code: 'AP5', appliance: 'hob', desc: 'Cooktop 36"', w: 36, d: 21, h: 2, mountY: SURFACE_Y },
+  // the 60cm four-burner gas hob that goes over the under-counter oven (Bosch PCP6A6B90: 582 x 520mm)
+  { code: 'AP22', appliance: 'hob', desc: 'Cooktop 24" (60cm, gas)', w: 22.9, d: 20.5, h: 2, mountY: SURFACE_Y },
   { code: 'AP6', appliance: 'sink', desc: 'Sink (Single)', w: 24, d: 20, h: 8, mountY: SURFACE_Y },
   { code: 'AP7', appliance: 'sink', desc: 'Sink (Double)', w: 33, d: 20, h: 8, mountY: SURFACE_Y },
   { code: 'AP10', appliance: 'sink', desc: 'Sink (Prep) 15"', w: 15, d: 18, h: 8, mountY: SURFACE_Y },

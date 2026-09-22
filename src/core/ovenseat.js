@@ -12,6 +12,13 @@ const TOPRAIL = mmToIn(35);
 export function ovenSeat(housing) {
   const openY0 = SPEC.PLINTH_IN + SPEC.PANEL_IN;
   const openH = housing.h - TOPRAIL - openY0;
+  if (housing.form === 'ovenBase') {
+    // the UNDER-COUNTER housing (F32): the oven sits right under the top rail, a slim drawer
+    // panel fills the rest down to the plinth. No low door.
+    const ovenH = mmToIn(595);
+    return { openY0, openH, doorH: 0, drawH: openH - ovenH - 2 * SPEC.REVEAL_IN, y0: openY0 + openH - ovenH, ovenH,
+      faceW: housing.w - 2 * SPEC.LEG_IN - 2 * SPEC.REVEAL_IN, ovenW: housing.ovenW || 24 };
+  }
   const doorH = openH * 0.26, drawH = openH * 0.09;
   return {
     openY0, openH, doorH, drawH,
@@ -23,11 +30,13 @@ export function ovenSeat(housing) {
 }
 
 export const isOven = (cab) => !!cab && cab.type === 'APPLIANCES' && cab.appliance === 'oven';
-export const isOvenHousing = (cab) => !!cab && cab.form === 'ovenHousing';
-export const housingTakes = (housing, oven) => isOvenHousing(housing) && isOven(oven) && (housing.ovenW || 24) === oven.ovenW;
+export const isOvenHousing = (cab) => !!cab && (cab.form === 'ovenHousing' || cab.form === 'ovenBase');
+// a wall oven rides a tall housing, an under-counter oven the base housing: width AND kind must match
+export const housingTakes = (housing, oven) => isOvenHousing(housing) && isOven(oven) && (housing.ovenW || 24) === oven.ovenW && (housing.ovenKind || 'wall') === (oven.ovenKind || 'wall');
 
 /** The housing SKU made for this oven. */
 export function housingCodeFor(oven) {
+  if (oven.ovenKind === 'under') return oven.ovenW === 24 ? 'F32' : null;
   return oven.ovenW === 24 ? 'T9' : oven.ovenW === 30 ? 'T14' : oven.ovenW === 36 ? 'T15' : null;
 }
 

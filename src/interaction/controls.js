@@ -288,6 +288,7 @@ export class PointerControls {
     const cab = getCab(code);
     if (!cab || !cab.placeable) return null;
     if (isOven(cab)) return this._placeOven(cab, wall);
+    if (cab.form === 'ovenBase' && !opts.plain) return this._placeOvenBase(code, wall);
     // a range hood goes straight over the cooker (core/hoodseat.js); with none, it waits on the wall
     if (cab.appliance === 'hood') {
       const seat = findHoodSeat(this.store.state, 0, 0, null, cab);
@@ -368,6 +369,20 @@ export class PointerControls {
   // A wall oven goes into the nearest empty housing of its size. With none in
   // the room, its housing (T9 / T14) is placed on the active wall first and the
   // oven goes into that: ONE undo step. `item.broughtHousing` tells the UI.
+  /** The under-counter housing (F32) is a STACK: the base, its oven riding inside, and the
+   *  cooktop on the worktop over it (her rule 2026-09-22). One undo step. */
+  _placeOvenBase(code, wall) {
+    this.store.beginHistory();
+    const base = this.placeNew(code, wall, { safe: true, plain: true });
+    if (!base) { this.store.endHistory(); return null; }
+    const host = this.store.getItem(base.id);
+    const oven = this.store.addItem('AP21', { x: host.x, z: host.z, rotDeg: host.rotDeg || 0, hostId: host.id });
+    this.store.addItem('AP22', { x: host.x, z: host.z, rotDeg: host.rotDeg || 0 });
+    this.store.endHistory();
+    this.layer.select(host.id); this.onSelect(host.id); this.onCommit();
+    return { ...host, ovenStack: [oven.code, 'AP22'] };
+  }
+
   _placeOven(cab, wall) {
     this.store.beginHistory();
     let host = findOvenHost(this.store.state, cab, 0, 0);
@@ -380,6 +395,8 @@ export class PointerControls {
       if (!host) { this.store.endHistory(); return { refused: true, needs: hcode }; }
     }
     const item = this.store.addItem(cab.code, { x: host.x, z: host.z, rotDeg: host.rotDeg || 0, hostId: host.id });
+    // the under-counter oven's housing takes its cooktop too, when it has none yet
+    if (cab.ovenKind === 'under' && !this.store.state.items.some((o) => getCab(o.code)?.appliance === 'hob' && Math.abs(o.x - host.x) < 2 && Math.abs(o.z - host.z) < 6)) this.store.addItem('AP22', { x: host.x, z: host.z, rotDeg: host.rotDeg || 0 });
     this.store.endHistory();
     this.layer.select(item.id);
     this.onSelect(item.id);
