@@ -40,3 +40,27 @@ test('a cooktop may sit on the oven housing; a sink may not; priced as the 24" s
   assert.ok(!line.priceTBC && line.line === getCab('F2').usd && sum.subtotal === 2 * getCab('F2').usd, 'F32 is priced as F2 (her call 2026-09-22)');
   assert.equal(CATALOGUE.filter((c) => c.priceTBC).length, 0, 'nothing in the catalogue is unpriced');
 });
+
+test('the cooktop (and any sink) rides its base: move the base, turn it, and it comes along', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const store = new Store(); store.setRoom({ width: 200, depth: 160, height: 96 });
+  const base = store.addItem('F32', { x: 0, z: -68, rotDeg: 0 });
+  const oven = store.addItem('AP21', { x: 0, z: -68, rotDeg: 0, hostId: base.id });
+  const hob = store.addItem('AP22', { x: 0, z: -68, rotDeg: 0 });
+  const sinkBase = store.addItem('F10', { x: 60, z: -68, rotDeg: 0 }); const sink = store.addItem('AP6', { x: 62, z: -68, rotDeg: 0 });
+  store.updateItem(base.id, { x: 30 });
+  assert.equal(store.getItem(hob.id).x, 30, 'the cooktop moved with the housing'); assert.equal(store.getItem(oven.id).x, 30, 'so did the oven');
+  assert.equal(store.getItem(sink.id).x, 62, 'the sink on the other base did not');
+  store.updateItem(sinkBase.id, { x: 90, z: -60, rotDeg: 90 });
+  const s2 = store.getItem(sink.id);
+  assert.ok(Math.abs(s2.x - 90) < 1e-9 && Math.abs(s2.z - (-60 - 2)) < 1e-9 && s2.rotDeg === 90, `the sink turned with its base: ${JSON.stringify(s2)}`);
+});
+
+test('a sink hung over the edge of a narrow base still rides with it', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const store = new Store(); store.setRoom({ width: 200, depth: 160, height: 96 });
+  const base = store.addItem('F1', { x: 0, z: -68, rotDeg: 0 });                 // a 20" single
+  const sink = store.addItem('AP6', { x: 11, z: -68, rotDeg: 0 });               // a 24" sink, its centre 1" past the base's edge
+  store.updateItem(base.id, { x: 40 });
+  assert.equal(store.getItem(sink.id).x, 51, 'the sink came along at the same offset');
+});

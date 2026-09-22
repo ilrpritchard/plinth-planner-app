@@ -4,6 +4,7 @@
 // state changes they get told what changed so they can update cheaply.
 
 import { planIslandFlags } from './islands.js';
+import { boxAt } from './placement.js';
 import { DEFAULT_FINISH, getCab } from './catalogue.js';
 import { housingTakes } from './ovenseat.js';
 
@@ -230,8 +231,21 @@ export class Store {
     const it = this.state.items.find((i) => i.id === id);
     if (!it) return;
     if (!opts.quiet) this._record();
+    const was = { x: it.x, z: it.z, rotDeg: it.rotDeg || 0 };
+    const wasCab = getCab(it.code);
+    const riders = ('x' in patch || 'z' in patch || 'rotDeg' in patch) && wasCab && (wasCab.type === 'FLOOR' || (wasCab.type === 'APPLIANCES' && (wasCab.mountY || 0) === 0)) ? this._ridersOn(it, wasCab) : [];
     Object.assign(it, patch);
     this._emit({ type: 'update', id, quiet: !!opts.quiet });
+    // a sink or cooktop set in this base rides with it: same offset from the base's centre, turned with it
+    // (her catch 2026-09-22: "when you move this, the cooktop doesn't come with it")
+    if (riders.length) {
+      const dth = (((it.rotDeg || 0) - was.rotDeg) * Math.PI) / 180, c = Math.cos(dth), s = Math.sin(dth);
+      for (const r of riders) {
+        const ox = r.x - was.x, oz = r.z - was.z;
+        Object.assign(r, { x: it.x + ox * c + oz * s, z: it.z - ox * s + oz * c, rotDeg: ((r.rotDeg || 0) + (it.rotDeg || 0) - was.rotDeg) });
+        this._emit({ type: 'update', id: r.id, quiet: !!opts.quiet });
+      }
+    }
     // a wall oven rides in its housing: wherever the housing goes, it goes
     if ('x' in patch || 'z' in patch || 'rotDeg' in patch) {
       for (const r of this.state.items) {
@@ -240,6 +254,20 @@ export class Store {
         this._emit({ type: 'update', id: r.id, quiet: !!opts.quiet });
       }
     }
+  }
+
+  /** The sinks and cooktops set in this base: a worktop appliance whose centre is inside the
+   *  base's footprint, OR that mostly overlaps it (a 24" sink hung over the edge of a 20" base
+   *  still belongs to it, her screenshot 2026-09-22). A wall oven has its own hostId. */
+  _ridersOn(base, cab) {
+    const b = boxAt(cab, base.x, base.z, base.rotDeg);
+    return this.state.items.filter((r) => {
+      const c = getCab(r.code); if (r.id === base.id || r.hostId != null || !c || (c.appliance !== 'sink' && c.appliance !== 'hob')) return false;
+      if (r.x > b.x0 - 0.5 && r.x < b.x1 + 0.5 && r.z > b.z0 - 0.5 && r.z < b.z1 + 0.5) return true;
+      const rb = boxAt(c, r.x, r.z, r.rotDeg);
+      const ov = Math.max(0, Math.min(b.x1, rb.x1) - Math.max(b.x0, rb.x0)) * Math.max(0, Math.min(b.z1, rb.z1) - Math.max(b.z0, rb.z0));
+      return ov >= 0.4 * (rb.x1 - rb.x0) * (rb.z1 - rb.z0);
+    });
   }
 
   /** Flip a single-door cabinet's hinge side (L ↔ R). Undoable, rebuilds the item. */

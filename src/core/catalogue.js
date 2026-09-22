@@ -21,6 +21,8 @@ const RAW = [
   { code: 'F6', type: 'FLOOR', desc: 'Single (Half Depth)', w: 28, d: 14, h: 35, hinge: 'L&R', usd: 2084 },
   // FLOOR — appliance / specials
   { code: 'F7', type: 'FLOOR', desc: 'Dishwasher Door & Plinth', w: 24, d: 24, h: 35, hinge: 'n/a', usd: 939, notes: 'Dishwasher door panel + plinth' },
+  // the 18" (slimline) dishwasher front, same legless panel + plinth (her ask 2026-09-22); priced as F7 less 20%
+  { code: 'F33', type: 'FLOOR', desc: 'Dishwasher Door & Plinth (18")', w: 18, d: 24, h: 35, hinge: 'n/a', usd: 751, notes: 'Door panel + plinth for an 18" dishwasher, appliance not supplied' },
   { code: 'F8', type: 'FLOOR', desc: 'Tray Space (Adjustable)', w: 10, d: 24, h: 35, hinge: 'n/a', usd: 1744, notes: 'Open tray space, no door' },
   // FLOOR — doubles
   { code: 'F9', type: 'FLOOR', desc: 'Double', w: 28, d: 24, h: 35, hinge: 'n/a', usd: 3065 },

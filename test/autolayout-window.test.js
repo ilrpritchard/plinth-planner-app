@@ -31,7 +31,22 @@ test('a project unit keeps the plan\'s window exactly where it is, and gets none
   assert.equal(draft(() => 'Type A', []).length, 0, 'no window invented for a project unit');
 });
 
-test('the Kitchen-mode wizard still puts a window over the sink when the room has none', () => {
-  const made = draft(() => null, []);          // as the app wires it: the function answers null outside a unit design
-  assert.ok(made.some((o) => o.type === 'window'), 'a fresh room gets its window');
+test('the Kitchen-mode wizard never adds a window either (her rule: "it adds a window!"), and never moves one', () => {
+  assert.equal(draft(() => null, []).length, 0, 'a room with no window stays without one');
+  const kept = draft(() => null, [{ type: 'window', wall: 'back', pos: 0.7, width: 40 }]);
+  assert.equal(kept.length, 1); assert.equal(kept[0].pos, 0.7); assert.equal(kept[0].width, 40);
+});
+
+test('with a window on the back wall, the sink base ends up under it', async () => {
+  const { openingCenter, openingWidth } = await import('../src/core/openings.js');
+  for (const [pos, seed] of [[0.3, 4], [0.6, 7], [0.75, 11]]) {
+    const store = new Store(); store.setRoom({ width: 220, depth: 150, height: 96 });
+    store.addOpening({ type: 'window', wall: 'back', pos, width: 36 });
+    const wiz = new Wizard({ store, controls: mkControls(store), onBuilt() {}, onSave() {}, tradeUnit: () => null });
+    wiz.lastShape = 'straight'; wiz.seed = seed; wiz._generate(null);
+    const sink = store.state.items.find((i) => getCab(i.code)?.appliance === 'sink');
+    assert.ok(sink, `seed ${seed}: a sink was placed`);
+    const wc = openingCenter(store.state.room, store.state.room.openings[0]), hw = openingWidth(store.state.room.openings[0], store.state.room) / 2;
+    assert.ok(Math.abs(sink.x - wc) < hw + 12, `seed ${seed}: sink at ${sink.x.toFixed(1)} is not under the window at ${wc.toFixed(1)}`);
+  }
 });

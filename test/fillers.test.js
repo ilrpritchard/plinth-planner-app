@@ -29,6 +29,19 @@ ok('cost has filler line', !!fl && fl.qty === 1);
 ok('subtotal = cab + filler', Math.abs(sum.subtotal - (sellUSD(getCab('F2')) + FILLER_SELL)) < 0.01);
 ok('fillers not counted as cabinets', sum.totalCabs === 1);
 
+// her screenshot 2026-09-22: a tall in the corner on the side wall, the back-wall base stopping
+// 3" short of its flank: that gap gets a scribe to the FLANK, not to the wall 27" away
+{
+  const W = 150, D = 120, t = getCab('T1'), f = getCab('F10');
+  const tall = { id: 1, code: 'T1', x: -W / 2 + t.d / 2 + 0.25 + 1.18, z: -D / 2 + t.w / 2 + 0.25, rotDeg: 90 };   // on the left wall, in the back corner
+  const flank = tall.x + t.d / 2;                                                                                  // its right-hand face
+  const base = { id: 2, code: 'F10', x: flank + 3 + f.w / 2, z: -D / 2 + f.d / 2 + 0.25, rotDeg: 0 };              // back wall, 3" off the flank
+  const fills = computeFillers({ room: { width: W, depth: D, height: 96, openings: [], boxings: [] }, items: [tall, base] });
+  const corner = fills.find((x) => x.band === 'floor' && x.rotDeg === 0 && Math.abs(x.w - 3) < 0.01);
+  ok('scribe to the tall flank in the corner', !!corner && Math.abs(corner.x - (flank + 1.5)) < 0.01 && corner.h === 35);
+  ok('no 27" filler to the wall behind the tall', !fills.some((x) => x.w > 9));
+}
+
 console.log(`\nfillers.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
 
@@ -53,3 +66,4 @@ _t('mid-run gap between neighbours gets a filler; worktop spans it', async () =>
   const slabs = planWorktopSlabs(items, getCab, 'marble', room);
   _assert.equal(slabs.length, 1, 'one continuous slab across the filler');
 });
+

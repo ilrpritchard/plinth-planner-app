@@ -30,7 +30,7 @@ export function wizardVoice(unit) {
       applLead: 'Appliances',
       budgetLead: 'Target budget',
       finishLead: 'Finish',
-      windowNote: 'Window: the sink is placed beneath the back-wall window automatically. Drag it later if the room differs.',
+      windowNote: 'Windows stay exactly where you put them under Room. With a window on the back wall, the sink goes beneath it.',
       buildCta: 'Draft the layout →',
       building: 'Drafting the layout…',
       rerolling: 'Drafting another…',
@@ -49,7 +49,7 @@ export function wizardVoice(unit) {
     applLead: 'Appliance spec',
     budgetLead: 'Target budget per unit',
     finishLead: 'Finish',
-    windowNote: 'Window: the sink is placed beneath the back-wall window automatically. Drag it later if the unit differs.',
+    windowNote: 'Windows stay exactly where they are on the plan. With a window on the back wall, the sink goes beneath it.',
     buildCta: 'Generate unit layout →',
     building: 'Generating the unit layout…',
     rerolling: 'Generating an alternative…',
@@ -220,7 +220,7 @@ export class Wizard {
 
   /** Build the diagram SVG: the room to the step-2 proportions, walls labelled
    *  to match the wall buttons, the door drawn at its measured position, and
-   *  the auto-placed window/sink marked on the back wall. */
+   *  the room's own windows on their walls. */
   _mapSVG() {
     const r = this.store?.state?.room || {};
     const rw = this._dim('#wzW', r.width || 144);       // back wall (x)
@@ -274,10 +274,17 @@ export class Wizard {
     // the cabinet run lives on the back wall — a soft strip so "Back" reads
     const cabD = Math.min(24 * s, pd * 0.24);
     el.push(`<rect class="g-cab" x="${x0 + 1.5}" y="${y0 + 1.5}" width="${pw - 3}" height="${cabD}"/>`);
-    // auto-placed window (sink beneath it), centred on the back wall
-    const winW = Math.min(48 * s, pw * 0.36);
-    el.push(`<line class="g-win" x1="${(x0 + x1) / 2 - winW / 2}" y1="${y0}" x2="${(x0 + x1) / 2 + winW / 2}" y2="${y0}"/>`);
-    el.push(`<text class="g-lab g-winlab" x="${(x0 + x1) / 2}" y="${y0 + cabD + 9}" text-anchor="middle">window · sink</text>`);
+    // the room's OWN windows, where they are (the wizard never adds one); the sink goes under a back-wall one
+    for (const o of (r.openings || [])) {
+      if (o.type !== 'window') continue;
+      const wl = o.wall || 'back', len = (wl === 'left' || wl === 'right') ? rd : rw;
+      const c = openingCenter({ width: rw, depth: rd }, o) + len / 2, hw = openingWidth(o, { width: rw, depth: rd }) / 2;
+      const a = Math.max(0, c - hw) * s, b = Math.min(len, c + hw) * s;
+      if (wl === 'back') { el.push(`<line class="g-win" x1="${x0 + a}" y1="${y0}" x2="${x0 + b}" y2="${y0}"/>`); el.push(`<text class="g-lab g-winlab" x="${x0 + (a + b) / 2}" y="${y0 + cabD + 9}" text-anchor="middle">window · sink</text>`); }
+      else if (wl === 'front') el.push(`<line class="g-win" x1="${x0 + a}" y1="${y1}" x2="${x0 + b}" y2="${y1}"/>`);
+      else if (wl === 'left') el.push(`<line class="g-win" x1="${x0}" y1="${y0 + a}" x2="${x0}" y2="${y0 + b}"/>`);
+      else el.push(`<line class="g-win" x1="${x1}" y1="${y0 + a}" x2="${x1}" y2="${y0 + b}"/>`);
+    }
 
     // labels, oriented exactly like the wall buttons
     const lab = (name, txt, x, y, anchor, rot) => {
@@ -706,36 +713,27 @@ export class Wizard {
       // without ever being shoved next to the cooker.
       const base = this.store.getItem(sinkItem.id);
       if (base) {
+        // THE WINDOWS ARE THE ROOM'S (her rule 2026-09-22: "when I click draft a layout, it adds
+        // a window!"): the wizard never adds one and never moves one. If the room has a window on
+        // the back wall and the sink base is not under it, the sink base swaps places with a
+        // same-width base that is, so the sink still lands under the window.
+        const room0 = this.store.state.room;
+        const win = (room0.openings || []).find((o) => o.type === 'window' && (o.wall || 'back') === 'back');
+        if (win) {
+          const wc = openingCenter(room0, win), ww = openingWidth(win, room0), bw = getCab(base.code).w;
+          const under = (x) => Math.abs(x - wc) < ww / 2 + bw / 2 - 2;        // the base spans the window's middle
+          if (!under(base.x)) {
+            const minZ0 = -room0.depth / 2;
+            const swap = this.store.state.items.find((o) => { const c = getCab(o.code);
+              return o.id !== base.id && c && c.type === 'FLOOR' && !c.corner && ['door', 'double', 'drawers'].includes(c.form) && !/cooktop/i.test(c.desc)
+                && Math.abs(c.w - bw) < 0.5 && ((o.rotDeg || 0) % 180) === 0 && Math.abs(o.z - (minZ0 + c.d / 2 + 0.25)) < 8 && under(o.x); });
+            if (swap) { const bx = base.x; this.store.updateItem(base.id, { x: swap.x }, { quiet: true }); this.store.updateItem(swap.id, { x: bx }, { quiet: true }); }
+          }
+        }
         // a 36" double base takes the double-bowl sink
-        const sinkAp = (getCab(base.code)?.w || 24) >= 33 ? 'AP7' : 'AP6';
-        this.store.addItem(sinkAp, { x: base.x, z: base.z, rotDeg: base.rotDeg });
-        // HARD RULE: a window is never covered by a cabinet. Clamp the window
-        // into the clear stretch of wall around the sink (between talls),
-        // shrinking it if the stretch is tight.
-        const rw = room0.width;
-        const minZ0 = -room0.depth / 2;
-        let lo = -rw / 2 + 4, hi = rw / 2 - 4;
-        for (const it of this.store.state.items) {
-          const c = getCab(it.code);
-          if (!c || (c.type !== 'TALL' && c.appliance !== 'fridge')) continue;   // a freestanding fridge blocks glass too
-          if (((it.rotDeg || 0) % 180) !== 0 || Math.abs(it.z - (minZ0 + c.d / 2 + 0.25)) > 9) continue;
-          const t0 = it.x - c.w / 2, t1 = it.x + c.w / 2;
-          if (t1 <= base.x && t1 > lo) lo = t1;
-          if (t0 >= base.x && t0 < hi) hi = t0;
-        }
-        const ww = Math.min(48, hi - lo - 2);
-        // AUTO-LAYOUT of a project unit never touches the windows: they are already on the
-        // plan (her rule 2026-09-22: "don't add a window, the window will already be there from
-        // the plan"). Only the Kitchen-mode wizard, drafting a room from nothing, adds or
-        // recentres one over the sink.
-        const fromPlan = !!(this.tradeUnit && this.tradeUnit());      // the app always passes the function; it answers a name only while a unit is open
-        if (ww >= 20 && !fromPlan) {
-          const cx = Math.max(lo + ww / 2 + 1, Math.min(hi - ww / 2 - 1, base.x));
-          const pos = (cx + rw / 2) / rw;
-          const win = (room0.openings || []).find((o) => o.type === 'window' && (o.wall || 'back') === 'back');
-          if (win) { win.pos = pos; win.width = ww; }    // recentre + refit on the sink stretch
-          else this.store.addOpening({ type: 'window', wall: 'back', pos, width: ww });
-        }
+        const sinkAp = (getCab(this.store.getItem(base.id).code)?.w || 24) >= 33 ? 'AP7' : 'AP6';
+        const b2 = this.store.getItem(base.id);
+        this.store.addItem(sinkAp, { x: b2.x, z: b2.z, rotDeg: b2.rotDeg });
       }
     }
     // free-standing island, sized to the room with a 1100mm walkway all round.
