@@ -86,6 +86,7 @@ export function frontParts(cab) {
 
   rect('body', 0, 0, w, h);
   if (cab.form === 'shelf') return out;         // floating shelf: one solid slab
+  if (cab.form === 'leg') { hline('rail', h - bottomZone(cab), 0, w); return out; }   // the end leg: one upright over the plinth line
 
   const E = FD.E, F = FD.FRAME;
   const zB = bottomZone(cab), zT = h - FD.TOP;

@@ -118,6 +118,9 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   for (const o of others) {
     const oc = getCab(o.code);
     if (!oc) continue;
+    // a sink or cooktop is not a run neighbour: it sits IN the worktop over a base, and a base
+    // dragged along the run passes under it (it used to butt against the sink's edge and jitter)
+    if (oc.appliance === 'sink' || oc.appliance === 'hob') continue;
     // hung cabinets butt hung cabinets, floor butts floor — EXCEPT a hung WALL
     // cabinet and a TALL cabinet, which meet side-to-side in the same run (a
     // wall cabinet dragged near a tall snaps to touch its side, no dead sliver)

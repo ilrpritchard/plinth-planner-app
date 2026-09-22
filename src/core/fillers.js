@@ -58,8 +58,8 @@ function bandFillers(state, band, out) {
   // The flank is taken by cabinets in this band's height: a tall meets every band, a base only
   // the floor band, an upper only the upper band.
   const flankOf = (c) => c.type === 'TALL' || band.has(c);
-  const cornerEdge = (wall, side) => {                    // world coordinate of the flank this run's end meets
-    let edge = wall === 'back' || wall === 'front' ? (side < 0 ? minX : maxX) : (side < 0 ? minZ : maxZ);
+  const cornerEdge = (wall, side) => {                    // world coordinate of the flank this run's end meets, and that cabinet's height
+    let edge = wall === 'back' || wall === 'front' ? (side < 0 ? minX : maxX) : (side < 0 ? minZ : maxZ), flankH = Infinity;
     for (const it of state.items) {
       const cab = getCab(it.code); if (!cab || !cab.placeable || !flankOf(cab)) continue;
       const horiz = ((it.rotDeg || 0) % 180) === 0;
@@ -68,15 +68,19 @@ function bandFillers(state, band, out) {
       if (wall === 'back' || wall === 'front') {
         const onSide = side < 0 ? Math.abs(b.x0 - minX) < RUN_TOL : Math.abs(b.x1 - maxX) < RUN_TOL;
         const reaches = wall === 'back' ? b.z0 - minZ < 26 : maxZ - b.z1 < 26;         // its span reaches this corner
-        if (onSide && reaches) edge = side < 0 ? Math.max(edge, b.x1) : Math.min(edge, b.x0);
+        if (onSide && reaches) { const e = side < 0 ? Math.max(edge, b.x1) : Math.min(edge, b.x0); if (e !== edge) flankH = cab.h; edge = e; }
       } else {
         const onSide = side < 0 ? Math.abs(b.z0 - minZ) < RUN_TOL : Math.abs(b.z1 - maxZ) < RUN_TOL;
         const reaches = wall === 'left' ? b.x0 - minX < 26 : maxX - b.x1 < 26;
-        if (onSide && reaches) edge = side < 0 ? Math.max(edge, b.z1) : Math.min(edge, b.z0);
+        if (onSide && reaches) { const e = side < 0 ? Math.max(edge, b.z1) : Math.min(edge, b.z0); if (e !== edge) flankH = cab.h; edge = e; }
       }
     }
-    return edge;
+    return { edge, flankH };
   };
+  // a scribe to a FLANK is only as tall as the shorter of the two cabinets: beside a base the
+  // scribe stops under the counter even when the run ends in a tall (her call 2026-09-22:
+  // "the scribe is only required under the counter, not above")
+  const endH = (endCab, ce) => Math.min(endCab.h, ce.flankH);
 
   // back / front walls — runs along X; ends scribe to the left/right side
   // walls (or the flank in the corner), and MID-RUN gaps between neighbours get a filler too
@@ -86,9 +90,9 @@ function bandFillers(state, band, out) {
     const sorted = [...run].sort((a, b) => (a.it.x - a.cab.w / 2) - (b.it.x - b.cab.w / 2));
     const L = sorted[0], R = sorted[sorted.length - 1];
     const rot = wall === 'front' ? 180 : 0;
-    const eL = cornerEdge(wall, -1), eR = cornerEdge(wall, +1);
-    addEnd(out, (L.it.x - L.cab.w / 2) - eL, (g) => ({ x: eL + g / 2, z: L.it.z, rotDeg: rot, w: g, d: L.cab.d, h: L.cab.h, y0: band.y0(L.cab), band: band.name }));
-    addEnd(out, eR - (R.it.x + R.cab.w / 2), (g) => ({ x: eR - g / 2, z: R.it.z, rotDeg: rot, w: g, d: R.cab.d, h: R.cab.h, y0: band.y0(R.cab), band: band.name }));
+    const cL = cornerEdge(wall, -1), cR = cornerEdge(wall, +1), eL = cL.edge, eR = cR.edge;
+    addEnd(out, (L.it.x - L.cab.w / 2) - eL, (g) => ({ x: eL + g / 2, z: L.it.z, rotDeg: rot, w: g, d: L.cab.d, h: endH(L.cab, cL), y0: band.y0(L.cab), band: band.name }));
+    addEnd(out, eR - (R.it.x + R.cab.w / 2), (g) => ({ x: eR - g / 2, z: R.it.z, rotDeg: rot, w: g, d: R.cab.d, h: endH(R.cab, cR), y0: band.y0(R.cab), band: band.name }));
     for (let i = 0; i < sorted.length - 1; i++) {
       const A = sorted[i], B = sorted[i + 1];
       const a1 = A.it.x + A.cab.w / 2, b0 = B.it.x - B.cab.w / 2;
@@ -105,9 +109,9 @@ function bandFillers(state, band, out) {
     const sorted = [...run].sort((a, b) => (a.it.z - a.cab.w / 2) - (b.it.z - b.cab.w / 2));
     const L = sorted[0], R = sorted[sorted.length - 1];
     const rot = wall === 'right' ? 270 : 90;
-    const eL = cornerEdge(wall, -1), eR = cornerEdge(wall, +1);
-    addEnd(out, (L.it.z - L.cab.w / 2) - eL, (g) => ({ x: L.it.x, z: eL + g / 2, rotDeg: rot, w: g, d: L.cab.d, h: L.cab.h, y0: band.y0(L.cab), band: band.name }));
-    addEnd(out, eR - (R.it.z + R.cab.w / 2), (g) => ({ x: R.it.x, z: eR - g / 2, rotDeg: rot, w: g, d: R.cab.d, h: R.cab.h, y0: band.y0(R.cab), band: band.name }));
+    const cL = cornerEdge(wall, -1), cR = cornerEdge(wall, +1), eL = cL.edge, eR = cR.edge;
+    addEnd(out, (L.it.z - L.cab.w / 2) - eL, (g) => ({ x: L.it.x, z: eL + g / 2, rotDeg: rot, w: g, d: L.cab.d, h: endH(L.cab, cL), y0: band.y0(L.cab), band: band.name }));
+    addEnd(out, eR - (R.it.z + R.cab.w / 2), (g) => ({ x: R.it.x, z: eR - g / 2, rotDeg: rot, w: g, d: R.cab.d, h: endH(R.cab, cR), y0: band.y0(R.cab), band: band.name }));
     for (let i = 0; i < sorted.length - 1; i++) {
       const A = sorted[i], B = sorted[i + 1];
       const a1 = A.it.z + A.cab.w / 2, b0 = B.it.z - B.cab.w / 2;

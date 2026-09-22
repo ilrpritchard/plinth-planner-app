@@ -14,7 +14,7 @@ for(const cab of CATALOGUE.filter(c=>c.placeable && c.type!=='APPLIANCES')){
     try { g = buildCabinet(cab, fin.hex, {hinge:cab.hinge}); }
     catch(e){ fail++; console.error(`✗ build ${cab.code} ${fin.name}: ${e.message}`); continue; }
     let meshes=0; g.traverse(o=>{ if(o.isMesh) meshes++; });
-    if(meshes<4){ fail++; console.error(`✗ ${cab.code} too few meshes (${meshes})`); }
+    if(meshes<(cab.form==='leg' ? 2 : 4)){ fail++; console.error(`✗ ${cab.code} too few meshes (${meshes})`); }   // the End Leg IS one upright (+ its plinth shadow)
     if(!g.userData.footprint || g.userData.mountY===undefined){ fail++; console.error(`✗ ${cab.code} missing userData`); }
     if(!Array.isArray(g.userData.doors)){ fail++; console.error(`✗ ${cab.code} missing doors array`); }
     built++; meshTotal+=meshes;
@@ -28,7 +28,7 @@ for(const cab of CATALOGUE.filter(c=>c.type==='APPLIANCES')){
   try { const g=buildAppliance(cab); let m=0; g.traverse(o=>o.isMesh&&m++); if(m<1) fail++; apps++; }
   catch(e){ fail++; console.error(`✗ appliance ${cab.code}: ${e.message}`); }
 }
-ok(`built all appliances (${apps})`, apps===22);   // AP10 prep sink + AP11/12 french FF + AP13 over-under + AP14/15/16 wall ovens + AP17-20 bigger sinks + AP21 under-counter oven + AP22 60cm hob
+ok(`built all appliances (${apps})`, apps===23);   // AP10 prep sink + AP11/12 french FF + AP13 over-under + AP14/15/16 wall ovens + AP17-20 bigger sinks + AP21 under-counter oven + AP22 60cm hob + AP23 60cm hood
 
 // AP11 integrated fridge-freezer: correct install dims (84" h, 36" w, 24"
 // counter depth) and a panel look — its meshes must include NO stainless body

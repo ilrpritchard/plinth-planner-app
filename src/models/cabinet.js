@@ -207,6 +207,14 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   const doors = [];
 
   const w = cab.w, d = cab.d, h = cab.h;
+  // the END LEG (F34): one painted upright, full height, the plinth running under it; a shadow
+  // line at plinth height so it reads as leg-over-plinth like its neighbours
+  if (cab.form === 'leg') {
+    const up = box(w, h, d, mat); up.position.set(0, h / 2, 0); g.add(up);
+    const shadow = box(w + 0.02, 0.12, 0.3, paintEdgeMat(finishHex)); shadow.position.set(0, PLINTH, d / 2 - 0.1); g.add(shadow);
+    g.userData = { code: cab.code, type: cab.type, footprint: { w, d, returnLeg: 0 }, mountY: getMountY(cab), doors: [] };
+    return g;
+  }
   const hasPlinth = cab.type === 'FLOOR' || cab.type === 'TALL';
   const pH = hasPlinth ? PLINTH : 0;
   const bodyY0 = pH;

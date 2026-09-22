@@ -156,6 +156,7 @@ function drawFront(p, cab, a) {
     case 'drawers': stackDrawers(p, ox + rev, oy + rev, ow - 2 * rev, oh - 2 * rev, drawerFront, rev); break;
     case 'open': openShelves(p, ox, oy, ow, oh, 2); break;
     case 'tray': openShelves(p, ox, oy, ow, oh, 1); break;
+    case 'leg': p.push(rect(ox, oy, ow, oh, 1.2, STROKE, STROKE)); break;   // the end leg: a solid upright
     case 'dishwasher': {
       // the appliance DOOR PANEL: one shaker leaf, knob centred on the top rail, like the pull-out
       // bin (her call 2026-09-22: it was drawn as a bare rectangle)

@@ -27,3 +27,12 @@ test('a cooker on a side wall turns the hood; no cooker means no seat', () => {
   assert.equal(s.rotDeg, 270); assert.equal(s.z, 10); assert.ok(Math.abs(s.x - (W / 2 - hood.d / 2 - 0.25)) < 1e-9);
   assert.equal(findHoodSeat({ room, items: [] }, 0, 0, null, hood), null);
 });
+
+test('the 24" hood: same seat rule, narrower canopy; the F32 stack brings it', () => {
+  const h24 = getCab('AP23');
+  assert.equal(h24.appliance, 'hood'); assert.ok(Math.abs(h24.w - 23.6) < 0.01 && h24.notSupplied);
+  assert.ok(Math.abs(h24.mountY - (36 + HOOD_CLEAR_IN)) < 1e-9);
+  const items = [{ id: 1, code: 'AP22', x: 10, z: -D / 2 + 12.25, rotDeg: 0 }];
+  const s = findHoodSeat({ room, items }, 10, -60, null, h24);
+  assert.equal(s.x, 10); assert.ok(Math.abs(s.z - (-D / 2 + h24.d / 2 + 0.25)) < 1e-9, 'its own depth against the wall');
+});

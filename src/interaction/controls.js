@@ -379,9 +379,12 @@ export class PointerControls {
     const host = this.store.getItem(base.id);
     const oven = this.store.addItem('AP21', { x: host.x, z: host.z, rotDeg: host.rotDeg || 0, hostId: host.id });
     this.store.addItem('AP22', { x: host.x, z: host.z, rotDeg: host.rotDeg || 0 });
+    // ...and its 60cm hood, centred over the cooktop, 800mm up (core/hoodseat.js)
+    const seat = findHoodSeat(this.store.state, host.x, host.z, null, getCab('AP23'));
+    if (seat) this.store.addItem('AP23', { x: seat.x, z: seat.z, rotDeg: seat.rotDeg });
     this.store.endHistory();
     this.layer.select(host.id); this.onSelect(host.id); this.onCommit();
-    return { ...host, ovenStack: [oven.code, 'AP22'] };
+    return { ...host, ovenStack: [oven.code, 'AP22', 'AP23'] };
   }
 
   /** A cooktop base (F30 / F31: prepped for a 36" cooktop) arrives with its cooktop on the

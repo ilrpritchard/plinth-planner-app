@@ -680,7 +680,7 @@ export class UI {
     } else if (getCab(res.code)?.appliance === 'oven') this._toast(`${getCab(res.code).desc} fitted into the empty oven housing.`);
     else if (res.overCooker) this._toast('Range hood centred over the cooker, 800mm above it. Drag it to another cooker if you have more than one.');
     else if (res.withCooktop) this._toast(`${getCab(res.code).desc} added with a ${getCab(res.withCooktop).desc} on the worktop over it (supply your own). Undo takes both out.`);
-    else if (res.ovenStack) this._toast('Oven housing added with its oven inside and a 24" cooktop on the worktop over it. Oven and cooktop are supply your own. Undo takes all three out.');
+    else if (res.ovenStack) this._toast('Oven housing added with its oven inside, a 24" cooktop on the worktop over it and a 24" hood above. Oven, cooktop and hood are supply your own. Undo takes all four out.');
     else if (getCab(res.code)?.appliance === 'hood') this._toast('No range or cooktop yet: add one and the hood will move over it when you drag it.');
   }
 

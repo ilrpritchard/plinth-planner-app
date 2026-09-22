@@ -258,7 +258,7 @@ export function computeWarnings(state) {
         if (side) left = true; else right = true;
       }
       if (!left || !right) {
-        out.push({ level: 'warn', msg: `${dwb.cab.code} appliance panel has no cabinet on ${left ? 'one side' : right ? 'one side' : 'either side'} — it is legless and must sit between two cabinets, borrowing their legs.` });
+        out.push({ level: 'warn', msg: `${dwb.cab.code} appliance panel has no cabinet on ${left ? 'one side' : right ? 'one side' : 'either side'} — it is legless and must sit between two cabinets (an End Leg, F34, counts), borrowing their legs.` });
       }
     }
   }

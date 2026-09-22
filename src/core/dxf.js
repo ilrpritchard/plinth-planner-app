@@ -304,6 +304,7 @@ function frontEntities(cab) {
       drawerSlabs(out, dx0, dx1, zB, zT);
       break;
     }
+    case 'leg': out.push(...box(0, W, 0, D, 0, H, 'BODY')); break;   // the end leg: one painted upright
     case 'ovenBase': {                           // a drawer slab at the bottom; the oven aperture stays open
       const seat = ovenSeat(cab), drawTop = zB + seat.drawH * 25.4, railBot = seat.y0 * 25.4 - M.PANEL;
       out.push(...box(dx0, dx1, 0, M.BACK, zB, drawTop - M.GAP, 'FRONT'));

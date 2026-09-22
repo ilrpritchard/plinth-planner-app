@@ -21,6 +21,12 @@ const RAW = [
   { code: 'F6', type: 'FLOOR', desc: 'Single (Half Depth)', w: 28, d: 14, h: 35, hinge: 'L&R', usd: 2084 },
   // FLOOR — appliance / specials
   { code: 'F7', type: 'FLOOR', desc: 'Dishwasher Door & Plinth', w: 24, d: 24, h: 35, hinge: 'n/a', usd: 939, notes: 'Dishwasher door panel + plinth' },
+  // END LEG (her ask 2026-09-22): a single painted 22mm upright, 35" with the plinth continuing
+  // under it, for the end of a run beside a dishwasher front, a range or anything else legless,
+  // so the legless front has a leg to close against and the run finishes like every other door.
+  // One product, either hand (it is symmetrical). Counts as a leg-bearing cabinet everywhere.
+  // $150 (her call 2026-09-22: between the $91 scribe filler and any cabinet).
+  { code: 'F34', type: 'FLOOR', desc: 'End Leg', w: mmToIn(22), d: 24, h: 35, hinge: 'n/a', usd: 150, notes: 'A single painted 22mm leg with the plinth under it: the end of a run beside a dishwasher front or a range, either hand. Scribed to the wall like any run end.' },
   // the 18" (slimline) dishwasher front, same legless panel + plinth (her ask 2026-09-22); priced as F7 less 20%
   { code: 'F33', type: 'FLOOR', desc: 'Dishwasher Door & Plinth (18")', w: 18, d: 24, h: 35, hinge: 'n/a', usd: 751, notes: 'Door panel + plinth for an 18" dishwasher, appliance not supplied' },
   { code: 'F8', type: 'FLOOR', desc: 'Tray Space (Adjustable)', w: 10, d: 24, h: 35, hinge: 'n/a', usd: 1744, notes: 'Open tray space, no door' },
@@ -175,6 +181,7 @@ function classify(it) {
   const d = it.desc.toLowerCase();
   if (it.type === 'ACCESSORIES') return 'accessory';
   if (it.corner) return 'corner';
+  if (d === 'end leg') return 'leg';
   if (d.includes('drawers (3)')) return 'drawers';
   if (d.includes('larder (drawers)')) return 'larderDrawers';
   if (d.includes('larder')) return 'larder';
@@ -274,6 +281,8 @@ const APPLIANCES = [
   { code: 'AP19', appliance: 'sink', desc: 'Sink (Single) 33"', w: 32.75, d: 22, h: 9, mountY: SURFACE_Y, minBase: 36, bowl: { n: 1, w: 31, d: 17, depth: 9, r: 2.75 }, notes: 'Not supplied by PL/NTH, shown for layout only. Sized to the Franke Grande GDX11031 (32-3/4" x 18-3/4", 9" deep). Needs a 36" base.' },
   { code: 'AP20', appliance: 'sink', desc: 'Sink (Double) 33"', w: 32.875, d: 22, h: 9, mountY: SURFACE_Y, minBase: 36, bowl: { n: 2, w: 15, d: 17, depth: 9, r: 2.5, divider: 1.1 }, notes: 'Not supplied by PL/NTH, shown for layout only. Sized to the Franke Grande GDX12031 (32-7/8" x 18-3/4", two 15" x 17" bowls, 9" deep). Needs a 36" base.' },
   { code: 'AP8', appliance: 'hood', desc: 'Range Hood 36"', w: 36, d: 20, h: 28, mountY: 36 + mmToIn(800) },   // underside 800mm over a range top (core/hoodseat.js)
+  // the 24" (60cm) chimney hood over the F32 stack's cooktop (her ask 2026-09-22): same idiom, narrower canopy
+  { code: 'AP23', appliance: 'hood', desc: 'Range Hood 24" (60cm)', w: 23.6, d: 19.7, h: 28, mountY: 36 + mmToIn(800) },
   { code: 'AP9', appliance: 'fridge', desc: 'Refrigerator (Freestanding)', w: 36, d: 28, h: 70, mountY: 0 },
   // integrated fridge-freezer: 84" nominal install height (Sub-Zero / Thermador
   // / Miele french-door integrateds all land at 84"), 24" counter depth so it

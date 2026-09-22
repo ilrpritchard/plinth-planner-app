@@ -42,6 +42,18 @@ ok('fillers not counted as cabinets', sum.totalCabs === 1);
   ok('no 27" filler to the wall behind the tall', !fills.some((x) => x.w > 9));
 }
 
+// ...and the other way round: the run ends in a TALL on the back wall, an F32 base owns the corner on
+// the side wall: the scribe to the base's flank stops under the counter (35"), not the tall's 86"
+{
+  const W = 150, D = 120, t = getCab('T1'), f = getCab('F32');
+  const base = { id: 1, code: 'F32', x: -W / 2 + f.d / 2 + 0.25, z: -D / 2 + f.w / 2 + 0.25, rotDeg: 90 };      // left wall, back corner
+  const flank = base.x + f.d / 2;
+  const tall = { id: 2, code: 'T1', x: flank + 3 + t.w / 2, z: -D / 2 + t.d / 2 + 0.25 + 1.18, rotDeg: 0 };   // back wall, 3" off the base's flank
+  const fills = computeFillers({ room: { width: W, depth: D, height: 96, openings: [], boxings: [] }, items: [base, tall] });
+  const corner = fills.find((x) => x.band === 'floor' && x.rotDeg === 0 && Math.abs(x.w - 3) < 0.01);
+  ok('scribe from a tall to a base flank stops under the counter', !!corner && corner.h === 35);
+}
+
 console.log(`\nfillers.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
 
