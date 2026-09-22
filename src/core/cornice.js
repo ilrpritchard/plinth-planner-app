@@ -46,7 +46,7 @@ function flankReturn(t, side, cabs, topY) {
   const th = (t.it.rotDeg || 0) * Math.PI / 180, s = Math.sin(th), co = Math.cos(th);
   let from = null;
   for (const u of cabs) {
-    if (u === t || (u.cab.type !== 'WALL' && u.cab.type !== 'COUNTER')) continue;
+    if (u === t || u.cab.onTall || (u.cab.type !== 'WALL' && u.cab.type !== 'COUNTER')) continue;
     if ((u.top ?? TOP[u.cab.type] ?? 0) < topY - 0.01) continue;
     if (((u.it.rotDeg || 0) % 180) !== ((t.it.rotDeg || 0) % 180)) continue;
     const dx = u.it.x - t.it.x, dz = u.it.z - t.it.z;
@@ -74,6 +74,9 @@ export function planCornice(state) {
   // A host with a stacker standing on it carries no crown of its own: the stacker does.
   // a cabinet's own top, not its type's nominal one: a full-height upper (45 / 51") tops at 101 / 107
   const topOf = (cab) => (cab.type === 'TALL' ? cab.h : (cab.mountY ?? MOUNT[cab.type] ?? 0) + cab.h);
+  // for the crown, a stacker standing on a tall IS the top of that tall column: 24" deep, proud of
+  // the uppers, so its flank returns like a tall's (her screenshot 2026-09-22: "cornice doesn't return")
+  const kind = (c) => (c.cab.type === 'TALL' || c.cab.onTall ? 'TALL' : c.cab.type);
   const rotOf = (it) => (((it.rotDeg || 0) % 360) + 360) % 360;
   const all = (state.items || []).map((it) => ({ it, cab: getCab(it.code) })).filter((x) => x.cab && QUALIFY.has(x.cab.type));
   const stackedOver = (x) => all.some((o) => o.cab.stacker && rotOf(o.it) === rotOf(x.it) && Math.abs((rotOf(x.it) % 180 === 0 ? o.it.x - x.it.x : o.it.z - x.it.z)) < 1 && Math.abs((o.cab.mountY || 0) - TOP[x.cab.type]) < 1);
@@ -106,9 +109,9 @@ export function planCornice(state) {
   // daylight behind it). reach[±1] = gap to a tall on that width side, or null.
   const tallReach = (c) => {
     const out = { [-1]: null, [1]: null };
-    if (c.cab.type !== 'WALL' && c.cab.type !== 'COUNTER') return out;
+    if (kind(c) !== 'WALL' && kind(c) !== 'COUNTER') return out;
     for (const t of cabs) {
-      if (t.cab.type !== 'TALL') continue;
+      if (kind(t) !== 'TALL') continue;
       if (((t.it.rotDeg || 0) % 180) !== ((c.it.rotDeg || 0) % 180)) continue;
       const horiz = ((c.it.rotDeg || 0) % 180) === 0;
       if (Math.abs(horiz ? t.it.z - c.it.z : t.it.x - c.it.x) > 14) continue;   // same run
@@ -151,7 +154,7 @@ export function planCornice(state) {
         // flank is only hidden as far forward as the 14"-deep upper butting
         // it. The crown returns along the rest — from the tall's proud face
         // back to where the upper's crown dies into it — and mitres the corner.
-        const ret = i >= 2 && c.cab.type === 'TALL' && !c.filler ? flankReturn(c, i === 2 ? 1 : -1, cabs, topY) : null;
+        const ret = i >= 2 && kind(c) === 'TALL' && !c.filler ? flankReturn(c, i === 2 ? 1 : -1, cabs, topY) : null;
         if (ret) {
           const fx = s, fz = co, mid = (ret.from + c.d / 2) / 2, len = c.d / 2 - ret.from;
           exposed[i] = true;
@@ -185,8 +188,8 @@ export function planCornice(state) {
   // runs DOWN the tall's side to connect the two levels — a vertical connector
   // board on the tall's flank, from the upper's cornice line up to the tall's.
   const drops = [];
-  const talls = cabs.filter((c) => c.cab.type === 'TALL' && !c.filler);
-  const uppers = cabs.filter((c) => c.cab.type === 'WALL' || c.cab.type === 'COUNTER');
+  const talls = cabs.filter((c) => kind(c) === 'TALL' && !c.filler);
+  const uppers = cabs.filter((c) => (c.cab.type === 'WALL' || c.cab.type === 'COUNTER') && !c.cab.onTall);
   for (const t of talls) {
     for (const u of uppers) {
       if (((t.it.rotDeg || 0) % 180) !== ((u.it.rotDeg || 0) % 180)) continue;
