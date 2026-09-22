@@ -95,7 +95,8 @@ function bandFillers(state, band, out) {
     addEnd(out, eR - (R.it.x + R.cab.w / 2), (g) => ({ x: eR - g / 2, z: R.it.z, rotDeg: rot, w: g, d: R.cab.d, h: endH(R.cab, cR), y0: band.y0(R.cab), band: band.name }));
     for (let i = 0; i < sorted.length - 1; i++) {
       const A = sorted[i], B = sorted[i + 1];
-      const a1 = A.it.x + A.cab.w / 2, b0 = B.it.x - B.cab.w / 2;
+      // a corner unit's near edge is its blank RETURN, not its door body (her open shelf beside a W9, 2026-09-22)
+      const a1 = boxAt(A.cab, A.it.x, A.it.z, A.it.rotDeg).x1, b0 = boxAt(B.cab, B.it.x, B.it.z, B.it.rotDeg).x0;
       const T = A.cab.h <= B.cab.h ? A : B;      // match the shorter (base) neighbour
       addEnd(out, b0 - a1, (g) => ({ x: a1 + g / 2, z: T.it.z, rotDeg: rot, w: g, d: T.cab.d, h: T.cab.h, y0: band.y0(T.cab), band: band.name }));
     }
@@ -114,7 +115,7 @@ function bandFillers(state, band, out) {
     addEnd(out, eR - (R.it.z + R.cab.w / 2), (g) => ({ x: R.it.x, z: eR - g / 2, rotDeg: rot, w: g, d: R.cab.d, h: endH(R.cab, cR), y0: band.y0(R.cab), band: band.name }));
     for (let i = 0; i < sorted.length - 1; i++) {
       const A = sorted[i], B = sorted[i + 1];
-      const a1 = A.it.z + A.cab.w / 2, b0 = B.it.z - B.cab.w / 2;
+      const a1 = boxAt(A.cab, A.it.x, A.it.z, A.it.rotDeg).z1, b0 = boxAt(B.cab, B.it.x, B.it.z, B.it.rotDeg).z0;
       const T = A.cab.h <= B.cab.h ? A : B;
       addEnd(out, b0 - a1, (g) => ({ x: T.it.x, z: a1 + g / 2, rotDeg: rot, w: g, d: T.cab.d, h: T.cab.h, y0: band.y0(T.cab), band: band.name }));
     }

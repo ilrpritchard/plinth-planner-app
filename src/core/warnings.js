@@ -3,7 +3,7 @@
 // problems before ordering. No DOM, no Three.js.
 
 import { getCab } from './catalogue.js';
-import { fmtIn, MOUNT } from './units.js';
+import { fmtIn, MOUNT, COOK_SIDE_IN } from './units.js';
 import { openingCenter, openingWidth, boxingBoxes } from './openings.js';
 import { overDishwasher } from './sinkspec.js';
 
@@ -234,6 +234,21 @@ export function computeWarnings(state) {
           seen.add(key);
           out.push({ level: 'warn', msg: `${c.cab.code} range is ${gap <= 0.5 ? 'hard against' : `only ${fmtIn(Math.max(0, gap))} from`} ${t.cab.code} — keep at least 18" of counter between a cooker and any tall or counter cabinet.` });
         }
+      }
+    }
+  }
+
+  // ---- cooker side clearance (her rule 2026-09-22): a wall cabinet keeps 50mm clear of a
+  // range or cooktop's edges either side (the hood over it is the exception)
+  {
+    const isCookBox = (b) => b.cab.appliance === 'range' || b.cab.appliance === 'hob';
+    const isUpper = (b) => b.cab.type === 'WALL' && !b.cab.stacker;
+    for (const c of boxes.filter(isCookBox)) {
+      for (const u of boxes.filter(isUpper)) {
+        const dx = Math.abs(c.x - u.x) - (c.hx + u.hx);
+        const dz = Math.abs(c.z - u.z) - (c.hz + u.hz);
+        const gap = Math.max(dx, dz);
+        if (gap < COOK_SIDE_IN - 0.05) out.push({ level: 'warn', msg: `${u.cab.code} is ${gap <= 0.1 ? 'hard against' : `only ${fmtIn(Math.max(0, gap))} from`} the ${c.cab.code} cooker's edge — keep 50mm (2") clear either side of a range or cooktop.` });
       }
     }
   }

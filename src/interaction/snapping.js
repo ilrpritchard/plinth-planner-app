@@ -5,7 +5,7 @@
 import { findHoodSeat } from '../core/hoodseat.js';
 import { getCab } from '../core/catalogue.js';
 import { getFootprint, getMountY } from '../models/cabinet.js';
-import { mmToIn } from '../core/units.js';
+import { mmToIn, COOK_SIDE_IN } from '../core/units.js';
 import { openingCenter, openingWidth, boxingBoxes } from '../core/openings.js';
 import { isOven, findOvenHost } from '../core/ovenseat.js';
 import { baseUnder, overDishwasher } from '../core/sinkspec.js';
@@ -160,6 +160,32 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     for (const cand of [oFree + oHalf + halfRun, oFree - oHalf - halfRun]) {
       const err = Math.abs(rawFree - cand);
       if (err < bestErr) { bestErr = err; best = cand; bestN = { o, oc }; }
+    }
+  }
+  // ---- 2p. RIGHT-ANGLE joint with the ADJOINING run (her catch 2026-09-22, "cabinets on
+  // right angles should snap exactly": her sink base on the right wall started 0.35" past the
+  // back run's front, and the slot showed as a white slit at the corner). A plain cabinet whose
+  // END is near a room corner snaps that end onto the FRONT PLANE of the perpendicular cabinet
+  // standing in that corner on the adjoining wall, so a dead corner closes leg to leg both ways:
+  // the side run starts on the back run's face, or the back run ends on the side run's face.
+  if (!cab.corner && cab.type !== 'WALL' && cab.type !== 'COUNTER') {
+    const meNow = worldBox({ ...item, x: freeAxis === 'x' ? rawX : x, z: freeAxis === 'z' ? rawZ : z, rotDeg }, cab);
+    for (const o of others) {
+      const oc = getCab(o.code);
+      if (!oc || oc.corner || oc.notSupplied || oc.type === 'WALL' || oc.type === 'COUNTER') continue;
+      if ((((o.rotDeg || 0) - rotDeg) % 180 + 180) % 180 !== 90) continue;         // perpendicular only
+      const ob = worldBox(o, oc);
+      const oRad = ((o.rotDeg || 0) * Math.PI) / 180;
+      // its front plane along MY free axis, and which side of me it stands
+      const front = horizontal ? (Math.sin(oRad) >= 0 ? ob.x1 : ob.x0) : (Math.cos(oRad) >= 0 ? ob.z1 : ob.z0);
+      const oMid = horizontal ? (ob.x0 + ob.x1) / 2 : (ob.z0 + ob.z1) / 2;
+      const side = oMid > rawFree ? 1 : -1;                                          // it is beyond my +edge or my -edge
+      // it must reach my run's line: its box spans to within 3" of my front (it stands in the corner beside my end)
+      const reach = horizontal ? Math.min(meNow.z1 - ob.z0, ob.z1 - meNow.z0) : Math.min(meNow.x1 - ob.x0, ob.x1 - meNow.x0);
+      if (reach < -3) continue;
+      const cand = front - side * halfRun;                                           // my near edge on its front plane
+      const err = Math.abs(rawFree - cand);
+      if (err < bestErr) { bestErr = err; best = cand; bestN = null; }   // a perpendicular neighbour: no front-flush alignment with it (2b is a same-run rule)
     }
   }
   // ---- 2a. LEG-TO-LEG corner joint (her rule 2026-09-16: "on every corner it
@@ -386,7 +412,9 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
         // solid through its whole column to a counter dresser or an upper, so a
         // cabinet that is not in its height band still cannot be dropped on it.
         if (overCooker && (oc.appliance === 'range' || oc.appliance === 'hob')) {
-          const col = { ...ob, y0: -1, y1: 999, cooker: true };
+          // ...and a WALL cabinet also keeps 50mm clear of the cooker's edges either side (her rule 2026-09-22)
+          const side = cab.type === 'WALL' ? COOK_SIDE_IN : 0;
+          const col = { ...ob, x0: ob.x0 - side, x1: ob.x1 + side, z0: ob.z0 - side, z1: ob.z1 + side, y0: -1, y1: 999, cooker: true };
           if (test(col)) return col;
           continue;
         }

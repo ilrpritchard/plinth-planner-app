@@ -5,7 +5,7 @@
 
 import { getCab, FAMILY_LABEL, familyOf } from '../core/catalogue.js';
 import { fmtFeetIn, fmtIn, SPEC, mmToIn } from '../core/units.js';
-import { openingCenter, openingWidth } from '../core/openings.js';
+import { openingCenter, openingWidth, boxingBoxes } from '../core/openings.js';
 import { computeFillers } from '../core/fillers.js';
 import { rangeCooktop, rangeSpec, hobSpec } from '../core/rangespec.js';
 import { sinkSpec } from '../core/sinkspec.js';
@@ -56,6 +56,10 @@ export function buildFloorplanSVG(state, underlay = null, opts = {}) {
   // ---- openings, TO SCALE: windows (sill lines) and doors (break + swing),
   // with a corner → near-edge dimension so the drawing reads like a survey ----
   for (const o of (r.openings || [])) drawOpeningPlan(out, r, o);
+
+  // ---- boxings / bulkheads: solid grey hatched blocks on the wall (her ask 2026-09-22:
+  // "why does the boxing in not show up on the floorplan, it should show as a grey hashed box")
+  for (const bx of boxingBoxes(r)) drawBoxingPlan(out, bx);
 
   // ---- cabinets (base solid, upper dashed, appliances grey). Shapes first,
   // code labels LAST (after the fillers) so no box ever paints over a code ----
@@ -172,6 +176,24 @@ function keyDesc(desc) {
   let d = String(desc || '');
   if (d.length > 34) d = d.replace(/\s*\([^)]*\)\s*$/, '');
   return d.length > 34 ? `${d.slice(0, 33)}…` : d;
+}
+
+// ---- boxings on the plan: grey, dense diagonal hatch, wall-weight outline, labelled ----
+function drawBoxingPlan(out, bx) {
+  const x0 = bx.x0, z0 = bx.z0, w = bx.x1 - bx.x0, d = bx.z1 - bx.z0;
+  out.push(`<rect x="${n(x0)}" y="${n(z0)}" width="${n(w)}" height="${n(d)}" fill="#e2e2e2"/>`);
+  // 45-degree hatch every 2", clipped to the block by walking both edges
+  const step = 2, span = w + d;
+  for (let t = step; t < span; t += step) {
+    const ax = Math.max(x0, x0 + t - d), az = z0 + Math.min(t, d);       // point on the left / bottom edge
+    const bxp = x0 + Math.min(t, w), bz = Math.max(z0, z0 + t - w);      // point on the top / right edge
+    out.push(line(ax, az, bxp, bz, W_18, '#8a8a8a'));
+  }
+  out.push(rect(x0, z0, w, d, W_WALL_IN));
+  if (w >= 6 && d >= 6) {
+    const along = w >= d;
+    out.push(`<text x="${n(x0 + w / 2)}" y="${n(z0 + d / 2)}" font-size="2.4" fill="#555" text-anchor="middle" dominant-baseline="central"${HALO}${along ? '' : ` transform="rotate(-90 ${n(x0 + w / 2)} ${n(z0 + d / 2)})"`}>BOXING</text>`);
+  }
 }
 
 // ---- openings on the plan -------------------------------------------------

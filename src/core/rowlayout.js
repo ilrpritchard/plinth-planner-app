@@ -13,7 +13,7 @@
 // Done re-derives the list FROM the layout, and a silent drop would lose it.
 
 import { getCab } from './catalogue.js';
-import { mmToIn } from './units.js';
+import { mmToIn, COOK_SIDE_IN } from './units.js';
 import { openingCenter, openingWidth, boxingBoxes } from './openings.js';
 
 const WALL_GAP = 0.25;
@@ -132,7 +132,7 @@ export function planRowsLayout(rows, room, existing = []) {
   for (const it of existing || []) {
     const c = getCab(it && it.code);
     if (!c || !c.placeable || it.island) continue;
-    if (c.type === 'APPLIANCES' && !['range', 'fridge', 'hood'].includes(c.appliance)) continue;   // sinks / cooktops ride in a base
+    if (c.type === 'APPLIANCES' && !['range', 'fridge', 'hood', 'hob'].includes(c.appliance)) continue;   // sinks ride in a base; a cooktop does too but its column keeps uppers 50mm clear (cookCols)
     const rot = ((((it.rotDeg || 0) % 360) + 360) % 360);
     const wall = rot === 0 ? 'back' : rot === 90 ? 'left' : rot === 270 ? 'right' : null;
     if (!wall) continue;
@@ -150,9 +150,13 @@ export function planRowsLayout(rows, room, existing = []) {
 
   const placements = [], lost = new Map();
   const miss = (c) => lost.set(c.code, (lost.get(c.code) || 0) + 1);
+  // nothing sits over a range or cooktop, and a wall cabinet keeps 50mm clear of its edges either
+  // side (her rule 2026-09-22); a hood is never in the rows (appliances are not laid out), it rides its cooker
+  const cookCols = (wall) => placed.filter((h) => h.wall === wall && (h.cab.appliance === 'range' || h.cab.appliance === 'hob')).map((h) => [h.lo - COOK_SIDE_IN, h.hi + COOK_SIDE_IN]);
   const takenOn = (wall, line, cab) => {
     const upperish = line === 'upper' || cab.type === 'TALL';
     return [...blocked[wall].all, ...(upperish ? blocked[wall].upper : []), ...occ[line][wall],
+      ...(line === 'upper' && cab.appliance !== 'hood' ? cookCols(wall) : []),
       // hung things never overlap a tall, and a tall never stands under a hung thing
       ...(line === 'upper' ? occ.floor[wall].filter((s) => s.tall) : cab.type === 'TALL' ? occ.upper[wall] : [])];
   };

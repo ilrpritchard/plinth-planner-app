@@ -91,4 +91,15 @@ _t('mid-run gap between neighbours gets a filler; worktop spans it', async () =>
   ok('worktop covers the dead corner', over(W / 2 - 12, -D / 2 + 12));
   ok('...and runs along the back wall to the tall\'s flank', over(W / 2 - 28, -D / 2 + 12) && !over(W / 2 - 31, -D / 2 + 12));
 }
+// her W25 open shelf beside a W9 corner unit (2026-09-22): the mid-run scribe measures to the corner's RETURN
+{
+  const st = { room: { width: 118.9, depth: 86.2, height: 95.3 }, items: [
+    { id: 1, code: 'W9', x: -19.47, z: -35.85, rotDeg: 0 },          // body -29.47..-9.47, return to -39.47
+    { id: 2, code: 'W25', x: -51.45, z: -35.85, rotDeg: 0 },         // 16" shelf on the left of the back wall, right edge -43.45
+  ] };
+  const up = computeFillers(st).filter((f) => f.band === 'upper');
+  const mid = up.find((f) => Math.abs(f.x - (-41.46)) < 0.1);
+  ok(mid && Math.abs(mid.w - 3.98) < 0.05, `scribe between the shelf and the corner return: ${up.map((f) => f.w.toFixed(2) + '@' + f.x.toFixed(2)).join(' ')}`);
+}
+
 console.log(`\nfillers.test.js — ${pass} passed, ${fail} failed`);

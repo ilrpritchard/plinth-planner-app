@@ -217,3 +217,19 @@ test('list order is kept when it already obeys the rule', () => {
   const back = r.placements.filter((p) => p.rotDeg === 0).sort((a, b) => a.x - b.x).map((p) => p.code);
   assert.deepEqual(back, ['F2', 'F7', 'F10', 'F17']);
 });
+
+test('list-to-3D: uppers added to a laid-out unit keep 50mm off the cooktop edges (her rule 2026-09-22)', async () => {
+  const { COOK_SIDE_IN } = await import('../src/core/units.js');
+  const room = { width: 200, depth: 140, height: 96, openings: [] };
+  const existing = [{ id: 1, code: 'F32', x: 0, z: -70 + 12.25, rotDeg: 0 }, { id: 2, code: 'AP22', x: 0, z: -70 + 12.25, rotDeg: 0 },
+    { id: 3, code: 'F17', x: -22, z: -70 + 12.25, rotDeg: 0 }, { id: 4, code: 'F17', x: 22, z: -70 + 12.25, rotDeg: 0 }];
+  const rows = ['W2', 'W2', 'W2', 'W2'].map((code) => ({ code, qty: 1 }));
+  const { placements } = planRowsLayout(rows, room, existing);
+  const ups = placements.filter((p) => p.code === 'W2');
+  assert.equal(ups.length, 4, 'all four uppers stood');
+  const hobW = getCab('AP22').w;
+  for (const u of ups.filter((p) => p.rotDeg === 0)) {
+    const gap = Math.abs(u.x - 0) - (hobW + getCab('W2').w) / 2;
+    assert.ok(gap >= COOK_SIDE_IN - 0.01, `upper at x ${u.x.toFixed(1)} is ${gap.toFixed(2)}" clear of the hob`);
+  }
+});

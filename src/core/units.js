@@ -33,6 +33,12 @@ export function inToMm(inches) {
 // elevation datum, the 3D slab.
 export const WORKTOP_MM = 30;
 export const WORKTOP_SLAB = mmToIn(WORKTOP_MM);
+// COOKER CLEARANCES (her rule 2026-09-22, "800mm, 18 inches and then 50mm either side of the
+// range, it also looks better"): the hood 800mm over the hob (core/hoodseat.js), 18" of counter
+// to any tall / counter unit (layouts.js RANGE_CLEAR, warnings.js), and wall cabinets keep
+// 50mm clear of the cooker's edges either side (wizard uppers, list-to-3D, drag, warning).
+export const COOK_SIDE_MM = 50;
+export const COOK_SIDE_IN = mmToIn(COOK_SIDE_MM);
 export const SURFACE_Y = 35 + WORKTOP_SLAB;                  // 36.18": top of the worktop
 export const MOUNT = { FLOOR: 0, TALL: 0, WALL: 56, COUNTER: SURFACE_Y };
 export const WALL_H = 30, TALL_H = 86;

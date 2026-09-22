@@ -61,3 +61,22 @@ test('leg-to-leg: pulled forward it is HELD at the joint (the return would hit t
   assert.equal(slide.flag, undefined, 'sliding along the back wall is allowed');
   assert.ok(Math.abs(slide.x - (x0 + 22)) < 0.01, 'and lands where it was dropped');
 });
+
+// her share link p5ph43r (2026-09-22, "cabinets on right angles should snap exactly"): the sink base on
+// the right wall started 0.35" past the back run's front plane, and the slot showed as a white slit
+test('right-angle joint: a plain cabinet at a dead corner snaps its end onto the adjoining run\'s front plane, both ways', () => {
+  const store = new Store(); store.setRoom({ width: 118.9, depth: 86.2, height: 96 });
+  const bb = { minX: -118.9 / 2, maxX: 118.9 / 2, minZ: -86.2 / 2, maxZ: 86.2 / 2 };
+  const f32 = store.addItem('F32', { x: 1.98, z: -30.85, rotDeg: 0 });
+  const f17 = store.addItem('F17', { x: 23.98, z: -30.85, rotDeg: 0 });          // back run ends at x 33.98
+  const f1 = store.addItem('F1', { x: 47.2, z: -8.5, rotDeg: 270 });             // right wall, front plane x 35.2, starts z -18.5
+  const up = snapPosition(store, f1.id, 47.2, -10.5, bb);                        // nudged toward the back wall
+  assert.equal(up.flag, undefined);
+  assert.ok(Math.abs((up.z - 10) - (-30.85 + 12)) < 0.01, `its end lands on the back run's front (${(up.z - 10).toFixed(2)})`);
+  assert.ok(Math.abs(up.x - 47.2) < 0.01, 'and it stays on its wall');
+  const right = snapPosition(store, f17.id, 25.98, -30.85, bb);                  // the drawers nudged toward the corner
+  assert.equal(right.flag, undefined);
+  assert.ok(Math.abs((right.x + 10) - 35.2) < 0.01, `the drawers end on the sink base's front plane (${(right.x + 10).toFixed(2)})`);
+  assert.ok(Math.abs(right.z + 30.85) < 0.01, 'and stay on the back wall');
+  void f32;
+});

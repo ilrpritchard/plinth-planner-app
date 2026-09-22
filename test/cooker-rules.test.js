@@ -68,3 +68,19 @@ test('front-flush snap leaves appliances out of it, both ways', async () => {
   const t = snapPosition(st, tall.id, 36.25 + 14 + 12 + 0.2, -62, b);
   assert.ok(t.z > -62.75 + 1, 'a tall still stands 30mm proud of the base run');
 });
+
+// her rule 2026-09-22: "800mm, 18 inches and then 50mm either side of the range"
+test('a wall cabinet dragged up to a cooktop stops 50mm short of its edge; the warning names a closer one', async () => {
+  const { COOK_SIDE_IN } = await import('../src/core/units.js');
+  const { computeWarnings } = await import('../src/core/warnings.js');
+  const store = mkStore(); const b = bounds(store.state.room);
+  store.addItem('F32', { x: 0, z: -80 + 12.25, rotDeg: 0 });
+  store.addItem('AP22', { x: 0, z: -80 + 12.25, rotDeg: 0 });                    // 24" hob, edges at ±11.45
+  const w2 = store.addItem('W2', { x: 40, z: -80 + 7.25, rotDeg: 0 });
+  const r = snapPosition(store, w2.id, 11.45 + 12 - 1, -80 + 7.25, b);         // dropped 1" into the clearance
+  assert.ok(Math.abs((r.x - 12) - (11.45 + COOK_SIDE_IN)) < 0.05, `held 50mm off the hob's edge (${(r.x - 12).toFixed(2)})`);
+  store.updateItem(w2.id, { x: 11.45 + 12 + 0.5 });                              // saved too close: warned
+  assert.ok(computeWarnings(store.state).some((w) => /50mm/.test(w.msg)), 'warning names the side clearance');
+  store.updateItem(w2.id, { x: 11.45 + 12 + COOK_SIDE_IN });
+  assert.ok(!computeWarnings(store.state).some((w) => /50mm/.test(w.msg)), 'no warning at 50mm');
+});

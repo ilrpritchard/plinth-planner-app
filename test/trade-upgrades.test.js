@@ -45,7 +45,7 @@ test('F29 undercounter appliance panel is a legless dishwasher-form front', () =
 // ---- stackers ---------------------------------------------------------------
 test('S-series stackers are hung, flagged, priced, in two heights', () => {
   const stackers = CATALOGUE.filter((c) => c.stacker);
-  assert.equal(stackers.length, 32, '7 tall + 5 wall + 4 counter widths × 2 heights');
+  assert.equal(stackers.length, 34, '7 tall + 6 wall + 4 counter widths × 2 heights');
   for (const cab of stackers) {
     assert.match(cab.code, /^S\d+$/, `${cab.code} is an S-code`);
     assert.equal(cab.type, 'WALL', `${cab.code} is hung (never floor-standing)`);
@@ -55,7 +55,7 @@ test('S-series stackers are hung, flagged, priced, in two heights', () => {
     // (wall hosts now top out at 86" too, level with the talls, so the desc names the family)
     assert.ok(Math.abs(cab.d - (/fits T/.test(cab.desc) ? 24 : 14)) < 0.01,
       `${cab.code} depth matches its host family`);
-    assert.ok(sellUSD(cab) > 0);
+    assert.ok(sellUSD(cab) > 0 || cab.priceTBC, `${cab.code} is priced or marked price to confirm`);
     // desc names the HOST CABINET CODES it fits (her spec), not dimensions
     assert.match(cab.desc, /^Stacker( Double)? \d+" \(fits [A-Z]\d+(, [A-Z]\d+)*\)$/);
     assert.equal(cab.desc.includes('Double'), cab.w >= 30, `${cab.code} door count by width`);

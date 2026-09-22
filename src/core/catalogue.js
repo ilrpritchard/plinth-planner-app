@@ -81,11 +81,17 @@ const RAW = [
   { code: 'W6', type: 'WALL', desc: 'Double', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 2658 },
   { code: 'W7', type: 'WALL', desc: 'Double (Glazed)', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 3116, glazed: true },
   { code: 'W8', type: 'WALL', desc: 'Double (Glazed)', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 3222, glazed: true },
-  { code: 'W9', type: 'WALL', desc: 'Corner (+10")', w: 20, d: 14, h: 30, hinge: 'L&R', usd: 2011, corner: true },
-  { code: 'W10', type: 'WALL', desc: 'Corner (+10")', w: 24, d: 14, h: 30, hinge: 'L&R', usd: 2160, corner: true },
+  // handed like the floor corners (her ask 2026-09-22: "wall cabinets with blanks on the left and the right")
+  { code: 'W9', type: 'WALL', desc: 'Corner (+10") · blank left', w: 20, d: 14, h: 30, hinge: 'L&R', usd: 2011, corner: true, cornerSide: 'left' },
+  { code: 'W9R', type: 'WALL', desc: 'Corner (+10") · blank right', w: 20, d: 14, h: 30, hinge: 'L&R', usd: 2011, corner: true, cornerSide: 'right' },
+  { code: 'W10', type: 'WALL', desc: 'Corner (+10") · blank left', w: 24, d: 14, h: 30, hinge: 'L&R', usd: 2160, corner: true, cornerSide: 'left' },
+  { code: 'W10R', type: 'WALL', desc: 'Corner (+10") · blank right', w: 24, d: 14, h: 30, hinge: 'L&R', usd: 2160, corner: true, cornerSide: 'right' },
   { code: 'W11', type: 'WALL', desc: 'Open Shelves', w: 20, d: 14, h: 30, hinge: 'n/a', usd: 1389 },
   { code: 'W12', type: 'WALL', desc: 'Open Shelves', w: 24, d: 14, h: 30, hinge: 'n/a', usd: 1410 },
   { code: 'W13', type: 'WALL', desc: 'Open Shelves', w: 28, d: 14, h: 30, hinge: 'n/a', usd: 1537 },
+  // a small open shelf for the odd gap beside a corner unit (her ask 2026-09-22, "keep it round inch
+  // numbers though we can scribe it too"); price to confirm
+  { code: 'W25', type: 'WALL', desc: 'Open Shelves', w: 16, d: 14, h: 30, hinge: 'n/a', usd: 0, priceTBC: true },
   // WALL — S-series STACKERS: boxes that sit ON TOP of an existing run for
   // tall ceilings, matched per family so every wall/tall/counter cabinet has
   // a stacker with the SAME width, the right depth, and its mountY exactly at
@@ -113,6 +119,8 @@ const RAW = [
   { code: 'S15', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W1, W3, W11)', w: 20, d: 14, h: 15, hinge: 'L&R', usd: 1419, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S16', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W2, W4, W12)', w: 24, d: 14, h: 15, hinge: 'L&R', usd: 1495, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S17', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W13)', w: 28, d: 14, h: 15, hinge: 'L&R', usd: 1601, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
+  { code: 'S33', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W25)', w: 16, d: 14, h: 15, hinge: 'L&R', usd: 0, priceTBC: true, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
+  { code: 'S34', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W25)', w: 16, d: 14, h: 21, hinge: 'L&R', usd: 0, priceTBC: true, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 107".' },
   { code: 'S18', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W5, W7)', w: 36, d: 14, h: 15, hinge: 'n/a', usd: 1981, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S19', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W6, W8)', w: 42, d: 14, h: 15, hinge: 'n/a', usd: 2148, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S20', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W1, W3, W11)', w: 20, d: 14, h: 21, hinge: 'L&R', usd: 1586, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },

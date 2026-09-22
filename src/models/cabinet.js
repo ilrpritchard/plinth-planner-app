@@ -237,6 +237,9 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   const right = box(PANEL, bodyH, d, mat); right.position.set(shellW / 2 - PANEL / 2, bodyY0 + bodyH / 2, 0);
   const bottom = box(shellW, PANEL, d, mat); bottom.position.set(0, bodyY0 + PANEL / 2, 0);
   if (cornerDir < 0) g.add(right, bottom); else if (cornerDir > 0) g.add(left, bottom); else g.add(left, right, bottom);
+  // ...but the face frame keeps its 22mm LEG on that side: the stile between the door and the
+  // blank return (her catch 2026-09-22, "should be a 22mm leg not a gaping hole")
+  if (cornerDir) { const leg = box(PANEL, bodyH, PANEL, mat); leg.position.set(cornerDir * (shellW / 2 - PANEL / 2), bodyY0 + bodyH / 2, d / 2 - PANEL / 2); g.add(leg); }
   // a SINK BASE opens its top for the undermount bowl — but only the MIDDLE.
   // A full panel shows as a white plane an inch below the worktop cutout; NO
   // panel leaves a see-through slot between the door top and the worktop
@@ -271,8 +274,12 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   g.add(back);
   // inset slightly so the oak faces sit just inside the cavity (no z-fighting
   // with the painted carcass inner faces)
-  const liner = box(inW - 0.5, inH - 0.5, inD - 0.5, interiorMat());
-  liner.position.set(0, bodyY0 + bodyH / 2, 0.25);
+  // a corner unit's liner is ONE box through the door section and the return (a second box
+  // would draw an oak wall between them: her screenshot 2026-09-22, "the shelf needs to go into
+  // the corner"), and it stops behind the blank return's face
+  const lnD = cab.corner ? inD - 0.5 - DOOR_T - HAIR : inD - 0.5;
+  const liner = box(inW - 0.5 + cornerRet, inH - 0.5, lnD, interiorMat());
+  liner.position.set(cornerDir * cornerRet / 2, bodyY0 + bodyH / 2, 0.25 - (cab.corner ? (DOOR_T + HAIR) / 2 : 0));
   liner.castShadow = false; liner.material = liner.material.clone(); liner.material.side = THREE.BackSide;
   g.add(liner);
 
@@ -353,9 +360,6 @@ export function buildCabinet(cab, finishHex, opts = {}) {
     const rBack = box(ret, bodyH, PANEL, oakMat()); rBack.position.set(px, bodyY0 + bodyH / 2, -d / 2 + PANEL / 2); g.add(rBack);
     const endX = right ? (w / 2 + ret - PANEL / 2) : (-w / 2 - ret + PANEL / 2);
     const rEnd = box(PANEL, bodyH, cd, oakMat()); rEnd.position.set(endX, bodyY0 + bodyH / 2, cz); g.add(rEnd);
-    const rLiner = box(ret - 0.5, bodyH - 2 * PANEL - 0.5, cd - PANEL - 0.5, interiorMat());
-    rLiner.position.set(px, bodyY0 + bodyH / 2, cz + PANEL / 2 + 0.25);
-    rLiner.castShadow = false; rLiner.material = rLiner.material.clone(); rLiner.material.side = THREE.BackSide; g.add(rLiner);
     // flat blank front face — FULL body height (plinth top → carcass top), one
     // clean panel with no rail bands, per the blank-return spec
     const face = box(Math.max(0.5, ret - HAIR), bodyH, DOOR_T, oakMat());

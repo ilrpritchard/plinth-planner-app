@@ -6,7 +6,7 @@ import { TEMPLATES } from '../core/templates.js';
 import { generateKitchen, wallFreeSpan } from '../core/layouts.js';
 import { TALL_PROUD } from '../interaction/snapping.js';
 import { FINISHES, getFinish, getCab, FRIDGE_SIZE_LIMITS } from '../core/catalogue.js';
-import { parseLength, parseRoomLength, fmtFeetIn, fmtIn } from '../core/units.js';
+import { parseLength, parseRoomLength, fmtFeetIn, fmtIn, COOK_SIDE_IN } from '../core/units.js';
 import { getMountY } from '../models/cabinet.js';
 import { openingCenter, openingWidth, boxingBoxes } from '../core/openings.js';
 import { planBudgetSwaps } from '../core/budget.js';
@@ -946,8 +946,8 @@ export class Wizard {
     let runX0 = Infinity, runX1 = -Infinity;
     for (const it of backUnits) { const c = getCab(it.code); runX0 = Math.min(runX0, it.x - c.w / 2); runX1 = Math.max(runX1, it.x + c.w / 2); }
 
-    // no-go spans: the range (+200mm each side), the window, and any tall unit.
-    const RANGE_CLEAR = 8;                               // 200mm safety gap
+    // no-go spans: the range (+50mm each side, her rule 2026-09-22), the window, and any tall unit.
+    const RANGE_CLEAR = COOK_SIDE_IN;
     const zones = [];
     const tallZones = [];                                // tall sides — uppers butt TIGHT against these
     for (const it of items) {

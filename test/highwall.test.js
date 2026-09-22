@@ -17,7 +17,7 @@ test('W14-W24: every non-corner W cabinet at 51" (a tall + its 21" stacker), hun
     assert.equal(familyOf(c), 'HIGH'); assert.ok(!c.corner && !c.stacker);
   }
   assert.ok(FAMILY_ORDER.indexOf('HIGH') === FAMILY_ORDER.indexOf('WALL') + 1, 'listed right after Wall');
-  assert.equal(getCab('W15').usd, 2268); assert.equal(getCab('W15').h, 51); assert.equal(getCab('W25'), undefined);
+  assert.equal(getCab('W15').usd, 2268); assert.equal(getCab('W15').h, 51); assert.ok(!getCab('W25').high, 'W25 is the 16in open shelf now, not a retired 51in code');
 });
 
 test('a wall cabinet swaps in place for its full-height version; a full-height one takes no stacker', () => {
@@ -29,4 +29,21 @@ test('a wall cabinet swaps in place for its full-height version; a full-height o
   // the crown sits on the full-height cabinet's OWN top (101"), not the standard 86" line
   const tops = new Set(planCornice(st).segments.map((s) => s.topY));
   assert.ok(tops.has(107) && tops.has(86));
+});
+
+test('corner wall cabinets come blank left AND blank right (her ask 2026-09-22)', async () => {
+  const { getCab } = await import('../src/core/catalogue.js');
+  for (const [l, r] of [['W9', 'W9R'], ['W10', 'W10R']]) {
+    const a = getCab(l), b = getCab(r);
+    assert.ok(a && b && a.corner && b.corner, `${l} and ${r} exist and are corner units`);
+    assert.equal(a.cornerSide, 'left'); assert.equal(b.cornerSide, 'right');
+    assert.ok(a.w === b.w && a.h === b.h && a.d === b.d && a.usd === b.usd, `${r} is ${l} handed the other way, same price`);
+  }
+});
+
+test('W25 Open Shelves 16": a small open shelf for the gap beside a corner unit, price to confirm, with both stackers', async () => {
+  const { getCab } = await import('../src/core/catalogue.js');
+  const w = getCab('W25');
+  assert.ok(w && w.type === 'WALL' && w.w === 16 && w.h === 30 && w.d === 14 && w.priceTBC && w.usd === 0);
+  assert.equal(getCab('S33').w, 16); assert.equal(getCab('S34').h, 21);
 });
