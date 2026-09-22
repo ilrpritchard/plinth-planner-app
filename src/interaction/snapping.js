@@ -373,12 +373,16 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       if (hit.win) windowFlag = true;
       if (hit.cooker) cookerFlag = true;
       const me = worldBox({ x, z, rotDeg }, cab);
+      // butt to the blocker's NEAR side, unless that side is through the room wall (a boxing in
+      // a corner): then the far side, so a cabinet in a bulkhead always comes out into the room
       if (freeAxis === 'x') {
-        const dxL = hit.x0 - me.x1, dxR = hit.x1 - me.x0;    // butt to the blocker's near side
-        x += Math.abs(dxL) <= Math.abs(dxR) ? dxL : dxR;
+        const dxL = hit.x0 - me.x1, dxR = hit.x1 - me.x0;
+        const okL = me.x0 + dxL >= bounds.minX - 0.05, okR = me.x1 + dxR <= bounds.maxX + 0.05;
+        x += (okL && (!okR || Math.abs(dxL) <= Math.abs(dxR))) ? dxL : dxR;
       } else {
         const dzL = hit.z0 - me.z1, dzR = hit.z1 - me.z0;
-        z += Math.abs(dzL) <= Math.abs(dzR) ? dzL : dzR;
+        const okL = me.z0 + dzL >= bounds.minZ - 0.05, okR = me.z1 + dzR <= bounds.maxZ + 0.05;
+        z += (okL && (!okR || Math.abs(dzL) <= Math.abs(dzR))) ? dzL : dzR;
       }
       [x, z] = inRoom(x, z);
       hit = hitAt(x, z);

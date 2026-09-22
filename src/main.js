@@ -36,7 +36,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-166 · F32 under-counter oven housing, with its oven and a 60cm cooktop in one tap';
+const BUILD = 'W2W-167 · a boxing is a wall: a cabinet in one comes out, on a nudge, on load, or when the boxing is added';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 

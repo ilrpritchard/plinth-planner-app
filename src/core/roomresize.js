@@ -21,7 +21,9 @@
 // `inside` = how many cabinets step 2 had to move.
 
 import { getCab } from './catalogue.js';
-import { boxAt } from './placement.js';
+import { boxAt, spotOk } from './placement.js';
+import { boxingBoxes } from './openings.js';
+import { MOUNT } from './units.js';
 
 const NEAR = 14, TOL = 0.3, KISS = 3;          // KISS: runs that meet at a corner overlap by less than this
 const ROT_WALL = { 0: 'back', 90: 'left', 180: 'front', 270: 'right' };
@@ -37,6 +39,35 @@ export function anyOutside(state) {
 }
 
 export const planBringInside = (state) => planRoomResize(state, {});
+
+/** Cabinets standing in a boxing (bulkhead) are moved out along their wall to the nearest side
+ *  that is inside the room and clear of everything else; the ones with nowhere to go are left
+ *  for the warning to name. -> { moves:[{id,x,z}], stuck:[id] } */
+export function planClearBoxings(state) {
+  const r = (state && state.room) || {}, W = r.width || 144, D = r.depth || 120;
+  const b = { minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2 };
+  const boxes = boxingBoxes(r), out = { moves: [], stuck: [] };
+  if (!boxes.length) return out;
+  const virt = { ...state, items: state.items.map((it) => ({ ...it })) };
+  for (const it of virt.items) {
+    const cab = getCab(it.code); if (!cab || !cab.placeable) continue;
+    const y0 = cab.mountY ?? MOUNT[cab.type] ?? 0;
+    const bb = boxAt(cab, it.x, it.z, it.rotDeg);
+    const inBox = boxes.filter((bx) => touch(bb, bx, -0.5) && y0 < bx.y1 - 0.5);
+    if (!inBox.length) continue;
+    const alongX = rotOf(it) % 180 === 0;
+    const tries = [];
+    for (const bx of inBox) {
+      if (alongX) { tries.push({ x: it.x + (bx.x1 - bb.x0) + 0.05, z: it.z }); tries.push({ x: it.x - (bb.x1 - bx.x0) - 0.05, z: it.z }); }
+      else { tries.push({ x: it.x, z: it.z + (bx.z1 - bb.z0) + 0.05 }); tries.push({ x: it.x, z: it.z - (bb.z1 - bx.z0) - 0.05 }); }
+    }
+    tries.sort((p, q) => Math.hypot(p.x - it.x, p.z - it.z) - Math.hypot(q.x - it.x, q.z - it.z));
+    const spot = tries.find((t) => spotOk(virt, cab, t.x, t.z, it.rotDeg, b, it.id));
+    if (!spot) { out.stuck.push(it.id); continue; }
+    it.x = spot.x; it.z = spot.z; out.moves.push({ id: it.id, x: spot.x, z: spot.z });
+  }
+  return out;
+}
 
 export function planRoomResize(state, patch = {}) {
   const r = (state && state.room) || {}, W0 = r.width || 144, D0 = r.depth || 120;

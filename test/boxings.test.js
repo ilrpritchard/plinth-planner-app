@@ -82,3 +82,15 @@ function mkControls(store) {
     },
   };
 }
+
+test('a cabinet already standing in a corner boxing comes OUT into the room, on a nudge and on load', async () => {
+  const { snapPosition } = await import('../src/interaction/snapping.js');
+  const { planClearBoxings } = await import('../src/core/roomresize.js');
+  const store = new Store(); store.setRoom({ width: 120, depth: 120, height: 96 });
+  store.addBoxing({ wall: 'left', pos: 0.2, w: 48, d: 30 });                 // 30" deep in the back-left corner
+  const it = store.addItem('T1', { x: -48, z: -46.57, rotDeg: 0 });          // a tall standing in it
+  const s = snapPosition(store, it.id, -48, -46.6, { minX: -60, maxX: 60, minZ: -60, maxZ: 60 });
+  assert.ok(s.x >= -18 - 0.01, `nudged in place it butts the boxing's room side, got ${s.x}`);   // never through the wall
+  const p = planClearBoxings(store.state);
+  assert.equal(p.moves.length, 1); assert.ok(p.moves[0].x >= -18.01 && p.stuck.length === 0);
+});
