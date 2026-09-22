@@ -69,7 +69,7 @@ ok('alongWall round-trip', near(alongWall(design.room, 'back', -57, 0), 15));
 // mount heights match the 3D (models/cabinet.js MOUNT)
 ok('floor cabs mount at 0', byId(2).y0 === 0 && byId(1).y0 === 0);
 ok('wall cabs mount at 56, tops level with the talls at 86', byId(6).y0 === 56 && byId(6).y0 + byId(6).h === 86 && byId(1).h === 86);
-ok('mountY: counter on the worktop (36.18), hood 58', Math.abs(mountY(getCab('C1')) - (35 + 30 / 25.4)) < 1e-9 && mountY(getCab('AP8')) === 58);
+ok('mountY: counter on the worktop (36.18), hood 800mm over a range', Math.abs(mountY(getCab('C1')) - (35 + 30 / 25.4)) < 1e-9 && Math.abs(mountY(getCab('AP8')) - (36 + 800 / 25.4)) < 1e-9);
 
 // dimension chain: continuous run 3→141, segments sum to the run, wall dim = 144
 const ch = back.chain;
@@ -78,11 +78,14 @@ const segSum = ch.segs.reduce((t, s) => t + (s.b - s.a), 0);
 ok('chain segments sum to overall run', near(segSum, ch.hi - ch.lo));
 ok('chain has no gap segs (continuous run)', ch.segs.every((s) => !s.gap));
 
-// scribe fillers: 3" tall filler at the left corner, 3" base filler at the right
-ok('two fillers on the back wall', back.fillers.length === 2);
-const fL = back.fillers[0], fR = back.fillers[1];
+// scribe fillers: 3" tall filler at the left corner, 3" base filler at the right, and the
+// upper that stops 3" short of the right wall gets its own scribe up at its height (2026-09-22)
+ok('three fillers on the back wall', back.fillers.length === 3);
+const fL = back.fillers[0], fR = back.fillers.find((f) => f.y0 === 0 && f.s0 > 100), fU = back.fillers.find((f) => f.y0 === 56);
 ok('left filler: 3" wide, tall height, at s0=0', near(fL.s0, 0) && near(fL.w, 3) && fL.h === 86);
-ok('right filler: 3" wide, base height, ends at wall', near(fR.s0, 141) && fR.h === 35);
+ok('right filler: 3" wide, base height, ends at wall', fR && near(fR.s0, 141) && fR.h === 35);
+ok('upper filler: 3" wide, hung at 56, 30 high, ends at wall', fU && near(fU.s0, 141) && fU.h === 30);
+ok('crown runs over the upper filler to the wall', back.crowns.some((c) => c.s1 >= 143.9 && near(c.top, 86)));
 
 // crown: runs over the tall AND its tall scribe filler, and over each upper
 ok('crown spans exist (cornice=plain)', back.crowns.length >= 2);

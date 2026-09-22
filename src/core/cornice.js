@@ -28,7 +28,7 @@ function insideAnother(px, pz, self, cabs, topY = 0) {
     // line reaches at least as high — a WALL cabinet (84") beside a TALL
     // (86") does NOT hide the tall's crown, which must run back along its
     // exposed flank ABOVE the upper, all the way to the wall.
-    if ((TOP[o.cab.type] || 0) < topY - 0.01) continue;
+    if ((o.top ?? TOP[o.cab.type] ?? 0) < topY - 0.01) continue;
     // transform the point into o's local frame
     const th = (o.it.rotDeg || 0) * Math.PI / 180;
     const dx = px - o.it.x, dz = pz - o.it.z;
@@ -47,7 +47,7 @@ function flankReturn(t, side, cabs, topY) {
   let from = null;
   for (const u of cabs) {
     if (u === t || (u.cab.type !== 'WALL' && u.cab.type !== 'COUNTER')) continue;
-    if ((TOP[u.cab.type] || 0) < topY - 0.01) continue;
+    if ((u.top ?? TOP[u.cab.type] ?? 0) < topY - 0.01) continue;
     if (((u.it.rotDeg || 0) % 180) !== ((t.it.rotDeg || 0) % 180)) continue;
     const dx = u.it.x - t.it.x, dz = u.it.z - t.it.z;
     const along = dx * co - dz * s, depth = dx * s + dz * co;           // tall-local width / depth
@@ -70,17 +70,25 @@ export function planCornice(state) {
   const r = state.room;
   const minX = -r.width / 2, maxX = r.width / 2, minZ = -r.depth / 2, maxZ = r.depth / 2;
 
+  // each cabinet's crown line: its type's top, or for a STACKER its own top (mountY + h).
+  // A host with a stacker standing on it carries no crown of its own: the stacker does.
+  const topOf = (cab) => (cab.stacker ? (cab.mountY || 0) + cab.h : TOP[cab.type]);
+  const rotOf = (it) => (((it.rotDeg || 0) % 360) + 360) % 360;
+  const all = (state.items || []).map((it) => ({ it, cab: getCab(it.code) })).filter((x) => x.cab && QUALIFY.has(x.cab.type));
+  const stackedOver = (x) => all.some((o) => o.cab.stacker && rotOf(o.it) === rotOf(x.it) && Math.abs((rotOf(x.it) % 180 === 0 ? o.it.x - x.it.x : o.it.z - x.it.z)) < 1 && Math.abs((o.cab.mountY || 0) - TOP[x.cab.type]) < 1);
   const cabs = [];
-  for (const it of state.items || []) {
-    const cab = getCab(it.code);
-    if (!cab || !QUALIFY.has(cab.type)) continue;
-    cabs.push({ it, cab, w: cab.w, d: cab.d });
+  for (const { it, cab } of all) {
+    if (!cab.stacker && stackedOver({ it, cab })) continue;
+    cabs.push({ it, cab, w: cab.w, d: cab.d, top: topOf(cab) });
   }
-  // RULE: a TALL-height scribe filler carries the cornice too — the moulding
-  // runs OVER the filler to the wall, never stopping short at the cabinet edge.
+  // RULE: a scribe filler that reaches the top of its run carries the cornice too — the
+  // moulding runs OVER the filler to the wall, never stopping short at the cabinet edge.
+  // A tall's filler, an upper's filler (at the upper's height) and a counter cabinet's.
+  const FILLER_TYPE = { floor: 'TALL', upper: 'WALL', counter: 'COUNTER' };
   for (const f of computeFillers(state)) {
-    if ((f.h || 0) < 80) continue;                       // tall fillers only
-    cabs.push({ it: { x: f.x, z: f.z, rotDeg: f.rotDeg || 0 }, cab: { type: 'TALL' }, w: f.w, d: f.d, filler: true });
+    if (f.band === 'floor' && (f.h || 0) < 80) continue;            // a base-height filler carries nothing
+    if (f.band === 'upper' && Math.abs((f.y0 || 0) + f.h - TOP.WALL) > 0.5) continue;
+    cabs.push({ it: { x: f.x, z: f.z, rotDeg: f.rotDeg || 0 }, cab: { type: FILLER_TYPE[f.band] || 'TALL' }, w: f.w, d: f.d, filler: true, top: TOP[FILLER_TYPE[f.band] || 'TALL'] });
   }
 
   const segments = [];
@@ -109,7 +117,7 @@ export function planCornice(state) {
   for (const c of cabs) {
     const th = (c.it.rotDeg || 0) * Math.PI / 180;
     const s = Math.sin(th), co = Math.cos(th);
-    const topY = TOP[c.cab.type];
+    const topY = c.top ?? TOP[c.cab.type];
     const reach = tallReach(c);
     // front strip grows across any tall gap; the side return on a tall side
     // is suppressed (the crown butts the tall's flank instead)
@@ -182,7 +190,8 @@ export function planCornice(state) {
       const gap = Math.abs(tA - uA) - (t.w + u.w) / 2;
       if (gap > 2.5 || gap < -2) continue;               // must be butted side-by-side
       if (Math.abs(horiz ? t.it.z - u.it.z : t.it.x - u.it.x) > 14) continue;  // same run
-      if (TOP.TALL - TOP[u.cab.type] < 0.25) continue;   // tops level (or the upper higher): one crown line, nothing to connect
+      const tTop = t.top ?? TOP.TALL, uTop = u.top ?? TOP[u.cab.type];
+      if (tTop - uTop < 0.25) continue;   // tops level (or the upper higher): one crown line, nothing to connect
       const side = uA > tA ? 1 : -1;                     // which flank of the tall
       const th = (t.it.rotDeg || 0) * Math.PI / 180;
       const fx = Math.sin(th), fz = Math.cos(th);        // front dir
@@ -198,7 +207,7 @@ export function planCornice(state) {
       const z = t.it.z + wz * side * (t.w / 2) + fz * (len / 2 - t.d / 2 - backGap);
       drops.push({
         x, z, len,
-        y0: TOP[u.cab.type], y1: TOP.TALL,               // connect upper level → tall level
+        y0: uTop, y1: tTop,                              // connect upper level → tall level
         angle: Math.atan2(wx * side, wz * side),         // protrudes out of the flank
       });
       totalIn += len;                                    // priced like any moulding run

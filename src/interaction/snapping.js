@@ -2,6 +2,7 @@
 // {x, z, rotDeg}. Cabinets snap back to a wall (orienting their front into the
 // room) and butt edge-to-edge into a continuous run with their neighbours.
 
+import { findHoodSeat } from '../core/hoodseat.js';
 import { getCab } from '../core/catalogue.js';
 import { getFootprint, getMountY } from '../models/cabinet.js';
 import { mmToIn } from '../core/units.js';
@@ -25,6 +26,12 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     const host = findOvenHost(store.state, cab, rawX, rawZ, id);
     if (!host) return { x: item.x, z: item.z, rotDeg: item.rotDeg || 0, flag: 'oven' };
     return { x: host.x, z: host.z, rotDeg: host.rotDeg || 0, hostId: host.id };
+  }
+  // a range hood RIDES the cooker: centred over the range or cooktop nearest the pointer
+  if (cab.appliance === 'hood') {
+    const seat = findHoodSeat(store.state, rawX, rawZ, id, cab);
+    if (!seat) return { x: item.x, z: item.z, rotDeg: item.rotDeg || 0, flag: 'hood' };
+    return { x: seat.x, z: seat.z, rotDeg: seat.rotDeg };
   }
   // ...and because it sits wholly inside its housing it never blocks anything else
   const others = store.state.items.filter((o) => o.id !== id && !isOven(getCab(o.code)));

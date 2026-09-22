@@ -145,7 +145,7 @@ export function fillersOnWall(design, wall) {
     const rot = (((f.rotDeg || 0) % 360) + 360) % 360;
     if (FILLER_WALL[rot] !== wall) continue;
     const sc = alongWall(design.room, wall, f.x, f.z);
-    out.push({ s0: sc - f.w / 2, w: f.w, y0: 0, h: f.h });
+    out.push({ s0: sc - f.w / 2, w: f.w, y0: f.y0 || 0, h: f.h });
   }
   out.sort((a, b) => a.s0 - b.s0);
   return out;
@@ -207,13 +207,15 @@ export function computeElevation(design, wall) {
 
   const worktops = worktopSpans(items, fillers, L);
 
-  // crown spans over WALL / TALL / COUNTER tops (+ tall scribe fillers)
+  // crown spans over WALL / TALL / COUNTER tops (+ the scribe fillers that reach that height)
   let crowns = [];
   if ((room.cornice || 'none') !== 'none') {
+    // a host with a stacker standing on it carries no crown of its own: the stacker does
+    const stackedOver = (i) => items.some((o) => o.cab.stacker && Math.abs(o.s0 - i.s0) < 1 && Math.abs(o.y0 - (i.y0 + i.h)) < 1);
     const spans = items
-      .filter((i) => i.type === 'WALL' || i.type === 'TALL' || i.type === 'COUNTER')
+      .filter((i) => (i.type === 'WALL' || i.type === 'TALL' || i.type === 'COUNTER') && !stackedOver(i))
       .map((i) => ({ s0: i.runS0 ?? i.s0, w: (i.runS1 ?? i.s0 + i.w) - (i.runS0 ?? i.s0), top: i.y0 + i.h }))
-      .concat(fillers.filter((f) => f.h >= 80).map((f) => ({ s0: f.s0, w: f.w, top: f.h })));
+      .concat(fillers.filter((f) => (f.y0 || 0) + f.h >= 80).map((f) => ({ s0: f.s0, w: f.w, top: (f.y0 || 0) + f.h })));   // a scribe that reaches the top carries the crown (tall, upper, counter)
     crowns = mergeSpans(spans, 2.5).map((s) => ({ s0: s.s0, s1: s.s1, top: s.top }));
   }
 

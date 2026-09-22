@@ -8,6 +8,7 @@ import { getCab } from '../core/catalogue.js';
 import { measureRun } from '../core/measure.js';
 import { fmtIn } from '../core/units.js';
 import { isOven, findOvenHost, housingCodeFor } from '../core/ovenseat.js';
+import { findHoodSeat } from '../core/hoodseat.js';
 import { bestBaseFor } from '../core/sinkspec.js';
 import { spotOk, findFreeSpot } from '../core/placement.js';
 
@@ -189,6 +190,7 @@ export class PointerControls {
       offwall: '✕ Wall, counter & tall cabinets sit against a wall',
       corner: '✕ Corner units live in corners: the blank return meets the adjoining run',
       oven: '✕ A wall oven lives in an oven housing of its size',
+      hood: '✕ A range hood sits over the range or cooktop. Add one first',
       dishwasher: '✕ Nothing sits over the dishwasher: a sink needs a door or double base',
     };
     if (snapped.flag) this._showRuleFlag(RULE_MSG[snapped.flag] || '✕ Not allowed there', e);
@@ -285,6 +287,15 @@ export class PointerControls {
     const cab = getCab(code);
     if (!cab || !cab.placeable) return null;
     if (isOven(cab)) return this._placeOven(cab, wall);
+    // a range hood goes straight over the cooker (core/hoodseat.js); with none, it waits on the wall
+    if (cab.appliance === 'hood') {
+      const seat = findHoodSeat(this.store.state, 0, 0, null, cab);
+      if (seat) {
+        const item = this.store.addItem(code, { x: seat.x, z: seat.z, rotDeg: seat.rotDeg });
+        this.layer.select(item.id); this.onSelect(item.id); this.onCommit();
+        return { ...item, overCooker: true };
+      }
+    }
     // a sink or cooktop goes straight into the best empty base for it, centred
     if (cab.appliance === 'sink' || cab.appliance === 'hob') {
       const rot = { back: 0, left: 90, front: 180, right: 270 }[wall] ?? null;
@@ -386,6 +397,18 @@ export class PointerControls {
     this.layer.rebuildAll?.();
     this.onCommit();
     return true;
+  }
+
+  /** Stand stackers on their hosts (core/stackers.js): ONE undo step. A stacker sits OVER its
+   *  host, so this never runs the floor-plan overlap check that placeInGap does. */
+  addStackers(placements) {
+    if (!placements || !placements.length) return 0;
+    this.store.beginHistory();
+    let n = 0;
+    for (const p of placements) { this.store.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg }); n++; }
+    this.store.endHistory();
+    this.onCommit();
+    return n;
   }
 
   /** Move cabinets to planned spots (core/mirror.js): ONE undo step. */

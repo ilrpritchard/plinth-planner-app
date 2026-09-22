@@ -11,6 +11,7 @@ import { planLineUp } from '../core/evenout.js';
 import { planIslandCentre } from '../core/islandcentre.js';
 import { planRoomResize } from '../core/roomresize.js';
 import { canFileIsland } from '../core/islands.js';
+import { planStackers } from '../core/stackers.js';
 import { planIslandBack } from '../core/islandback.js';
 import { planMirror, mirrorTargets } from '../core/mirror.js';
 import { summarizeState, deliveryEstimate } from '../core/cost.js';
@@ -123,6 +124,25 @@ export class UI {
     return '';
   }
 
+  // ---------- stackers: one press puts the right stacker on every tall, upper and counter
+  // cabinet on this wall, in the height the ceiling allows (her ask 2026-09-22) ----------
+  _stackersHTML() {
+    this._stack = null;
+    if (this.activeWall === 'island') return '';
+    const p = planStackers(this.store.state, this.activeWall);
+    if (!p.ok) {
+      if (p.reason === 'too low') return `<div class="wf-even"><div class="wf-gap-h"><strong>Stackers</strong> The ceiling is ${fmtFeetIn(p.ceiling)}. Stackers need ${fmtFeetIn(p.need)} (15") or ${fmtFeetIn(p.need + 6)} (21") with their crown.</div></div>`;
+      return '';
+    }
+    this._stack = p;
+    const skip = p.skipped.filter((k) => k.why !== 'already stacked');
+    const why = { corner: 'no stacker is made for a corner unit', 'off the wall': 'it stands off the wall', 'none made': 'no stacker is made for it' };
+    return `<div class="wf-even"><div class="wf-gap-h"><strong>Stackers</strong> ${p.placements.length} cabinet${p.placements.length === 1 ? '' : 's'} on this wall can take a ${p.size}" stacker (ceiling ${fmtFeetIn(this.store.state.room.height || 96)}).</div>
+      <button type="button" class="wf-gap-opt" id="wfStack" title="Puts the matching stacker on each tall, wall and counter cabinet on this wall, back on the wall, face flush with the cabinet below">
+        <span class="wf-gap-codes">Add ${p.placements.length} stacker${p.placements.length === 1 ? '' : 's'} (${p.size}")</span>
+        <span class="wf-gap-meta">${p.placements.map((q) => q.code).join(' · ')}${skip.length ? ` · skipped ${skip.map((k) => `${k.code} (${why[k.why] || k.why})`).join(', ')}` : ''}</span></button></div>`;
+  }
+
   // ---------- gaps: "there is a gap here, this is what would fit" (her ask 2026-09-21) ----------
   // Shown for the wall being worked on (Side wall covers the left AND right walls). Every
   // option is one tap: the pieces stand exactly in the gap, butted from the range side.
@@ -161,7 +181,13 @@ export class UI {
     } else {
       bar = `<div class="wf-stats" style="justify-content:flex-start"><span>Free-standing: no length limit</span></div>`;
     }
-    el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}${this._evenHTML()}${this._gapsHTML()}`;
+    el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}${this._evenHTML()}${this._gapsHTML()}${this._stackersHTML()}`;
+    el.querySelector('#wfStack')?.addEventListener('click', () => {
+      const p = this._stack; if (!p) return;
+      const added = this.controls.addStackers(p.placements);
+      this._renderWallFit(); this._refreshCost();
+      this._toast(added ? `${added} stacker${added === 1 ? '' : 's'} added (${p.size}"): ${p.placements.map((q) => q.code).join(', ')}. Undo takes them off.` : 'Nothing was added.');
+    });
     el.querySelector('.wf-even')?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-even]'); if (!btn) return;
       const o = this._even && this._even.options[Number(btn.dataset.even)]; if (!o) return;
@@ -630,6 +656,8 @@ export class UI {
       const h = getCab(res.broughtHousing);
       this._toast(`${getCab(res.code).desc} added in a ${h.code} ${h.desc} (${fmtUSD(sellUSD(h))}). Undo takes both out.`);
     } else if (getCab(res.code)?.appliance === 'oven') this._toast(`${getCab(res.code).desc} fitted into the empty oven housing.`);
+    else if (res.overCooker) this._toast('Range hood centred over the cooker, 800mm above it. Drag it to another cooker if you have more than one.');
+    else if (getCab(res.code)?.appliance === 'hood') this._toast('No range or cooktop yet: add one and the hood will move over it when you drag it.');
   }
 
   // ---------- room ----------

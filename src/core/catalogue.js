@@ -105,15 +105,15 @@ const RAW = [
   { code: 'S22', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W13)', w: 28, d: 14, h: 21, hinge: 'L&R', usd: 1768, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   { code: 'S23', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W5, W7)', w: 36, d: 14, h: 21, hinge: 'n/a', usd: 2148, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   { code: 'S24', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W6, W8)', w: 42, d: 14, h: 21, hinge: 'n/a', usd: 2315, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
-  // fits the COUNTER dresser run (24/28/36/42 wide, d 14, mount 86.5)
-  { code: 'S25', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C1, C2)', w: 24, d: 14, h: 15, hinge: 'L&R', usd: 1495, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
-  { code: 'S26', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C7)', w: 28, d: 14, h: 15, hinge: 'L&R', usd: 1601, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
-  { code: 'S27', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits C3, C5, C8)', w: 36, d: 14, h: 15, hinge: 'n/a', usd: 1981, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
-  { code: 'S28', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits C4, C6, C9)', w: 42, d: 14, h: 15, hinge: 'n/a', usd: 2148, mountY: 86.5, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
-  { code: 'S29', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits C1, C2)', w: 24, d: 14, h: 21, hinge: 'L&R', usd: 1662, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
-  { code: 'S30', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits C7)', w: 28, d: 14, h: 21, hinge: 'L&R', usd: 1768, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
-  { code: 'S31', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits C3, C5, C8)', w: 36, d: 14, h: 21, hinge: 'n/a', usd: 2148, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
-  { code: 'S32', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits C4, C6, C9)', w: 42, d: 14, h: 21, hinge: 'n/a', usd: 2315, mountY: 86.5, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
+  // fits the COUNTER dresser run (24/28/36/42 wide, d 14, mount = the counter cabinet's top)
+  { code: 'S25', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C1, C2)', w: 24, d: 14, h: 15, hinge: 'L&R', usd: 1495, mountY: SURFACE_Y + 50, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S26', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C7)', w: 28, d: 14, h: 15, hinge: 'L&R', usd: 1601, mountY: SURFACE_Y + 50, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S27', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits C3, C5, C8)', w: 36, d: 14, h: 15, hinge: 'n/a', usd: 1981, mountY: SURFACE_Y + 50, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S28', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits C4, C6, C9)', w: 42, d: 14, h: 15, hinge: 'n/a', usd: 2148, mountY: SURFACE_Y + 50, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
+  { code: 'S29', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits C1, C2)', w: 24, d: 14, h: 21, hinge: 'L&R', usd: 1662, mountY: SURFACE_Y + 50, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
+  { code: 'S30', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits C7)', w: 28, d: 14, h: 21, hinge: 'L&R', usd: 1768, mountY: SURFACE_Y + 50, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
+  { code: 'S31', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits C3, C5, C8)', w: 36, d: 14, h: 21, hinge: 'n/a', usd: 2148, mountY: SURFACE_Y + 50, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
+  { code: 'S32', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits C4, C6, C9)', w: 42, d: 14, h: 21, hinge: 'n/a', usd: 2315, mountY: SURFACE_Y + 50, notes: 'Sits on the counter dresser run, the taller size, reaches 107½". For 10\'+ ceilings.' },
 
   // COUNTER (50" tall, 14" deep — counter-to-ceiling dressers)
   { code: 'C1', type: 'COUNTER', desc: 'Single', w: 24, d: 14, h: 50, hinge: 'L&R', usd: 2354 },
@@ -237,7 +237,7 @@ const APPLIANCES = [
   { code: 'AP18', appliance: 'sink', desc: 'Sink (Single) 30"', w: 30.125, d: 22, h: 9, mountY: SURFACE_Y, minBase: 36, bowl: { n: 1, w: 28, d: 17.4, depth: 9, r: 2.75 }, notes: 'Not supplied by PL/NTH, shown for layout only. Sized to the Franke Grande GDX11028 (30-1/8" x 19-1/8", 9" deep). Needs a 36" base.' },
   { code: 'AP19', appliance: 'sink', desc: 'Sink (Single) 33"', w: 32.75, d: 22, h: 9, mountY: SURFACE_Y, minBase: 36, bowl: { n: 1, w: 31, d: 17, depth: 9, r: 2.75 }, notes: 'Not supplied by PL/NTH, shown for layout only. Sized to the Franke Grande GDX11031 (32-3/4" x 18-3/4", 9" deep). Needs a 36" base.' },
   { code: 'AP20', appliance: 'sink', desc: 'Sink (Double) 33"', w: 32.875, d: 22, h: 9, mountY: SURFACE_Y, minBase: 36, bowl: { n: 2, w: 15, d: 17, depth: 9, r: 2.5, divider: 1.1 }, notes: 'Not supplied by PL/NTH, shown for layout only. Sized to the Franke Grande GDX12031 (32-7/8" x 18-3/4", two 15" x 17" bowls, 9" deep). Needs a 36" base.' },
-  { code: 'AP8', appliance: 'hood', desc: 'Range Hood 36"', w: 36, d: 20, h: 28, mountY: 58 },
+  { code: 'AP8', appliance: 'hood', desc: 'Range Hood 36"', w: 36, d: 20, h: 28, mountY: 36 + mmToIn(800) },   // underside 800mm over a range top (core/hoodseat.js)
   { code: 'AP9', appliance: 'fridge', desc: 'Refrigerator (Freestanding)', w: 36, d: 28, h: 70, mountY: 0 },
   // integrated fridge-freezer: 84" nominal install height (Sub-Zero / Thermador
   // / Miele french-door integrateds all land at 84"), 24" counter depth so it

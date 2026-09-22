@@ -2,6 +2,7 @@
 // stackers (above-tall boxes + ceiling warning), custom RAL finish, volume
 // tiers surfacing in docs, show-kitchen-first phasing, hardware supply-only
 // language, and the A-600 compliance sheet.
+import { MOUNT } from '../src/core/units.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -48,7 +49,7 @@ test('S-series stackers are hung, flagged, priced, in two heights', () => {
   for (const cab of stackers) {
     assert.match(cab.code, /^S\d+$/, `${cab.code} is an S-code`);
     assert.equal(cab.type, 'WALL', `${cab.code} is hung (never floor-standing)`);
-    assert.ok([86, 86.5].includes(cab.mountY), `${cab.code} mounts on a host top`);
+    assert.ok(cab.mountY === 86 || Math.abs(cab.mountY - (MOUNT.COUNTER + 50)) < 1e-9, `${cab.code} mounts on a host top`);   // a tall / wall top, or the counter cabinet's
     assert.ok([15, 21].includes(cab.h));
     // depth matches the host family: talls proud → 25.25", wall/counter → 14"
     // (wall hosts now top out at 86" too, level with the talls, so the desc names the family)
@@ -77,8 +78,7 @@ test('EVERY wall/tall/counter cabinet has a stacker that fits it exactly', () =>
   // her spec: "check that all the stackers are the correct size to fit on top
   // of all the wall, tall, counter cabinets" — width equal, mount at the
   // host's top, both heights available. Corners excluded (blank returns).
-  const MOUNT = { FLOOR: 0, TALL: 0, WALL: 56, COUNTER: 36.5 };
-  const top = (c) => (typeof c.mountY === 'number' ? c.mountY : MOUNT[c.type] ?? 0) + c.h;
+  const top = (c) => (typeof c.mountY === 'number' ? c.mountY : MOUNT[c.type] ?? 0) + c.h;   // MOUNT from core/units.js: the counter top follows the 30mm worktop
   const stackers = CATALOGUE.filter((c) => c.stacker);
   const hosts = CATALOGUE.filter((c) =>
     ['WALL', 'TALL', 'COUNTER'].includes(c.type) && c.placeable && !c.corner && !c.stacker);

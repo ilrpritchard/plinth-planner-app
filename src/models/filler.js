@@ -27,7 +27,7 @@ export class FillerLayer {
     for (const f of fillers) {
       const m = new THREE.Mesh(new THREE.BoxGeometry(f.w, f.h, f.d), mat);
       m.castShadow = true; m.receiveShadow = true;
-      m.position.set(f.x, f.h / 2, f.z);
+      m.position.set(f.x, (f.y0 || 0) + f.h / 2, f.z);          // an upper's scribe hangs at the upper's height
       m.rotation.y = THREE.MathUtils.degToRad(f.rotDeg || 0);
       this.group.add(m);
     }
