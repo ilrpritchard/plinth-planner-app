@@ -8,7 +8,7 @@ import { TALL_PROUD } from '../interaction/snapping.js';
 import { FINISHES, getFinish, getCab, FRIDGE_SIZE_LIMITS } from '../core/catalogue.js';
 import { parseLength, parseRoomLength, fmtFeetIn, fmtIn } from '../core/units.js';
 import { getMountY } from '../models/cabinet.js';
-import { openingCenter, openingWidth } from '../core/openings.js';
+import { openingCenter, openingWidth, boxingBoxes } from '../core/openings.js';
 import { planBudgetSwaps } from '../core/budget.js';
 import { cookerWindowClashes } from '../core/warnings.js';
 import { hingesTowardCooker } from '../core/hinge.js';
@@ -504,6 +504,19 @@ export class Wizard {
     document.body.classList.remove('wz-reviewing');
   }
 
+  /** The back wall's free edges: a boxing (bulkhead) in a back corner, on the back wall or on
+   *  a side wall, is the wall as far as the run is concerned. */
+  _backFree(rm) {
+    let minX = -rm.width / 2, maxX = rm.width / 2;
+    for (const bx of boxingBoxes(rm)) {
+      const nearBack = bx.wall === 'back' || bx.z0 - (-rm.depth / 2) < 26;
+      if (!nearBack) continue;
+      if (bx.x0 <= minX + 1) minX = Math.max(minX, bx.x1);
+      if (bx.x1 >= maxX - 1) maxX = Math.min(maxX, bx.x0);
+    }
+    return [minX, maxX];
+  }
+
   _generate(roomPatch) {
     this.store.beginHistory();                            // the whole build = ONE undo step
     try { this._generateInner(roomPatch); }
@@ -554,7 +567,7 @@ export class Wizard {
     // it). Never opens a gap larger than a filler.
     {
       const rm = this.store.state.room;
-      const maxX = rm.width / 2, minX = -rm.width / 2, backZ = -rm.depth / 2;
+      const [minX, maxX] = this._backFree(rm), backZ = -rm.depth / 2;
       const onBack = (it, c) => c && ((it.rotDeg || 0) % 180 === 0) && Math.abs(it.z - (backZ + c.d / 2 + 0.25)) < 8;
       const backRun = this.store.state.items.filter((it) => { const c = getCab(it.code); return c && ['FLOOR', 'TALL', 'APPLIANCES'].includes(c.type) && onBack(it, c); });
       if (backRun.length) {
@@ -580,7 +593,7 @@ export class Wizard {
     // a wall-to-wall run never overflows.
     {
       const rm = this.store.state.room;
-      const maxX = rm.width / 2, minX = -rm.width / 2, backZ = -rm.depth / 2;
+      const [minX, maxX] = this._backFree(rm), backZ = -rm.depth / 2;
       const onBack = (it, c) => c && ((it.rotDeg || 0) % 180 === 0) && Math.abs(it.z - (backZ + c.d / 2 + 0.25)) < 8;
       const backRun = this.store.state.items.filter((it) => { const c = getCab(it.code); return c && ['FLOOR', 'TALL', 'APPLIANCES'].includes(c.type) && onBack(it, c); });
       const edgeL = () => Math.min(...backRun.map((it) => it.x - getCab(it.code).w / 2));
@@ -864,6 +877,10 @@ export class Wizard {
     const boxes = this.store.state.items.map(box).filter(Boolean);
     const overlap1D = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0);
     const remove = new Set();
+    // a boxing (bulkhead) is an immovable solid: whatever the generator stood in one comes out
+    for (const bb of boxingBoxes(this.store.state.room)) for (const A of boxes) {
+      if (overlap1D(A.x0, A.x1, bb.x0, bb.x1) > TOL && overlap1D(A.z0, A.z1, bb.z0, bb.z1) > TOL && overlap1D(A.y0, A.y1, bb.y0, bb.y1) > TOL) remove.add(A.id);
+    }
     for (let i = 0; i < boxes.length; i++) {
       if (remove.has(boxes[i].id)) continue;
       for (let j = i + 1; j < boxes.length; j++) {

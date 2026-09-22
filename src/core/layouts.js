@@ -5,6 +5,7 @@
 // "Generate again" produces a different (but still sensible) layout each time.
 
 import { getCab, sizedFridgeCode } from './catalogue.js';
+import { boxingBoxes } from './openings.js';
 
 function rng32(seed) {
   // scramble the seed so ADJACENT seeds (Generate again → seed+1) give clearly
@@ -84,7 +85,29 @@ export function wallFreeSpan(room, wall) {
       }
     }
   }
+  // a boxing in the corner on the ADJOINING wall stands in this run's way to its depth
+  for (const bx of boxingBoxes(room)) {
+    if (bx.wall === wall) continue;
+    const alongLen = (bx.wall === 'left' || bx.wall === 'right') ? (room.depth || 120) : (room.width || 144);
+    const atStart = bx.along0 + alongLen / 2 < NEAR, atEnd = alongLen / 2 - bx.along1 < NEAR;
+    if (wall === 'back' && atStart) { if (bx.wall === 'left') start = Math.max(start, bx.d + 0.3); if (bx.wall === 'right') end = Math.min(end, len - bx.d - 0.3); }
+    if (wall === 'front' && atEnd) { if (bx.wall === 'left') start = Math.max(start, bx.d + 0.3); if (bx.wall === 'right') end = Math.min(end, len - bx.d - 0.3); }
+    if ((wall === 'left' || wall === 'right') && bx.wall === 'back' && ((wall === 'left' && atStart) || (wall === 'right' && atEnd))) start = Math.max(start, bx.d + 0.3);
+    if ((wall === 'left' || wall === 'right') && bx.wall === 'front' && ((wall === 'left' && atStart) || (wall === 'right' && atEnd))) end = Math.min(end, len - bx.d - 0.3);
+  }
   let spans = [[start, Math.max(start, end)]];
+  // a boxing ON this wall is a solid block in the run, like a door
+  for (const bx of boxingBoxes(room)) {
+    if (bx.wall !== wall) continue;
+    const a = bx.along0 + len / 2 - 0.3, b = bx.along1 + len / 2 + 0.3;
+    const next = [];
+    for (const [s0, s1] of spans) {
+      if (b <= s0 || a >= s1) { next.push([s0, s1]); continue; }
+      if (a - s0 > 4) next.push([s0, a]);
+      if (s1 - b > 4) next.push([b, s1]);
+    }
+    spans = next;
+  }
   for (const o of (room.openings || [])) {
     if ((o.wall || 'back') !== wall) continue;
     if (o.type !== 'door' && o.type !== 'doorway') continue;
@@ -124,8 +147,14 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
   const chance = (p) => r() < p;
   const pick = (a) => a[Math.floor(r() * a.length)];
   const steps = [];
-  const width = room.width || 144;
+  // the back wall's usable length: the room width less any boxing (bulkhead) standing on
+  // that wall, and less the depth of a boxing in either back corner on a side wall
   const depth = room.depth || 120;
+  let width = room.width || 144;
+  for (const bx of boxingBoxes(room)) {
+    if (bx.wall === 'back') width -= bx.w + 0.6;
+    else if ((bx.wall === 'left' || bx.wall === 'right') && bx.along0 + depth / 2 < 26) width -= bx.d + 0.3;
+  }
   // the corner cabinet's BODY (24") plus its blank return both sit along the
   // back wall, so reserve body + return — otherwise the run overshoots and the
   // end cabinet clamps on top of its neighbour. The return is budgeted at

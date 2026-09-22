@@ -11,7 +11,7 @@
 
 import { getCab } from './catalogue.js';
 import { MOUNT, mmToIn } from './units.js';
-import { openingCenter, openingWidth } from './openings.js';
+import { openingCenter, openingWidth, boxingBoxes } from './openings.js';
 
 const WALL_GAP = 0.25, TALL_PROUD = mmToIn(30), EPS = 0.05;
 const ROT = { back: 0, left: 90, front: 180, right: 270 };
@@ -45,8 +45,10 @@ export function spotOk(state, cab, x, z, rotDeg, bounds, ignoreId = null) {
     if (c.appliance === 'oven' || c.appliance === 'sink' || c.appliance === 'hob') continue;      // riders sit IN a cabinet
     if (hits(b, boxAt(c, it.x, it.z, it.rotDeg))) return false;
   }
-  // a door needs its opening clear of anything standing within 30" of that wall
   const room = state.room || {};
+  // a boxing (bulkhead) is solid: nothing stands in it or hangs on it
+  for (const bb of boxingBoxes(room)) if (hits(b, bb) && (cab.mountY ?? 0) < bb.y1) return false;
+  // a door needs its opening clear of anything standing within 30" of that wall
   for (const o of room.openings || []) {
     if (o.type === 'window') continue;
     const wl = o.wall || 'back', ctr = openingCenter(room, o), hw = openingWidth(o, room) / 2 + 1;

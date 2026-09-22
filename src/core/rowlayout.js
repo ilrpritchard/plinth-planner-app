@@ -14,7 +14,7 @@
 
 import { getCab } from './catalogue.js';
 import { mmToIn } from './units.js';
-import { openingCenter, openingWidth } from './openings.js';
+import { openingCenter, openingWidth, boxingBoxes } from './openings.js';
 
 const WALL_GAP = 0.25;
 const TALL_PROUD = mmToIn(30);       // interaction/snapping.js TALL_PROUD
@@ -77,7 +77,18 @@ export function planRowsLayout(rows, room, existing = []) {
     if (o.type === 'window') blocked[wl].upper.push([c - hw - 1, c + hw + 1]);      // glass: only tall / hung things cover it
     else blocked[wl].all.push([c - hw - 3, c + hw + 3]);                            // a door: nothing stands across it
   }
+  // a boxing (bulkhead) is SOLID on its wall, at any height, and its depth reaches into the
+  // adjoining run's corner exactly as a placed cabinet's would (her draft 2026-09-22 stood a
+  // range in one)
+  for (const bx of boxingBoxes(room)) {
+    if (!blocked[bx.wall]) continue;
+    blocked[bx.wall].all.push([bx.along0 - 0.3, bx.along1 + 0.3]);
+  }
   const placed = [];                     // { cab, wall, along, lo, hi, stacked }
+  for (const bx of boxingBoxes(room)) {
+    if (!walls[bx.wall]) continue;
+    placed.push({ cab: { type: 'BOXING', w: bx.w, d: bx.d - WALL_GAP, h: bx.h, corner: false }, wall: bx.wall, along: (bx.along0 + bx.along1) / 2, lo: bx.along0, hi: bx.along1, stacked: true, boxing: true });
+  }
   const occ = { floor: { back: [], left: [], right: [] }, upper: { back: [], left: [], right: [] } };
 
   // A side run starts clear of whatever already stands in that back corner. Usually

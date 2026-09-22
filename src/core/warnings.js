@@ -4,7 +4,7 @@
 
 import { getCab } from './catalogue.js';
 import { fmtIn, MOUNT } from './units.js';
-import { openingCenter, openingWidth } from './openings.js';
+import { openingCenter, openingWidth, boxingBoxes } from './openings.js';
 import { overDishwasher } from './sinkspec.js';
 
 // axis-aligned footprint extents (x half, z half) for an item, accounting for
@@ -82,6 +82,16 @@ export function computeWarnings(state) {
     }
   }
 
+  // ---- 0c. a cabinet standing in a boxing (bulkhead) ----
+  for (const bb of boxingBoxes(r || {})) {
+    for (const b of boxes) {
+      if (!isSolidBody(b.cab)) continue;
+      const [y0, y1] = yBand(b.cab);
+      if (b.x - b.hx < bb.x1 - 1 && b.x + b.hx > bb.x0 + 1 && b.z - b.hz < bb.z1 - 1 && b.z + b.hz > bb.z0 + 1 && y0 < bb.y1 - 1) {
+        out.push({ level: 'error', msg: `${b.cab.code} stands in the boxing on the ${bb.wall} wall. Move it clear: nothing can stand in a boxed-in pipe run or hang on it.` });
+      }
+    }
+  }
   // ---- 1. solid bodies overlapping each other (footprint AND height band) ----
   const floor = boxes.filter((b) => isFloorStanding(b.cab));
   const solid = boxes.filter((b) => isSolidBody(b.cab));

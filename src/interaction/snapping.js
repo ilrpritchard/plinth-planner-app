@@ -6,7 +6,7 @@ import { findHoodSeat } from '../core/hoodseat.js';
 import { getCab } from '../core/catalogue.js';
 import { getFootprint, getMountY } from '../models/cabinet.js';
 import { mmToIn } from '../core/units.js';
-import { openingCenter, openingWidth } from '../core/openings.js';
+import { openingCenter, openingWidth, boxingBoxes } from '../core/openings.js';
 import { isOven, findOvenHost } from '../core/ovenseat.js';
 import { baseUnder, overDishwasher } from '../core/sinkspec.js';
 
@@ -337,6 +337,8 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       else if (wallName === 'left') winBoxes.push({ x0: bounds.minX - 1, x1: bounds.minX + D, z0: c - half, z1: c + half, ...yb });
       else winBoxes.push({ x0: bounds.maxX - D, x1: bounds.maxX + 1, z0: c - half, z1: c + half, ...yb });
     }
+    // BOXINGS (bulkheads) are solid to everything, floor to their top: nothing stands in one or hangs on one
+    const boxBoxes = boxingBoxes(room).map((b) => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, y0: -1, y1: b.y1, boxing: true }));
     const inRoom = (px, pz) => [clamp(px, bounds.minX - oxMin, bounds.maxX - oxMax), clamp(pz, bounds.minZ - ozMin, bounds.maxZ - ozMax)];
     // worktop-mounted appliances (sink, hob) belong IN FRONT of a window —
     // the classic sink-under-the-window — so the glass isn't solid to them
@@ -349,6 +351,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
         Math.min(me.z1, ob.z1) - Math.max(me.z0, ob.z0) > TOL &&
         Math.min(me.y1, ob.y1) - Math.max(me.y0, ob.y0) > 1;
       if (winSolid) for (const wb of winBoxes) if (test(wb)) return wb;
+      for (const bb of boxBoxes) if (test(bb)) return bb;
       for (const o of others) {
         const oc = getCab(o.code);
         if (!oc || !oc.placeable) continue;

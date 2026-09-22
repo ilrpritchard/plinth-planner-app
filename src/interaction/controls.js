@@ -11,6 +11,7 @@ import { isOven, findOvenHost, housingCodeFor } from '../core/ovenseat.js';
 import { findHoodSeat } from '../core/hoodseat.js';
 import { bestBaseFor } from '../core/sinkspec.js';
 import { spotOk, findFreeSpot } from '../core/placement.js';
+import { boxingBoxes } from '../core/openings.js';
 
 export class PointerControls {
   constructor({ scene, cabinetLayer, room, store, onCommit, onSelect, onWallClick, onOpeningClick }) {
@@ -448,6 +449,8 @@ export class PointerControls {
     const along = (it) => (vert ? it.z : it.x);
     const min = (vert ? b.minZ : b.minX);
     let end = min;
+    // a boxing (bulkhead) on this wall is part of the run: the next cabinet goes after it
+    for (const bx of boxingBoxes(this.store.state.room || {})) if (bx.wall === wall) end = Math.max(end, bx.along1);
     for (const it of this.store.state.items) {
       const c = getCab(it.code); if (!c || !c.placeable) continue;
       const horiz = ((it.rotDeg || 0) % 180) === 0;
