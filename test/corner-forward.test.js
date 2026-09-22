@@ -91,6 +91,13 @@ test('a WALL corner unit snaps its body edge onto the flank of a tall on the adj
   const r = snapPosition(store, w9.id, -21, -35.85, bb);
   assert.equal(r.flag, undefined);
   assert.ok(Math.abs((r.x - 10) - (bb.minX + 25.43)) < 0.01, `body edge on the tall's front plane (${(r.x - 10).toFixed(2)} vs ${(bb.minX + 25.43).toFixed(2)})`);
-  const tip = r.x - 10 - 10;                                                                // 10" return
-  assert.ok(Math.abs((tip - bb.minX) - 15.43) < 0.01 && getCab('W25').w === 15, 'the corner leaves 15.43" for the 15" shelf');
+  // her open shelf: on the LEFT wall beside the tall, pulled forward flush with its face; 10" wide it sits
+  // between the tall's near end and the front of the corner unit's return, hiding the return
+  store.updateItem(w9.id, { x: r.x });
+  const sh = store.addItem('W25', { x: bb.minX + 7.25, z: -6.85 - t1.w / 2 - 5, rotDeg: 90 });
+  const f = snapPosition(store, sh.id, bb.minX + 20, sh.z, bb);                            // pulled forward
+  assert.equal(f.flag, undefined);
+  assert.ok(Math.abs((f.x + 7) - (bb.minX + 25.43)) < 0.01, `flush with the tall (${(f.x + 7).toFixed(2)})`);
+  assert.ok(Math.abs((f.z + 5) - (-6.85 - t1.w / 2)) < 0.01, 'butted to the tall');
+  assert.ok(Math.abs((f.z - 5) - (bb.minZ + 0.25 + 14)) < 0.01, 'its back end meets the front of the return: nothing shows');
 });
