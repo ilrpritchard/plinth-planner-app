@@ -125,8 +125,9 @@ export class UI {
   }
 
   /** One press: the right stacker on every host on the active wall (or, with an id, on that one). */
-  _stackWall(onlyId = null) {
-    const p = planStackers(this.store.state, this.activeWall === 'island' ? null : this.activeWall, onlyId);
+  _stackWall(onlyId = null, wall = null) {
+    // one cabinet: wherever it stands. The catalogue tile: the whole kitchen. The wall card: that wall.
+    const p = planStackers(this.store.state, onlyId != null ? null : wall, onlyId);
     if (!p.ok) { this._toast(p.reason === 'too low' ? `The ceiling is ${fmtFeetIn(p.ceiling)}. Stackers need ${fmtFeetIn(p.need)}.` : 'Nothing here can take a stacker.'); return; }
     const added = this.controls.addStackers(p.placements);
     this._renderWallFit(); this._refreshCatalogue(); this._refreshCost();
@@ -191,7 +192,7 @@ export class UI {
       bar = `<div class="wf-stats" style="justify-content:flex-start"><span>Free-standing: no length limit</span></div>`;
     }
     el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}${this._evenHTML()}${this._gapsHTML()}${this._stackersHTML()}`;
-    el.querySelector('#wfStack')?.addEventListener('click', () => this._stackWall());
+    el.querySelector('#wfStack')?.addEventListener('click', () => this._stackWall(null, this.activeWall === 'island' ? null : this.activeWall));
     el.querySelector('.wf-even')?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-even]'); if (!btn) return;
       const o = this._even && this._even.options[Number(btn.dataset.even)]; if (!o) return;
@@ -601,14 +602,14 @@ export class UI {
       // tall, wall and counter cabinet on this wall (her: "if I can't see how to add stackers
       // how will anyone else", 2026-09-22). The same plan sits on the wall card and in Arrange.
       if (fam === 'STACKER') {
-        const p = planStackers(this.store.state, this.activeWall === 'island' ? null : this.activeWall);
-        if (p.ok) html += `<button type="button" class="cat-item cat-combo cat-stack" data-stack="wall" title="Puts the matching stacker on each tall, wall and counter cabinet on this wall, in the height the ceiling allows">
+        const p = planStackers(this.store.state, null);          // the whole kitchen, whichever wall tab is up
+        if (p.ok) html += `<button type="button" class="cat-item cat-combo cat-stack" data-stack="all" title="Puts the matching stacker on each tall, wall and counter cabinet in the kitchen, in the height the ceiling allows">
           <span class="cat-thumb">${cabinetSVG(getCab(p.placements[0].code))}</span>
-          <span class="ci-code">Stack this wall</span>
-          <span class="ci-desc">${p.placements.length} stacker${p.placements.length === 1 ? '' : 's'}, ${p.size}", matched to each cabinet</span>
+          <span class="ci-code">Add stackers</span>
+          <span class="ci-desc">${p.placements.length} stacker${p.placements.length === 1 ? '' : 's'}, ${p.size}", matched to each tall, wall and counter cabinet in the kitchen</span>
           <span class="ci-meta">${p.placements.map((q) => q.code).join(' · ')}</span></button>`;
-        else if (p.reason === 'too low') html += `<div class="hint" style="margin:2px 0 8px">The ceiling is ${fmtFeetIn(p.ceiling)}: stackers need ${fmtFeetIn(p.need)} for 15" or ${fmtFeetIn(p.need + 6)} for 21", with their crown. Change the ceiling under Room and a one-press "Stack this wall" appears here.</div>`;
-        else if (p.reason === 'no hosts') html += `<div class="hint" style="margin:2px 0 8px">Stackers sit on tall, wall and counter cabinets. Add those first and a one-press "Stack this wall" appears here.</div>`;
+        else if (p.reason === 'too low') html += `<div class="hint" style="margin:2px 0 8px">The ceiling is ${fmtFeetIn(p.ceiling)}: stackers need ${fmtFeetIn(p.need)} for 15" or ${fmtFeetIn(p.need + 6)} for 21", with their crown. Change the ceiling under Room and a one-press "Add stackers" appears here.</div>`;
+        else if (p.reason === 'no hosts') html += `<div class="hint" style="margin:2px 0 8px">Stackers sit on tall, wall and counter cabinets. Add those first and a one-press "Add stackers" appears here.</div>`;
       }
       // "Sink base" shortcuts lead the Floor list: a real base + a real sink, centred, in one tap
       if (fam === 'FLOOR') {
