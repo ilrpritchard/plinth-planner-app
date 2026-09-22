@@ -3,7 +3,7 @@
 // S range: "fits T1, T3" in its description). planStackers() reads that, picks the height the
 // ceiling allows, and says exactly where each one goes: on its host, back on the same wall.
 //
-//   planStackers(state, wall?) -> { ok:true, size, placements:[{code,x,z,rotDeg,hostId}], hosts:n, skipped:[{id,code,why}] }
+//   planStackers(state, wall?, onlyId?) -> { ok:true, size, placements:[{code,x,z,rotDeg,hostId}], hosts:n, skipped:[{id,code,why}] }
 //                               | { ok:false, reason:'no hosts' | 'too low', need, ceiling }
 // size: 21" when the ceiling has room for it and its crown (86" + 21" + 3"), else 15", else refused.
 // Skipped, and said so: a corner unit (no stacker made), a host that already has one, a host
@@ -24,12 +24,12 @@ export function stackerFor(hostCode, h) {
   return STACKERS.find((s) => s.h === h && fitsOf(s).includes(hostCode)) || null;
 }
 
-export function planStackers(state, wall = null) {
+export function planStackers(state, wall = null, onlyId = null) {
   const r = (state && state.room) || {}, W = r.width || 144, D = r.depth || 120, H = r.height || 96;
   const items = (state && state.items) || [];
   const isHost = (c) => c && c.placeable && !c.stacker && (c.type === 'TALL' || c.type === 'WALL' || c.type === 'COUNTER');
   const offWall = (it, c) => { const rot = rotOf(it); return rot === 0 ? it.z - c.d / 2 + D / 2 : rot === 180 ? D / 2 - (it.z + c.d / 2) : rot === 90 ? it.x - c.d / 2 + W / 2 : rot === 270 ? W / 2 - (it.x + c.d / 2) : Infinity; };
-  const hosts = items.map((it) => ({ it, cab: getCab(it.code) })).filter(({ it, cab }) => isHost(cab) && (!wall || ROT_WALL[rotOf(it)] === wall || (wall === 'left' && ROT_WALL[rotOf(it)] === 'right')));
+  const hosts = items.map((it) => ({ it, cab: getCab(it.code) })).filter(({ it, cab }) => isHost(cab) && (onlyId == null || it.id === onlyId) && (!wall || ROT_WALL[rotOf(it)] === wall || (wall === 'left' && ROT_WALL[rotOf(it)] === 'right')));
   if (!hosts.length) return { ok: false, reason: 'no hosts' };
   const size = H >= TALL_H + 21 + CLEAR ? 21 : H >= TALL_H + 15 + CLEAR ? 15 : 0;
   if (!size) return { ok: false, reason: 'too low', need: TALL_H + 15 + CLEAR, ceiling: H };

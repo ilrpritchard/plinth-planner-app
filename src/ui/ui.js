@@ -124,6 +124,15 @@ export class UI {
     return '';
   }
 
+  /** One press: the right stacker on every host on the active wall (or, with an id, on that one). */
+  _stackWall(onlyId = null) {
+    const p = planStackers(this.store.state, this.activeWall === 'island' ? null : this.activeWall, onlyId);
+    if (!p.ok) { this._toast(p.reason === 'too low' ? `The ceiling is ${fmtFeetIn(p.ceiling)}. Stackers need ${fmtFeetIn(p.need)}.` : 'Nothing here can take a stacker.'); return; }
+    const added = this.controls.addStackers(p.placements);
+    this._renderWallFit(); this._refreshCatalogue(); this._refreshCost();
+    this._toast(added ? `${added} stacker${added === 1 ? '' : 's'} added (${p.size}"): ${p.placements.map((q) => q.code).join(', ')}. Undo takes them off.` : 'Nothing was added.');
+  }
+
   // ---------- stackers: one press puts the right stacker on every tall, upper and counter
   // cabinet on this wall, in the height the ceiling allows (her ask 2026-09-22) ----------
   _stackersHTML() {
@@ -182,12 +191,7 @@ export class UI {
       bar = `<div class="wf-stats" style="justify-content:flex-start"><span>Free-standing: no length limit</span></div>`;
     }
     el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}${this._evenHTML()}${this._gapsHTML()}${this._stackersHTML()}`;
-    el.querySelector('#wfStack')?.addEventListener('click', () => {
-      const p = this._stack; if (!p) return;
-      const added = this.controls.addStackers(p.placements);
-      this._renderWallFit(); this._refreshCost();
-      this._toast(added ? `${added} stacker${added === 1 ? '' : 's'} added (${p.size}"): ${p.placements.map((q) => q.code).join(', ')}. Undo takes them off.` : 'Nothing was added.');
-    });
+    el.querySelector('#wfStack')?.addEventListener('click', () => this._stackWall());
     el.querySelector('.wf-even')?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-even]'); if (!btn) return;
       const o = this._even && this._even.options[Number(btn.dataset.even)]; if (!o) return;
@@ -593,6 +597,19 @@ export class UI {
       const open = ''; // all catalogue groups start collapsed
       const glyph = items[0] ? `<span class="cat-fam-ico" aria-hidden="true">${cabinetSVG(items[0])}</span>` : '';
       html += `<details class="cat-group" ${open}><summary>${glyph}${FAMILY_LABEL[fam]}<span class="cat-count">${items.length}</span></summary><div class="cat-grid">`;
+      // the STACKERS list leads with ONE tile that does the matching: the right stacker on every
+      // tall, wall and counter cabinet on this wall (her: "if I can't see how to add stackers
+      // how will anyone else", 2026-09-22). The same plan sits on the wall card and in Arrange.
+      if (fam === 'STACKER') {
+        const p = planStackers(this.store.state, this.activeWall === 'island' ? null : this.activeWall);
+        if (p.ok) html += `<button type="button" class="cat-item cat-combo cat-stack" data-stack="wall" title="Puts the matching stacker on each tall, wall and counter cabinet on this wall, in the height the ceiling allows">
+          <span class="cat-thumb">${cabinetSVG(getCab(p.placements[0].code))}</span>
+          <span class="ci-code">Stack this wall</span>
+          <span class="ci-desc">${p.placements.length} stacker${p.placements.length === 1 ? '' : 's'}, ${p.size}", matched to each cabinet</span>
+          <span class="ci-meta">${p.placements.map((q) => q.code).join(' · ')}</span></button>`;
+        else if (p.reason === 'too low') html += `<div class="hint" style="margin:2px 0 8px">The ceiling is ${fmtFeetIn(p.ceiling)}: stackers need ${fmtFeetIn(p.need)} for 15" or ${fmtFeetIn(p.need + 6)} for 21", with their crown. Change the ceiling under Room and a one-press "Stack this wall" appears here.</div>`;
+        else if (p.reason === 'no hosts') html += `<div class="hint" style="margin:2px 0 8px">Stackers sit on tall, wall and counter cabinets. Add those first and a one-press "Stack this wall" appears here.</div>`;
+      }
       // "Sink base" shortcuts lead the Floor list: a real base + a real sink, centred, in one tap
       if (fam === 'FLOOR') {
         for (const combo of SINK_BASES) {
@@ -630,6 +647,7 @@ export class UI {
     document.getElementById('catalogue').addEventListener('click', (e) => {
       const row = e.target.closest('.cat-item');
       if (!row) return;
+      if (row.dataset.stack) { this._stackWall(); return; }
       if (row.dataset.combo) {
         const combo = sinkBaseCombo(row.dataset.combo);
         const res = combo && this.controls.placeSinkBase(combo, this.activeWall);
@@ -1047,6 +1065,7 @@ export class UI {
       this._toast(to ? 'Filed with the island: the island drawing, its worktop and the ISLAND list now include it. Undo puts it back.' : 'Filed with the wall run, no longer part of the island. Undo puts it back.');
       this.showSelbar(id);
     });
+    document.getElementById('selStacker').addEventListener('click', () => { const id = this.controls.layer.selectedId; if (id != null) this._stackWall(id); });
     document.getElementById('selCentreRoom').addEventListener('click', centre('room'));
     document.getElementById('selCentreRange').addEventListener('click', centre('range'));
     document.getElementById('selMirrorRange').addEventListener('click', mirror('range'));
@@ -1143,6 +1162,9 @@ export class UI {
     const cRoom = planIslandCentre(this.store.state, id, 'room'), cRange = planIslandCentre(this.store.state, id, 'range');
     document.getElementById('selCentreRoom').style.display = cRoom.reason === 'not island' ? 'none' : '';
     document.getElementById('selCentreRange').style.display = (cRange.ok && !(cRoom.ok && Math.abs(cRoom.dx - cRange.dx) < 0.25)) || (cRange.reason === 'blocked') ? '' : 'none';
+    const sk = document.getElementById('selStacker'), skp = planStackers(this.store.state, null, id);
+    sk.style.display = skp.ok ? '' : 'none';
+    if (skp.ok) sk.textContent = `Add a stacker (${skp.placements[0].code}, ${skp.size}")`;
     const fi = document.getElementById('selFileIsland');
     fi.style.display = canFileIsland(this.store.state, id) ? '' : 'none';
     fi.textContent = it.island ? 'Not part of the island' : 'Part of the island';

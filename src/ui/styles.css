@@ -1627,6 +1627,7 @@ details.trade-fold > .trade-exports { display: block; padding: 6px 18px 20px; }
 
 /* "Sink base" shortcut tiles: a real base + a real sink in one tap */
 .cat-item.cat-combo { border-style: solid; }
+.cat-item.cat-stack { grid-column: 1 / -1; }
 .cat-item.cat-combo .ci-code { letter-spacing: 0.02em; }
 
 /* floor swatches carry a patch of the painted floor: tall enough to read the pattern */
