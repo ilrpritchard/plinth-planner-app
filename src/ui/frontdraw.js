@@ -400,6 +400,15 @@ function applianceFront(cab, s0, y0, Y, opts) {
       code(w / 2, h * 0.75, P.F_CODE * 0.85);
       break;
     }
+    case 'washer': {                                                  // a front-loader: porthole and a control strip
+      box(0, 0, w, h);
+      ln(0, 1.6, w, 1.6);
+      box(0.6, h - 3.6, w - 1.2, 3, A_PALE, P.W_18);
+      o.push(`<circle cx="${n(s0 + w / 2)}" cy="${n(Y(y0 + h * 0.47))}" r="${n(Math.min(w, h) * 0.34)}" fill="${A_PALE}" stroke="${A_INK}" stroke-width="${P.W_CAB}" vector-effect="non-scaling-stroke"/>`);
+      o.push(`<circle cx="${n(s0 + w / 2)}" cy="${n(Y(y0 + h * 0.47))}" r="${n(Math.min(w, h) * 0.27)}" fill="#c9ccd0" stroke="${A_INK}" stroke-width="${P.W_18}" vector-effect="non-scaling-stroke"/>`);
+      code(w / 2, h * 0.12);
+      break;
+    }
     default:
       box(0, 0, w, h);
       code(w / 2, h / 2);

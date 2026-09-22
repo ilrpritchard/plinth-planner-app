@@ -305,6 +305,18 @@ export function buildAppliance(cab, finishHex = '#efece3', opts = {}) {
       const kick = box(w, 2, d, DARK()); kick.position.set(0, 1, 0); g.add(kick);
       break;
     }
+    case 'washer': {
+      // a white front-loader: enamel box, a porthole door with a dark glass and a chrome ring,
+      // the control strip and detergent drawer along the top, a dark kick
+      const body = box(w, h, d, ENAMEL()); body.position.y = h / 2; g.add(body);
+      const kick = box(w, 1.6, d, DARK()); kick.position.y = 0.8; g.add(kick);
+      const strip = box(w - 1, 3.2, 0.3, mat(0xe6e7e4, 0.2, 0.5, 0.7)); strip.position.set(0, h - 2.4, fz); g.add(strip);
+      const dial = cyl(1.1, 1.1, 0.5, CHROME()); dial.rotation.x = Math.PI / 2; dial.position.set(w / 2 - 4, h - 2.4, fz + 0.3); g.add(dial);
+      const drawer = box(w * 0.3, 1.8, 0.2, mat(0xdcdedb, 0.2, 0.5, 0.7)); drawer.position.set(-w / 2 + 1 + w * 0.15, h - 2.4, fz + 0.2); g.add(drawer);
+      const ring = cyl(8.2, 8.2, 1.2, CHROME(), 40); ring.rotation.x = Math.PI / 2; ring.position.set(0, h * 0.47, fz + 0.5); g.add(ring);
+      const glass = cyl(6.6, 6.6, 0.6, GLASS(), 40); glass.rotation.x = Math.PI / 2; glass.position.set(0, h * 0.47, fz + 0.9); glass.castShadow = false; g.add(glass);
+      break;
+    }
     default: { const body = box(w, h, d, STEEL()); body.position.y = h / 2; g.add(body); }
   }
 

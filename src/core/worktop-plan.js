@@ -34,7 +34,7 @@ export function planWorktopSlabs(items, getCab, defaultMat = 'marble', room = nu
   const cells = [];
   for (const it of items) {
     const cab = getCab(it.code);
-    if (!cab || cab.type !== 'FLOOR') continue;
+    if (!cab || (cab.type !== 'FLOOR' && !cab.underCounter)) continue;      // an under-counter appliance (a washer) carries the top like a base
     const horiz = ((it.rotDeg || 0) % 180) === 0;
     const hw = (horiz ? cab.w : cab.d) / 2;
     const hd = (horiz ? cab.d : cab.w) / 2;
@@ -278,7 +278,7 @@ export function planWorktopSlabs(items, getCab, defaultMat = 'marble', room = nu
   const blocks = [];
   for (const it of items) {
     const cab = getCab(it.code);
-    if (!cab || cab.type !== 'APPLIANCES' || (cab.mountY || 0) > 0) continue;
+    if (!cab || cab.type !== 'APPLIANCES' || (cab.mountY || 0) > 0 || cab.underCounter) continue;   // the washer sits UNDER the top
     const horiz = ((it.rotDeg || 0) % 180) === 0;
     const hw = (horiz ? cab.w : cab.d) / 2;
     const hd = (horiz ? cab.d : cab.w) / 2;

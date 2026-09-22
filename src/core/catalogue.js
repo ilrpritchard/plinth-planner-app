@@ -283,6 +283,9 @@ const APPLIANCES = [
   { code: 'AP8', appliance: 'hood', desc: 'Range Hood 36"', w: 36, d: 20, h: 28, mountY: 36 + mmToIn(800) },   // underside 800mm over a range top (core/hoodseat.js)
   // the 24" (60cm) chimney hood over the F32 stack's cooktop (her ask 2026-09-22): same idiom, narrower canopy
   { code: 'AP23', appliance: 'hood', desc: 'Range Hood 24" (60cm)', w: 23.6, d: 19.7, h: 28, mountY: 36 + mmToIn(800) },
+  // a freestanding washing machine UNDER the counter (Samsung WW80CGC04DAE, 600 x 850 x 550mm; her ask
+  // 2026-09-22 for one kitchen): stands on the floor in the run, the worktop runs over it
+  { code: 'AP24', appliance: 'washer', desc: 'Washing machine 24" (freestanding)', w: 23.6, d: 21.7, h: 33.5, mountY: 0, underCounter: true },
   { code: 'AP9', appliance: 'fridge', desc: 'Refrigerator (Freestanding)', w: 36, d: 28, h: 70, mountY: 0 },
   // integrated fridge-freezer: 84" nominal install height (Sub-Zero / Thermador
   // / Miele french-door integrateds all land at 84"), 24" counter depth so it

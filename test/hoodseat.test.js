@@ -36,3 +36,16 @@ test('the 24" hood: same seat rule, narrower canopy; the F32 stack brings it', (
   const s = findHoodSeat({ room, items }, 10, -60, null, h24);
   assert.equal(s.x, 10); assert.ok(Math.abs(s.z - (-D / 2 + h24.d / 2 + 0.25)) < 1e-9, 'its own depth against the wall');
 });
+
+test('the washing machine stands on the floor in the run and the worktop runs over it', async () => {
+  const { planWorktopSlabs } = await import('../src/core/worktop-plan.js');
+  const wm = getCab('AP24');
+  assert.ok(wm.appliance === 'washer' && wm.mountY === 0 && wm.underCounter && wm.notSupplied && wm.h < 35);
+  const D2 = 120, z = -D2 / 2 + 12.25, items = [{ id: 1, code: 'F2', x: -24, z, rotDeg: 0 }, { id: 2, code: 'AP24', x: 0, z: -D2 / 2 + wm.d / 2 + 0.25, rotDeg: 0 }, { id: 3, code: 'F2', x: 24, z, rotDeg: 0 }];
+  const slabs = planWorktopSlabs(items, getCab, 'marble', { width: 144, depth: D2, height: 96, openings: [], boxings: [] });
+  const over = slabs.some((s) => s.x0 < -1 && s.x1 > 1 && s.z0 < z && s.z1 > z);
+  assert.ok(over, `one slab runs over the washer: ${JSON.stringify(slabs)}`);
+  // ...unlike a range, which the top stops dead at
+  const withRange = planWorktopSlabs([items[0], { id: 2, code: 'AP1', x: 3, z: -D2 / 2 + 13.25, rotDeg: 0 }, items[2]], getCab, 'marble', { width: 144, depth: D2, height: 96, openings: [], boxings: [] });
+  assert.ok(!withRange.some((s) => s.x0 < 3 && s.x1 > 3 && s.z0 < z && s.z1 > z), 'no slab over the range');
+});
