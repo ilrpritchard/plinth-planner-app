@@ -56,8 +56,8 @@ test('elevation and icon draw the doors the spec describes, elevation is grey (b
   }
 });
 
-test('cooktops: four burners on the 30", five on the 36", a knob each, all on the glass and clear of each other', () => {
-  for (const [code, n] of [['AP4', 4], ['AP5', 5]]) {
+test('cooktops: five burners on the 30" (Samsung NA30N6555TS, her example 2026-09-22) and the 36", four on the 24", a knob each, all on the glass and clear of each other', () => {
+  for (const [code, n] of [['AP4', 5], ['AP5', 5], ['AP22', 4]]) {
     const cab = getCab(code), hs = hobSpec(cab);
     assert.equal(hs.burners.length, n, `${code} burners`);
     assert.equal(hs.knobs.length, n, `${code} a knob per burner`);

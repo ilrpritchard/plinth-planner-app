@@ -362,6 +362,10 @@ button.cta:hover { background: var(--cream-hi); filter: none; }
 .cost-note { font-size: 10px; color: var(--dim); margin-top: 8px; line-height: 1.5; }
 
 /* selected item bar */
+/* "Saved 12:41" beside the Save button: the cloud autosave's quiet receipt */
+.save-note { font-size: 11px; color: var(--dim); white-space: nowrap; letter-spacing: 0.02em; }
+.save-note:empty { display: none; }
+
 #selbar {
   /* contextual toolbar at the TOP of the stage — never collides with the
      view controls at the bottom, however far they wrap */

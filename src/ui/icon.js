@@ -168,6 +168,16 @@ function drawFront(p, cab, a) {
       tallDoor(ox + rev, oy + rev, ow - 2 * rev, oh - 2 * rev, +1);
       break;
     }
+    case 'ovenBase': {
+      // the UNDER-COUNTER oven housing: (top→bottom) inset oven right under the rail · drawer panel
+      const ovenH = oh * 0.82, dy = oy + rev + ovenH + rev;
+      p.push(rect(ox + rev, oy + rev, ow - 2 * rev, ovenH, 1.2));                                   // oven fascia
+      p.push(rect(ox + rev * 4, oy + rev + ovenH * 0.3, ow - 8 * rev, ovenH * 0.58, 0.7, HAIR, GLASS)); // glass door
+      p.push(hline(ox + rev * 4, ox + ow - rev * 4, oy + rev + ovenH * 0.17, 1.1));                  // handle bar
+      p.push(rect(ox + rev, dy, ow - 2 * rev, oy + oh - dy - rev, 1));                               // drawer panel
+      knob(p, ox + ow / 2, dy + (oy + oh - dy - rev) / 2);
+      break;
+    }
     case 'ovenHousing': {
       // (top→bottom) blank panel · inset oven (window + bar) · drawer · door
       const blankH = oh * 0.27, ovenH = oh * 0.35, drawH = oh * 0.10;

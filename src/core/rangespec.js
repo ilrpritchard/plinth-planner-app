@@ -45,7 +45,7 @@ export function rangeCooktop(cab) {
  *  30" = four burners; 36" = five, with the big one in the middle. Knobs run
  *  along the front edge. Shared by the 3D model and the catalogue icon. */
 export function hobSpec(cab) {
-  const w = cab.w, d = cab.d, five = w >= 34;
+  const w = cab.w, d = cab.d, five = w >= 29;      // 30" and 36" are five-burner, the 24" (60cm) four
   const bx = w * (five ? 0.33 : 0.25), bz = d * 0.19, back = -d * 0.06;
   const burners = [
     { x: -bx, z: back - bz, r: 2.0 }, { x: bx, z: back - bz, r: 2.4 },      // back row: simmer, medium

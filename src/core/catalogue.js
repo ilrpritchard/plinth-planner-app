@@ -258,7 +258,7 @@ const APPLIANCES = [
   { code: 'AP16', appliance: 'oven', ovenW: 36, desc: 'Wall oven 36"', w: 36, d: 23.7, h: 24, mountY: OVEN_SEAT_Y },
   // the under-counter single oven (Miele H7660BP: 595 x 595 x 570mm), a RIDER in the F32 base housing
   { code: 'AP21', appliance: 'oven', ovenW: 24, ovenKind: 'under', desc: 'Oven, under counter 24"', w: 23.4, d: 22.4, h: UNDER_OVEN_H, mountY: UNDER_OVEN_SEAT_Y },
-  { code: 'AP4', appliance: 'hob', desc: 'Cooktop 30"', w: 30, d: 21, h: 2, mountY: SURFACE_Y },
+  { code: 'AP4', appliance: 'hob', desc: 'Cooktop 30" (5 burners)', w: 30, d: 21, h: 2, mountY: SURFACE_Y },   // sized to the Samsung NA30N6555TS (her example 2026-09-22)
   { code: 'AP5', appliance: 'hob', desc: 'Cooktop 36"', w: 36, d: 21, h: 2, mountY: SURFACE_Y },
   // the 60cm four-burner gas hob that goes over the under-counter oven (Bosch PCP6A6B90: 582 x 520mm)
   { code: 'AP22', appliance: 'hob', desc: 'Cooktop 24" (60cm, gas)', w: 22.9, d: 20.5, h: 2, mountY: SURFACE_Y },

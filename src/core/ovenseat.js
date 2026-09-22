@@ -15,8 +15,11 @@ export function ovenSeat(housing) {
   if (housing.form === 'ovenBase') {
     // the UNDER-COUNTER housing (F32): the oven sits right under the top rail, a slim drawer
     // panel fills the rest down to the plinth. No low door.
-    const ovenH = mmToIn(595);
-    return { openY0, openH, doorH: 0, drawH: openH - ovenH - 2 * SPEC.REVEAL_IN, y0: openY0 + openH - ovenH, ovenH,
+    // a 22mm painted rail, the front edge of the shelf the oven stands on, between the oven and
+    // the drawer (her: "there would be a strip of wood, top of drawer, so if the oven was removed it
+    // would have a base", 2026-09-22)
+    const ovenH = mmToIn(595), railH = SPEC.PANEL_IN;
+    return { openY0, openH, doorH: 0, railH, drawH: openH - ovenH - railH - 2 * SPEC.REVEAL_IN, y0: openY0 + openH - ovenH, ovenH,
       faceW: housing.w - 2 * SPEC.LEG_IN - 2 * SPEC.REVEAL_IN, ovenW: housing.ovenW || 24 };
   }
   const doorH = openH * 0.26, drawH = openH * 0.09;

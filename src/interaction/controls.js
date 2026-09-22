@@ -289,6 +289,7 @@ export class PointerControls {
     if (!cab || !cab.placeable) return null;
     if (isOven(cab)) return this._placeOven(cab, wall);
     if (cab.form === 'ovenBase' && !opts.plain) return this._placeOvenBase(code, wall);
+    if (/cooktop/i.test(cab.desc || '') && !opts.plain) return this._placeCooktopBase(code, wall);
     // a range hood goes straight over the cooker (core/hoodseat.js); with none, it waits on the wall
     if (cab.appliance === 'hood') {
       const seat = findHoodSeat(this.store.state, 0, 0, null, cab);
@@ -381,6 +382,19 @@ export class PointerControls {
     this.store.endHistory();
     this.layer.select(host.id); this.onSelect(host.id); this.onCommit();
     return { ...host, ovenStack: [oven.code, 'AP22'] };
+  }
+
+  /** A cooktop base (F30 / F31: prepped for a 36" cooktop) arrives with its cooktop on the
+   *  worktop (her ask 2026-09-22), the way the oven housing does. One undo step. */
+  _placeCooktopBase(code, wall) {
+    this.store.beginHistory();
+    const base = this.placeNew(code, wall, { safe: true, plain: true });
+    if (!base) { this.store.endHistory(); return null; }
+    const host = this.store.getItem(base.id), hob = getCab(code).w >= 34 ? 'AP5' : getCab(code).w >= 29 ? 'AP4' : 'AP22';
+    this.store.addItem(hob, { x: host.x, z: host.z, rotDeg: host.rotDeg || 0 });
+    this.store.endHistory();
+    this.layer.select(host.id); this.onSelect(host.id); this.onCommit();
+    return { ...host, withCooktop: hob };
   }
 
   _placeOven(cab, wall) {

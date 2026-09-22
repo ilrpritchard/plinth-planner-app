@@ -638,6 +638,8 @@ function buildFront(g, cab, ctx) {
       const seat = ovenSeat(cab);
       g.add(flatDrawer(faceW, seat.drawH - REVEAL, mat, ctx.frontFlush, y0 + (seat.drawH - REVEAL) / 2, handle));
       const oy0 = seat.y0, ovenH = seat.ovenH;
+      // the painted rail the oven stands on, flush with the drawer face
+      const rail = box(faceW, seat.railH, DOOR_T, mat); rail.position.set(0, oy0 - REVEAL - seat.railH / 2, frontZ - DOOR_T / 2); g.add(rail);
       if (ctx.ovenFitted) {
         const ovenFace = seat.ovenW - 0.25, stile = Math.max(0, (faceW - ovenFace) / 2);
         const cavity = box(faceW, ovenH, 0.3, new THREE.MeshStandardMaterial({ color: 0x17181a, roughness: 0.9 }));

@@ -11,6 +11,13 @@ import { uiConfirm } from './dialog.js';
 export class CloudUI {
   constructor({ store, onLoaded }) {
     this.store = store;
+    // the design that is OPEN from My designs (id + name): Save writes it in place, and the
+    // autosave keeps it current (her ask 2026-09-22: "it needs to autosave every few mins")
+    this.currentId = null; this.currentName = null;
+    this._lastSaved = null;                 // JSON of the state as last written to the account
+    this._saving = false;
+    store.subscribe((s, c) => { if ((c.type === 'load' && !this._opening) || c.type === 'reset') { this.currentId = null; this.currentName = null; } });
+    this._startAutosave();
     this.onLoaded = onLoaded || (() => {});
     this.user = null;
     this.view = null;            // null | 'reset' — 'reset' = choose-a-new-password
@@ -174,33 +181,78 @@ export class CloudUI {
   _wireLoggedIn() {
     this.modal.querySelector('#signOut').addEventListener('click', async () => { await signOut(); this.user = null; this._syncBtn(); this.render(); });
     this.modal.querySelector('#saveBtn').addEventListener('click', async () => {
-      const name = this.modal.querySelector('#saveName').value.trim() || 'Untitled kitchen';
-      try { await saveDesign(name, this.store.serialize()); this._refreshList('Saved ✓'); }
-      catch (err) { this._refreshList(err.message, true); }
+      const typed = this.modal.querySelector('#saveName').value.trim();
+      const name = typed || this.currentName || 'Untitled kitchen';
+      try {
+        // the same name as the design that is open: write it in place, never a second copy
+        const inPlace = this.currentId && name === this.currentName;
+        const row = await saveDesign(name, this.store.serialize(), inPlace ? this.currentId : null);
+        this.currentId = row.id; this.currentName = row.name; this._lastSaved = JSON.stringify(this.store.serialize());
+        this._note2(`Saved ${this._clock()}`);
+        this._refreshList(inPlace ? 'Saved ✓ (updated in place)' : 'Saved ✓');
+      } catch (err) { this._refreshList(err.message, true); }
     });
     // start again from an empty room (her ask 2026-09-21); undo brings the kitchen back
     this.modal.querySelector('#newDesign')?.addEventListener('click', async () => {
       const has = (this.store.state.items || []).length > 0;
       if (has && !(await uiConfirm('The kitchen on screen comes off the plan. Save it first if you want to keep it. The room and the finish stay, and Undo brings it back.', { title: 'Start a new design?', confirmLabel: 'Start new' }))) return;
       if (has) this.store.clear();
+      this.currentId = null; this.currentName = null; this._lastSaved = null; this._note2('');
       this.onLoaded(); this.close();
     });
     this._refreshList(this._note);
     this._note = null;
   }
+  _clock() { return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  _note2(text) { const el = document.getElementById('saveNote'); if (el) el.textContent = text; }
+
+  /** AUTOSAVE to the account, every two minutes and when the tab is hidden, whenever the
+   *  design has changed since it was last written. The open design is updated in place;
+   *  work that was never saved goes to a design called "Autosave", one per account,
+   *  updated in place too, so nothing done while signed in is ever lost. */
+  _startAutosave() {
+    const tick = () => { this.autosave().catch(() => { /* offline: the local autosave still has it */ }); };
+    setInterval(tick, 2 * 60e3);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') tick(); });
+  }
+  async autosave() {
+    if (!this.user || this._saving || !isCloud()) return false;
+    const st = this.store.serialize();
+    if (!(st.items || []).length && !this.currentId) return false;         // an empty room is not worth a design
+    const json = JSON.stringify(st);
+    if (json === this._lastSaved) return false;
+    this._saving = true;
+    try {
+      let id = this.currentId, name = this.currentName;
+      if (!id) {
+        name = 'Autosave';
+        const rows = await listDesigns();
+        id = (rows.find((r) => r.name === 'Autosave') || {}).id || null;
+      }
+      const row = await saveDesign(name, st, id);
+      if (!this.currentId) { this.currentId = row.id; this.currentName = row.name; }
+      this._lastSaved = json;
+      this._note2(`${name === 'Autosave' ? 'Autosaved' : 'Saved'} ${this._clock()}`);
+      return true;
+    } finally { this._saving = false; }
+  }
+
   async _refreshList(note, isErr) {
     const el = this.modal.querySelector('#designList'); if (!el) return;
     try {
       const rows = await listDesigns();
       el.innerHTML = (note ? `<div class="cloud-msg ${isErr ? 'err' : 'ok'}">${esc(note)}</div>` : '') +
         (rows.length ? rows.map((r) => `<div class="design-row" data-id="${r.id}">
-          <span>${esc(r.name || 'Untitled')} <em>${r.mode === 'trade' ? '· trade' : ''}</em></span>
+          <span>${esc(r.name || 'Untitled')} <em>${r.mode === 'trade' ? '· trade' : ''}${r.id === this.currentId ? ' · open now' : ''}</em></span>
           <span><button class="linkbtn" data-act="open">Open</button> <button class="linkbtn danger" data-act="del">Delete</button></span>
         </div>`).join('') : '<div class="cloud-msg">No saved designs yet.</div>');
       el.querySelectorAll('.design-row').forEach((row) => {
         const id = row.dataset.id;
         row.querySelector('[data-act="open"]').addEventListener('click', async () => {
-          const data = await loadDesign(id); if (data && this.store.replace(data)) { this.onLoaded(); this.close(); }
+          const data = await loadDesign(id);
+          this._opening = true;
+          try { if (data && this.store.replace(data)) { this.currentId = id; this.currentName = (rows.find((r) => r.id === id) || {}).name || null; this._lastSaved = JSON.stringify(this.store.serialize()); this._note2(''); this.onLoaded(); this.close(); } }
+          finally { this._opening = false; }
         });
         row.querySelector('[data-act="del"]').addEventListener('click', async () => {
           const name = row.querySelector('span')?.textContent?.trim() || 'this design';

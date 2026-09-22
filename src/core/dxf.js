@@ -305,8 +305,9 @@ function frontEntities(cab) {
       break;
     }
     case 'ovenBase': {                           // a drawer slab at the bottom; the oven aperture stays open
-      const seat = ovenSeat(cab), drawTop = zB + seat.drawH * 25.4;
+      const seat = ovenSeat(cab), drawTop = zB + seat.drawH * 25.4, railBot = seat.y0 * 25.4 - M.PANEL;
       out.push(...box(dx0, dx1, 0, M.BACK, zB, drawTop - M.GAP, 'FRONT'));
+      out.push(...box(dx0, dx1, 0, M.BACK, railBot, seat.y0 * 25.4, 'FRONT'));           // the rail the oven stands on
       break;
     }
     case 'larder': case 'housing': case 'ovenHousing': {

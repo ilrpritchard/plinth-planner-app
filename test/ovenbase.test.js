@@ -16,7 +16,8 @@ test('F32 is a 24" floor cabinet with the oven aperture under the top rail and a
   assert.ok(Math.abs(s.ovenH - mmToIn(595)) < 1e-9, 'a 595mm oven (Miele H7660BP)');
   assert.ok(Math.abs((s.y0 + s.ovenH) - (35 - mmToIn(35))) < 1e-9, 'the oven top is the top of the opening, under the 35mm rail');
   assert.ok(Math.abs(s.openY0 - (SPEC.PLINTH_IN + SPEC.PANEL_IN)) < 1e-9, 'stands on the same plinth as every floor cabinet');
-  assert.ok(s.drawH > 4 && s.doorH === 0, 'a slim drawer panel, no low door');
+  assert.ok(s.drawH > 3 && s.doorH === 0, 'a slim drawer panel, no low door');
+  assert.ok(Math.abs(s.railH - SPEC.PANEL_IN) < 1e-9 && Math.abs((s.openY0 + s.drawH + 2 * SPEC.REVEAL_IN + s.railH) - s.y0) < 1e-9, 'a 22mm rail between the drawer and the oven, nothing open');
   assert.equal(getCab('AP21').mountY, s.y0, 'the oven appliance sits on that seat');
   const parts = frontParts(f).parts;
   assert.ok(parts.some((p) => p.k === 'text' && p.s === 'OVEN') && parts.some((p) => p.k === 'rect' && p.cls === 'drawer'));
@@ -63,4 +64,9 @@ test('a sink hung over the edge of a narrow base still rides with it', async () 
   const sink = store.addItem('AP6', { x: 11, z: -68, rotDeg: 0 });               // a 24" sink, its centre 1" past the base's edge
   store.updateItem(base.id, { x: 40 });
   assert.equal(store.getItem(sink.id).x, 51, 'the sink came along at the same offset');
+});
+
+test('the 30" cooktop is a five-burner; the 24" stays four', async () => {
+  const { hobSpec } = await import('../src/core/rangespec.js');
+  assert.equal(hobSpec(getCab('AP4')).burners.length, 5); assert.equal(hobSpec(getCab('AP5')).burners.length, 5); assert.equal(hobSpec(getCab('AP22')).burners.length, 4);
 });

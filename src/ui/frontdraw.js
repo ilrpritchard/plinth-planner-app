@@ -169,6 +169,7 @@ export function frontParts(cab) {
     case 'ovenBase': {                           // drawer panel · OVEN opening, right under the top rail
       const seat = ovenSeat(cab);
       rect('drawer', dx0, zB, dx1 - dx0, seat.drawH - FD.GAP);
+      rect('panel', dx0, seat.y0 - seat.railH, dx1 - dx0, seat.railH);      // the rail the oven stands on
       rect('void', dx0, seat.y0, dx1 - dx0, seat.ovenH);
       parts.push({ k: 'text', x: w / 2, y: seat.y0 + seat.ovenH / 2, s: 'OVEN' });
       break;
