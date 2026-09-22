@@ -95,11 +95,11 @@ _t('mid-run gap between neighbours gets a filler; worktop spans it', async () =>
 {
   const st = { room: { width: 118.9, depth: 86.2, height: 95.3 }, items: [
     { id: 1, code: 'W9', x: -19.47, z: -35.85, rotDeg: 0 },          // body -29.47..-9.47, return to -39.47
-    { id: 2, code: 'W25', x: -51.45, z: -35.85, rotDeg: 0 },         // 16" shelf on the left of the back wall, right edge -43.45
+    { id: 2, code: 'W25', x: -51.7, z: -35.85, rotDeg: 0 },          // 15" shelf on the left of the back wall, right edge -44.2
   ] };
   const up = computeFillers(st).filter((f) => f.band === 'upper');
-  const mid = up.find((f) => Math.abs(f.x - (-41.46)) < 0.1);
-  ok(mid && Math.abs(mid.w - 3.98) < 0.05, `scribe between the shelf and the corner return: ${up.map((f) => f.w.toFixed(2) + '@' + f.x.toFixed(2)).join(' ')}`);
+  const mid = up.find((f) => Math.abs(f.x - (-41.835)) < 0.1);
+  ok(mid && Math.abs(mid.w - 4.73) < 0.05, `scribe between the shelf and the corner return: ${up.map((f) => f.w.toFixed(2) + '@' + f.x.toFixed(2)).join(' ')}`);
 }
 
 console.log(`\nfillers.test.js — ${pass} passed, ${fail} failed`);

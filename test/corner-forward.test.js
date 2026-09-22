@@ -80,3 +80,17 @@ test('right-angle joint: a plain cabinet at a dead corner snaps its end onto the
   assert.ok(Math.abs(right.z + 30.85) < 0.01, 'and stay on the back wall');
   void f32;
 });
+
+// her W9 beside a tall (2026-09-22): a hung corner unit joins the tall leg to leg, and the 15" shelf then fits the corner
+test('a WALL corner unit snaps its body edge onto the flank of a tall on the adjoining wall; W25 fits the 15.43" left', () => {
+  const store = new Store(); store.setRoom({ width: 118.9, depth: 86.2, height: 96 });
+  const bb = { minX: -118.9 / 2, maxX: 118.9 / 2, minZ: -86.2 / 2, maxZ: 86.2 / 2 };
+  const t1 = getCab('T1');
+  store.addItem('T1', { x: bb.minX + 0.25 + 1.18 + t1.d / 2, z: -6.85, rotDeg: 90 });     // left wall, front plane at minX + 25.43
+  const w9 = store.addItem('W9', { x: -19.47, z: -35.85, rotDeg: 0 });                     // 4.55" off the tall, return on show
+  const r = snapPosition(store, w9.id, -21, -35.85, bb);
+  assert.equal(r.flag, undefined);
+  assert.ok(Math.abs((r.x - 10) - (bb.minX + 25.43)) < 0.01, `body edge on the tall's front plane (${(r.x - 10).toFixed(2)} vs ${(bb.minX + 25.43).toFixed(2)})`);
+  const tip = r.x - 10 - 10;                                                                // 10" return
+  assert.ok(Math.abs((tip - bb.minX) - 15.43) < 0.01 && getCab('W25').w === 15, 'the corner leaves 15.43" for the 15" shelf');
+});

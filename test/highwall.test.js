@@ -41,9 +41,9 @@ test('corner wall cabinets come blank left AND blank right (her ask 2026-09-22)'
   }
 });
 
-test('W25 Open Shelves 16": a small open shelf for the gap beside a corner unit, price to confirm, with both stackers', async () => {
+test('W25 Open Shelves 15": a small open shelf for the gap beside a corner unit, price to confirm, with both stackers', async () => {
   const { getCab } = await import('../src/core/catalogue.js');
   const w = getCab('W25');
-  assert.ok(w && w.type === 'WALL' && w.w === 16 && w.h === 30 && w.d === 14 && w.priceTBC && w.usd === 0);
-  assert.equal(getCab('S33').w, 16); assert.equal(getCab('S34').h, 21);
+  assert.ok(w && w.type === 'WALL' && w.w === 15 && w.h === 30 && w.d === 14 && w.priceTBC && w.usd === 0);
+  assert.equal(getCab('S33').w, 15); assert.equal(getCab('S34').h, 21);
 });

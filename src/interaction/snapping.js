@@ -195,7 +195,10 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // the run's first stile and the corner's door stile meet at 90°, and the
   // blank return (20" + up to 10" drawn stretch) still reaches the wall.
   // Wins over a same-run butt when both are in reach.
-  if (cab.corner && cab.type !== 'WALL') {
+  // A WALL corner unit joins the same way against a TALL's flank or an upper run on the
+  // adjoining wall (her open shelf beside a W9 and a tall, 2026-09-22: the corner unit sat 4.5"
+  // off the tall with its oak return on show).
+  if (cab.corner) {
     const CORNER_JOINT_SNAP = 12;
     const dirR = cab.cornerSide === 'right' ? 1 : -1;
     const radR = (rotDeg * Math.PI) / 180, ccR = Math.cos(radR), ssR = Math.sin(radR);
@@ -203,7 +206,8 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     let jointTarget = null, jointErr = CORNER_JOINT_SNAP;
     for (const o of others) {
       const oc = getCab(o.code);
-      if (!oc || oc.corner || oc.notSupplied || oc.type === 'WALL') continue;
+      if (!oc || oc.corner || oc.notSupplied || oc.stacker) continue;
+      if (cab.type === 'WALL' ? !(oc.type === 'TALL' || oc.type === 'WALL') : oc.type === 'WALL') continue;   // a hung corner meets a tall or an upper; a floor corner meets the floor line
       if ((((o.rotDeg || 0) - rotDeg) % 180 + 180) % 180 !== 90) continue;         // perpendicular run only
       const ob = worldBox(o, oc);
       const gapX = Math.max(0, Math.max(ob.x0 - meRaw.x1, meRaw.x0 - ob.x1));
