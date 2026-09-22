@@ -43,3 +43,21 @@ test('a counter or wall cabinet beside a tall: two snap points, the wall and flu
   const a = snapPosition(store, alone.id, 40, -D / 2 + 20, b);
   assert.ok(Math.abs(a.z - (-D / 2 + c1.d / 2 + 0.25)) < 0.01, 'with no tall beside it there is only the wall');
 });
+
+// her kitchen 2026-09-22 ("i thought we fixed this, corner cabinet still gets stuck in the corner"): the
+// drawers on the left wall leg-to-leg with the corner unit, the oven housing beyond them
+test('leg-to-leg: pulled forward it is HELD at the joint (the return would hit the drawers) and says so; it slides along its wall freely', () => {
+  const store = new Store(); store.setRoom({ width: W, depth: D, height: 96 });
+  const x0 = -W / 2 + 24.25 + f15.w / 2, z0 = -D / 2 + 12.25;                 // leg-to-leg with the left-wall run
+  const { id } = store.addItem('F15', { x: x0, z: z0, rotDeg: 0 });
+  store.addItem('F17', { x: -W / 2 + 12.25, z: -D / 2 + 24.3 + 10, rotDeg: 90 });
+  store.addItem('F32', { x: -W / 2 + 12.25, z: -D / 2 + 24.3 + 20 + 12, rotDeg: 90 });
+  for (const dz of [6, 12, 20]) {
+    const r = snapPosition(store, id, x0, z0 + dz, b);
+    assert.equal(r.flag, 'cornerReturn:F17', `${dz}" forward: held, naming the drawers`);
+    assert.ok(Math.abs(r.z - z0) < 0.5 && Math.abs(r.x - x0) < 0.01, `stays at the joint (z ${r.z.toFixed(1)} vs ${z0.toFixed(1)})`);
+  }
+  const slide = snapPosition(store, id, x0 + 22, z0, b);
+  assert.equal(slide.flag, undefined, 'sliding along the back wall is allowed');
+  assert.ok(Math.abs(slide.x - (x0 + 22)) < 0.01, 'and lands where it was dropped');
+});

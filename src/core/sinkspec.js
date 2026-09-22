@@ -156,6 +156,7 @@ export function bestBaseFor(state, rider, preferRot = null) {
 // SKUs): each drops a real base cabinet with a real sink centred in it, and the
 // estimate lists the two separately. Her pick 2026-09-18 over auto-spawning.
 export const SINK_BASES = [
+  { id: 'SB20', base: 'F1', sink: 'AP25', label: 'Sink base 20"', bowl: 'single 18"' },
   { id: 'SB24', base: 'F2', sink: 'AP6', label: 'Sink base 24"', bowl: 'single 24"' },
   { id: 'SB28', base: 'F3', sink: 'AP6', label: 'Sink base 28"', bowl: 'single 24"' },
   { id: 'SB36', base: 'F10', sink: 'AP19', label: 'Sink base 36"', bowl: 'single 33"' },

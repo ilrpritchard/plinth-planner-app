@@ -93,6 +93,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // perpendicular run sits just beyond its front face, snap to touch that
   // cabinet instead of back to the wall (her call 2026-09-16: a generated
   // return that stopped short can be closed by hand).
+  let returnBlockedBy = null;
   if (cab.corner && cab.type !== 'WALL') {
     const r0 = item.rotDeg || 0;
     const horiz0 = (r0 % 180) === 0;
@@ -103,7 +104,10 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     if ((rawLock - wallPos) * sgn0 > 3) {
       const me0 = worldBox({ ...item, x: rawX, z: rawZ, rotDeg: r0 }, cab);
       const front = horiz0 ? (sgn0 > 0 ? me0.z1 : me0.z0) : (sgn0 > 0 ? me0.x1 : me0.x0);
-      let bestGap = null;
+      // the run cabinet it meets FIRST coming out from the wall (her drag 2026-09-22: with the
+      // drawers leg-to-leg and the oven housing beyond them, the old nearest-by-gap pick chose
+      // the housing, so the return was then pushed clear of the drawers and the drop refused)
+      let bestGap = null, bestNear = null, blocker = null;
       for (const o of others) {
         const oc = getCab(o.code);
         if (!oc || oc.corner || oc.notSupplied || oc.type === 'WALL') continue;
@@ -112,12 +116,14 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
         const gap = (near - front) * sgn0;                       // my front face to its nearest edge
         const overlap = horiz0 ? Math.min(me0.x1, ob.x1) - Math.max(me0.x0, ob.x0) : Math.min(me0.z1, ob.z1) - Math.max(me0.z0, ob.z0);
         // an overshoot into the neighbour (up to a body depth) still lands on the butt joint
-        if (overlap > 0.5 && gap > -d && gap <= 40 && (bestGap == null || Math.abs(gap) < Math.abs(bestGap))) bestGap = gap;   // any run within a body's reach, not just 8" (her drag 2026-09-22)
+        if (overlap > 0.5 && gap > -d && gap <= 40 && (bestNear == null || near * sgn0 < bestNear)) { bestGap = gap; bestNear = near * sgn0; blocker = oc; }
       }
       if (bestGap != null) {
         const shift = sgn0 * (bestGap - WALL_GAP);
         if (horiz0) z = rawZ + shift; else x = rawX + shift;
         rotDeg = r0; wall = null;
+        // pulled forward but held at the joint: the blank return would run into that cabinet
+        if (bestGap < -3) returnBlockedBy = blocker.code;
       }
     }
   }
@@ -519,7 +525,11 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       ? (cc >= 0 ? z - (bounds.minZ + touch) : (bounds.maxZ - touch) - z)
       : (ss >= 0 ? x - (bounds.minX + touch) : (bounds.maxX - touch) - x);
     const forward = tipOk && offWall > -0.5 && offWall <= 30;
-    if (!(backOk && tipOk) && !(tipOk && buttsRun) && !(backOk && buttsDoorSide) && !forward) { x = item.x; z = item.z; rotDeg = item.rotDeg || 0; flag = 'corner'; }
+    // …OR anywhere ALONG its own wall (her drag 2026-09-22, "corner cabinet still gets stuck
+    // in the corner"): a corner unit slides along the wall like any base; if its return then
+    // faces open wall the live warning says so. Off every wall it is still refused.
+    if (!backOk && !(tipOk && buttsRun) && !forward) { x = item.x; z = item.z; rotDeg = item.rotDeg || 0; flag = 'corner'; }
+    else if (returnBlockedBy && !flag) flag = 'cornerReturn:' + returnBlockedBy;
   }
 
   return { x, z, rotDeg, flag };

@@ -28,7 +28,7 @@ for(const cab of CATALOGUE.filter(c=>c.type==='APPLIANCES')){
   try { const g=buildAppliance(cab); let m=0; g.traverse(o=>o.isMesh&&m++); if(m<1) fail++; apps++; }
   catch(e){ fail++; console.error(`✗ appliance ${cab.code}: ${e.message}`); }
 }
-ok(`built all appliances (${apps})`, apps===24);   // ... + AP21 under-counter oven + AP22 60cm hob + AP23 60cm hood + AP24 washing machine
+ok(`built all appliances (${apps})`, apps===25);   // ... + AP23 60cm hood + AP24 washing machine + AP25 Andano 450 sink
 
 // AP11 integrated fridge-freezer: correct install dims (84" h, 36" w, 24"
 // counter depth) and a panel look — its meshes must include NO stainless body

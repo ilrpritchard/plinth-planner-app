@@ -62,27 +62,28 @@ test('drag rule: corner units snap home AT a room corner, return meeting the sid
   assert.equal(s.flag, undefined, 'W9 wall corner at the room corner must be allowed');
 });
 
-test('drag rule: anywhere that is not a right-angle corner is rejected (flag corner, stays put)', () => {
+test('drag rule: a corner unit slides along its wall (the live warning covers an open return); off every wall it is refused (2026-09-22)', () => {
   const store = mkStore();
   const b = bounds(store.state.room);
   const home = { x: b.minX + 32, z: b.minZ + 12.25 };
   const it = store.addItem('F16', { ...home, rotDeg: 0 });
-  // mid-run on the back wall — the owner's screenshot case
+  // mid-run on the back wall: allowed since 2026-09-22 ("corner cabinet still gets stuck in the corner")
   let s = snapPosition(store, it.id, 0, b.minZ + 13, b);
-  assert.equal(s.flag, 'corner', 'mid-wall drop must be rejected');
-  assert.ok(Math.abs(s.x - home.x) < 0.01 && Math.abs(s.z - home.z) < 0.01, 'must stay put');
-  // WRONG-handed: F16 (blank left) at the back-RIGHT corner — return points at nothing
+  assert.equal(s.flag, undefined, 'mid-wall drop is allowed');
+  assert.ok(Math.abs(s.x - 0) < 0.01 && Math.abs(s.z - home.z) < 0.01, 'on the wall where it was dropped');
+  // WRONG-handed: F16 (blank left) at the back-RIGHT corner: on the wall, so allowed; the warning says the return meets nothing
   s = snapPosition(store, it.id, b.maxX - 12, b.minZ + 13, b);
-  assert.equal(s.flag, 'corner', 'wrong-handed corner must be rejected');
-  assert.ok(Math.abs(s.x - home.x) < 0.01 && Math.abs(s.z - home.z) < 0.01);
+  assert.equal(s.flag, undefined, 'wrong-handed corner is on a wall: allowed');
   // open floor — no wall at its back at all
   s = snapPosition(store, it.id, 0, 0, b);
   assert.equal(s.flag, 'corner', 'free-floating corner unit must be rejected');
+  assert.ok(Math.abs(s.x - home.x) < 0.01 && Math.abs(s.z - home.z) < 0.01, 'must stay put');
   // wall corner units obey the same rule
   const w9 = store.addItem('W9', { x: b.minX + 20, z: b.minZ + 7.25, rotDeg: 0 });
   s = snapPosition(store, w9.id, 10, b.minZ + 8, b);
-  assert.equal(s.flag, 'corner', 'W9 mid-wall must be rejected');
-  assert.ok(Math.abs(s.x - (b.minX + 20)) < 0.01);
+  assert.equal(s.flag, undefined, 'W9 mid-wall is allowed');
+  s = snapPosition(store, w9.id, 10, 10, b);
+  assert.equal(s.flag, undefined, 'W9 is a hung cabinet: it attaches to the nearest wall wherever it is dropped');
 });
 
 test('drag rule: a corner unit may leave its back wall to butt the drawers on the return (2026-09-16)', () => {
@@ -114,10 +115,11 @@ test('drag rule: a corner unit may slide along its wall to butt a cabinet on its
   let s = snapPosition(store, f16r.id, home.x - 28, home.z, b);
   assert.equal(s.flag, undefined, 'butting the drawers on the door side must be allowed');
   assert.ok(Math.abs((s.x - 12) - (drawers.x + f19w / 2)) < 0.6, `door edge must meet the drawers, got ${s.x}`);
-  // alone on the wall, away from the corner: still rejected
+  // alone on the wall, away from the corner: allowed since 2026-09-22 (the live warning flags the open return)
   store.removeItem(drawers.id);
   s = snapPosition(store, f16r.id, home.x - 28, home.z, b);
-  assert.equal(s.flag, 'corner', 'mid-wall with nothing to butt is still not a corner');
+  assert.equal(s.flag, undefined, 'mid-wall with nothing to butt is allowed on the wall');
+  assert.ok(Math.abs(s.x - (home.x - 28)) < 0.01, 'and it lands where it was dropped');
 });
 
 test('drag rule: leg-to-leg joint. A corner unit beside a perpendicular run snaps its door leg onto that run\'s front plane (2026-09-16)', () => {

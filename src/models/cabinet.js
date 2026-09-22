@@ -227,10 +227,16 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // dashed seams along every cabinet junction.
   const SKIN = 0.02;
   const shellW = w - 2 * SKIN;
+  // a CORNER unit is one L-shaped carcass: no side panel between the door section and the
+  // blank return, so with the door open the shelf and floor run back into the corner (her ask
+  // 2026-09-22, "it needs to show the shelf going back into the corner"). cornerDir = which
+  // side the return extends; cornerRet = the drawn return length (see the corner block below).
+  const cornerDir = cab.corner ? (cab.cornerSide === 'right' ? 1 : -1) : 0;
+  const cornerRet = cab.corner ? Math.max(1, (opts.returnLen ?? (cab.type === 'FLOOR' ? 20 : 10)) - 2 * SKIN) : 0;
   const left = box(PANEL, bodyH, d, mat); left.position.set(-shellW / 2 + PANEL / 2, bodyY0 + bodyH / 2, 0);
   const right = box(PANEL, bodyH, d, mat); right.position.set(shellW / 2 - PANEL / 2, bodyY0 + bodyH / 2, 0);
   const bottom = box(shellW, PANEL, d, mat); bottom.position.set(0, bodyY0 + PANEL / 2, 0);
-  g.add(left, right, bottom);
+  if (cornerDir < 0) g.add(right, bottom); else if (cornerDir > 0) g.add(left, bottom); else g.add(left, right, bottom);
   // a SINK BASE opens its top for the undermount bowl — but only the MIDDLE.
   // A full panel shows as a white plane an inch below the worktop cutout; NO
   // panel leaves a see-through slot between the door top and the worktop
@@ -316,8 +322,10 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   } else if (hasShelf && cab.high) {                // a full-height wall cabinet: two shelves, equally spaced (her spec 2026-09-22)
     for (const k of [1, 2]) { const shelf = box(inW - 0.3, SHELF, inD - 1.2, oakMat()); shelf.position.set(0, openY0 + (openH * k) / 3, -0.2); g.add(shelf); }
   } else if (hasShelf) {
-    const shelf = box(inW - 0.3, SHELF, inD - 1.2, oakMat());
-    shelf.position.set(0, openCenterY, -0.2);
+    // a corner unit's shelf carries on through the return to the end panel in the corner
+    const extra = cab.corner ? cornerRet : 0;                     // door cavity + the return cavity (the shared side panel is gone)
+    const shelf = box(inW - 0.3 + extra, SHELF, inD - 1.2, oakMat());
+    shelf.position.set(cornerDir * extra / 2, openCenterY, -0.2);
     g.add(shelf);
   }
 
@@ -332,14 +340,22 @@ export function buildCabinet(cab, finishHex, opts = {}) {
     // always meets the wall flush — no clipped geometry, no open corner.
     // Defaults to the SKU return (20" floor / 10" wall). A SKIN setback keeps
     // the tip clear of the wall plane (coplanar faces z-fight).
-    const ret = Math.max(1, (opts.returnLen ?? (cab.type === 'FLOOR' ? 20 : 10)) - 2 * SKIN);
+    const ret = cornerRet;
     const right = cab.cornerSide === 'right';
     const px = right ? (w / 2 + ret / 2) : (-w / 2 - ret / 2); // outboard of the door
-    // carcass extension sits BEHIND the blank front face — never flush with it,
-    // or the two coplanar fronts z-fight and the return renders as a streaky,
-    // half-framed panel (the classic "corner cabinet looks wrong" artifact)
-    const carc = box(ret, bodyH, d - DOOR_T - HAIR, oakMat());
-    carc.position.set(px, bodyY0 + bodyH / 2, -(DOOR_T + HAIR) / 2); g.add(carc);
+    // the return is HOLLOW carcass, open to the door section: floor, top, back, an end panel in
+    // the corner and an oak liner, all sitting BEHIND the blank front face (never flush with
+    // it, or the two coplanar fronts z-fight and the return renders as a streaky, half-framed
+    // panel, the classic "corner cabinet looks wrong" artifact)
+    const cd = d - DOOR_T - HAIR, cz = -(DOOR_T + HAIR) / 2;
+    const rFloor = box(ret, PANEL, cd, oakMat()); rFloor.position.set(px, bodyY0 + PANEL / 2, cz); g.add(rFloor);
+    const rTop = box(ret, PANEL, cd, oakMat()); rTop.position.set(px, h - PANEL / 2, cz); g.add(rTop);
+    const rBack = box(ret, bodyH, PANEL, oakMat()); rBack.position.set(px, bodyY0 + bodyH / 2, -d / 2 + PANEL / 2); g.add(rBack);
+    const endX = right ? (w / 2 + ret - PANEL / 2) : (-w / 2 - ret + PANEL / 2);
+    const rEnd = box(PANEL, bodyH, cd, oakMat()); rEnd.position.set(endX, bodyY0 + bodyH / 2, cz); g.add(rEnd);
+    const rLiner = box(ret - 0.5, bodyH - 2 * PANEL - 0.5, cd - PANEL - 0.5, interiorMat());
+    rLiner.position.set(px, bodyY0 + bodyH / 2, cz + PANEL / 2 + 0.25);
+    rLiner.castShadow = false; rLiner.material = rLiner.material.clone(); rLiner.material.side = THREE.BackSide; g.add(rLiner);
     // flat blank front face — FULL body height (plinth top → carcass top), one
     // clean panel with no rail bands, per the blank-return spec
     const face = box(Math.max(0.5, ret - HAIR), bodyH, DOOR_T, oakMat());

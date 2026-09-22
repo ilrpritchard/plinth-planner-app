@@ -193,12 +193,13 @@ export class PointerControls {
       cooker: '✕ Nothing sits over the range',
       sink: '✕ The sink sits in clear countertop. Keep it off talls & uppers',
       offwall: '✕ Wall, counter & tall cabinets sit against a wall',
-      corner: '✕ Corner units live in corners: the blank return meets the adjoining run',
+      corner: '✕ A corner unit sits against a wall, its blank return toward the corner',
       oven: '✕ A wall oven lives in an oven housing of its size',
       hood: '✕ A range hood sits over the range or cooktop. Add one first',
       dishwasher: '✕ Nothing sits over the dishwasher: a sink needs a door or double base',
     };
-    if (snapped.flag) this._showRuleFlag(RULE_MSG[snapped.flag] || '✕ Not allowed there', e);
+    if (snapped.flag && snapped.flag.startsWith('cornerReturn:')) this._showRuleFlag(`✕ The blank return would run into the ${snapped.flag.slice(13)} on the other wall`, e);
+    else if (snapped.flag) this._showRuleFlag(RULE_MSG[snapped.flag] || '✕ Not allowed there', e);
     else this._hideRuleFlag();
     this._showDims(this.drag.id, e);
   }
@@ -214,7 +215,7 @@ export class PointerControls {
     this.s.controls.enabled = true;
     // a drop that broke a rule pings back to where the drag started
     const it = this.store.getItem(id);
-    if (it && flag && start) this.store.updateItem(id, { x: start.x, z: start.z, rotDeg: start.rotDeg }, { quiet: false });
+    if (it && flag && start && !flag.startsWith('cornerReturn:')) this.store.updateItem(id, { x: start.x, z: start.z, rotDeg: start.rotDeg }, { quiet: false });   // a held corner unit keeps the joint it was held at
     // commit (non-quiet) so worktop + cost refresh
     else if (it) this.store.updateItem(id, {}, { quiet: false });
     this.store.endHistory();

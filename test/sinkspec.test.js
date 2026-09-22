@@ -71,7 +71,7 @@ test('a big sink over a small base is flagged, over a 36" base it is not', () =>
 });
 
 test('size picker lists every sink narrow to wide; icons draw one rounded bowl per basin', () => {
-  assert.deepEqual(sinkSizes('AP6').map((c) => c.code), ['AP10', 'AP6', 'AP17', 'AP18', 'AP19', 'AP20', 'AP7']);
+  assert.deepEqual(sinkSizes('AP6').map((c) => c.code), ['AP10', 'AP25', 'AP6', 'AP17', 'AP18', 'AP19', 'AP20', 'AP7']);
   assert.deepEqual(sinkSizes('F2'), []);
   for (const c of CATALOGUE.filter((x) => x.appliance === 'sink')) {
     const svg = cabinetSVG(c);
@@ -168,3 +168,17 @@ test('a wide sink on the base NEXT to a dishwasher is fine as long as its bowl s
   assert.deepEqual([s.x, s.z, s.flag], [base.x, z, undefined], 'a 33" sink centres on the 36" double beside the dishwasher');
 });
 
+
+// the Blanco Andano 450-U (her ask 2026-09-22): an 18" bowl that fits the 20" single base, and its one-tap combo
+import { test as _t2 } from 'node:test';
+import _a2 from 'node:assert/strict';
+_t2('AP25 Andano 450 fits the 20" single base, and the F1 + AP25 sink-base combo exists', async () => {
+  const { getCab } = await import('../src/core/catalogue.js');
+  const { sinkSpec, sinkMinBase, maxSinkCutout, SINK_BASES, canHost } = await import('../src/core/sinkspec.js');
+  const s = getCab('AP25'), f1 = getCab('F1');
+  _a2.equal(sinkMinBase(s), 20);
+  _a2.ok(sinkSpec(s).cutW <= maxSinkCutout(f1.w), `bowl ${sinkSpec(s).cutW}" fits a 20" base (max ${maxSinkCutout(f1.w)})`);
+  _a2.ok(canHost(f1, s));
+  const combo = SINK_BASES.find((c) => c.id === 'SB20');
+  _a2.ok(combo && combo.base === 'F1' && combo.sink === 'AP25');
+});
