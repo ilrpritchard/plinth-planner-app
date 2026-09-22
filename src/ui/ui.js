@@ -62,8 +62,10 @@ export class UI {
     return wall === 'left' ? r.depth : r.width; // island => no limit
   }
 
+  // a COUNTER cabinet stands ON the worktop over a base, so it takes no floor run (her
+  // question 2026-09-22: a wall with 27" of floor left still takes a 36" counter double)
   _isBaseRun(cab) {
-    return ['FLOOR', 'TALL', 'COUNTER'].includes(cab.type) ||
+    return ['FLOOR', 'TALL'].includes(cab.type) ||
       (cab.type === 'APPLIANCES' && cab.mountY === 0);
   }
 
@@ -550,17 +552,16 @@ export class UI {
       if (this.activeWall === 'island' && fam !== 'FLOOR' && fam !== 'APPLIANCES') continue;
       // stackers group under their own section (familyOf), not under WALL
       const all = CATALOGUE.filter((c) => familyOf(c) === fam && c.placeable);
-      // base-run cabinets wider than the remaining wall length are hidden
+      // base-run cabinets wider than the remaining wall length are shown but cannot be tapped
       const items = all.filter((c) => {
         if (this.activeWall === 'island' && c.type === 'APPLIANCES' &&
             !['range', 'hob', 'sink'].includes(c.appliance)) return false;
         if (!this._isBaseRun(c)) return true;
         const fits = c.w <= remaining + TOL;
-        // an appliance that will not fit stays on the shelf, dimmed, saying what it
-        // needs: a hidden 36" or 48" range reads as "PL/NNER has no 48-inch range"
-        if (!fits && c.type === 'APPLIANCES') { tooWide.add(c.code); return true; }
-        if (!fits) hiddenAny = true;
-        return fits;
+        // what will not fit stays on the shelf, dimmed, saying what it needs: a hidden
+        // 36" double read as "there are no double counter cabinets" (her question 2026-09-22)
+        if (!fits) { tooWide.add(c.code); hiddenAny = true; }
+        return true;
       });
       if (!items.length) continue;
       const open = ''; // all catalogue groups start collapsed
@@ -584,7 +585,7 @@ export class UI {
         const wide = tooWide.has(c.code);
         const meta = wide ? `needs ${fmtIn(c.w)} of wall`
           : c.notSupplied ? `${fmtIn(c.w)} &middot; <em>not supplied</em>` : `${fmtIn(c.w)} &middot; ${fmtUSD(sellUSD(c))}`;
-        html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}${wide ? ' is-toowide' : ''}" data-code="${c.code}" ${wide ? 'disabled' : ''} title="${wide ? `${c.code} · ${c.desc} is wider than the ${fmtIn(remaining)} left on this wall. Switch walls, make room, or use Island` : `Add ${c.code} · ${c.desc}${c.notes ? ', ' + c.notes : ''}`}">
+        html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}${wide ? ' is-toowide' : ''}" data-code="${c.code}" ${wide ? 'disabled' : ''} title="${wide ? `${c.code} · ${c.desc} needs ${fmtIn(c.w)} of wall and this one has ${fmtIn(remaining)} left. Make room, switch walls, or use Island` : `Add ${c.code} · ${c.desc}${c.notes ? ', ' + c.notes : ''}`}">
           <span class="cat-thumb">${cabinetSVG(c)}</span>
           <span class="ci-code">${c.code}</span>
           <span class="ci-desc">${c.desc}</span>
@@ -594,7 +595,7 @@ export class UI {
       html += `</div></details>`;
     }
     if (this.activeWall !== 'island' && hiddenAny) {
-      html += `<div class="hint" style="margin-top:8px">Some cabinets are hidden because they're wider than the ${fmtIn(remaining)} left on this wall. Pick a narrower one, switch walls, or use Island.</div>`;
+      html += `<div class="hint" style="margin-top:8px">Greyed-out cabinets are wider than the ${fmtIn(remaining)} left on this wall. Pick a narrower one, make room, switch walls, or use Island.</div>`;
     }
     return html;
   }

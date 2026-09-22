@@ -115,8 +115,8 @@ const lines = (code, cls) => parts(code).filter((p) => p.k === 'line' && p.cls =
   ok('F23 open: two 18mm shelves, no panels', parts('F23').filter((p) => p.k === 'shelf').length === 2 &&
     rects('F23', 'panel').length === 0);
   const cTops = parts('C7').filter((p) => p.k === 'shelf').map((s) => s.y);
-  ok('C7 counter shelves at 382/833.5mm below the top',
-    cTops.some((y) => near(y, 50 - mmToIn(382))) && cTops.some((y) => near(y, 50 - mmToIn(833.5))));
+  ok('C7 counter shelves: three, the first 400mm up from the counter (her spec 2026-09-22)',
+    cTops.length === 3 && cTops.some((y) => near(y, 50 - mmToIn(400))));
   const txt = parts('F8').find((p) => p.k === 'text');
   ok('F8 tray: OPEN void label', rects('F8', 'void').length === 1 && txt && txt.s === 'OPEN');
 }

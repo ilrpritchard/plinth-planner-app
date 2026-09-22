@@ -40,7 +40,21 @@ export const SPEC = {
   // Floor drawer face heights (175 / 245 / 315mm) used for 3-drawer banks.
   DRAWER_FACES_IN: [mmToIn(175), mmToIn(245), mmToIn(315)],
   REVEAL_IN: 0.12,          // visual gap between adjacent door/drawer faces
+  // COUNTER cabinets (the C range, standing on the worktop): three shelves, the first
+  // 400mm up from the counter, the other two equally spaced above it (her spec 2026-09-22)
+  COUNTER_SHELF1_IN: mmToIn(400),
+  COUNTER_SHELVES: 3,
 };
+
+/** Shelf TOPS for a counter cabinet, in inches up from the counter it stands on:
+ *  the first at 400mm, the rest sharing the space up to `innerTop` (the underside of
+ *  the top panel) equally. */
+export function counterShelfTops(innerTop, n = SPEC.COUNTER_SHELVES) {
+  const t = SPEC.SHELF_IN, first = SPEC.COUNTER_SHELF1_IN;
+  if (innerTop - first < 2 * t) return [];
+  const gap = (innerTop - first - n * t) / n;                       // equal clear space between shelves and up to the top
+  return Array.from({ length: n }, (_, k) => first + k * (gap + t));
+}
 
 const FRACTIONS = [
   [0, ''],

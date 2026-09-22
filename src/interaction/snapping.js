@@ -112,9 +112,11 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     // hung cabinets butt hung cabinets, floor butts floor — EXCEPT a hung WALL
     // cabinet and a TALL cabinet, which meet side-to-side in the same run (a
     // wall cabinet dragged near a tall snaps to touch its side, no dead sliver)
-    const kindsDiffer = (oc.type === 'WALL') !== (cab.type === 'WALL');
-    const wallMeetsTall = (cab.type === 'WALL' && oc.type === 'TALL') || (cab.type === 'TALL' && oc.type === 'WALL');
-    if (kindsDiffer && !wallMeetsTall) continue;
+    // A COUNTER cabinet stands on the worktop: it butts talls, uppers and other counter
+    // cabinets (its own column), never the base it stands over.
+    const kind = (c) => (c.type === 'WALL' ? 'hung' : c.type === 'COUNTER' ? 'counter' : 'floor');
+    const k1 = kind(cab), k2 = kind(oc), tall = cab.type === 'TALL' || oc.type === 'TALL';
+    if (k1 !== k2 && !tall) continue;                             // a tall spans every band, so anything butts it
     if (((o.rotDeg || 0) % 180) !== (rotDeg % 180)) continue;      // same orientation
     const oLock = freeAxis === 'x' ? o.z : o.x;
     if (Math.abs(oLock - lockVal) > LOCK_TOL) continue;            // same run line

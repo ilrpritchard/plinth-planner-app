@@ -22,7 +22,7 @@
 // testable in plain node.
 
 import { CATALOGUE, getCab } from './catalogue.js';
-import { MOUNT } from './units.js';
+import { MOUNT, counterShelfTops } from './units.js';
 import { openingCenter, openingWidth } from './openings.js';
 
 // ---- low-level group-code helpers ----------------------------------------
@@ -164,7 +164,6 @@ const M = {
   TALL_UPPER: 1184, TALL_MID: 200, TALL_LOWER: 490, // tall door panels
   LARDER_DOOR: 1100, LARDER_GAP: 35,                // larder-with-drawers
   SHELF: 18,          // shelf thickness (seen through glass / open units)
-  C_SHELF1: 382, C_SHELF2: 833.5,                   // counter shelf tops
 };
 
 /** Blank-return width (mm) a corner unit adds beside its door. */
@@ -330,7 +329,7 @@ function frontEntities(cab) {
       break;
     }
     case 'open': {                               // fixed shelves, open front
-      if (cab.type === 'COUNTER') shelves(out, W, D, [H - M.C_SHELF1, H - M.C_SHELF2]);
+      if (cab.type === 'COUNTER') shelves(out, W, D, counterShelfTops((H - M.PANEL) / 25.4).map((t) => H - t * 25.4));   // 400mm up, then equal (core/units.js)
       else {
         const open = (zT - zB - 2 * M.SHELF) / 3;
         shelves(out, W, D, [zT - open, zT - 2 * open - M.SHELF]);

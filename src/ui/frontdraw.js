@@ -21,7 +21,7 @@
 // opts.hinge ('L' | 'R' | 'PAIR', from core/hinge.js) adds the elevation
 // convention for door swing: dashed diagonals that MEET AT THE HINGE SIDE.
 
-import { mmToIn } from '../core/units.js';
+import { mmToIn, counterShelfTops } from '../core/units.js';
 import { PLAN_STYLE as P, svgLine, svgN as n } from './floorplan.js';
 import { esc } from '../core/submittal.js';
 import { rangeSpec } from '../core/rangespec.js';
@@ -40,7 +40,6 @@ export const FD = {
   TALL_UPPER: mmToIn(1184), TALL_MID: mmToIn(200), TALL_LOWER: mmToIn(490),
   LARDER_DOOR: mmToIn(1100), LARDER_GAP: mmToIn(35),
   SHELF: mmToIn(18),        // shelf thickness (glass / open units)
-  C_SHELF1: mmToIn(382), C_SHELF2: mmToIn(833.5),  // counter open-shelf tops
 };
 
 /** Blank-return width (in) a corner unit adds beside its door. */
@@ -109,7 +108,9 @@ export function frontParts(cab) {
     for (const [p0, p1] of zones) {
       if (p1 - p0 < 0.4) continue;
       rect(glazed ? 'glass' : 'panel', px0, p0, px1 - px0, p1 - p0);
-      if (glazed) {          // two 18mm shelves at equal thirds through the glass
+      if (glazed && cab.type === 'COUNTER') {   // the C range: 400mm up, then equal (core/units.js), seen through the glass
+        for (const top of counterShelfTops(h - FD.TOP)) { const y = h - top; if (y > p0 && y + FD.SHELF < p1) parts.push({ k: 'shelf', y, t: FD.SHELF, x0: px0, x1: px1 }); }
+      } else if (glazed) {          // two 18mm shelves at equal thirds through the glass
         const open = (p1 - p0 - 2 * FD.SHELF) / 3;
         for (const top of [p1 - open, p1 - 2 * open - FD.SHELF]) {
           parts.push({ k: 'shelf', y: top, t: FD.SHELF, x0: px0, x1: px1 });
@@ -192,7 +193,7 @@ export function frontParts(cab) {
     }
     case 'open': {                               // fixed shelves, open front
       const tops = cab.type === 'COUNTER'
-        ? [h - FD.C_SHELF1, h - FD.C_SHELF2]
+        ? counterShelfTops(h - FD.TOP).map((t) => h - t)
         : (() => { const o = (zT - zB - 2 * FD.SHELF) / 3; return [zT - o, zT - 2 * o - FD.SHELF]; })();
       for (const top of tops) parts.push({ k: 'shelf', y: top, t: FD.SHELF, x0: dx0, x1: dx1 });
       break;

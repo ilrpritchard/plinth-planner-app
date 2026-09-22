@@ -6,7 +6,7 @@
 // Doors are hinged groups so they can swing open.
 
 import * as THREE from 'three';
-import { SPEC, mmToIn, MOUNT } from '../core/units.js';
+import { SPEC, mmToIn, MOUNT, counterShelfTops } from '../core/units.js';
 import {
   paintMat, oakMat, interiorMat, glassMat, brassMat,
   shadowMat, paintEdgeMat,
@@ -289,8 +289,14 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   const ctx = { mat, doors, faceW, openH, openCenterY, frontZ: doorFrontZ, frontFlush: frontZ, openY0, inW, inD, bodyY0, bodyTop: bodyY0 + bodyH, handle: opts.handle || 'knob', hinge: opts.hinge === 'R' ? 1 : -1, ovenFitted: !!opts.ovenFitted };
   const hasShelf = buildFront(g, cab, ctx);
 
-  // ----- one 18mm oak shelf for door cabinets -----
-  if (hasShelf) {
+  // ----- one 18mm oak shelf for door cabinets (a COUNTER cabinet gets its three) -----
+  if (hasShelf && cab.type === 'COUNTER') {
+    for (const top of counterShelfTops(bodyH - PANEL)) {
+      const shelf = box(inW - 0.3, SHELF, inD - 1.2, oakMat());
+      shelf.position.set(0, bodyY0 + top - SHELF / 2, -0.2);
+      g.add(shelf);
+    }
+  } else if (hasShelf) {
     const shelf = box(inW - 0.3, SHELF, inD - 1.2, oakMat());
     shelf.position.set(0, openCenterY, -0.2);
     g.add(shelf);
@@ -475,7 +481,14 @@ function buildFront(g, cab, ctx) {
       y += fh + HAIR;
     }
   };
+  const counterShelves = () => {                    // the C range: 400mm, then equal (core/units.js)
+    for (const top of counterShelfTops(ctx.bodyTop - PANEL - ctx.bodyY0)) {
+      const sh = box(ctx.inW - 0.3, SHELF, ctx.inD - 1.2, oakMat());
+      sh.position.set(0, ctx.bodyY0 + top - SHELF / 2, -0.2); g.add(sh);
+    }
+  };
   const openShelves = (n) => {
+    if (cab.type === 'COUNTER') return counterShelves();
     for (let i = 1; i <= n; i++) {
       const sy = openCenterY - openH / 2 + (openH * i) / (n + 1);
       const sh = box(ctx.inW - 0.3, SHELF, ctx.inD - 1.2, oakMat());

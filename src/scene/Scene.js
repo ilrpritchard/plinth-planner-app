@@ -79,7 +79,13 @@ export class Scene {
     const hemi = new THREE.HemisphereLight(0xffffff, 0xb7a992, 0.82);
     this.scene.add(hemi);
 
-    const key = new THREE.DirectionalLight(0xfff6ea, 1.72);
+    // Measured 2026-09-22 (her: "why does the back wall look white"): the key's front component
+    // + the fill + the hemisphere summed to ~1.1 on every surface facing the room, so the back
+    // wall and every cabinet front CLIPPED to white (Ghost #F7F4EB rendered 255,250,237) while
+    // the side walls, in shade, read as painted. The fill now comes from straight left (no front
+    // component) and the key is a touch lower: Ghost renders 248,242,229, the back wall no longer
+    // blows out, and the side walls barely change.
+    const key = new THREE.DirectionalLight(0xfff6ea, 1.6);
     key.position.set(150, 210, 170);
     key.castShadow = true;
     key.shadow.mapSize.set(3072, 3072);   // fine texels so 8mm relief resolves
@@ -93,7 +99,7 @@ export class Scene {
     this.scene.add(key);
 
     const fill = new THREE.DirectionalLight(0xeef2ff, 0.55);
-    fill.position.set(-170, 130, 80);
+    fill.position.set(-170, 130, 0);
     this.scene.add(fill);
 
     const rim = new THREE.DirectionalLight(0xffffff, 0.4);

@@ -19,8 +19,12 @@ function aabb(it) {
 }
 
 const isFloorStanding = (cab) =>
-  ['FLOOR', 'TALL', 'COUNTER'].includes(cab.type) ||
+  ['FLOOR', 'TALL'].includes(cab.type) ||
   (cab.type === 'APPLIANCES' && (cab.mountY ?? 0) === 0);
+// a COUNTER cabinet stands ON the worktop (36.5" up): it shares its column with talls,
+// uppers and other counter cabinets, never with the base below it
+const yBand = (cab) => { const y0 = cab.mountY ?? MOUNT[cab.type] ?? 0; return [y0, y0 + (cab.h || 1)]; };
+const isSolidBody = (cab) => isFloorStanding(cab) || cab.type === 'COUNTER' || cab.type === 'WALL';
 
 const isWorktopAppliance = (cab) =>
   cab.type === 'APPLIANCES' && cab.appliance !== 'oven' && (cab.mountY ?? 0) > 0 && (cab.mountY ?? 0) < 50; // hob / sink (a wall oven rides in its housing)
@@ -78,15 +82,18 @@ export function computeWarnings(state) {
     }
   }
 
-  // ---- 1. floor-standing cabinets overlapping each other ----
+  // ---- 1. solid bodies overlapping each other (footprint AND height band) ----
   const floor = boxes.filter((b) => isFloorStanding(b.cab));
+  const solid = boxes.filter((b) => isSolidBody(b.cab));
   const OVL = 1.0; // ignore <1" touch/snap slack
-  for (let i = 0; i < floor.length; i++) {
-    for (let j = i + 1; j < floor.length; j++) {
-      const a = floor[i], b = floor[j];
+  for (let i = 0; i < solid.length; i++) {
+    for (let j = i + 1; j < solid.length; j++) {
+      const a = solid[i], b = solid[j];
       const ox = (a.hx + b.hx) - Math.abs(a.x - b.x);
       const oz = (a.hz + b.hz) - Math.abs(a.z - b.z);
-      if (ox > OVL && oz > OVL) {
+      const [ay0, ay1] = yBand(a.cab), [by0, by1] = yBand(b.cab);
+      const oy = Math.min(ay1, by1) - Math.max(ay0, by0);
+      if (ox > OVL && oz > OVL && oy > OVL) {
         out.push({ level: 'error', msg: `${a.cab.code} and ${b.cab.code} overlap — pull them apart so they sit side by side.` });
       }
     }
