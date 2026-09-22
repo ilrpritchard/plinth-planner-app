@@ -93,6 +93,13 @@ function shakerLeaf(w, h, mat, glazed, panels = 1) {
     const glass = box(Math.max(2, w - 2 * STILE), Math.max(2, innerH), DOOR_T * 0.15, glassMat());
     glass.castShadow = false;
     g.add(glass);
+    // a full-height glazed door carries an 80mm glazing bar across the centre, the same
+    // section as the top rail, so the glass reads as two panes (her spec 2026-09-22)
+    if (panels === 2) {
+      const bar = box(w, STILE, DOOR_T, mat); bar.position.set(0, 0, 0);
+      const barFace = box(w, STILE, ft, mat); barFace.position.set(0, 0, DOOR_T / 2 + RECESS - ft / 2);
+      g.add(bar, barFace);
+    }
   } else {
     // centre panel board (its front face is the recessed panel)
     g.add(box(w, h, DOOR_T, mat));
@@ -106,10 +113,12 @@ function shakerLeaf(w, h, mat, glazed, panels = 1) {
     // tall 2-panel door: a proud mid-rail splits upper (1184) / lower (490) per
     // the PL/NTH spec, with a 200mm mid-rail band between them.
     if (panels === 2) {
+      // the tall's 1184 / 200 / 490 split; a 51" full-height upper gets an 80mm rail across
+      // the CENTRE instead, two equal panels (her spec 2026-09-22), the same bar as its glazed twin
       const interior = Math.max(2, h - 2 * STILE);
       const U = 1184, M = 200, L = 490, T = U + M + L;
-      const midH = interior * M / T;
-      const upperH = interior * U / T;
+      const midH = h > 60 ? interior * M / T : STILE;
+      const upperH = h > 60 ? interior * U / T : (interior - STILE) / 2;
       const midY = (h / 2 - STILE) - upperH - midH / 2;
       const rail = box(w, midH, ft, mat);
       rail.position.set(0, midY, DOOR_T / 2 + RECESS - ft / 2);
@@ -296,6 +305,8 @@ export function buildCabinet(cab, finishHex, opts = {}) {
       shelf.position.set(0, bodyY0 + top - SHELF / 2, -0.2);
       g.add(shelf);
     }
+  } else if (hasShelf && cab.high) {                // a full-height wall cabinet: two shelves, equally spaced (her spec 2026-09-22)
+    for (const k of [1, 2]) { const shelf = box(inW - 0.3, SHELF, inD - 1.2, oakMat()); shelf.position.set(0, openY0 + (openH * k) / 3, -0.2); g.add(shelf); }
   } else if (hasShelf) {
     const shelf = box(inW - 0.3, SHELF, inD - 1.2, oakMat());
     shelf.position.set(0, openCenterY, -0.2);
@@ -439,7 +450,7 @@ function buildFront(g, cab, ctx) {
   const cy = openCenterY;
 
   // tall single/larder/housing doors are 2-panel shaker (PL/NTH spec)
-  const tallPanels = cab.type === 'TALL' ? 2 : 1;
+  const tallPanels = cab.type === 'TALL' || cab.high ? 2 : 1;      // a full-height upper: two panes behind a centre glazing bar
   // knob placement (client spec): EVERY hinged door carries its knob at
   // MID-HEIGHT on the leading edge — never tucked into the top or bottom
   // corner. (Drawer knobs stay centred on each face.)

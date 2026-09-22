@@ -182,19 +182,20 @@ function classify(it) {
 }
 
 // ----- FULL-HEIGHT wall cabinets (her spec 2026-09-22) ---------------------------------
-// "A lot of developers want wall cabinets that are high": every non-corner W cabinet in two
-// taller heights, hung at the same 56" so the undersides line through, with ONE door, and
-// the top exactly where a wall cabinet + its stacker would end: 30 + 15 = 45" (top 101", a
-// 9' ceiling) and 30 + 21 = 51" (top 107", 10'). Codes carry on the W series: W14-W24 are the
-// 45" set, W25-W35 the 51" set, in the order of the cabinets they grow from. Price: the wall
-// cabinet + 20% ("take the cost of the wall cabinet + 20%"), rounded to the dollar. `high` =
-// the inches added, so the catalogue can group them and the ceiling check can read them.
+// "A lot of developers want wall cabinets that are high": every non-corner W cabinet in ONE
+// taller height ("just 2 heights", standard and full), hung at the same 56" so the undersides
+// line through, with ONE door and two shelves, and the top exactly where a tall + its 21"
+// stacker ends: 30 + 21 = 51", top 107", a 10' ceiling. Codes carry on the W series, W14-W24,
+// in the order of the cabinets they grow from. Price: the wall cabinet + 20% ("take the cost
+// of the wall cabinet + 20%"), rounded to the dollar. `high` = the inches added, so the
+// catalogue can group them and the ceiling check can read them.
 const HIGH_BASES = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W11', 'W12', 'W13'];
-const HIGH_WALLS = [15, 21].flatMap((add, k) => HIGH_BASES.map((base, i) => {
+const HIGH_ADD = 21;
+const HIGH_WALLS = HIGH_BASES.map((base, i) => {
   const src = RAW.find((c) => c.code === base);
-  return { ...src, code: `W${14 + k * HIGH_BASES.length + i}`, desc: `${src.desc}, full height ${30 + add}"`, h: 30 + add, usd: Math.round(src.usd * 1.2), high: add, grewFrom: base,
-    notes: `A ${src.desc.toLowerCase()} wall cabinet ${30 + add}" high in one door: the height of the standard cabinet plus its ${add}" stacker, hung at the same 56". Tops at ${56 + 30 + add}": needs a ${add === 15 ? "9'" : "10'"} ceiling.` };
-}));
+  return { ...src, code: `W${14 + i}`, desc: `${src.desc}, full height ${30 + HIGH_ADD}"`, h: 30 + HIGH_ADD, usd: Math.round(src.usd * 1.2), high: HIGH_ADD, grewFrom: base,
+    notes: `A ${src.desc.toLowerCase()} wall cabinet ${30 + HIGH_ADD}" high in one door with two shelves: the height of the standard cabinet plus a 21" stacker, hung at the same 56". Tops at ${56 + 30 + HIGH_ADD}": needs a 10' ceiling.` };
+});
 
 const BASE_CATALOGUE = RAW.concat(HIGH_WALLS).map((it) => ({
   ...it,

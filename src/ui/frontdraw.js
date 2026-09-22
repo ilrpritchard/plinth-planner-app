@@ -131,7 +131,9 @@ export function frontParts(cab) {
   };
 
   const singleZone = [[zB + F, zT - F]];
-  const doorZones = cab.type === 'TALL' ? tallZones(zT) : singleZone;
+  // a full-height glazed door: two panes either side of an 80mm centre glazing bar (her spec 2026-09-22)
+  const midY = (zB + zT) / 2, glazedZones = cab.high ? [[zB + F, midY - F / 2], [midY + F / 2, zT - F]] : singleZone;
+  const doorZones = cab.type === 'TALL' ? tallZones(zT) : cab.high ? glazedZones : singleZone;   // a full-height upper: two panels about an 80mm centre rail
   const tallDouble = cab.type === 'TALL' && /double/i.test(cab.desc || '');
 
   switch (cab.form) {
@@ -139,13 +141,13 @@ export function frontParts(cab) {
       leaf(dx0, dx1, doorZones);
       break;
     case 'glazed':
-      leaf(dx0, dx1, singleZone, true);
+      leaf(dx0, dx1, glazedZones, true);
       break;
     case 'double': case 'glazedDouble': {
       const mid = w / 2, glazed = cab.form === 'glazedDouble';
       vline('leaf', mid, zB, zT);
-      leaf(dx0, mid, singleZone, glazed);
-      leaf(mid, dx1, singleZone, glazed);
+      leaf(dx0, mid, cab.high ? glazedZones : singleZone, glazed);
+      leaf(mid, dx1, cab.high ? glazedZones : singleZone, glazed);
       break;
     }
     case 'drawers':

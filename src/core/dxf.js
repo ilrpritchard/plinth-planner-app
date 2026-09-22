@@ -248,6 +248,8 @@ function frontEntities(cab) {
   const zB = bottomZone(cab), zT = H - M.TOP;
   const isTallDouble = cab.type === 'TALL' && /double/i.test(cab.desc || '');
   const singlePanel = [[zB + M.FRAME, zT - M.FRAME]];
+  // a full-height glazed door: two panes either side of an 80mm centre glazing bar
+  const midZ = (zB + zT) / 2, glazedPanels = cab.high ? [[zB + M.FRAME, midZ - M.FRAME / 2], [midZ + M.FRAME / 2, zT - M.FRAME]] : singlePanel;   // glazed or plain: a full-height door has two panels
 
   if (cab.form === 'shelf') {                    // floating shelf: one solid box
     out.push(...box(0, W, 0, D, 0, H, 'BODY'));
@@ -276,11 +278,11 @@ function frontEntities(cab) {
   switch (cab.form) {
     case 'door': case 'bin': {
       if (cab.type === 'TALL') shakerDoor(out, dx0, dx1, zB, zT, tallPanelZones(zT));
-      else shakerDoor(out, dx0, dx1, zB, zT, singlePanel);
+      else shakerDoor(out, dx0, dx1, zB, zT, glazedPanels);           // a full-height upper: two panels about an 80mm centre rail
       break;
     }
     case 'glazed': {
-      shakerDoor(out, dx0, dx1, zB, zT, singlePanel, { glazed: true });
+      shakerDoor(out, dx0, dx1, zB, zT, glazedPanels, { glazed: true });
       const g0 = zB + M.FRAME, g1 = zT - M.FRAME;
       const open = (g1 - g0 - 2 * M.SHELF) / 3;
       shelves(out, W, D, [g1 - open, g1 - 2 * open - M.SHELF]);
@@ -288,8 +290,8 @@ function frontEntities(cab) {
     }
     case 'double': case 'glazedDouble': {
       const mid = W / 2, glazed = cab.form === 'glazedDouble';
-      shakerDoor(out, dx0, mid, zB, zT, [[zB + M.FRAME, zT - M.FRAME]], { glazed });
-      shakerDoor(out, mid, dx1, zB, zT, [[zB + M.FRAME, zT - M.FRAME]], { glazed });
+      shakerDoor(out, dx0, mid, zB, zT, glazedPanels, { glazed });
+      shakerDoor(out, mid, dx1, zB, zT, glazedPanels, { glazed });
       if (glazed) {
         const g0 = zB + M.FRAME, g1 = zT - M.FRAME;
         const open = (g1 - g0 - 2 * M.SHELF) / 3;
