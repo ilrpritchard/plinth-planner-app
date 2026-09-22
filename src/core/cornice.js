@@ -91,9 +91,9 @@ export function planCornice(state) {
   const coveredBy = (f) => fillers.some((g) => g.band === 'stacker' && Math.abs(g.x - f.x) < 1 && Math.abs(g.z - f.z) < 1 && Math.abs((g.y0 || 0) - ((f.y0 || 0) + f.h)) < 1);
   for (const f of fillers) {
     if (f.band === 'floor' && (f.h || 0) < 80) continue;            // a base-height filler carries nothing
-    if (f.band === 'upper' && Math.abs((f.y0 || 0) + f.h - TOP.WALL) > 0.5) continue;
     if (coveredBy(f)) continue;
-    cabs.push({ it: { x: f.x, z: f.z, rotDeg: f.rotDeg || 0 }, cab: { type: FILLER_TYPE[f.band] || 'TALL' }, w: f.w, d: f.d, filler: true, top: f.band === 'stacker' ? (f.y0 || 0) + f.h : TOP[FILLER_TYPE[f.band] || 'TALL'] });
+    // the filler's crown line is ITS top: beside a full-height upper that is 107", beside a stacker the stacker's top
+    cabs.push({ it: { x: f.x, z: f.z, rotDeg: f.rotDeg || 0 }, cab: { type: FILLER_TYPE[f.band] || 'TALL' }, w: f.w, d: f.d, filler: true, top: f.band === 'floor' ? TOP.TALL : (f.y0 || 0) + f.h });
   }
 
   const segments = [];

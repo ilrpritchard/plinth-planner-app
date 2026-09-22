@@ -16,6 +16,10 @@ const DARK = () => mat(0x26282b, 0.4, 0.3, 0.7);
 const GLASS = () => mat(0x121417, 0.3, 0.12, 1.0);
 const CHROME = () => mat(0xe2e6ea, 0.95, 0.12, 1.2);
 const ENAMEL = () => mat(0xf3f3f0, 0.1, 0.45, 0.7);
+// brushed stainless for the hood: brighter and less metallic than STEEL, so it reads as satin
+// steel rather than dark grey in a room lit mostly from the environment (her note 2026-09-22)
+const STAINLESS = () => mat(0xbcc1c5, 0.7, 0.4, 0.9);
+const STAINLESS_DK = () => mat(0xa3a8ad, 0.7, 0.45, 0.8);
 const CAST = () => mat(0x1c1d1f, 0.2, 0.6, 0.4);
 const RED = () => mat(0x9e1b21, 0.35, 0.4, 0.8);      // pro-range signature knob red
 const BASIN = () => mat(0xb4b9be, 0.5, 0.45, 1.2);    // brushed basin steel — low metalness so it never reads black in shadow
@@ -249,23 +253,23 @@ export function buildAppliance(cab, finishHex = '#efece3', opts = {}) {
       // shallow flat box canopy, baffle filters and a control strip underneath, and a plain
       // rectangular two-piece chimney rising from its back half
       const CAN = 4.5;                                              // canopy thickness
-      const canopy = box(w, CAN, d, STEEL(), 0.15); canopy.position.y = CAN / 2; g.add(canopy);
+      const canopy = box(w, CAN, d, STAINLESS(), 0.15); canopy.position.y = CAN / 2; g.add(canopy);
       // underside: a recessed dark plenum with three bright baffle filters
       const plen = box(w * 0.86, 0.5, d * 0.62, DARK()); plen.position.set(0, 0.2, 0.05); g.add(plen);
       const fw = (w * 0.86) / 3 - 0.4;
-      for (let i = -1; i <= 1; i++) { const f = box(fw, 0.35, d * 0.58, STEEL_DK()); f.position.set(i * (fw + 0.4), 0.12, 0.05); g.add(f); }
+      for (let i = -1; i <= 1; i++) { const f = box(fw, 0.35, d * 0.58, STAINLESS_DK()); f.position.set(i * (fw + 0.4), 0.12, 0.05); g.add(f); }
       // control strip on the front edge, right of centre
-      const ctrl = box(Math.min(7, w * 0.22), 0.5, 0.2, DARK()); ctrl.position.set(w * 0.3, CAN * 0.45, d / 2 + 0.02); g.add(ctrl);
+      const ctrl = box(Math.min(7, w * 0.22), 0.5, 0.2, STAINLESS_DK()); ctrl.position.set(w * 0.3, CAN * 0.45, d / 2 + 0.02); g.add(ctrl);
       // chimney: 11.8" wide (300mm), 10" deep, on the back half, a seam where the two sections telescope
       // the chimney runs to the ceiling when we know where it is (the catalogue h is a nominal 28"),
-      // up to a 10' ceiling: a real chimney kit stops there, and above that it stands short, as it
-      // would on site (her note 2026-09-22: "we don't supply these, so it is really just illustrative")
-      const CHIMNEY_MAX_CEILING = 120;
+      // up to a 9' ceiling: above that it stands short, as a standard chimney kit would on site (her
+      // note 2026-09-22: "we don't supply these, so it is really just illustrative"; 10' "looks too silly")
+      const CHIMNEY_MAX_CEILING = 108;
       const cw = Math.min(11.8, w * 0.45), cd = Math.min(10, d * 0.55);
       const ch = opts.ceiling > 0 && cab.mountY != null ? Math.max(h - CAN, Math.min(opts.ceiling, CHIMNEY_MAX_CEILING) - cab.mountY - CAN - 0.1) : h - CAN;
-      const chimney = box(cw, ch, cd, STEEL()); chimney.position.set(0, CAN + ch / 2, -d / 2 + cd / 2 + 0.6); g.add(chimney);
-      const seam = box(cw + 0.06, 0.25, cd + 0.06, STEEL_DK()); seam.position.set(0, CAN + ch * 0.55, -d / 2 + cd / 2 + 0.6); g.add(seam);
-      const vents = box(cw * 0.5, 1.6, 0.1, DARK()); vents.position.set(0, CAN + ch - 3, -d / 2 + cd + 0.62); g.add(vents);
+      const chimney = box(cw, ch, cd, STAINLESS()); chimney.position.set(0, CAN + ch / 2, -d / 2 + cd / 2 + 0.6); g.add(chimney);
+      const seam = box(cw + 0.06, 0.25, cd + 0.06, STAINLESS_DK()); seam.position.set(0, CAN + ch * 0.55, -d / 2 + cd / 2 + 0.6); g.add(seam);
+      const vents = box(cw * 0.5, 1.6, 0.1, STAINLESS_DK()); vents.position.set(0, CAN + ch - 3, -d / 2 + cd + 0.62); g.add(vents);
       break;
     }
     case 'fridge': {
