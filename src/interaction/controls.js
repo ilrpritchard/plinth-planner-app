@@ -63,6 +63,34 @@ export class PointerControls {
     return this.ray.ray.intersectPlane(this.floor, p) ? p : null;
   }
 
+  /** The wall the pointer is over: the ray from the camera against the inside face of each
+   *  wall, first hit wins. Only faces the ray travels TOWARD count, so a wall the camera is
+   *  looking through from outside (auto-hidden) is never picked. -> { wall, along } | null */
+  _wallHit() {
+    const b = this.room.bounds(), h = this.store.state.room.height || 96;
+    this.ray.setFromCamera(this.ndc, this.s.camera);
+    const o = this.ray.ray.origin, d = this.ray.ray.direction;
+    let best = null;
+    for (const [wall, axis, at, sign] of [['back', 'z', b.minZ, 1], ['front', 'z', b.maxZ, -1], ['left', 'x', b.minX, 1], ['right', 'x', b.maxX, -1]]) {
+      if (d[axis] * sign >= 0) continue;                              // travelling away from that face
+      const t = (at - o[axis]) / d[axis]; if (t <= 0) continue;
+      const p = { x: o.x + d.x * t, y: o.y + d.y * t, z: o.z + d.z * t };
+      if (p.y < -2 || p.y > h + 2 || p.x < b.minX - 2 || p.x > b.maxX + 2 || p.z < b.minZ - 2 || p.z > b.maxZ + 2) continue;
+      if (!best || t < best.t) best = { wall, t, along: axis === 'z' ? p.x : p.z };
+    }
+    return best;
+  }
+  static _wallOf(item) { return { 0: 'back', 90: 'left', 180: 'front', 270: 'right' }[(((item.rotDeg || 0) % 360) + 360) % 360] || 'back'; }
+  /** Raw drag position for a cabinet that lives on a wall: on the wall the pointer is over, at
+   *  the point along it the pointer shows. Sliding along a run follows the hand exactly, and
+   *  the cabinet hops to another wall only when the pointer is actually over that wall. */
+  _wallRaw(hit, cab) {
+    const b = this.room.bounds(), touch = cab.d / 2 + 0.25 + (cab.type === 'TALL' ? 1.18 : 0);
+    const along = hit.along + (hit.wall === this.drag.wall ? this.drag.oa : 0);
+    return hit.wall === 'back' ? { x: along, z: b.minZ + touch } : hit.wall === 'front' ? { x: along, z: b.maxZ - touch }
+      : hit.wall === 'left' ? { x: b.minX + touch, z: along } : { x: b.maxX - touch, z: along };
+  }
+
   _rootItemId(obj) {
     let o = obj;
     while (o) { if (o.userData && o.userData.itemId != null) return o.userData.itemId; o = o.parent; }
@@ -80,8 +108,22 @@ export class PointerControls {
       this.layer.select(id);
       this.onSelect(id);
       const item = this.store.getItem(id);
+      // drag on a plane at the height the cabinet was GRABBED, not the floor: a wall cabinet
+      // hangs 5 ft up, and mapping the pointer to the floor there made a small vertical mouse
+      // move a big lurch toward the back wall (her: "dragging a wall or counterstanding
+      // cabinet in is REALLY glitchy", 2026-09-22). The plane goes back to the floor on drop.
+      this.floor.constant = -Math.max(0, hits[0].point.y);
       const p = this._floorPoint();
       this.drag = p ? { id, ox: item.x - p.x, oz: item.z - p.z } : { id, ox: 0, oz: 0 };
+      // a wall, counter or tall cabinet is dragged ALONG ITS WALL by the point the pointer
+      // shows on that wall (see _wallHit), so a wobble of the hand never lurches it off
+      const cab = getCab(item.code);
+      if (cab && ['WALL', 'COUNTER', 'TALL'].includes(cab.type) && !cab.corner) {
+        const hit = this._wallHit();
+        this.drag.onWall = true; this.drag.wall = PointerControls._wallOf(item);
+        const itemAlong = this.drag.wall === 'back' || this.drag.wall === 'front' ? item.x : item.z;
+        this.drag.oa = hit && hit.wall === this.drag.wall ? itemAlong - hit.along : 0;
+      }
       this.drag.start = { x: item.x, z: item.z, rotDeg: item.rotDeg || 0 };   // where it pings back to
       this.store.beginHistory();           // the whole drag = ONE undo step
       this.s.controls.enabled = false;     // suspend orbit while dragging
@@ -131,8 +173,12 @@ export class PointerControls {
     this._setNDC(e);
     const p = this._floorPoint();
     if (!p) return;
-    const rawX = p.x + this.drag.ox;
-    const rawZ = p.z + this.drag.oz;
+    let rawX = p.x + this.drag.ox;
+    let rawZ = p.z + this.drag.oz;
+    if (this.drag.onWall) {
+      const hit = this._wallHit(), cab = getCab(this.store.getItem(this.drag.id)?.code);
+      if (hit && cab) ({ x: rawX, z: rawZ } = this._wallRaw(hit, cab));
+    }
     const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds());
     this.store.updateItem(this.drag.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg, ...(snapped.hostId != null ? { hostId: snapped.hostId } : {}) }, { quiet: true });
     this.drag.flag = snapped.flag || null;
@@ -155,6 +201,7 @@ export class PointerControls {
     const id = this.drag.id;
     const { flag, start } = this.drag;
     this.drag = null;
+    this.floor.constant = 0;
     this._hideDims();
     this._hideRuleFlag();
     this.s.controls.enabled = true;

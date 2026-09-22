@@ -69,7 +69,7 @@ ok('alongWall round-trip', near(alongWall(design.room, 'back', -57, 0), 15));
 // mount heights match the 3D (models/cabinet.js MOUNT)
 ok('floor cabs mount at 0', byId(2).y0 === 0 && byId(1).y0 === 0);
 ok('wall cabs mount at 56, tops level with the talls at 86', byId(6).y0 === 56 && byId(6).y0 + byId(6).h === 86 && byId(1).h === 86);
-ok('mountY: counter 36.5, hood 58', mountY(getCab('C1')) === 36.5 && mountY(getCab('AP8')) === 58);
+ok('mountY: counter on the worktop (36.18), hood 58', Math.abs(mountY(getCab('C1')) - (35 + 30 / 25.4)) < 1e-9 && mountY(getCab('AP8')) === 58);
 
 // dimension chain: continuous run 3→141, segments sum to the run, wall dim = 144
 const ch = back.chain;

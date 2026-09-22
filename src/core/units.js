@@ -28,7 +28,13 @@ export function inToMm(inches) {
 // WALL = 56 so a 30" wall cabinet tops out at 86", LEVEL WITH THE TALLS (her
 // rule 2026-09-18: "wall cabinets would always align with the tall cabinet at
 // the top"; was 54 / 84"). Leaves 19½" between worktop and upper.
-export const MOUNT = { FLOOR: 0, TALL: 0, WALL: 56, COUNTER: 36.5 };
+// the worktop: a 35" base carcass under a 30mm slab (her spec 2026-09-22; was assumed 1.5").
+// EVERYTHING at counter height reads from here: sinks and cooktops, counter cabinets, the
+// elevation datum, the 3D slab.
+export const WORKTOP_MM = 30;
+export const WORKTOP_SLAB = mmToIn(WORKTOP_MM);
+export const SURFACE_Y = 35 + WORKTOP_SLAB;                  // 36.18": top of the worktop
+export const MOUNT = { FLOOR: 0, TALL: 0, WALL: 56, COUNTER: SURFACE_Y };
 export const WALL_H = 30, TALL_H = 86;
 
 export const SPEC = {
@@ -40,10 +46,10 @@ export const SPEC = {
   // Floor drawer face heights (175 / 245 / 315mm) used for 3-drawer banks.
   DRAWER_FACES_IN: [mmToIn(175), mmToIn(245), mmToIn(315)],
   REVEAL_IN: 0.12,          // visual gap between adjacent door/drawer faces
-  // COUNTER cabinets (the C range, standing on the worktop): three shelves, the first
-  // 400mm up from the counter, the other two equally spaced above it (her spec 2026-09-22)
+  // COUNTER cabinets (the C range, standing on the worktop): two shelves, the first
+  // 400mm up from the counter, the second halfway between it and the top (her spec 2026-09-22)
   COUNTER_SHELF1_IN: mmToIn(400),
-  COUNTER_SHELVES: 3,
+  COUNTER_SHELVES: 2,
 };
 
 /** Shelf TOPS for a counter cabinet, in inches up from the counter it stands on:

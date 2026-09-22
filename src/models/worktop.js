@@ -8,11 +8,11 @@
 
 import * as THREE from 'three';
 import { worktopMat } from './materials.js';
-import { SURFACE_Y } from './cabinet.js';
+import { SURFACE_Y, WORKTOP_SLAB } from '../core/units.js';
 import { planWorktopSlabs, subtractSinkCutouts, sinkCornerFillets } from '../core/worktop-plan.js';
 import { WORKTOP_TILE_IN } from './worktopTexture.js';
 
-const THICK = 1.25;
+const THICK = WORKTOP_SLAB;                 // 30mm
 
 const WOOD = new Set(['oak', 'walnut']);
 

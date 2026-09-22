@@ -22,17 +22,16 @@ test('a counter double over a drawer base is not an overlap; a counter double th
   assert.ok(msgs([base, onBack(4, 'F19', -30)]).some((m) => /F19 and F19 overlap/.test(m)));
 });
 
-test('three shelves in a counter cabinet: the first 400mm up from the counter, the rest equally spaced', () => {
+test('two shelves in a counter cabinet: the first 400mm up from the counter, the second equally spaced above', () => {
   const tops = counterShelfTops(50 - SPEC.PANEL_IN);          // 50" cabinet, under its 22mm top
-  assert.equal(tops.length, 3);
+  assert.equal(tops.length, 2);
   assert.ok(Math.abs(tops[0] - 400 / 25.4) < 1e-9);
-  const gap = (k) => tops[k + 1] - (tops[k] + SPEC.SHELF_IN);
-  assert.ok(Math.abs(gap(0) - gap(1)) < 1e-9, 'equal clear space between them');
-  assert.ok(Math.abs((50 - SPEC.PANEL_IN - (tops[2] + SPEC.SHELF_IN)) - gap(0)) < 1e-9, 'and the same space up to the top');
-  // the drawings carry them: glazed and open counter fronts, three shelves each
+  const gap = tops[1] - (tops[0] + SPEC.SHELF_IN);
+  assert.ok(Math.abs((50 - SPEC.PANEL_IN - (tops[1] + SPEC.SHELF_IN)) - gap) < 1e-9, 'the same clear space above the second shelf as between them');
+  // the drawings carry them: glazed and open counter fronts, two shelves each
   for (const code of ['C2', 'C5', 'C8']) {
     const sh = [...new Set(frontParts(getCab(code)).parts.filter((p) => p.k === 'shelf').map((p) => +p.y.toFixed(6)))].map((y) => ({ y }));   // a double shows them through both leaves
-    assert.equal(sh.length, 3, code);
+    assert.equal(sh.length, 2, code);
     assert.ok(sh.some((p) => Math.abs((50 - p.y) - tops[0]) < 1e-3), `${code}: a shelf top 400mm up`);
   }
   assert.equal(frontParts(getCab('C1')).parts.filter((p) => p.k === 'shelf').length, 0, 'a solid door hides them');

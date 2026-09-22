@@ -6,7 +6,7 @@
 // Doors are hinged groups so they can swing open.
 
 import * as THREE from 'three';
-import { SPEC, mmToIn, MOUNT, counterShelfTops } from '../core/units.js';
+import { SPEC, mmToIn, MOUNT, counterShelfTops, SURFACE_Y } from '../core/units.js';
 import {
   paintMat, oakMat, interiorMat, glassMat, brassMat,
   shadowMat, paintEdgeMat,
@@ -29,7 +29,7 @@ const KNOB_INSET = 2.2;
 export const OPEN_ANGLE = THREE.MathUtils.degToRad(105);
 
 export { MOUNT };   // the one copy lives in core/units.js
-export const SURFACE_Y = 36.5;
+export { SURFACE_Y };                      // top of the worktop (core/units.js)
 
 export function getMountY(cab) {
   if (typeof cab.mountY === 'number') return cab.mountY; // appliances carry their own
@@ -289,7 +289,7 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   const ctx = { mat, doors, faceW, openH, openCenterY, frontZ: doorFrontZ, frontFlush: frontZ, openY0, inW, inD, bodyY0, bodyTop: bodyY0 + bodyH, handle: opts.handle || 'knob', hinge: opts.hinge === 'R' ? 1 : -1, ovenFitted: !!opts.ovenFitted };
   const hasShelf = buildFront(g, cab, ctx);
 
-  // ----- one 18mm oak shelf for door cabinets (a COUNTER cabinet gets its three) -----
+  // ----- one 18mm oak shelf for door cabinets (a COUNTER cabinet gets its two) -----
   if (hasShelf && cab.type === 'COUNTER') {
     for (const top of counterShelfTops(bodyH - PANEL)) {
       const shelf = box(inW - 0.3, SHELF, inD - 1.2, oakMat());

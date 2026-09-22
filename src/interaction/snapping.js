@@ -42,15 +42,17 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // dragging a side-facing dresser to the back wall just works. A wall matching
   // the CURRENT orientation still wins unless another wall is clearly closer,
   // so sliding along a run never flips the cabinet at a corner.
-  // a WALL cabinet HANGS — it can never float mid-room, so it always attaches
-  // to the nearest wall (no snap threshold): dragging it around the room just
-  // hops it wall to wall, which is what "put it on THAT wall" needs.
+  // a WALL cabinet HANGS, and a COUNTER or TALL cabinet only ever stands against a wall
+  // (rule below): none of them can float mid-room, so they always attach to the nearest
+  // wall (no snap threshold). Dragging one around the room just hops it wall to wall,
+  // which is what "put it on THAT wall" needs. A counter cabinet used to FREEZE the moment
+  // the pointer strayed 16" from its wall and jump back when it returned: glitchy.
   const cands = [
     { wall: 'back', rot: 0, err: Math.abs(rawZ - (bounds.minZ + touch)) },
     { wall: 'left', rot: 90, err: Math.abs(rawX - (bounds.minX + touch)) },
     { wall: 'front', rot: 180, err: Math.abs(rawZ - (bounds.maxZ - touch)) },
     { wall: 'right', rot: 270, err: Math.abs(rawX - (bounds.maxX - touch)) },
-  ].filter((c) => cab.type === 'WALL' || c.err < WALL_SNAP).sort((a, b) => a.err - b.err);
+  ].filter((c) => ['WALL', 'COUNTER', 'TALL'].includes(cab.type) || c.err < WALL_SNAP).sort((a, b) => a.err - b.err);
   let wall = null;
   if (cands.length) {
     const match = cands.find((c) => (c.rot % 180) === ((item.rotDeg || 0) % 180));

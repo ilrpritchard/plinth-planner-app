@@ -21,7 +21,7 @@ function aabb(it) {
 const isFloorStanding = (cab) =>
   ['FLOOR', 'TALL'].includes(cab.type) ||
   (cab.type === 'APPLIANCES' && (cab.mountY ?? 0) === 0);
-// a COUNTER cabinet stands ON the worktop (36.5" up): it shares its column with talls,
+// a COUNTER cabinet stands ON the worktop (SURFACE_Y up): it shares its column with talls,
 // uppers and other counter cabinets, never with the base below it
 const yBand = (cab) => { const y0 = cab.mountY ?? MOUNT[cab.type] ?? 0; return [y0, y0 + (cab.h || 1)]; };
 const isSolidBody = (cab) => isFloorStanding(cab) || cab.type === 'COUNTER' || cab.type === 'WALL';

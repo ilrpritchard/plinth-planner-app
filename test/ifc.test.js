@@ -119,11 +119,12 @@ test('geometry is inches: F20 (36×24×35in) extrudes 36×24 by 35', () => {
   assert.match(IFC, /IFCEXTRUDEDAREASOLID\(#\d+,#\d+,#\d+,35\.\)/);
 });
 
-test('mount heights in inches: wall units lift 54in, counter 36.5in', () => {
+test('mount heights in inches: wall units lift 56in, counter on the worktop (35in + 30mm)', () => {
   // W2 placed at x=-96,z=-82.75 → point (-96, 82.75, 56)
   assert.match(IFC, /IFCCARTESIANPOINT\(\(-96\.,82\.75,56\.\)\)/);
-  // C1 at x=40 → (40, 82.75, 36.5)
-  assert.match(IFC, /IFCCARTESIANPOINT\(\(40\.,82\.75,36\.5\)\)/);
+  // C1 at x=40 → (40, 82.75, 36.181102)
+  const y = (35 + 30 / 25.4).toFixed(6).replace(/0+$/, '').replace('.', '\\.');
+  assert.match(IFC, new RegExp(`IFCCARTESIANPOINT\\(\\(40\\.,82\\.75,${y}\\)\\)`));
 });
 
 // ---- 4. GlobalIds -------------------------------------------------------------

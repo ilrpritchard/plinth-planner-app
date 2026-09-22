@@ -13,13 +13,12 @@ import { getCab, sellUSD, familyOf } from './catalogue.js';
 import { rowsFromDesign } from './cost.js';
 import { computeFillers } from './fillers.js';
 import { openingCenter, openingWidth } from './openings.js';
-import { SPEC, MOUNT as UNIT_MOUNT, fmtIn } from './units.js';
+import { SPEC, MOUNT as UNIT_MOUNT, fmtIn, SURFACE_Y, WORKTOP_SLAB } from './units.js';
 import { hingeSummary, sharedHinge } from './hinge.js';
 
 // mount heights — the one copy in core/units.js (the 3D uses the same)
 export const MOUNT = { ...UNIT_MOUNT, SHELF: UNIT_MOUNT.WALL };
-export const SURFACE_Y = 36.5;              // top of the worktop
-export const WORKTOP_SLAB = 1.5;            // 35" carcass + 1.5" slab = 36.5"
+export { SURFACE_Y, WORKTOP_SLAB };          // top of the worktop: 35" carcass + 30mm slab (core/units.js)
 export const PLINTH_IN = SPEC.PLINTH_IN;    // 115mm flush plinth = 4.53"
 // crown, as built (models/cornice.js): plain = one 22mm bar, 15mm proud of the
 // face; decorative = three stepped layers. [{ outer, h }] bottom → top, inches.
