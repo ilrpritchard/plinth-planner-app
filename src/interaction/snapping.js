@@ -43,7 +43,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // A TALL cabinet sits TALL_PROUD (30mm) further off the wall so its front sits
   // proud of the adjacent floor units (the worktop runs neatly into its side).
   const WALL_GAP = 0.25;
-  const proudWall = cab.type === 'TALL' ? TALL_PROUD : 0;
+  const proudWall = cab.type === 'TALL' || cab.onTall ? TALL_PROUD : 0;      // a tall's stacker stands proud with it
   const touch = d / 2 + WALL_GAP + proudWall;
   // ALL FOUR walls snap, and the cabinet auto-orients to face into the room —
   // dragging a side-facing dresser to the back wall just works. A wall matching

@@ -122,13 +122,13 @@ function dxfDoc(blocks, entities, { units = 1, layers = [] } = {}) {
     for (const b of blocks) {
       L.push('0', 'BLOCK', '8', '0', '2', b.name, '70', '0',
         '10', 0, '20', 0, '30', 0, '3', b.name);
-      L.push(...b.lines);
+      for (const e of b.lines) L.push(e);
       L.push('0', 'ENDBLK', '8', '0');
     }
     L.push('0', 'ENDSEC');
   }
   L.push('0', 'SECTION', '2', 'ENTITIES');
-  L.push(...entities);
+  for (const e of entities) L.push(e);       // never spread: the cabinet library runs past the argument limit
   L.push('0', 'ENDSEC', '0', 'EOF');
   return L.join('\n');
 }

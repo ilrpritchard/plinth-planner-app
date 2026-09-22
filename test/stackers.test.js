@@ -16,7 +16,7 @@ test('every stacker is matched by the "fits" list, in the height the ceiling all
   const p = planStackers({ room: room(108), items });          // 9' ceiling: 15" stackers
   assert.equal(p.ok, true); assert.equal(p.size, 15);
   assert.deepEqual(p.placements.map((q) => q.code), ['S1', 'S5', 'S16', 'S18', 'S27']);
-  for (const q of p.placements) { const host = items.find((i) => i.id === q.hostId), s = getCab(q.code); assert.equal(q.x, host.x); assert.ok(Math.abs(q.z - (-D / 2 + s.d / 2 + 0.25)) < 1e-9, 'back on the wall'); }
+  for (const q of p.placements) { const host = items.find((i) => i.id === q.hostId), s = getCab(q.code); assert.equal(q.x, host.x); assert.ok(Math.abs(q.z - (-D / 2 + s.d / 2 + 0.25 + (s.onTall ? 30 / 25.4 : 0))) < 1e-9, 'back on the wall, or proud with its tall'); }
   assert.equal(planStackers({ room: room(120), items }).size, 21);
 });
 

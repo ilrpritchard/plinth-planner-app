@@ -60,7 +60,7 @@ export function spotOk(state, cab, x, z, rotDeg, bounds, ignoreId = null) {
 /** The first place `cab` can stand: along the asked-for wall first (left to right, butted
  *  to what is there), then the other walls, then free-standing on the floor. */
 export function findFreeSpot(state, cab, bounds, wall = 'back', ignoreId = null) {
-  const off = cab.d / 2 + WALL_GAP + (cab.type === 'TALL' ? TALL_PROUD : 0);
+  const off = cab.d / 2 + WALL_GAP + (cab.type === 'TALL' || cab.onTall ? TALL_PROUD : 0);
   const at = (wl, along) => (wl === 'back' ? { x: along, z: bounds.minZ + off } : wl === 'front' ? { x: along, z: bounds.maxZ - off }
     : wl === 'left' ? { x: bounds.minX + off, z: along } : { x: bounds.maxX - off, z: along });
   const hung = cab.type === 'WALL' || cab.type === 'SHELF' || cab.type === 'COUNTER' || cab.appliance === 'hood';

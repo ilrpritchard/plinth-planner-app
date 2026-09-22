@@ -23,6 +23,8 @@ const BANDS = [
   { name: 'floor', has: (cab) => cab.type === 'FLOOR' || cab.type === 'TALL', y0: () => 0 },
   { name: 'upper', has: (cab) => cab.type === 'WALL' && !cab.stacker, y0: (cab) => cab.mountY ?? MOUNT.WALL },
   { name: 'counter', has: (cab) => cab.type === 'COUNTER', y0: () => MOUNT.COUNTER },
+  // a stacker's scribe continues the one below it up to the stacker's top (her: "stackers need to mimic the scribe")
+  { name: 'stacker', has: (cab) => !!cab.stacker, y0: (cab) => cab.mountY || 0 },
 ];
 
 /** Returns filler descriptors: { x, z, rotDeg, w, d, h }. Each filler matches

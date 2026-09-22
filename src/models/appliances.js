@@ -65,7 +65,8 @@ function gooseneck(g, x, z) {
   const spout = cyl(0.34, 0.4, 2.6, CHROME()); spout.position.set(x, 7.9, z + 4.8); g.add(spout);
 }
 
-export function buildAppliance(cab, finishHex = '#efece3') {
+// opts.ceiling: the room height, so a chimney hood's flue can run up to it
+export function buildAppliance(cab, finishHex = '#efece3', opts = {}) {
   const g = new THREE.Group();
   g.name = `appliance-${cab.code}`;
   // hairline setback (matches SKIN in cabinet.js): an appliance butted against
@@ -244,11 +245,27 @@ export function buildAppliance(cab, finishHex = '#efece3') {
       break;
     }
     case 'hood': {
-      // tapered canopy + slim flue
-      const canopy = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.62, w * 0.42, h * 0.45, 4), STEEL());
-      canopy.rotation.y = Math.PI / 4; canopy.scale.set(1, 1, d / w * 1.4); canopy.position.y = h * 0.25; g.add(canopy);
-      const band = box(w * 0.9, 1.2, d * 0.9, STEEL_DK()); band.position.y = h * 0.02; g.add(band);
-      const flue = box(w * 0.32, h * 0.55, d * 0.45, STEEL()); flue.position.set(0, h * 0.72, -d * 0.18); g.add(flue);
+      // a wall-mount chimney hood in the ZLINE / Broan idiom (her reference 2026-09-22): a
+      // shallow flat box canopy, baffle filters and a control strip underneath, and a plain
+      // rectangular two-piece chimney rising from its back half
+      const CAN = 4.5;                                              // canopy thickness
+      const canopy = box(w, CAN, d, STEEL(), 0.15); canopy.position.y = CAN / 2; g.add(canopy);
+      // underside: a recessed dark plenum with three bright baffle filters
+      const plen = box(w * 0.86, 0.5, d * 0.62, DARK()); plen.position.set(0, 0.2, 0.05); g.add(plen);
+      const fw = (w * 0.86) / 3 - 0.4;
+      for (let i = -1; i <= 1; i++) { const f = box(fw, 0.35, d * 0.58, STEEL_DK()); f.position.set(i * (fw + 0.4), 0.12, 0.05); g.add(f); }
+      // control strip on the front edge, right of centre
+      const ctrl = box(Math.min(7, w * 0.22), 0.5, 0.2, DARK()); ctrl.position.set(w * 0.3, CAN * 0.45, d / 2 + 0.02); g.add(ctrl);
+      // chimney: 11.8" wide (300mm), 10" deep, on the back half, a seam where the two sections telescope
+      // the chimney runs to the ceiling when we know where it is (the catalogue h is a nominal 28"),
+      // up to a 10' ceiling: a real chimney kit stops there, and above that it stands short, as it
+      // would on site (her note 2026-09-22: "we don't supply these, so it is really just illustrative")
+      const CHIMNEY_MAX_CEILING = 120;
+      const cw = Math.min(11.8, w * 0.45), cd = Math.min(10, d * 0.55);
+      const ch = opts.ceiling > 0 && cab.mountY != null ? Math.max(h - CAN, Math.min(opts.ceiling, CHIMNEY_MAX_CEILING) - cab.mountY - CAN - 0.1) : h - CAN;
+      const chimney = box(cw, ch, cd, STEEL()); chimney.position.set(0, CAN + ch / 2, -d / 2 + cd / 2 + 0.6); g.add(chimney);
+      const seam = box(cw + 0.06, 0.25, cd + 0.06, STEEL_DK()); seam.position.set(0, CAN + ch * 0.55, -d / 2 + cd / 2 + 0.6); g.add(seam);
+      const vents = box(cw * 0.5, 1.6, 0.1, DARK()); vents.position.set(0, CAN + ch - 3, -d / 2 + cd + 0.62); g.add(vents);
       break;
     }
     case 'fridge': {

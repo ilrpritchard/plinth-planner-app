@@ -40,7 +40,7 @@ export class CabinetLayer {
       case 'finish': this.rebuildAll(); break;
       // room resized → a corner cabinet's drawn return may need to reach a
       // wall that moved; re-check every corner unit
-      case 'room': for (const it of this.store.state.items) { if (getCab(it.code)?.corner) this._reposition(it.id); } break;
+      case 'room': for (const it of this.store.state.items) { const c = getCab(it.code); if (c?.corner) this._reposition(it.id); if (c?.appliance === 'hood') { this._dispose(it.id); this._addOrUpdate(it); } } break;   // a chimney hood's flue runs to the (new) ceiling
       case 'load': case 'reset': this.syncAll(); break;
       default: break;
     }
@@ -98,7 +98,7 @@ export class CabinetLayer {
   }
 
   _build(cab, item) {
-    if (cab.type === 'APPLIANCES') return buildAppliance(cab, this.finishHexFor(item, this.store.state));
+    if (cab.type === 'APPLIANCES') return buildAppliance(cab, this.finishHexFor(item, this.store.state), { ceiling: this.store.state.room?.height || 96 });
     if (cab.type === 'SHELF') return buildFloatingShelf(cab);
     // hardware is not user-choosable: every Plinth cabinet ships with knobs
     // an exposed island back is a FINISHED (painted) panel — the cost side

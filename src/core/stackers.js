@@ -12,7 +12,7 @@
 import { CATALOGUE, getCab } from './catalogue.js';
 import { MOUNT, TALL_H } from './units.js';
 
-const WALL_GAP = 0.25, NEAR = 14, CLEAR = 3;          // room above the stacker for its crown
+const WALL_GAP = 0.25, NEAR = 14, CLEAR = 3, TALL_PROUD = 30 / 25.4;      // CLEAR: room above the stacker for its crown
 const ROT_WALL = { 0: 'back', 90: 'left', 180: 'front', 270: 'right' };
 const rotOf = (it) => (((it.rotDeg || 0) % 360) + 360) % 360;
 const hostTop = (cab) => (cab.type === 'TALL' ? TALL_H : cab.type === 'WALL' ? MOUNT.WALL + cab.h : MOUNT.COUNTER + cab.h);
@@ -27,7 +27,7 @@ export function stackerFor(hostCode, h) {
 export function planStackers(state, wall = null, onlyId = null) {
   const r = (state && state.room) || {}, W = r.width || 144, D = r.depth || 120, H = r.height || 96;
   const items = (state && state.items) || [];
-  const isHost = (c) => c && c.placeable && !c.stacker && (c.type === 'TALL' || c.type === 'WALL' || c.type === 'COUNTER');
+  const isHost = (c) => c && c.placeable && !c.stacker && !c.high && (c.type === 'TALL' || c.type === 'WALL' || c.type === 'COUNTER');   // a full-height wall cabinet already IS the stacked height
   const offWall = (it, c) => { const rot = rotOf(it); return rot === 0 ? it.z - c.d / 2 + D / 2 : rot === 180 ? D / 2 - (it.z + c.d / 2) : rot === 90 ? it.x - c.d / 2 + W / 2 : rot === 270 ? W / 2 - (it.x + c.d / 2) : Infinity; };
   const hosts = items.map((it) => ({ it, cab: getCab(it.code) })).filter(({ it, cab }) => isHost(cab) && (onlyId == null || it.id === onlyId) && (!wall || ROT_WALL[rotOf(it)] === wall || (wall === 'left' && ROT_WALL[rotOf(it)] === 'right')));
   if (!hosts.length) return { ok: false, reason: 'no hosts' };
@@ -44,7 +44,7 @@ export function planStackers(state, wall = null, onlyId = null) {
     if (stacked.some((s) => rotOf(s) === rot && Math.abs((rot % 180 === 0 ? s.x : s.z) - along) < 1)) { skipped.push({ id: it.id, code: it.code, why: 'already stacked' }); continue; }
     const s = stackerFor(it.code, size);
     if (!s) { skipped.push({ id: it.id, code: it.code, why: 'none made' }); continue; }
-    const touch = s.d / 2 + WALL_GAP;
+    const touch = s.d / 2 + WALL_GAP + (s.onTall ? TALL_PROUD : 0);      // a tall's stacker stands proud with the tall
     const pos = rot === 0 ? { x: it.x, z: -D / 2 + touch } : rot === 180 ? { x: it.x, z: D / 2 - touch } : rot === 90 ? { x: -W / 2 + touch, z: it.z } : { x: W / 2 - touch, z: it.z };
     placements.push({ code: s.code, ...pos, rotDeg: rot, hostId: it.id, top: hostTop(cab) + s.h });
   }

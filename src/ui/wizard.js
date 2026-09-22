@@ -645,7 +645,7 @@ export class Wizard {
         if (cz + cab.w > minZ + sB) break;          // don't run off the span
         // talls stand 30mm PROUD of the base run so the counter dies into
         // their side (client spec — same offset drag-snapping uses)
-        const proud = cab.type === 'TALL' ? TALL_PROUD : 0;
+        const proud = cab.type === 'TALL' || cab.onTall ? TALL_PROUD : 0;
         const it = this.store.addItem(s.code, { x: minX + cab.d / 2 + 0.25 + proud, z: cz + cab.w / 2, rotDeg: 90 });
         if (s.hob && it) hobBase = { id: it.id, hob: s.hob };
         cz += cab.w;
@@ -661,7 +661,7 @@ export class Wizard {
       for (const s of rightSteps) {
         const cab = getCab(s.code); if (!cab) continue;
         if (cz + cab.w > minZ + rB) break;
-        this.store.addItem(s.code, { x: maxX - cab.d / 2 - 0.25 - rightLegInset - (cab.type === 'TALL' ? TALL_PROUD : 0), z: cz + cab.w / 2, rotDeg: 270 });
+        this.store.addItem(s.code, { x: maxX - cab.d / 2 - 0.25 - rightLegInset - (cab.type === 'TALL' || cab.onTall ? TALL_PROUD : 0), z: cz + cab.w / 2, rotDeg: 270 });
         cz += cab.w;
       }
     }
@@ -675,7 +675,7 @@ export class Wizard {
       for (const s of frontSteps) {
         const cab = getCab(s.code); if (!cab) continue;
         if (cx + cab.w > minX + fB) break;
-        this.store.addItem(s.code, { x: cx + cab.w / 2, z: maxZ - cab.d / 2 - 0.25 - (cab.type === 'TALL' ? TALL_PROUD : 0), rotDeg: 180 });
+        this.store.addItem(s.code, { x: cx + cab.w / 2, z: maxZ - cab.d / 2 - 0.25 - (cab.type === 'TALL' || cab.onTall ? TALL_PROUD : 0), rotDeg: 180 });
         cx += cab.w;
       }
     }

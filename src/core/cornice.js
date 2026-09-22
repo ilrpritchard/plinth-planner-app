@@ -72,7 +72,8 @@ export function planCornice(state) {
 
   // each cabinet's crown line: its type's top, or for a STACKER its own top (mountY + h).
   // A host with a stacker standing on it carries no crown of its own: the stacker does.
-  const topOf = (cab) => (cab.stacker ? (cab.mountY || 0) + cab.h : TOP[cab.type]);
+  // a cabinet's own top, not its type's nominal one: a full-height upper (45 / 51") tops at 101 / 107
+  const topOf = (cab) => (cab.type === 'TALL' ? cab.h : (cab.mountY ?? MOUNT[cab.type] ?? 0) + cab.h);
   const rotOf = (it) => (((it.rotDeg || 0) % 360) + 360) % 360;
   const all = (state.items || []).map((it) => ({ it, cab: getCab(it.code) })).filter((x) => x.cab && QUALIFY.has(x.cab.type));
   const stackedOver = (x) => all.some((o) => o.cab.stacker && rotOf(o.it) === rotOf(x.it) && Math.abs((rotOf(x.it) % 180 === 0 ? o.it.x - x.it.x : o.it.z - x.it.z)) < 1 && Math.abs((o.cab.mountY || 0) - TOP[x.cab.type]) < 1);
@@ -84,11 +85,15 @@ export function planCornice(state) {
   // RULE: a scribe filler that reaches the top of its run carries the cornice too — the
   // moulding runs OVER the filler to the wall, never stopping short at the cabinet edge.
   // A tall's filler, an upper's filler (at the upper's height) and a counter cabinet's.
-  const FILLER_TYPE = { floor: 'TALL', upper: 'WALL', counter: 'COUNTER' };
-  for (const f of computeFillers(state)) {
+  const FILLER_TYPE = { floor: 'TALL', upper: 'WALL', counter: 'COUNTER', stacker: 'WALL' };
+  const fillers = computeFillers(state);
+  // a filler with a stacker's filler standing on it carries no crown: the one on top does
+  const coveredBy = (f) => fillers.some((g) => g.band === 'stacker' && Math.abs(g.x - f.x) < 1 && Math.abs(g.z - f.z) < 1 && Math.abs((g.y0 || 0) - ((f.y0 || 0) + f.h)) < 1);
+  for (const f of fillers) {
     if (f.band === 'floor' && (f.h || 0) < 80) continue;            // a base-height filler carries nothing
     if (f.band === 'upper' && Math.abs((f.y0 || 0) + f.h - TOP.WALL) > 0.5) continue;
-    cabs.push({ it: { x: f.x, z: f.z, rotDeg: f.rotDeg || 0 }, cab: { type: FILLER_TYPE[f.band] || 'TALL' }, w: f.w, d: f.d, filler: true, top: TOP[FILLER_TYPE[f.band] || 'TALL'] });
+    if (coveredBy(f)) continue;
+    cabs.push({ it: { x: f.x, z: f.z, rotDeg: f.rotDeg || 0 }, cab: { type: FILLER_TYPE[f.band] || 'TALL' }, w: f.w, d: f.d, filler: true, top: f.band === 'stacker' ? (f.y0 || 0) + f.h : TOP[FILLER_TYPE[f.band] || 'TALL'] });
   }
 
   const segments = [];

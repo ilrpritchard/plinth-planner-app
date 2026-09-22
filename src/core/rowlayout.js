@@ -83,7 +83,7 @@ export function planRowsLayout(rows, room, existing = []) {
   // A side run starts clear of whatever already stands in that back corner. Usually
   // that is the back run's 24.25", but a TALL stands 30mm proud and a stacker on it
   // deeper still: measure what is really there, within the depth this cabinet takes.
-  const front = (cab) => cab.d + WALL_GAP + (cab.type === 'TALL' ? TALL_PROUD : 0);
+  const front = (cab) => cab.d + WALL_GAP + (cab.type === 'TALL' || cab.onTall ? TALL_PROUD : 0);
   const cornerClear = (wall, cab) => {
     let reach = CORNER_OUT;
     for (const h of placed) {
@@ -112,7 +112,7 @@ export function planRowsLayout(rows, room, existing = []) {
     return hi - cur >= need - 1e-6 ? cur : null;
   };
   const posOn = (wall, along, cab) => {
-    const off = cab.d / 2 + WALL_GAP + (cab.type === 'TALL' ? TALL_PROUD : 0);
+    const off = cab.d / 2 + WALL_GAP + (cab.type === 'TALL' || cab.onTall ? TALL_PROUD : 0);
     return wall === 'back' ? { x: along, z: minZ + off } : wall === 'left' ? { x: minX + off, z: along } : { x: maxX - off, z: along };
   };
 
@@ -267,8 +267,8 @@ export function planRowsLayout(rows, room, existing = []) {
 
   // ---- stackers sit on a host of their own width, one each ----
   for (const s of stackers) {
-    // tall stackers are 25¼" deep (flush with the proud tall); wall + tall hosts now share the 86" top
-    const hostType = s.d > 20 ? 'TALL' : s.mountY === 86 ? 'WALL' : 'COUNTER';
+    // a tall's stacker carries `onTall` (24" deep, standing proud with it); wall + tall hosts share the 86" top
+    const hostType = s.onTall ? 'TALL' : s.mountY === 86 ? 'WALL' : 'COUNTER';
     const host = placed.find((h) => !h.stacked && h.cab.type === hostType && !h.cab.corner && Math.abs(h.cab.w - s.w) < 0.5);
     if (!host) { miss(s); continue; }
     host.stacked = true;

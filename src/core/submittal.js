@@ -215,7 +215,7 @@ export function computeElevation(design, wall) {
     const spans = items
       .filter((i) => (i.type === 'WALL' || i.type === 'TALL' || i.type === 'COUNTER') && !stackedOver(i))
       .map((i) => ({ s0: i.runS0 ?? i.s0, w: (i.runS1 ?? i.s0 + i.w) - (i.runS0 ?? i.s0), top: i.y0 + i.h }))
-      .concat(fillers.filter((f) => (f.y0 || 0) + f.h >= 80).map((f) => ({ s0: f.s0, w: f.w, top: (f.y0 || 0) + f.h })));   // a scribe that reaches the top carries the crown (tall, upper, counter)
+      .concat(fillers.filter((f) => (f.y0 || 0) + f.h >= 80 && !fillers.some((g) => Math.abs(g.s0 - f.s0) < 1 && Math.abs((g.y0 || 0) - ((f.y0 || 0) + f.h)) < 1)).map((f) => ({ s0: f.s0, w: f.w, top: (f.y0 || 0) + f.h })));   // a scribe that reaches the top carries the crown (tall, upper, counter, or the stacker's scribe on top of one)
     crowns = mergeSpans(spans, 2.5).map((s) => ({ s0: s.s0, s1: s.s1, top: s.top }));
   }
 

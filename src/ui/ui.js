@@ -625,11 +625,14 @@ export class UI {
         </button>`;
         }
       }
+      const ceiling = this.store.state.room.height || 96;
       for (const c of items) {
+        // a full-height wall cabinet the ceiling cannot take stays on the shelf, dimmed, saying what it needs
+        if (c.high && 56 + c.h + 3 > ceiling) tooWide.add(c.code);
         const wide = tooWide.has(c.code);
-        const meta = wide ? `needs ${fmtIn(c.w)} of wall`
+        const meta = wide ? (c.high ? `needs a ${fmtFeetIn(56 + c.h + 3)} ceiling` : `needs ${fmtIn(c.w)} of wall`)
           : c.notSupplied ? `${fmtIn(c.w)} &middot; <em>not supplied</em>` : `${fmtIn(c.w)} &middot; ${fmtUSD(sellUSD(c))}`;
-        html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}${wide ? ' is-toowide' : ''}" data-code="${c.code}" ${wide ? 'disabled' : ''} title="${wide ? `${c.code} · ${c.desc} needs ${fmtIn(c.w)} of wall and this one has ${fmtIn(remaining)} left. Make room, switch walls, or use Island` : `Add ${c.code} · ${c.desc}${c.notes ? ', ' + c.notes : ''}`}">
+        html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}${wide ? ' is-toowide' : ''}" data-code="${c.code}" ${wide ? 'disabled' : ''} title="${wide ? (c.high ? `${c.code} · ${c.desc} tops out at ${fmtIn(56 + c.h)} and needs ${fmtFeetIn(56 + c.h + 3)} of ceiling for its crown. The room is ${fmtFeetIn(ceiling)}: change it under Room` : `${c.code} · ${c.desc} needs ${fmtIn(c.w)} of wall and this one has ${fmtIn(remaining)} left. Make room, switch walls, or use Island`) : `Add ${c.code} · ${c.desc}${c.notes ? ', ' + c.notes : ''}`}">
           <span class="cat-thumb">${cabinetSVG(c)}</span>
           <span class="ci-code">${c.code}</span>
           <span class="ci-desc">${c.desc}</span>
@@ -639,7 +642,7 @@ export class UI {
       html += `</div></details>`;
     }
     if (this.activeWall !== 'island' && hiddenAny) {
-      html += `<div class="hint" style="margin-top:8px">Greyed-out cabinets are wider than the ${fmtIn(remaining)} left on this wall. Pick a narrower one, make room, switch walls, or use Island.</div>`;
+      html += `<div class="hint" style="margin-top:8px">Greyed-out cabinets are wider than the ${fmtIn(remaining)} left on this wall, or taller than the ceiling. Pick a narrower one, make room, switch walls, use Island, or change the ceiling under Room.</div>`;
     }
     return html;
   }

@@ -51,9 +51,9 @@ test('S-series stackers are hung, flagged, priced, in two heights', () => {
     assert.equal(cab.type, 'WALL', `${cab.code} is hung (never floor-standing)`);
     assert.ok(cab.mountY === 86 || Math.abs(cab.mountY - (MOUNT.COUNTER + 50)) < 1e-9, `${cab.code} mounts on a host top`);   // a tall / wall top, or the counter cabinet's
     assert.ok([15, 21].includes(cab.h));
-    // depth matches the host family: talls proud → 25.25", wall/counter → 14"
+    // depth matches the host family: a tall's stacker is the tall's 24" (and stands proud with it), wall/counter → 14"
     // (wall hosts now top out at 86" too, level with the talls, so the desc names the family)
-    assert.ok(Math.abs(cab.d - (/fits T/.test(cab.desc) ? 25.25 : 14)) < 0.01,
+    assert.ok(Math.abs(cab.d - (/fits T/.test(cab.desc) ? 24 : 14)) < 0.01,
       `${cab.code} depth matches its host family`);
     assert.ok(sellUSD(cab) > 0);
     // desc names the HOST CABINET CODES it fits (her spec), not dimensions
@@ -65,7 +65,7 @@ test('S-series stackers are hung, flagged, priced, in two heights', () => {
 test('every stacker desc lists exactly its matching host codes', () => {
   const hostFam = (s) => (s.d > 20 ? 'TALL' : s.mountY === 86 ? 'WALL' : 'COUNTER');
   const hosts = CATALOGUE.filter((c) =>
-    ['WALL', 'TALL', 'COUNTER'].includes(c.type) && c.placeable && !c.corner && !c.stacker);
+    ['WALL', 'TALL', 'COUNTER'].includes(c.type) && c.placeable && !c.corner && !c.stacker && !c.high);
   for (const s of CATALOGUE.filter((c) => c.stacker)) {
     const want = hosts.filter((h) => h.type === hostFam(s) && Math.abs(h.w - s.w) < 0.5)
       .map((h) => h.code).join(', ');
@@ -81,7 +81,7 @@ test('EVERY wall/tall/counter cabinet has a stacker that fits it exactly', () =>
   const top = (c) => (typeof c.mountY === 'number' ? c.mountY : MOUNT[c.type] ?? 0) + c.h;   // MOUNT from core/units.js: the counter top follows the 30mm worktop
   const stackers = CATALOGUE.filter((c) => c.stacker);
   const hosts = CATALOGUE.filter((c) =>
-    ['WALL', 'TALL', 'COUNTER'].includes(c.type) && c.placeable && !c.corner && !c.stacker);
+    ['WALL', 'TALL', 'COUNTER'].includes(c.type) && c.placeable && !c.corner && !c.stacker && !c.high);
   assert.ok(hosts.length >= 25, 'sweep covers the real catalogue');
   for (const host of hosts) {
     for (const h of [15, 21]) {

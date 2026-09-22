@@ -79,21 +79,21 @@ const RAW = [
   // Two heights: 15" (9'+ ceilings) and 21" (10'). stacker: true marks them.
   // Enforced by test/trade-upgrades.test.js: every non-corner W/T/C cabinet
   // must have a matching stacker — extend this list with any new width.
-  // fits the TALL run (24/27/28/30/33/39/44 wide, d 25.25, mount 86)
-  { code: 'S1', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T1, T3)', w: 24, d: 25.25, h: 15, hinge: 'L&R', usd: 1632, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
-  { code: 'S2', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T10)', w: 27, d: 25.25, h: 15, hinge: 'L&R', usd: 1707, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 9\'+ ceilings.' },
-  { code: 'S3', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T2, T5, T6)', w: 28, d: 25.25, h: 15, hinge: 'L&R', usd: 1738, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
-  { code: 'S4', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T4, T9)', w: 30, d: 25.25, h: 15, hinge: 'n/a', usd: 1905, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
-  { code: 'S5', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T11, T14)', w: 33, d: 25.25, h: 15, hinge: 'n/a', usd: 2011, mountY: 86, notes: 'Sits on the T11 panel-ready housing or the T14 oven housing. For 9\'+ ceilings.' },
-  { code: 'S6', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T12, T15)', w: 39, d: 25.25, h: 15, hinge: 'n/a', usd: 2178, mountY: 86, notes: 'Sits on the T12 panel-ready housing or the T15 oven housing. For 9\'+ ceilings.' },
-  { code: 'S7', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T7, T8, T13)', w: 44, d: 25.25, h: 15, hinge: 'n/a', usd: 2315, mountY: 86, notes: 'Sits on the 44" double larder. For 9\'+ ceilings.' },
-  { code: 'S8', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T1, T3)', w: 24, d: 25.25, h: 21, hinge: 'L&R', usd: 1798, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
-  { code: 'S9', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T10)', w: 27, d: 25.25, h: 21, hinge: 'L&R', usd: 1874, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 10\'+ ceilings.' },
-  { code: 'S10', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T2, T5, T6)', w: 28, d: 25.25, h: 21, hinge: 'L&R', usd: 1905, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
-  { code: 'S11', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T4, T9)', w: 30, d: 25.25, h: 21, hinge: 'n/a', usd: 2072, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
-  { code: 'S12', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T11, T14)', w: 33, d: 25.25, h: 21, hinge: 'n/a', usd: 2178, mountY: 86, notes: 'Sits on the T11 panel-ready housing or the T14 oven housing. For 10\'+ ceilings.' },
-  { code: 'S13', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T12, T15)', w: 39, d: 25.25, h: 21, hinge: 'n/a', usd: 2345, mountY: 86, notes: 'Sits on the T12 panel-ready housing or the T15 oven housing. For 10\'+ ceilings.' },
-  { code: 'S14', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T7, T8, T13)', w: 44, d: 25.25, h: 21, hinge: 'n/a', usd: 2482, mountY: 86, notes: 'Sits on the 44" double larder. For 10\'+ ceilings.' },
+  // fits the TALL run (24/27/28/30/33/39/44 wide, d 24, stands proud with the tall, mount 86)
+  { code: 'S1', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T1, T3)', w: 24, d: 24, onTall: true, h: 15, hinge: 'L&R', usd: 1632, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
+  { code: 'S2', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T10)', w: 27, d: 24, onTall: true, h: 15, hinge: 'L&R', usd: 1707, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 9\'+ ceilings.' },
+  { code: 'S3', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits T2, T5, T6)', w: 28, d: 24, onTall: true, h: 15, hinge: 'L&R', usd: 1738, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
+  { code: 'S4', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T4, T9)', w: 30, d: 24, onTall: true, h: 15, hinge: 'n/a', usd: 1905, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 9\'+ ceilings.' },
+  { code: 'S5', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T11, T14)', w: 33, d: 24, onTall: true, h: 15, hinge: 'n/a', usd: 2011, mountY: 86, notes: 'Sits on the T11 panel-ready housing or the T14 oven housing. For 9\'+ ceilings.' },
+  { code: 'S6', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T12, T15)', w: 39, d: 24, onTall: true, h: 15, hinge: 'n/a', usd: 2178, mountY: 86, notes: 'Sits on the T12 panel-ready housing or the T15 oven housing. For 9\'+ ceilings.' },
+  { code: 'S7', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits T7, T8, T13)', w: 44, d: 24, onTall: true, h: 15, hinge: 'n/a', usd: 2315, mountY: 86, notes: 'Sits on the 44" double larder. For 9\'+ ceilings.' },
+  { code: 'S8', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T1, T3)', w: 24, d: 24, onTall: true, h: 21, hinge: 'L&R', usd: 1798, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
+  { code: 'S9', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T10)', w: 27, d: 24, onTall: true, h: 21, hinge: 'L&R', usd: 1874, mountY: 86, notes: 'Sits on the T10 panel-ready housing. For 10\'+ ceilings.' },
+  { code: 'S10', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits T2, T5, T6)', w: 28, d: 24, onTall: true, h: 21, hinge: 'L&R', usd: 1905, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
+  { code: 'S11', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T4, T9)', w: 30, d: 24, onTall: true, h: 21, hinge: 'n/a', usd: 2072, mountY: 86, notes: 'Sits on the 86" tall run, face flush with the tall below. For 10\'+ ceilings.' },
+  { code: 'S12', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T11, T14)', w: 33, d: 24, onTall: true, h: 21, hinge: 'n/a', usd: 2178, mountY: 86, notes: 'Sits on the T11 panel-ready housing or the T14 oven housing. For 10\'+ ceilings.' },
+  { code: 'S13', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T12, T15)', w: 39, d: 24, onTall: true, h: 21, hinge: 'n/a', usd: 2345, mountY: 86, notes: 'Sits on the T12 panel-ready housing or the T15 oven housing. For 10\'+ ceilings.' },
+  { code: 'S14', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits T7, T8, T13)', w: 44, d: 24, onTall: true, h: 21, hinge: 'n/a', usd: 2482, mountY: 86, notes: 'Sits on the 44" double larder. For 10\'+ ceilings.' },
   // fits the WALL run (20/24/28/36/42 wide, d 14, mount 86 — stacked uppers)
   { code: 'S15', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W1, W3, W11)', w: 20, d: 14, h: 15, hinge: 'L&R', usd: 1419, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S16', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W2, W4, W12)', w: 24, d: 14, h: 15, hinge: 'L&R', usd: 1495, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
@@ -181,7 +181,22 @@ function classify(it) {
   return 'door';                              // plain single door
 }
 
-const BASE_CATALOGUE = RAW.map((it) => ({
+// ----- FULL-HEIGHT wall cabinets (her spec 2026-09-22) ---------------------------------
+// "A lot of developers want wall cabinets that are high": every non-corner W cabinet in two
+// taller heights, hung at the same 56" so the undersides line through, with ONE door, and
+// the top exactly where a wall cabinet + its stacker would end: 30 + 15 = 45" (top 101", a
+// 9' ceiling) and 30 + 21 = 51" (top 107", 10'). Codes carry on the W series: W14-W24 are the
+// 45" set, W25-W35 the 51" set, in the order of the cabinets they grow from. Price: the wall
+// cabinet + 20% ("take the cost of the wall cabinet + 20%"), rounded to the dollar. `high` =
+// the inches added, so the catalogue can group them and the ceiling check can read them.
+const HIGH_BASES = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W11', 'W12', 'W13'];
+const HIGH_WALLS = [15, 21].flatMap((add, k) => HIGH_BASES.map((base, i) => {
+  const src = RAW.find((c) => c.code === base);
+  return { ...src, code: `W${14 + k * HIGH_BASES.length + i}`, desc: `${src.desc}, full height ${30 + add}"`, h: 30 + add, usd: Math.round(src.usd * 1.2), high: add, grewFrom: base,
+    notes: `A ${src.desc.toLowerCase()} wall cabinet ${30 + add}" high in one door: the height of the standard cabinet plus its ${add}" stacker, hung at the same 56". Tops at ${56 + 30 + add}": needs a ${add === 15 ? "9'" : "10'"} ceiling.` };
+}));
+
+const BASE_CATALOGUE = RAW.concat(HIGH_WALLS).map((it) => ({
   ...it,
   notes: it.notes || '',
   halfDepth: /half depth/i.test(it.desc),
@@ -192,16 +207,16 @@ const BASE_CATALOGUE = RAW.map((it) => ({
   notSupplied: false,
 }));
 
-export const FAMILY_ORDER = ['FLOOR', 'WALL', 'COUNTER', 'TALL', 'STACKER', 'APPLIANCES', 'ACCESSORIES'];
+export const FAMILY_ORDER = ['FLOOR', 'WALL', 'HIGH', 'COUNTER', 'TALL', 'STACKER', 'APPLIANCES', 'ACCESSORIES'];
 export const FAMILY_LABEL = {
   FLOOR: 'Floor', WALL: 'Wall', COUNTER: 'Counter', TALL: 'Tall',
-  STACKER: 'Stackers', APPLIANCES: 'Appliances', ACCESSORIES: 'Accessories',
+  HIGH: 'Wall, full height', STACKER: 'Stackers', APPLIANCES: 'Appliances', ACCESSORIES: 'Accessories',
 };
 
 /** DISPLAY family for grouping/labels: stackers get their own section even
  *  though their behavioural type stays 'WALL' (hung, wall-attached). */
 export function familyOf(cab) {
-  return cab && cab.stacker ? 'STACKER' : cab && cab.type;
+  return cab && cab.stacker ? 'STACKER' : cab && cab.high ? 'HIGH' : cab && cab.type;
 }
 
 // ----- appliances (NOT Plinth products — visual placeholders, unpriced) ----
