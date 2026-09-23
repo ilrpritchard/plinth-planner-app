@@ -95,9 +95,10 @@ test('a WALL corner unit snaps its body edge onto the flank of a tall on the adj
   // between the tall's near end and the front of the corner unit's return, hiding the return
   store.updateItem(w9.id, { x: r.x });
   const sh = store.addItem('W25', { x: bb.minX + 7.25, z: -6.85 - t1.w / 2 - 5, rotDeg: 90 });
-  const f = snapPosition(store, sh.id, bb.minX + 20, sh.z, bb);                            // pulled forward
+  const f = snapPosition(store, sh.id, bb.minX + 20, sh.z, bb);                            // pulled forward: it DEEPENS (2026-09-23), back on the wall
   assert.equal(f.flag, undefined);
-  assert.ok(Math.abs((f.x + 7) - (bb.minX + 25.43)) < 0.01, `flush with the tall (${(f.x + 7).toFixed(2)})`);
+  assert.equal(f.depth, 25, `deepened to the tall's front, to the inch (${f.depth})`);
+  assert.ok(Math.abs(f.x - (bb.minX + 7.25)) < 0.01, 'its back stays on the wall');
   assert.ok(Math.abs((f.z + 5) - (-6.85 - t1.w / 2)) < 0.01, 'butted to the tall');
   assert.ok(Math.abs((f.z - 5) - (bb.minZ + 0.25 + 14)) < 0.01, 'its back end meets the front of the return: nothing shows');
 });
@@ -122,5 +123,20 @@ test('a tall snaps its end onto a corner base\'s face; a flush shelf still scrib
   store.removeItem(store.state.items.find((i) => i.code === 'W1').id);
   store.addItem('W9', { x: -18, z: -35.85, rotDeg: 0 });                             // body edge -28, return to -38
   const c = snapPosition(store, sh.id, -33, -20.2, bb);                                // pulled forward (the drag keeps the pointer on the wall's own side)
-  assert.ok(Math.abs((c.x + 7) - (-28)) < 0.01, `the shelf's front lands on the W9's body edge, covering the return (${(c.x + 7).toFixed(2)})`);
+  assert.equal(c.depth, 31, `the shelf deepens to the W9's body edge (31.2" from the wall, to the inch), covering the return (${c.depth})`);
+  assert.ok(Math.abs(c.x - (-118.9 / 2 + 7.25)) < 0.01, 'its back stays on the wall');
+});
+
+// her ask 2026-09-23: the open shelf pulled forward gets DEEPER (back on the wall), to the inch, snapping to a tall's front
+test('an open shelf pulled forward reports a new depth: free to the inch, snapped onto the tall\'s front within 2"', () => {
+  const store = new Store(); store.setRoom({ width: W, depth: D, height: 96 });
+  const t1 = getCab('T1');
+  store.addItem('T1', { x: -W / 2 + 0.25 + 1.18 + t1.d / 2, z: -6.85, rotDeg: 90 });     // front plane at minX + 25.43
+  const sh = store.addItem('W25', { x: -W / 2 + 7.25, z: -6.85 - t1.w / 2 - 5, rotDeg: 90 });
+  const free = snapPosition(store, sh.id, -W / 2 + 13, sh.z, b);                          // front would be at 20": free, to the inch
+  assert.equal(free.depth, 20); assert.ok(Math.abs(free.x - (-W / 2 + 7.25)) < 0.01, 'back stays on the wall');
+  const snap = snapPosition(store, sh.id, -W / 2 + 17, sh.z, b);                          // front at 24": within 2" of the tall's 25.43
+  assert.equal(snap.depth, 25, 'snapped onto the tall\'s front, rounded to the inch');
+  const shallow = snapPosition(store, sh.id, -W / 2 + 7, sh.z, b);
+  assert.equal(shallow.depth, 14, 'pushed back to the wall it is its own 14"');
 });

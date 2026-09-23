@@ -84,3 +84,13 @@ test('a wall cabinet dragged up to a cooktop stops 50mm short of its edge; the w
   store.updateItem(w2.id, { x: 11.45 + 12 + COOK_SIDE_IN });
   assert.ok(!computeWarnings(store.state).some((w) => /50mm/.test(w.msg)), 'no warning at 50mm');
 });
+
+// her ask 2026-09-23: "drag this wall cabinet so it is equally spaced either side of the range, make that an auto thing"
+test('an upper dragged beside the cooker snaps to the same edge gap as the upper on the other side', () => {
+  const store = mkStore(); const b = bounds(store.state.room);
+  store.addItem('F32', { x: 0, z: -80 + 12.25, rotDeg: 0 }); store.addItem('AP22', { x: 0, z: -80 + 12.25, rotDeg: 0 });   // 24" hob at x 0
+  store.addItem('W5', { x: 11.45 + 4 + 18, z: -80 + 7.25, rotDeg: 0 });          // 36" double, near edge 4" right of the hob
+  const w1 = store.addItem('W1', { x: -40, z: -80 + 7.25, rotDeg: 0 });          // 20" single on the left, dragged toward the hob
+  const r = snapPosition(store, w1.id, -(11.45 + 4 + 10) - 3, -80 + 7.25, b);   // 3" short of the matching spot
+  assert.ok(Math.abs((r.x + 10) - (-(11.45 + 4))) < 0.01, `its near edge is 4" off the hob like the double (${(r.x + 10).toFixed(2)})`);
+});

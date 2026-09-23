@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { snapPosition } from './snapping.js';
-import { getCab } from '../core/catalogue.js';
+import { getCab, sizedShelfCode } from '../core/catalogue.js';
 import { measureRun } from '../core/measure.js';
 import { fmtIn } from '../core/units.js';
 import { isOven, findOvenHost, housingCodeFor } from '../core/ovenseat.js';
@@ -186,6 +186,18 @@ export class PointerControls {
       if (hit && cab) ({ x: rawX, z: rawZ } = this._wallRaw(hit, cab, p));
     }
     const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds());
+    // an open shelf pulled forward gets deeper instead (snapping returns `depth`): swap to the sized code
+    // and keep its back on the wall
+    if (snapped.depth != null) {
+      const it0 = this.store.getItem(this.drag.id), c0 = it0 && getCab(it0.code);
+      if (c0 && Math.abs(c0.d - snapped.depth) >= 0.5) {
+        const code = sizedShelfCode(c0.baseCode || c0.code, snapped.depth);
+        this.store.swapItem(this.drag.id, code, { quiet: true });
+        const nd = getCab(code).d, b = this.room.bounds(), r = ((snapped.rotDeg % 360) + 360) % 360;
+        if (r === 0) snapped.z = b.minZ + 0.25 + nd / 2; else if (r === 180) snapped.z = b.maxZ - 0.25 - nd / 2;
+        else if (r === 90) snapped.x = b.minX + 0.25 + nd / 2; else snapped.x = b.maxX - 0.25 - nd / 2;
+      }
+    }
     this.store.updateItem(this.drag.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg, ...(snapped.hostId != null ? { hostId: snapped.hostId } : {}) }, { quiet: true });
     this.drag.flag = snapped.flag || null;
     const RULE_MSG = {

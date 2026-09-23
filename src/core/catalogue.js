@@ -356,7 +356,32 @@ export function sizedFridgeCode(size) {
 const SIZED_FRIDGE_RX = /^AP9:(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/i;
 const sizedFridgeCache = new Map();
 
+// OPEN SHELVES AT ANY DEPTH (her ask 2026-09-23, "drag the open shelves into the corner to be any depth
+// i need them to be"): a code of the form 'W25:24' is the open shelf W25 made 24" deep, its back still
+// on the wall. Any WALL open shelf (W11-W13, W25) takes it; whole inches, 8" to 36". Same virtual-code
+// idiom as the sized fridge: getCab is the one source of truth, so everything downstream sees the depth.
+export const SHELF_DEPTH_LIMITS = [8, 36];
+export function sizedShelfCode(baseCode, depth) {
+  const base = CATALOGUE.find((c) => c.code === baseCode);
+  const d = Math.round(clampDim(depth, SHELF_DEPTH_LIMITS, base ? base.d : 14));
+  return base && Math.abs(d - base.d) < 0.5 ? baseCode : `${baseCode}:${d}`;
+}
+const SIZED_SHELF_RX = /^(W\d+):(\d+(?:\.\d+)?)$/i;
+const sizedShelfCache = new Map();
+
 export function getCab(code) {
+  const ms = typeof code === 'string' && SIZED_SHELF_RX.exec(code);
+  if (ms) {
+    let hit = sizedShelfCache.get(code);
+    if (!hit) {
+      const base = CATALOGUE.find((c) => c.code === ms[1].toUpperCase());
+      if (!base || base.form !== 'open' || base.type !== 'WALL') return undefined;
+      const d = Math.round(clampDim(ms[2], SHELF_DEPTH_LIMITS, base.d));
+      hit = { ...base, code, d, baseCode: base.code, desc: `${base.desc} · ${d}" deep` };
+      sizedShelfCache.set(code, hit);
+    }
+    return hit;
+  }
   const m = typeof code === 'string' && SIZED_FRIDGE_RX.exec(code);
   if (m) {
     let hit = sizedFridgeCache.get(code);

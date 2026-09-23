@@ -27,6 +27,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     if (!host) return { x: item.x, z: item.z, rotDeg: item.rotDeg || 0, flag: 'oven' };
     return { x: host.x, z: host.z, rotDeg: host.rotDeg || 0, hostId: host.id };
   }
+  let shelfDepth = null;                       // an open shelf's new depth (see section 1)
   // a range hood RIDES the cooker: centred over the range or cooktop nearest the pointer; so does
   // the hood COVER (W26), which sits over the hood at its own fixed height (top on the crown line)
   if (cab.appliance === 'hood' || cab.hoodCover) {
@@ -106,6 +107,17 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       }
       const opts = [{ out: 0, err: Math.abs(rawPerp - touch) }, ...(flush != null ? [{ out: flush - touch, err: Math.abs(rawPerp - flush) }] : []), ...(cover != null ? [{ out: cover - touch, err: Math.abs(rawPerp - cover) }] : [])];
       out = opts.sort((a, b) => a.err - b.err)[0].out;
+      // an OPEN SHELF pulled forward does not leave the wall: it gets DEEPER (her ask 2026-09-23, "any depth
+      // i need"). Its front follows the pointer to the inch, snapping within 3" onto a tall's front or a
+      // corner wall unit's body edge; the depth comes back as `depth` for the controller to apply.
+      if (cab.form === 'open' && cab.type === 'WALL') {
+        const frontFree = rawPerp + d / 2;
+        const fronts = [...(flush != null ? [flush + d / 2] : []), ...(cover != null ? [cover + d / 2] : [])];
+        const snapF = fronts.find((f) => Math.abs(f - frontFree) < 3);
+        const front = snapF != null ? snapF : Math.round(frontFree);
+        shelfDepth = Math.max(8, Math.min(36, Math.round(front - WALL_GAP)));
+        out = 0;
+      }
     }
     if (wall === 'back') z = bounds.minZ + touch + out;
     else if (wall === 'front') z = bounds.maxZ - touch - out;
@@ -185,6 +197,25 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     for (const cand of [oFree + oHalf + halfRun, oFree - oHalf - halfRun]) {
       const err = Math.abs(rawFree - cand);
       if (err < bestErr) { bestErr = err; best = cand; bestN = { o, oc }; }
+    }
+  }
+  // ---- 2m. MATCH ACROSS THE COOKER while dragging an upper (her ask 2026-09-23, "drag this wall
+  // cabinet so it is equally spaced either side of the range, make that an auto thing"): with a range
+  // or cooktop in this run and a hung cabinet on its other side, the spot where my near edge is the
+  // same distance from the cooker as that cabinet's near edge is a snap point (edges, as the eye reads).
+  if (cab.type === 'WALL' && !cab.stacker && !cab.hoodCover) {
+    const same = (o) => ((((o.rotDeg || 0) % 360) + 360) % 360) === ((rotDeg % 360) + 360) % 360;
+    const alongOf = (o) => (freeAxis === 'x' ? o.x : o.z);
+    for (const ck of others) {
+      const kc = getCab(ck.code); if (!kc || !(kc.appliance === 'range' || kc.appliance === 'hob') || !same(ck)) continue;
+      const focus = alongOf(ck), side = Math.sign(rawFree - focus); if (!side) continue;
+      const partner = others.filter((o) => { const c = getCab(o.code); return c && c.type === 'WALL' && !c.stacker && !c.hoodCover && same(o) && Math.sign(alongOf(o) - focus) === -side; })
+        .sort((p, q) => Math.abs(alongOf(p) - focus) - Math.abs(alongOf(q) - focus))[0];
+      if (!partner) continue;
+      const pc = getCab(partner.code), pNear = Math.abs(alongOf(partner) - focus) - pc.w / 2;
+      const cand = focus + side * (pNear + halfRun);
+      const err = Math.abs(rawFree - cand);
+      if (err < bestErr) { bestErr = err; best = cand; bestN = null; }
     }
   }
   // ---- 2p. RIGHT-ANGLE joint with the ADJOINING run (her catch 2026-09-22, "cabinets on
@@ -610,7 +641,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     else if (returnBlockedBy && !flag) flag = 'cornerReturn:' + returnBlockedBy;
   }
 
-  return { x, z, rotDeg, flag };
+  return { x, z, rotDeg, flag, ...(shelfDepth != null ? { depth: shelfDepth } : {}) };
 }
 
 /**

@@ -280,10 +280,10 @@ export class Store {
   }
 
   /** Swap a placed item for another code IN PLACE (same spot, same rotation). */
-  swapItem(id, code) {
+  swapItem(id, code, opts = {}) {
     const it = this.state.items.find((i) => i.id === id);
     if (!it || it.code === code) return;
-    this._record();
+    if (!opts.quiet) this._record();       // quiet: mid-drag depth changes of a shelf, inside the drag's own history step
     it.code = code;
     delete it.open;                       // door state doesn't carry across forms
     this._emit({ type: 'swap', id });

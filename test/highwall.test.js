@@ -47,3 +47,12 @@ test('W25 Open Shelves 10": a small open shelf for the gap beside a corner unit,
   assert.ok(w && w.type === 'WALL' && w.w === 10 && w.h === 30 && w.d === 14 && w.priceTBC && w.usd === 0);
   assert.equal(getCab('S33').w, 10); assert.equal(getCab('S34').h, 21);
 });
+
+test('an open shelf at any depth: W25:24 is the 10" shelf made 24" deep, whole inches, 8" to 36" (her ask 2026-09-23)', async () => {
+  const { getCab, sizedShelfCode } = await import('../src/core/catalogue.js');
+  const s = getCab('W25:24');
+  assert.ok(s && s.d === 24 && s.w === 10 && s.baseCode === 'W25' && s.priceTBC && /24" deep/.test(s.desc));
+  assert.equal(sizedShelfCode('W25', 14), 'W25', 'its own depth is its own code');
+  assert.equal(sizedShelfCode('W11', 31.4), 'W11:31'); assert.equal(sizedShelfCode('W25', 60), 'W25:36');
+  assert.equal(getCab('W2:24'), undefined, 'a door cabinet never sizes');
+});
