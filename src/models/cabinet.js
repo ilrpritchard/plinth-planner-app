@@ -231,8 +231,9 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // blank return, so with the door open the shelf and floor run back into the corner (her ask
   // 2026-09-22, "it needs to show the shelf going back into the corner"). cornerDir = which
   // side the return extends; cornerRet = the drawn return length (see the corner block below).
-  const cornerDir = cab.corner ? (cab.cornerSide === 'right' ? 1 : -1) : 0;
-  const cornerRet = cab.corner ? Math.max(1, (opts.returnLen ?? (cab.type === 'FLOOR' ? 20 : 10)) - 2 * SKIN) : 0;
+  const noReturn = cab.corner && opts.returnLen != null && opts.returnLen <= 0.5;   // a bulkhead takes the whole return: a plain box
+  const cornerDir = cab.corner && !noReturn ? (cab.cornerSide === 'right' ? 1 : -1) : 0;
+  const cornerRet = cab.corner && !noReturn ? Math.max(1, (opts.returnLen ?? (cab.type === 'FLOOR' ? 20 : 10)) - 2 * SKIN) : 0;
   const left = box(PANEL, bodyH, d, mat); left.position.set(-shellW / 2 + PANEL / 2, bodyY0 + bodyH / 2, 0);
   const right = box(PANEL, bodyH, d, mat); right.position.set(shellW / 2 - PANEL / 2, bodyY0 + bodyH / 2, 0);
   const bottom = box(shellW, PANEL, d, mat); bottom.position.set(0, bodyY0 + PANEL / 2, 0);
@@ -341,7 +342,7 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // 10". OAK, not painted: in real life the blank return that runs into the
   // corner is oak-faced like the interiors (her call 2026-09-16). Flush front,
   // no door detail and no knob. A run can then butt at 90° against it. -----
-  if (cab.corner) {
+  if (cab.corner && !noReturn) {
     // DRAWN return length: sized from the actual distance to the adjacent
     // wall when known (opts.returnLen, see cornerReturnLength) so the panel
     // always meets the wall flush — no clipped geometry, no open corner.

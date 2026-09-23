@@ -377,7 +377,19 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // Build the cabinet's local extents (including a corner return panel, which
   // sticks out one side), rotate them, and clamp the centre so the resulting
   // world box stays within the room walls.
-  const ret = cab.corner ? (cab.type === 'FLOOR' ? 20 : 10) : 0;
+  let ret = cab.corner ? (cab.type === 'FLOOR' ? 20 : 10) : 0;
+  // a boxing within the return's reach on that side takes the return (it is cut round the bulkhead on
+  // site, her call 2026-09-23): the room clamp then keeps only the BODY inside. With no bulkhead the
+  // full return stays inside the room, so a drag into a plain corner still parks the body 20" out.
+  if (ret) {
+    const dirR = cab.cornerSide === 'right' ? 1 : -1, radR = ((item.rotDeg || 0) * Math.PI) / 180;
+    const ux = dirR * Math.cos(radR), uz = -dirR * Math.sin(radR);
+    const px = rawX + ux * (w / 2), pz = rawZ + uz * (w / 2), d2 = d / 2;
+    const cut = boxingBoxes(store.state.room || {}).some((bb) => Math.abs(ux) > 0.5
+      ? pz - d2 < bb.z1 && pz + d2 > bb.z0 && (ux > 0 ? bb.x1 > px - 2 && bb.x0 < px + ret : bb.x0 < px + 2 && bb.x1 > px - ret)
+      : px - d2 < bb.x1 && px + d2 > bb.x0 && (uz > 0 ? bb.z1 > pz - 2 && bb.z0 < pz + ret : bb.z0 < pz + 2 && bb.z1 > pz - ret));
+    if (cut) ret = 0;
+  }
   const leftRet = (cab.corner && cab.cornerSide !== 'right') ? ret : 0;  // return panel extends one side
   const rightRet = (cab.corner && cab.cornerSide === 'right') ? ret : 0;
   const lxMin = -(w / 2 + leftRet), lxMax = (w / 2 + rightRet);
@@ -427,12 +439,16 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     const overCooker = cab.type === 'COUNTER' || (cab.type === 'WALL' && !cab.stacker && !cab.hoodCover);
     const hitAt = (px, pz) => {
       const me = worldBox({ x: px, z: pz, rotDeg }, cab);
-      const test = (ob) =>
-        Math.min(me.x1, ob.x1) - Math.max(me.x0, ob.x0) > TOL &&
-        Math.min(me.z1, ob.z1) - Math.max(me.z0, ob.z0) > TOL &&
-        Math.min(me.y1, ob.y1) - Math.max(me.y0, ob.y0) > 1;
+      const testOn = (m) => (ob) =>
+        Math.min(m.x1, ob.x1) - Math.max(m.x0, ob.x0) > TOL &&
+        Math.min(m.z1, ob.z1) - Math.max(m.z0, ob.z0) > TOL &&
+        Math.min(m.y1, ob.y1) - Math.max(m.y0, ob.y0) > 1;
+      const test = testOn(me);
       if (winSolid) for (const wb of winBoxes) if (test(wb)) return wb;
-      for (const bb of boxBoxes) if (test(bb)) return bb;
+      // a boxing never blocks a CORNER unit: it is cut in round the bulkhead on site, body and return alike
+      // (her call 2026-09-23: "it should still be allowed there, that can be cut in on site"); the live
+      // warning notes the cut. Everything else treats a boxing as a wall.
+      if (!cab.corner) for (const bb of boxBoxes) if (test(bb)) return bb;
       for (const o of others) {
         const oc = getCab(o.code);
         if (!oc || !oc.placeable) continue;
@@ -540,9 +556,13 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     // leg-to-leg corners sit 24.25" out (tip 4.25" short) and a U-shape's
     // second corner can carry a scribe strip on top of that.
     const TIP_TOL = 10;
+    // the return REACHES the wall: its tip within 10" of the wall, or past it (the return is cut to
+    // length on site, her call 2026-09-23), i.e. the body edge is within (return + 10) of that wall
+    const edgeX = x + dir * cc * (w / 2), edgeZ = z - dir * ss * (w / 2), reachR = getFootprint(cab).returnLeg;
     const tipOk = horiz
-      ? Math.min(Math.abs(tipX - bounds.minX), Math.abs(tipX - bounds.maxX)) <= TIP_TOL
-      : Math.min(Math.abs(tipZ - bounds.minZ), Math.abs(tipZ - bounds.maxZ)) <= TIP_TOL;
+      ? (dir * cc > 0 ? bounds.maxX - edgeX : edgeX - bounds.minX) <= reachR + TIP_TOL
+      : (-dir * ss > 0 ? bounds.maxZ - edgeZ : edgeZ - bounds.minZ) <= reachR + TIP_TOL;
+    void tipX; void tipZ;
     // …OR, with the return still meeting the side wall, the unit pulled off its
     // own back wall until its body BUTTS a cabinet on the adjoining run (her
     // call 2026-09-16: when the generated return stops short, the corner unit
@@ -615,10 +635,21 @@ export function cornerReturnLength(cab, item, room) {
   else if (ux < -0.5) dist = edgeX + room.width / 2;
   else if (uz > 0.5) dist = room.depth / 2 - edgeZ;
   else if (uz < -0.5) dist = edgeZ + room.depth / 2;
+  // a boxing in that corner takes the return first: the panel is cut to its face (none left = 0)
+  const d = cab.d || 24, band = (lo, hi, a, b) => lo < b && hi > a;
+  for (const bb of boxingBoxes(room)) {
+    let f = null;                                        // edge -> the boxing's near face (0 when the edge is already inside it)
+    if (ux > 0.5 && bb.x1 > edgeX - 0.5 && band(item.z - d / 2, item.z + d / 2, bb.z0, bb.z1)) f = Math.max(0, bb.x0 - edgeX);
+    else if (ux < -0.5 && bb.x0 < edgeX + 0.5 && band(item.z - d / 2, item.z + d / 2, bb.z0, bb.z1)) f = Math.max(0, edgeX - bb.x1);
+    else if (uz > 0.5 && bb.z1 > edgeZ - 0.5 && band(item.x - d / 2, item.x + d / 2, bb.x0, bb.x1)) f = Math.max(0, bb.z0 - edgeZ);
+    else if (uz < -0.5 && bb.z0 < edgeZ + 0.5 && band(item.x - d / 2, item.x + d / 2, bb.x0, bb.x1)) f = Math.max(0, edgeZ - bb.z1);
+    if (f != null && dist != null && f < dist) dist = f;
+  }
+  if (dist != null && dist <= 0.5) return 0;
   // draw to the actual wall while the unit sits at a corner (covers scribe
   // gaps up to ~6" and rooms resized under the return); free-floating or far
   // from any corner it falls back to the catalogue return.
-  return (dist != null && dist > 1 && dist <= ret + 10) ? dist : ret;
+  return (dist != null && dist > 0.5 && dist <= ret + 10) ? dist : ret;
 }
 
 /** World AABB of an item incl. corner return + mount height band. */

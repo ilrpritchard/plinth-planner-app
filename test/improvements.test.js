@@ -264,9 +264,9 @@ test('corner cabinets come in left/right return variants', () => {
   }
 });
 
-test('a corner cabinet (and its return panel) never passes through a wall', () => {
+test('a corner cabinet (and its return panel) never passes through a plain wall; only a bulkhead cuts the return', () => {
   const bounds = { minX: -72, maxX: 72, minZ: -60, maxZ: 60 };
-  const mk = (items) => ({ state: { items }, getItem: (id) => items.find((i) => i.id === id) });
+  const mk = (items) => ({ state: { items, room: { width: 144, depth: 120 } }, getItem: (id) => items.find((i) => i.id === id) });
   // left-blank corner dragged hard into the left wall → panel edge stops at minX
   const r = snapPosition(mk([{ id: 'a', code: 'F15', x: -300, z: -46, rotDeg: 0 }]), 'a', -300, -46, bounds);
   assert.ok((r.x - (20 / 2 + 20)) >= bounds.minX - 0.01, 'F15 panel stays inside the left wall');

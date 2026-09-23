@@ -50,7 +50,7 @@ export function planClearBoxings(state) {
   if (!boxes.length) return out;
   const virt = { ...state, items: state.items.map((it) => ({ ...it })) };
   for (const it of virt.items) {
-    const cab = getCab(it.code); if (!cab || !cab.placeable) continue;
+    const cab = getCab(it.code); if (!cab || !cab.placeable || cab.corner) continue;         // a corner unit is cut in round a bulkhead on site
     const y0 = cab.mountY ?? MOUNT[cab.type] ?? 0;
     const bb = boxAt(cab, it.x, it.z, it.rotDeg);
     const inBox = boxes.filter((bx) => touch(bb, bx, -0.5) && y0 < bx.y1 - 0.5);

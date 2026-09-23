@@ -87,7 +87,16 @@ export function computeWarnings(state) {
     for (const b of boxes) {
       if (!isSolidBody(b.cab)) continue;
       const [y0, y1] = yBand(b.cab);
-      if (b.x - b.hx < bb.x1 - 1 && b.x + b.hx > bb.x0 + 1 && b.z - b.hz < bb.z1 - 1 && b.z + b.hz > bb.z0 + 1 && y0 < bb.y1 - 1) {
+      const horiz = ((b.it.rotDeg || 0) % 180) === 0, bx = b.it.x, bz = b.it.z;
+      // a CORNER unit is cut in round a bulkhead on site (her call 2026-09-23): the planner NOTES the cut
+      if (b.cab.corner) {
+        const hx = horiz ? b.cab.w / 2 : b.cab.d / 2, hz = horiz ? b.cab.d / 2 : b.cab.w / 2;
+        const ox = Math.min(bx + hx, bb.x1) - Math.max(bx - hx, bb.x0), oz = Math.min(bz + hz, bb.z1) - Math.max(bz - hz, bb.z0);
+        if (ox > 0.25 && oz > 0.25 && y0 < bb.y1 - 1) out.push({ level: 'warn', msg: `${b.cab.code} is cut in round the boxing on the ${bb.wall} wall (${fmtIn(horiz ? ox : oz)} into its side, ${fmtIn(horiz ? oz : ox)} deep): a site cut, the carcass is notched to the bulkhead.` });
+        continue;
+      }
+      const hx = b.hx, hz = b.hz;
+      if (bx - hx < bb.x1 - 1 && bx + hx > bb.x0 + 1 && bz - hz < bb.z1 - 1 && bz + hz > bb.z0 + 1 && y0 < bb.y1 - 1) {
         out.push({ level: 'error', msg: `${b.cab.code} stands in the boxing on the ${bb.wall} wall. Move it clear: nothing can stand in a boxed-in pipe run or hang on it.` });
       }
     }

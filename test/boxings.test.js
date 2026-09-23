@@ -94,3 +94,39 @@ test('a cabinet already standing in a corner boxing comes OUT into the room, on 
   const p = planClearBoxings(store.state);
   assert.equal(p.moves.length, 1); assert.ok(p.moves[0].x >= -18.01 && p.stuck.length === 0);
 });
+
+// her corner 2026-09-23 ("corner cupboard will not drag out this space, i need it next to the dishwasher
+// cabinet and into the corner" / "it should still be allowed there, that can be cut in on site... but the
+// planner should note that"): a bulkhead 7.1" deep x 8.7" along sits in the back-right corner. A corner unit
+// may stand INTO it, body or return; the planner notes the site cut and draws no return inside the bulkhead.
+test('a corner unit may be cut in round a bulkhead: allowed on either wall, noted, drawn return stops at it', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const { snapPosition, cornerReturnLength } = await import('../src/interaction/snapping.js');
+  const { computeWarnings } = await import('../src/core/warnings.js');
+  const { planClearBoxings } = await import('../src/core/roomresize.js');
+  const { getCab } = await import('../src/core/catalogue.js');
+  const W = 118.9, D = 86.2, b = { minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2 };
+  const store = new Store(); store.setRoom({ width: W, depth: D, height: 95.3, openings: [], boxings: [{ id: 2, wall: 'right', pos: 0, w: 8.7, d: 7.1, h: 95.3 }] });
+  store.addItem('F18', { x: 21.98, z: -30.85, rotDeg: 0 });                      // back run ends at 33.98
+  store.addItem('F33', { x: 47.2, z: -18.85 + 9, rotDeg: 270 });                 // right wall, leg to leg with the back run's face
+  // (1) on the RIGHT wall, blank left = return toward the back wall, through the bulkhead
+  const c = store.addItem('F15', { x: 0, z: 0, rotDeg: 270 });
+  const r = snapPosition(store, c.id, 47.2, -26, b);
+  assert.equal(r.flag, undefined, 'allowed on the right wall');
+  assert.ok(Math.abs((r.z + 10) - (-18.85)) < 0.05, `its door-side edge on the back run's face, its back end inside the bulkhead (${(r.z + 10).toFixed(2)})`);
+  store.updateItem(c.id, { x: r.x, z: r.z, rotDeg: 270 });
+  assert.equal(cornerReturnLength(getCab('F15'), store.getItem(c.id), store.state.room), 0, 'no return drawn inside the bulkhead');
+  let w = computeWarnings(store.state).map((x) => x.msg);
+  assert.ok(w.some((m) => /F15 is cut in round the boxing/.test(m)), `the planner notes the cut: ${w.join(' | ')}`);
+  assert.ok(!w.some((m) => /stands in the boxing/.test(m)), 'and does not call it an error');
+  assert.equal(planClearBoxings(store.state).moves.length, 0, 'load does not shove it out');
+  // (2) on the BACK wall at the right end, blank right = return into the bulkhead corner, body cut in 20" wide
+  store.removeItem(c.id);
+  const c2 = store.addItem('F15R', { x: 0, z: 0, rotDeg: 0 });
+  const r2 = snapPosition(store, c2.id, 45, -30.85, b);
+  assert.equal(r2.flag, undefined, 'allowed on the back wall too');
+  assert.ok(r2.x + 10 <= b.maxX + 0.01 && r2.x + 10 > 52.35, `its body reaches into the bulkhead (right edge ${(r2.x + 10).toFixed(2)})`);
+  store.updateItem(c2.id, { x: r2.x, z: r2.z, rotDeg: 0 });
+  w = computeWarnings(store.state).map((x) => x.msg);
+  assert.ok(w.some((m) => /F15R is cut in round the boxing/.test(m)), `noted: ${w.join(' | ')}`);
+});
