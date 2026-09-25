@@ -237,3 +237,21 @@ test('plan DXF: empty state still writes a valid four-wall room', () => {
   assertFiniteCoords(dxf);
   assert.ok((dxf.match(/\nLINE\n/g) || []).length >= 8, 'double-line walls');
 });
+
+test('DXF layers carry their colours: the finish on FRONT (nearest ACI + exact true colour), oak on BODY, a FRONT-<Finish> layer per cabinet painted differently (her rule 2026-09-25)', async () => {
+  const { buildPlanDXF, buildCabinetLibraryDXF, nearestACI, trueColour } = await import('../src/core/dxf.js');
+  const { getFinish } = await import('../src/core/catalogue.js');
+  const state = { room: { width: 200, depth: 150, height: 96, openings: [] }, finish: 'Swamp', items: [
+    { id: 1, code: 'F2', x: -64, z: -62.75, rotDeg: 0 }, { id: 2, code: 'F10', x: -34, z: -62.75, rotDeg: 0, finish: 'Ghost' } ] };
+  const dxf = buildPlanDXF(state, { walls: true });
+  const layer = (name) => { const i = dxf.indexOf(`\nLAYER\n2\n${name}\n`); assert.ok(i > 0, `layer ${name}`); return dxf.slice(i, i + 80); };
+  const swamp = getFinish('Swamp').hex, ghost = getFinish('Ghost').hex;
+  assert.ok(layer('FRONT').includes(`\n62\n${nearestACI(swamp)}\n`) && layer('FRONT').includes(`\n420\n${trueColour(swamp)}\n`), 'FRONT is the kitchen finish');
+  assert.ok(layer('FRONT-Ghost').includes(`\n420\n${trueColour(ghost)}\n`), 'the Ghost cabinet has its own layer, in Ghost');
+  assert.ok(layer('BODY').includes(`\n420\n${trueColour('#c9a978')}\n`), 'BODY is oak');
+  assert.ok(dxf.includes('\nBLOCK\n8\n0\n2\nF10_UNIT-Ghost\n') && dxf.includes('\nINSERT\n8\n0\n2\nF10_UNIT-Ghost\n'), 'a block per paint');
+  const ff = dxf.slice(dxf.indexOf('\n2\nF10_UNIT-Ghost\n'), dxf.indexOf('\nENDBLK', dxf.indexOf('\n2\nF10_UNIT-Ghost\n')));
+  assert.ok(ff.includes('\n8\nFRONT-Ghost\n') && !ff.includes('\n8\nFRONT\n'), 'its fronts sit on the Ghost layer');
+  assert.ok(buildCabinetLibraryDXF().includes(`\n420\n${trueColour(ghost)}\n`), 'the library ships in Ghost');
+  assert.equal(nearestACI('#333333'), 250); assert.equal(nearestACI('#ff0000'), 1); assert.equal(nearestACI('#ffffff'), 7);
+});

@@ -158,3 +158,15 @@ test('empty and unknown-code inputs still yield a valid envelope', () => {
   const out = buildUnitIFC([{ name: 'F', state: { items: [{ code: 'AP9:36x30x72', x: 0, z: 0 }] } }]);
   assert.match(out, /IFCFURNISHINGELEMENT\('[^']{22}',\$,'[^']*',\$,\$,#\d+,#\d+,'AP9'\)/);
 });
+
+test('colours carry across: one IfcSurfaceStyle per colour, an IfcStyledItem on every solid, the finish on cabinets and steel on appliances (her rule 2026-09-25)', () => {
+  const { getFinish } = { getFinish: (n) => ({ Swamp: { hex: '#6B6148' } })[n] };
+  const state = { finish: 'Swamp', items: [ { id: 1, code: 'F2', x: 0, z: -60, rotDeg: 0 }, { id: 2, code: 'F10', x: 40, z: -60, rotDeg: 0, finish: 'Ghost' }, { id: 3, code: 'AP2', x: 80, z: -60, rotDeg: 0 }, { id: 4, code: 'F23', x: 120, z: -60, rotDeg: 0 } ] };
+  const ifc = buildUnitIFC([{ name: 'Type C', state }]);
+  const solids = (ifc.match(/IFCEXTRUDEDAREASOLID/g) || []).length, styled = (ifc.match(/IFCSTYLEDITEM\(/g) || []).length;
+  assert.equal(solids, 4); assert.equal(styled, 4, 'every solid is styled');
+  assert.ok(ifc.includes("IFCSURFACESTYLE('Swamp',.BOTH.,") && ifc.includes("IFCSURFACESTYLE('Ghost',.BOTH.,") && ifc.includes("IFCSURFACESTYLE('Stainless steel',.BOTH.,") && ifc.includes("IFCSURFACESTYLE('Oak',.BOTH.,"));
+  const [r, g, b] = [0x6b / 255, 0x61 / 255, 0x48 / 255].map((v) => Math.round(v * 1e6) / 1e6);
+  assert.ok(ifc.includes(`IFCCOLOURRGB($,${r},${g},${b})`), `Swamp is ${getFinish('Swamp').hex} in the file`);
+  assert.equal((ifc.match(/IFCSURFACESTYLE\(/g) || []).length, 4, 'one style per colour, shared');
+});

@@ -20,8 +20,19 @@
 // a deterministic per-file counter, so the same input yields the same file
 // byte-for-byte (`opts.timestamp` defaults to '' for the same reason).
 
-import { getCab } from './catalogue.js';
+import { getCab, getFinish } from './catalogue.js';
 import { MOUNT } from './units.js';
+
+// COLOURS CARRY ACROSS (her rule 2026-09-25): every solid gets an IfcStyledItem pointing at an
+// IfcSurfaceStyle (IfcSurfaceStyleShading, the one Revit's IFC link colours faces from) — the
+// painted finish on cabinets, oak on open units, steel on appliances, the finish on integrated ones.
+const STEEL_HEX = '#c2c6cb', OAK_HEX = '#c9a978';
+function hexToUnit(hex) {
+  const h = String(hex || '').replace('#', '');
+  const v = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+  const [r, g, b] = Number.isFinite(v) ? [(v >> 16) & 255, (v >> 8) & 255, v & 255] : [255, 255, 255];
+  return [r / 255, g / 255, b / 255];
+}
 
 // mount heights (inches, z of the unit's underside) — mirrors models/cabinet.js
 // MOUNT and dxf.js MOUNT_IN. Appliances carry their own cab.mountY instead.
@@ -98,6 +109,18 @@ export function buildUnitIFC(units, opts = {}) {
     `IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.0E-5,#${wcs},$)`);
   const origin2d = add('IFCCARTESIANPOINT((0.,0.))');
   const axis2d = add(`IFCAXIS2PLACEMENT2D(#${origin2d},$)`);
+  // one IfcSurfaceStyle per colour in the file, named after the finish
+  const styles = new Map();
+  const styleFor = (name, hex) => {
+    const key = String(hex).toLowerCase();
+    if (!styles.has(key)) {
+      const [r, g, b] = hexToUnit(hex);
+      const rgb = add(`IFCCOLOURRGB($,${real(r)},${real(g)},${real(b)})`);
+      const shading = add(`IFCSURFACESTYLESHADING(#${rgb},0.)`);
+      styles.set(key, add(`IFCSURFACESTYLE('${str(name)}',.BOTH.,(#${shading}))`));
+    }
+    return styles.get(key);
+  };
 
   // ---- units: INCHES (conversion-based, 0.0254 m) + radian + area/volume ----
   const uMetre = add('IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)');
@@ -154,6 +177,14 @@ export function buildUnitIFC(units, opts = {}) {
         `${real(cab.w)},${real(cab.d)})`);
       const solid = add(
         `IFCEXTRUDEDAREASOLID(#${prof},#${wcs},#${dirZ},${real(cab.h)})`);
+      // its colour: the paint it was designed in (the cabinet's own, else the unit's), oak for an
+      // open unit or shelf, steel for an appliance, the paint for an integrated one
+      const finName = (it.finish && getFinish(it.finish) ? it.finish : null) || (unit.state && unit.state.finish) || 'Ghost';
+      const finHex = (getFinish(finName) || {}).hex || '#F7F4EB';
+      const [sName, sHex] = cab.type === 'APPLIANCES'
+        ? (cab.integrated || cab.plaster ? [finName, finHex] : ['Stainless steel', STEEL_HEX])
+        : (cab.form === 'open' || cab.form === 'tray' || cab.type === 'SHELF' ? ['Oak', OAK_HEX] : [finName, finHex]);
+      add(`IFCSTYLEDITEM(#${solid},(#${styleFor(sName, sHex)}),$)`);
       const rep = add(
         `IFCSHAPEREPRESENTATION(#${ctx},'Body','SweptSolid',(#${solid}))`);
       const pds = add(`IFCPRODUCTDEFINITIONSHAPE($,$,(#${rep}))`);

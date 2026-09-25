@@ -21,7 +21,7 @@
 // citizens — LWPOLYLINE is R14+ so it is never used). No DOM, no Three.js —
 // testable in plain node.
 
-import { CATALOGUE, getCab } from './catalogue.js';
+import { CATALOGUE, getCab, getFinish, BRAND } from './catalogue.js';
 import { MOUNT, counterShelfTops } from './units.js';
 import { ovenSeat } from './ovenseat.js';
 import { openingCenter, openingWidth } from './openings.js';
@@ -94,6 +94,37 @@ function box(x0, x1, y0, y1, z0, z1, layer) {
   ], BOXF, layer);
 }
 
+// ---- colour ------------------------------------------------------------------
+// COLOURS CARRY ACROSS (her rule 2026-09-25: "when anyone exports the colors should carry
+// across, in Revit or AutoCAD or whatever they use"). Entities draw BYLAYER, and every layer
+// carries its colour twice: the nearest AutoCAD Color Index (group 62, what an R12 reader
+// and every DXF importer understands) AND the exact 24-bit true colour (group 420, which
+// AutoCAD 2004+ and SketchUp read and prefer). One FRONT layer per painted finish in the
+// file, BODY the oak carcass, so a FRONT-Sage layer really is Sage in the drawing.
+const ACI_RGB = [255,0,0,255,255,0,0,255,0,0,255,255,0,0,255,255,0,255,255,255,255,128,128,128,192,192,192,255,0,0,255,127,127,165,0,0,165,82,82,127,0,0,127,63,63,76,0,0,76,38,38,38,0,0,38,19,19,255,63,0,255,159,127,165,41,0,165,103,82,127,31,0,127,79,63,76,19,0,76,47,38,38,9,0,38,23,19,255,127,0,255,191,127,165,82,0,165,124,82,127,63,0,127,95,63,76,38,0,76,57,38,38,19,0,38,28,19,255,191,0,255,223,127,165,124,0,165,145,82,127,95,0,127,111,63,76,57,0,76,66,38,38,28,0,38,33,19,255,255,0,255,255,127,165,165,0,165,165,82,127,127,0,127,127,63,76,76,0,76,76,38,38,38,0,38,38,19,191,255,0,223,255,127,124,165,0,145,165,82,95,127,0,111,127,63,57,76,0,66,76,38,28,38,0,33,38,19,127,255,0,191,255,127,82,165,0,124,165,82,63,127,0,95,127,63,38,76,0,57,76,38,19,38,0,28,38,19,63,255,0,159,255,127,41,165,0,103,165,82,31,127,0,79,127,63,19,76,0,47,76,38,9,38,0,23,38,19,0,255,0,127,255,127,0,165,0,82,165,82,0,127,0,63,127,63,0,76,0,38,76,38,0,38,0,19,38,19,0,255,63,127,255,159,0,165,41,82,165,103,0,127,31,63,127,79,0,76,19,38,76,47,0,38,9,19,88,23,0,255,127,127,255,191,0,165,82,82,165,124,0,127,63,63,127,95,0,76,38,38,76,57,0,38,19,19,88,28,0,255,191,127,255,223,0,165,124,82,165,145,0,127,95,63,127,111,0,76,57,38,76,66,0,38,28,19,88,88,0,255,255,127,255,255,0,165,165,82,165,165,0,127,127,63,127,127,0,76,76,38,76,76,0,38,38,19,88,88,0,191,255,127,223,255,0,124,165,82,145,165,0,95,127,63,111,127,0,57,76,38,66,126,0,28,38,19,88,88,0,127,255,127,191,255,0,82,165,82,124,165,0,63,127,63,95,127,0,38,76,38,57,126,0,19,38,19,28,88,0,63,255,127,159,255,0,41,165,82,103,165,0,31,127,63,79,127,0,19,76,38,47,126,0,9,38,19,23,88,0,0,255,127,127,255,0,0,165,82,82,165,0,0,127,63,63,127,0,0,76,38,38,126,0,0,38,19,19,88,63,0,255,159,127,255,41,0,165,103,82,165,31,0,127,79,63,127,19,0,76,47,38,126,9,0,38,23,19,88,127,0,255,191,127,255,82,0,165,124,82,165,63,0,127,95,63,127,38,0,76,57,38,126,19,0,38,28,19,88,191,0,255,223,127,255,124,0,165,145,82,165,95,0,127,111,63,127,57,0,76,66,38,76,28,0,38,88,19,88,255,0,255,255,127,255,165,0,165,165,82,165,127,0,127,127,63,127,76,0,76,76,38,76,38,0,38,88,19,88,255,0,191,255,127,223,165,0,124,165,82,145,127,0,95,127,63,111,76,0,57,76,38,66,38,0,28,88,19,88,255,0,127,255,127,191,165,0,82,165,82,124,127,0,63,127,63,95,76,0,38,76,38,57,38,0,19,88,19,28,255,0,63,255,127,159,165,0,41,165,82,103,127,0,31,127,63,79,76,0,19,76,38,47,38,0,9,88,19,23,51,51,51,91,91,91,132,132,132,173,173,173,214,214,214,255,255,255];
+function hexToRgb(hex) {
+  const h = String(hex || '').replace('#', '');
+  const v = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+  return Number.isFinite(v) ? [(v >> 16) & 255, (v >> 8) & 255, v & 255] : [255, 255, 255];
+}
+/** The AutoCAD Color Index (1-255) nearest a hex colour. */
+export function nearestACI(hex) {
+  const [r, g, b] = hexToRgb(hex);
+  let best = 7, bd = Infinity;
+  for (let i = 0; i < ACI_RGB.length; i += 3) {
+    const d = (ACI_RGB[i] - r) ** 2 + (ACI_RGB[i + 1] - g) ** 2 + (ACI_RGB[i + 2] - b) ** 2;
+    if (d < bd) { bd = d; best = i / 3 + 1; }
+  }
+  return best;
+}
+/** DXF true colour (group 420): 0x00RRGGBB as a decimal integer. */
+export function trueColour(hex) { const [r, g, b] = hexToRgb(hex); return (r << 16) | (g << 8) | b; }
+/** A layer record with a colour: { name, hex, ltype? }. */
+const coloured = (name, hex, ltype) => ({ name, hex, ...(ltype ? { ltype } : {}) });
+/** Layer name for a painted finish: FRONT for the kitchen's own, FRONT-<Name> for a cabinet painted differently. */
+const finishLayer = (name, main) => (name === main ? 'FRONT' : 'FRONT-' + String(name || 'Finish').replace(/[^A-Za-z0-9]+/g, ''));
+const finishHex = (name) => (getFinish(name) || {}).hex || '#F7F4EB';
+
 /** Assemble a whole document: HEADER + TABLES + (optional) BLOCKS + ENTITIES.
  *  layers: names, or { name, ltype: 'DASHED' } for dashed layers. */
 function dxfDoc(blocks, entities, { units = 1, layers = [] } = {}) {
@@ -114,7 +145,9 @@ function dxfDoc(blocks, entities, { units = 1, layers = [] } = {}) {
     for (const l of layers) {
       const name = typeof l === 'string' ? l : l.name;
       const ltype = (typeof l === 'object' && l.ltype) || 'CONTINUOUS';
-      L.push('0', 'LAYER', '2', name, '70', '0', '62', '7', '6', ltype);
+      const hex = typeof l === 'object' ? l.hex : null;
+      L.push('0', 'LAYER', '2', name, '70', '0', '62', String(hex ? nearestACI(hex) : 7), '6', ltype);
+      if (hex) L.push('420', String(trueColour(hex)));
     }
     L.push('0', 'ENDTAB', '0', 'ENDSEC');
   }
@@ -401,7 +434,7 @@ export function buildCabinetLibraryDXF() {
     ents.push(...text(ox + W / 2, y + D / 2, 101.6, cab.code, { align: 'center', layer: 'LABEL' }));
     x += W + R + GAP;
   }
-  return dxfDoc(blocks, ents, { units: 1, layers: ['0', 'BODY', 'FRONT', 'LABEL'] });
+  return dxfDoc(blocks, ents, { units: 1, layers: ['0', coloured('BODY', BRAND.oak), coloured('FRONT', finishHex('Ghost')), coloured('LABEL', '#555555')] });
 }
 
 // ---- kitchen 3D model -------------------------------------------------------
@@ -425,8 +458,9 @@ function mountMM(cab) {
  *  block per SKU means ONE insert per cabinet in modelspace, so CAD users
  *  can select and move a whole cabinet as a single object — the point of
  *  handing them a DXF (client-reported: Revit/AutoCAD cabinets must move). */
-function unitEntities(cab) {
+function unitEntities(cab, frontLayer = 'FRONT') {
   const out = frontEntities(cab);
+  if (frontLayer !== 'FRONT') for (let i = 0; i + 1 < out.length; i++) if (out[i] === '8' && out[i + 1] === 'FRONT') out[i + 1] = frontLayer;   // this cabinet's own paint
   for (const [x0, x1, y0, y1, z0, z1] of bodyBoxes(cab)) {
     out.push(...box(x0, x1, y0, y1, z0, z1, 'BODY'));
   }
@@ -492,12 +526,19 @@ export function buildPlanDXF(state, { walls = true } = {}) {
   // the block, so each placed cabinet below is a single movable INSERT.
   // Appliances and sinks are NOT Plinth products — they are left out entirely,
   // so the model shows honest GAPS where the client's own appliances go.
-  const used = new Map();
+  // ...and per PAINT: a cabinet painted differently from the kitchen gets its own block on its
+  // own FRONT-<Finish> layer, so the colour it was designed in is the colour it arrives in
+  const mainFinish = (state && state.finish) || 'Ghost';
+  const finishOf = (it) => (it.finish && getFinish(it.finish) ? it.finish : mainFinish);
+  const blockName = (cab, fin) => cab.code + '_UNIT' + (fin === mainFinish ? '' : '-' + finishLayer(fin, mainFinish).slice(6));
+  const used = new Map(), finishes = new Set([mainFinish]);
   for (const it of (state && state.items) || []) {
     const cab = getCab(it.code);
-    if (cab && cab.placeable && !cab.notSupplied) used.set(cab.code, cab);
+    if (!cab || !cab.placeable || cab.notSupplied) continue;
+    const fin = finishOf(it); finishes.add(fin);
+    used.set(blockName(cab, fin), { cab, fin });
   }
-  const blocks = [...used.values()].map((cab) => ({ name: cab.code + '_UNIT', lines: unitEntities(cab) }));
+  const blocks = [...used.entries()].map(([name, { cab, fin }]) => ({ name, lines: unitEntities(cab, finishLayer(fin, mainFinish)) }));
 
   // place every cabinet: ONE block INSERT, rotated + lifted to mount height
   for (const it of (state && state.items) || []) {
@@ -514,11 +555,12 @@ export function buildPlanDXF(state, { walls = true } = {}) {
     const ox = cx - u[0] * Wmm / 2 - v[0] * Dmm / 2;   // block origin = front-left corner
     const oy = cy - u[1] * Wmm / 2 - v[1] * Dmm / 2;
     const rotDXF = Math.atan2(u[1], u[0]) * 180 / Math.PI;
-    ents.push(...insert(cab.code + '_UNIT', ox, oy, { z: mountMM(cab), rot: rotDXF }));
+    ents.push(...insert(blockName(cab, finishOf(it)), ox, oy, { z: mountMM(cab), rot: rotDXF }));
   }
 
   return dxfDoc(blocks, ents, {
     units: 1,
-    layers: ['0', 'PLAN', { name: 'PLAN-UPPER', ltype: 'DASHED' }, 'BODY', 'FRONT', 'LABEL'],
+    layers: ['0', coloured('PLAN', '#333333'), coloured('PLAN-UPPER', '#7a7a7a', 'DASHED'), coloured('BODY', BRAND.oak),
+      ...[...finishes].map((f) => coloured(finishLayer(f, mainFinish), finishHex(f))), coloured('LABEL', '#555555')],
   });
 }
