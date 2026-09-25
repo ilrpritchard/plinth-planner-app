@@ -16,7 +16,7 @@ import { planIslandBack } from '../core/islandback.js';
 import { planMirror, mirrorTargets } from '../core/mirror.js';
 import { summarizeState, deliveryEstimate } from '../core/cost.js';
 import { computeWarnings } from '../core/warnings.js';
-import { openingWallLen, openingNearEdge } from '../core/openings.js';
+import { openingWallLen, openingNearEdge, openingWidth } from '../core/openings.js';
 import { findFreeSpot } from '../core/placement.js';
 import { buildOrderEmail } from '../core/order.js';
 import { isCloud, submitOrder } from '../core/cloud.js';
@@ -455,43 +455,70 @@ export class UI {
     const ops = r.openings || [];
     const label = { window: 'Window', door: 'Door', doorway: 'Doorway' };
     const WALLN = { back: 'Back wall', front: 'Front wall', left: 'Left wall', right: 'Right wall' };
+    // the two ends of a wall, by the wall they meet: unambiguous whichever way you face
+    const ENDS = (wall) => (wall === 'left' || wall === 'right') ? ['back wall', 'front wall'] : ['left wall', 'right wall'];
+    this._opFrom = this._opFrom || new Map();          // per opening: measure from the 'start' (min) or 'end' corner (UI only)
     if (!ops.length) { el.innerHTML = `<div class="hint" style="opacity:0.7">None yet.</div>`; return; }
+    // TYPED, NOT SLID (her ask 2026-09-25: "adding a window and door could definitely be more
+    // accurate, easier to work with"): distance from a named corner to the near edge, width,
+    // sill and height, all as numbers in feet-and-inches or inches. The slider stays for a nudge.
     el.innerHTML = ops.map((o) => {
-      const len = openingWallLen(r, o.wall);
-      const dist = fmtIn(openingNearEdge(r, o)); // honest gap from corner to the near edge (matches 3D)
+      const len = openingWallLen(r, o.wall), w = openingWidth(o, r), near = openingNearEdge(r, o);
+      const from = this._opFrom.get(o.id) || 'start';
+      const dist = from === 'start' ? near : len - near - w;
+      const [e0, e1] = ENDS(o.wall || 'back');
       const isWin = o.type === 'window';
       const sill = o.sill ?? Math.max(36, r.height * 0.42);
       const hgt = o.hgt ?? Math.min(46, r.height * 0.45);
       return `<div class="op-row" data-id="${o.id}">
         <div class="op-head"><span><strong>${label[o.type] || 'Opening'}</strong> · ${WALLN[o.wall] || 'Back wall'}</span>
           <button class="op-del" data-act="del" title="Remove">&times;</button></div>
-        <div class="op-controls">
-          <input type="range" class="op-pos" min="0" max="1" step="0.005" value="${o.pos ?? 0.5}" title="Left / right" />
-          <label class="op-mini">W <input type="text" class="op-w" value="${fmtIn(o.width || (isWin ? 48 : 34))}" /></label>
+        <div class="op-grid">
+          <label class="op-mini op-span">From the <select class="op-from"><option value="start" ${from === 'start' ? 'selected' : ''}>${e0}</option><option value="end" ${from === 'end' ? 'selected' : ''}>${e1}</option></select></label>
+          <label class="op-mini">to its edge <input type="text" class="op-dist-in" value="${fmtIn(dist)}" title="Distance from that corner to the near edge of the opening" /></label>
+          <label class="op-mini">Width <input type="text" class="op-w" value="${fmtIn(w)}" /></label>
+          ${isWin ? `<label class="op-mini">Sill <input type="text" class="op-sill" value="${fmtIn(sill)}" title="Floor to the underside of the window" /></label>
+          <label class="op-mini">Height <input type="text" class="op-h" value="${fmtIn(hgt)}" title="Sill to head" /></label>` : ''}
         </div>
-        ${isWin ? `<div class="op-controls op-win" style="margin-top:6px">
-          <label class="op-mini">Sill height <input type="text" class="op-sill" value="${fmtIn(sill)}" /></label>
-          <label class="op-mini">Window height <input type="text" class="op-h" value="${fmtIn(hgt)}" /></label>
-        </div>` : ''}
-        <div class="op-dist">${dist} from corner</div>
+        <input type="range" class="op-pos" min="0" max="1" step="0.005" value="${o.pos ?? 0.5}" title="Slide to nudge" />
+        <div class="op-dist">${fmtIn(near)} from the ${e0} · ${fmtIn(Math.max(0, len - near - w))} from the ${e1}</div>
       </div>`;
     }).join('');
     el.querySelectorAll('.op-row').forEach((row) => {
       const id = Number(row.dataset.id);
+      const cur = () => (this.store.state.room.openings || []).find((x) => x.id === id);
+      const posFor = (dist, o) => {                          // pos (centre fraction) from a corner-to-edge distance
+        const len = openingWallLen(this.store.state.room, o.wall), w = openingWidth(o, this.store.state.room);
+        const from = this._opFrom.get(id) || 'start';
+        const c = from === 'start' ? dist + w / 2 : len - dist - w / 2;
+        return Math.max(0, Math.min(1, c / len));
+      };
+      const distNow = (o) => { const len = openingWallLen(this.store.state.room, o.wall), w = openingWidth(o, this.store.state.room), near = openingNearEdge(this.store.state.room, o); return (this._opFrom.get(id) || 'start') === 'start' ? near : len - near - w; };
       row.querySelector('[data-act="del"]').addEventListener('click', () => {
         this.store.removeOpening(id); this.onRoomChange(false); this._renderOpenings();
       });
+      row.querySelector('.op-from').addEventListener('change', (e) => { this._opFrom.set(id, e.target.value); this._renderOpenings(); });
+      row.querySelector('.op-dist-in').addEventListener('change', (e) => {
+        const v = parseLength(e.target.value), o = cur();
+        if (o && isFinite(v) && v >= 0) { this.store.updateOpening(id, { pos: posFor(v, o) }); this.onRoomChange(false); }
+        this._renderOpenings();
+      });
+      row.querySelector('.op-w').addEventListener('change', (e) => {   // a new width keeps the measured edge where it is
+        const v = parseLength(e.target.value), o = cur();
+        if (o && isFinite(v) && v >= 8) { const d = distNow(o); this.store.updateOpening(id, { width: v }); this.store.updateOpening(id, { pos: posFor(d, cur()) }); this.onRoomChange(false); }
+        this._renderOpenings();
+      });
       row.querySelector('.op-pos').addEventListener('input', (e) => {
         this.store.updateOpening(id, { pos: parseFloat(e.target.value) }); this.onRoomChange(false);
-        const o = (this.store.state.room.openings || []).find((x) => x.id === id);
-        row.querySelector('.op-dist').textContent = `${fmtIn(openingNearEdge(this.store.state.room, o))} from corner`;
+        const o = cur(), rm = this.store.state.room, len = openingWallLen(rm, o.wall), w = openingWidth(o, rm), near = openingNearEdge(rm, o), [e0, e1] = ENDS(o.wall || 'back');
+        row.querySelector('.op-dist').textContent = `${fmtIn(near)} from the ${e0} · ${fmtIn(Math.max(0, len - near - w))} from the ${e1}`;
+        row.querySelector('.op-dist-in').value = fmtIn(distNow(o));
       });
       const num = (sel, key, min) => row.querySelector(sel)?.addEventListener('change', (e) => {
         const v = parseLength(e.target.value);
         if (isFinite(v) && v >= min) { this.store.updateOpening(id, { [key]: v }); this.onRoomChange(false); }
         this._renderOpenings();
       });
-      num('.op-w', 'width', 8);
       num('.op-sill', 'sill', 0);
       num('.op-h', 'hgt', 6);
     });
