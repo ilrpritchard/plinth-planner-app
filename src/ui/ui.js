@@ -242,6 +242,7 @@ export class UI {
     this._wireCustomer();
     this._wireToolbar();
     this._wireSelbar();
+    this._wireCostLines();
     this._wireMobile();
     this._wireTabs();
     this._wireTour();
@@ -875,6 +876,21 @@ export class UI {
     document.getElementById('finishName').textContent = `${f.name}: ${f.desc}`;
   }
 
+  /** A click on a line in "This kitchen" selects that cabinet in 3D; clicked again it steps to the
+   *  next one of its kind, so "one of 2" can be told apart. */
+  _wireCostLines() {
+    document.getElementById('costLines')?.addEventListener('click', (e) => {
+      const line = e.target.closest('.cost-line[data-code]'); if (!line) return;
+      const code = line.dataset.code;
+      const ids = this.store.state.items.filter((it) => it.code === code).map((it) => it.id);
+      if (!ids.length) return;
+      const cur = this.controls?.layer?.selectedId ?? this.controls?.selectedId ?? null;
+      const next = ids[(ids.indexOf(cur) + 1) % ids.length];
+      this.controls?.layer?.select?.(next);
+      this.showSelbar(next);
+    });
+  }
+
   // ---------- cost ----------
   _refreshCost() {
     const { lines, totalCabs, subtotal } = summarizeState(this.store.state);
@@ -894,9 +910,10 @@ export class UI {
           : `<span class="cl-desc">${l.desc}</span>`;
         return `${name} <span class="cl-code">${l.code}</span>`;
       };
-      body.innerHTML = lines.map((l) => `<div class="cost-line">
+      body.innerHTML = lines.map((l) => `<div class="cost-line" data-code="${l.code}" data-qty="${l.qty}">
         <span><strong>${l.qty}×</strong> ${label(l)}</span>
         <span>${l.notSupplied ? '<em style="color:var(--muted)">supply your own</em>' : l.priceTBC ? '<em style="color:var(--muted)">price to confirm</em>' : fmtUSD(l.line)}</span></div>`).join('');
+      this._markPickedLine();
     }
     document.getElementById('costTotal').innerHTML =
       `<span>${totalCabs} cabinet${totalCabs === 1 ? '' : 's'}</span><span>${fmtUSD(subtotal)}</span>`;
@@ -1171,11 +1188,30 @@ export class UI {
     });
   }
 
+  /** The selected cabinet's line in "This kitchen" is lit and scrolled into view, tagged "this one"
+   *  (or "one of 2" when the line stands for several), so the list answers WHICH cabinet was clicked
+   *  (her ask 2026-09-25: "same when i click on a cabinet, highlight it in the list"). */
+  _markPickedLine() {
+    const body = document.getElementById('costLines');
+    if (!body) return;
+    body.querySelectorAll('.cost-line.is-picked').forEach((el) => { el.classList.remove('is-picked'); el.querySelector('.pick-tag')?.remove(); });
+    const code = this._pickedCode;
+    if (!code) return;
+    const line = body.querySelector(`.cost-line[data-code="${CSS.escape(code)}"]`);
+    if (!line) return;
+    line.classList.add('is-picked');
+    const qty = Number(line.dataset.qty) || 1;
+    const tag = document.createElement('span'); tag.className = 'pick-tag'; tag.textContent = qty > 1 ? `one of ${qty}` : 'this one';
+    line.firstElementChild?.appendChild(tag);
+    try { line.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch { /* old browser */ }
+  }
+
   showSelbar(id) {
     const bar = document.getElementById('selbar');
-    if (id == null) { bar.classList.remove('show'); return; }
+    if (id == null) { bar.classList.remove('show'); this._pickedCode = null; this._markPickedLine(); return; }
     const it = this.store.getItem(id);
     const cab = getCab(it.code);
+    this._pickedCode = it.code; this._markPickedLine();
     document.getElementById('selLabel').textContent = `${cab.code} · ${cab.desc}`;
     // swap-in-place options: same width/type/depth — drawers ↔ door ↔ open shelf
     const swap = document.getElementById('selSwap');
