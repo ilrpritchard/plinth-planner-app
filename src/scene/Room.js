@@ -155,7 +155,7 @@ export class Room {
     if (!g) return;
     const swapped = [];
     g.traverse((m) => {
-      if (!m.isMesh || !m.material || !m.material.emissive) return;
+      if (!m.isMesh || !m.material || !m.material.emissive || m.userData.pickOnly) return;
       const lit = m.material.clone(); lit.emissive.set(0x645b3d); lit.emissiveIntensity = 0.55;
       swapped.push([m, m.material]); m.material = lit;
     });
@@ -303,6 +303,11 @@ export class Room {
       const hd = mesh(new THREE.BoxGeometry(w + 2 * T, T, jamb), cmat); hd.position.set(0, h / 2 + T / 2, 0);
       for (const m of [lf, rt, hd]) m.castShadow = false;
       g.add(lf, rt, hd);
+      // an unseen pane filling the opening, so a click THROUGH the doorway still picks it (the wall
+      // is cut there, so without this the click fell to the floor beyond and nothing answered):
+      // "same for doors and doorways when i click them" (2026-09-25). Rays hit it, eyes and shadows don't.
+      const pick = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+      pick.castShadow = false; pick.receiveShadow = false; pick.userData.pickOnly = true; g.add(pick);
     } else { // door (with leaf)
       const frame = mesh(new THREE.BoxGeometry(w + 5, h + 5, 1.4), new THREE.MeshStandardMaterial({ color: 0xece5d4, roughness: 0.85 }));
       const leaf = mesh(new THREE.BoxGeometry(w, h, 0.8), new THREE.MeshStandardMaterial({ color: 0xd9cdb6, roughness: 0.7 }));
