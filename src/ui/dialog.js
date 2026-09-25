@@ -53,6 +53,35 @@ export function uiConfirm(message, { title = 'Are you sure?', confirmLabel = 'Ye
   });
 }
 
+/** Await-able one-line prompt. Resolves the trimmed text, or null on cancel / Escape / backdrop.
+ *  Enter in the box confirms. `required` keeps the primary button off until something is typed. */
+export function uiPrompt(message, { title = 'Name it', placeholder = '', value = '', confirmLabel = 'OK', cancelLabel = 'Cancel', required = false } = {}) {
+  return new Promise((resolve) => {
+    const el = ensureOverlay();
+    el.innerHTML = `<div class="cloud-card dlg-card" role="dialog" aria-label="${esc(title)}">
+      <h3>${esc(title)}</h3>
+      ${message ? `<p class="cloud-sub dlg-msg">${esc(message)}</p>` : ''}
+      <input type="text" id="dlgInput" value="${esc(value)}" placeholder="${esc(placeholder)}" autocomplete="off">
+      <div class="dlg-btns"><button class="dlg-cancel" data-act="cancel">${esc(cancelLabel)}</button><button class="cta" data-act="go">${esc(confirmLabel)}</button></div>
+    </div>`;
+    el.classList.add('show');
+    const input = el.querySelector('#dlgInput'), go = el.querySelector('[data-act="go"]');
+    const sync = () => { go.disabled = required && !input.value.trim(); };
+    const done = (val) => { el.classList.remove('show'); el.innerHTML = ''; document.removeEventListener('keydown', onKey, true); resolve(val); };
+    const submit = () => { const v = input.value.trim(); if (required && !v) { input.focus(); return; } done(v); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); done(null); }
+      if (e.key === 'Enter') { e.stopPropagation(); submit(); }
+    };
+    document.addEventListener('keydown', onKey, true);
+    el.addEventListener('click', (e) => { if (e.target === el) done(null); }, { once: true });
+    el.querySelector('[data-act="cancel"]').addEventListener('click', () => done(null));
+    go.addEventListener('click', submit);
+    input.addEventListener('input', sync); sync();
+    input.focus(); input.select();
+  });
+}
+
 /** Await-able alert. */
 export function uiAlert(message, { title = 'Just so you know', okLabel = 'OK' } = {}) {
   return show({ title, message, buttons: [{ label: okLabel, value: true, cls: 'cta' }] });

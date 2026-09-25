@@ -17,7 +17,7 @@ import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
 import { bumpRev, unitRev, wallsWithItems, computeElevation, islandFaces, computeIslandElevation } from '../core/submittal.js';
 import { saveNow } from '../core/persistence.js';
-import { uiConfirm, uiChoice, uiAlert, mailFallback } from './dialog.js';
+import { uiConfirm, uiChoice, uiAlert, uiPrompt, mailFallback } from './dialog.js';
 import { frontSVG } from './frontdraw.js';
 import { withIslandFlags } from '../core/islands.js';
 import { buildDemoUnits, demoUnitCount, DEMO_PROJECT } from '../core/tradedemo.js';
@@ -141,6 +141,7 @@ export class TradeUI {
           ${isCloud() ? `<div class="trade-cloud">
             <button class="sm" id="tCloudSave" title="Save this project to your PL/NTH account (sign-in required)">Save project</button>
             <button class="ghost sm" id="tCloudOpen" title="Open one of your saved trade projects">Open project</button>
+            <button class="ghost sm" id="tNewProject" title="Start another project: name it, then enter its first unit's room">+ New project</button>
             <button class="ghost sm" id="tCloudShare" title="Copy a read-only link, the architect or client reviews &amp; approves the spec, no account needed">Share for approval</button>
             <button class="ghost sm" id="tOrders" title="Your quote requests and orders with live status">Orders</button>
           </div>` : ''}
@@ -270,6 +271,36 @@ export class TradeUI {
     this.store.touchTrade();
     this.render();
     window.scrollTo?.({ top: 0 });
+  }
+
+  /** "+ New project" (her ask 2026-09-25): the project on screen is put aside (it stays in the
+   *  account if it was saved there), the new one is NAMED first — a save adopts an existing
+   *  cloud row by name, so an unnamed new project must never inherit the last one's row — and
+   *  its first unit opens straight into a fresh room for the dimensions. */
+  async newProject() {
+    if (this._stash) { toast(`Unit ${this.designingUnit()} is open in 3D: Done or Cancel in the bar at the top first.`); return; }
+    const t = this.t;
+    const has = t.units.length > 0 && !t.demo;
+    if (has) {
+      const kept = t.cloudId ? `"${t.project || 'Untitled project'}" stays in your account.` : `"${t.project || 'This project'}" is not saved to your account: Save project first if you want it later.`;
+      const ok = await uiConfirm(`Start a new project? ${kept}`, { title: 'New project', confirmLabel: 'New project', cancelLabel: 'Keep this one' });
+      if (!ok) return;
+    }
+    const taken = new Set(t.units.length ? [t.project || 'Untitled project'] : []);
+    let name = await uiPrompt('A name for the building or the job. It heads every document, and it is how the project is found again under Open project.', { title: 'New project', placeholder: 'e.g. Hudson Yards Tower', confirmLabel: 'Create project', cancelLabel: 'Not now', required: true });
+    if (name == null) return;
+    if (taken.has(name)) name = `${name} (2)`;      // never the same name as the one just put aside: saves adopt rows by name
+    this.store.state.trade = {
+      ...t, project: name, units: [], demo: false, cloudId: null, shareToken: null,
+      address: '', architect: '', gc: '', owner: '', finishRal: '',
+    };
+    this._collapsed?.clear?.(); this._rowsOpen?.clear?.(); this._floorsOpen?.clear?.();
+    const u = this.newUnit();
+    this.t.units.push(u); this._detailsOpen = true;
+    this.store.touchTrade();
+    this.render();
+    this.enterDesign(u, { roomFirst: true });      // a brand-new unit: fresh room, dimensions first
+    toast(`New project "${name}". Enter the first unit's room size, lay it out, then Done.`);
   }
 
   /** Drop the demo (or any project) back to the first-run card. */
@@ -611,6 +642,7 @@ export class TradeUI {
     $('tOrders')?.addEventListener('click', () => { this.view = 'orders'; this.render(); });
     $('tCloudSave')?.addEventListener('click', () => this.cloudSave());
     $('tCloudOpen')?.addEventListener('click', () => this.cloudOpen());
+    $('tNewProject')?.addEventListener('click', () => this.newProject());
     $('tCloudShare')?.addEventListener('click', () => this.cloudShare());
     $('tSubmittalPack')?.addEventListener('click', async () => {
       const designed = this.t.units.filter((u) => u.design);
@@ -1023,10 +1055,12 @@ export class TradeUI {
           <span>${esc(r.name || 'Untitled project')} <em>${r.share_token ? '· shared' : ''}</em></span>
           <span><button class="linkbtn" data-open="${r.id}">Open</button></span>
         </div>`).join('') : '<div class="cloud-msg">No saved trade projects yet. Hit Save project.</div>'}</div>
+      <div class="dlg-btns"><button class="cta" id="tcloudNew" title="Start another project: name it, then enter its first unit's room">+ New project</button></div>
       <button class="cloud-x" id="tcloudClose">×</button></div>`;
     document.body.appendChild(m);
     m.addEventListener('click', (e) => { if (e.target === m) m.remove(); });
     m.querySelector('#tcloudClose').addEventListener('click', () => m.remove());
+    m.querySelector('#tcloudNew').addEventListener('click', () => { m.remove(); this.newProject(); });
     m.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', async () => {
       try {
         const row = await loadTradeProject(b.dataset.open);
