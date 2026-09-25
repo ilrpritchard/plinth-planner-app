@@ -607,7 +607,13 @@ export class TradeUI {
       this.store.touchTrade({ quiet: true });
       this.render();                        // shows/hides the RAL-code field
     });
-    $('tAddUnit').addEventListener('click', () => { this.t.units.push(this.newUnit()); this.store.touchTrade(); this.render(); });
+    $('tAddUnit').addEventListener('click', () => {
+      // a new type opens straight in 3D on Room, dimensions first — the same as "Enter the unit
+      // mix" (her ask 2026-09-25: "when I click add unit type it needs to prompt to add the room dims")
+      const u = this.newUnit();
+      this.t.units.push(u); this.store.touchTrade(); this.render();
+      this.enterDesign(u, { roomFirst: true });
+    });
     $('tQuote')?.addEventListener('click', () => {
       const sec = $('tOrder');
       sec?.scrollIntoView({ behavior: 'smooth', block: 'start' });
