@@ -158,57 +158,16 @@ function fillThisWall(clickWall) {
 }
 window.addEventListener('pointerdown', (e) => { if (wallMenu && !wallMenu.contains(e.target) && !e.target.closest('canvas')) hideWallMenu(); });
 
-// click a placed window/door/doorway → edit its position / width, or delete it
-const openingMenu = document.getElementById('openingMenu');
-let openingTarget = null;
-function hideOpeningMenu() { if (openingMenu) openingMenu.style.display = 'none'; openingTarget = null; }
-function showOpeningMenu({ id, clientX, clientY }) {
+// click a placed window / door / doorway → ITS card opens in the left panel, lit, with every field
+// (corner, edge, width, sill, height, delete) — no popup (her call 2026-09-25: "i dont think we need
+// this pop up... it should just open the window details on the left panel"). The window itself
+// glows for a moment so the click is answered in 3D too.
+function openOpeningCard({ id }) {
   const o = (store.state.room.openings || []).find((x) => x.id === id);
-  if (!o || !openingMenu) return;
-  openingTarget = id;
-  const r = store.state.room;
-  const len = (o.wall === 'left' || o.wall === 'right') ? r.depth : r.width;
-  const w = o.width || (o.type === 'window' ? 48 : 34);
-  const dist = Math.max(0, (o.pos ?? 0.5) * len - w / 2);   // near-edge, like the wizard
-  const WALLN = { back: 'Back wall', front: 'Front wall', left: 'Left wall', right: 'Right wall' };
-  document.getElementById('omTitle').textContent = `${o.type === 'doorway' ? 'Doorway' : o.type === 'door' ? 'Door' : 'Window'}${ui.openingOrdinal?.(o) || ''} · ${WALLN[o.wall] || 'Back wall'}`;
-  ui.focusOpening?.(id);                 // its card comes to the front, lit, in the Doors & windows panel
-  room.flashOpening?.(id);               // and the window itself lights up for a moment
-  document.getElementById('omDistLabel').textContent = (o.wall === 'left' || o.wall === 'right') ? 'Back wall → edge' : 'Left wall → edge';
-  document.getElementById('omDist').value = fmtFeetIn(dist);
-  document.getElementById('omWidth').value = fmtFeetIn(w);
-  openingMenu.style.display = 'block';
-  const pad = 8, mw = openingMenu.offsetWidth || 190, mh = openingMenu.offsetHeight || 130;
-  openingMenu.style.left = Math.min(clientX + 6, window.innerWidth - mw - pad) + 'px';
-  openingMenu.style.top = Math.min(clientY + 6, window.innerHeight - mh - pad) + 'px';
-}
-function applyOpeningEdit() {
-  const o = (store.state.room.openings || []).find((x) => x.id === openingTarget);
   if (!o) return;
-  const r = store.state.room;
-  const len = (o.wall === 'left' || o.wall === 'right') ? r.depth : r.width;
-  const parseIn = (el, fallback) => {
-    let v = parseLength(String(el.value || '').trim());
-    if (!isFinite(v) || v <= 0) return fallback;
-    return v < 8 ? v * 12 : v;              // bare small numbers read as feet (wizard convention)
-  };
-  const curW = o.width || (o.type === 'window' ? 48 : 34);
-  const width = Math.min(len - 4, Math.max(12, parseIn(document.getElementById('omWidth'), curW)));
-  const dist = Math.min(len - width, Math.max(0, parseIn(document.getElementById('omDist'), (o.pos ?? 0.5) * len - width / 2)));
-  const pos = Math.max(0.02, Math.min(0.98, (dist + width / 2) / len));
-  store.updateOpening(o.id, { pos, width });
-  buildRoom(false);
-  rebuildWorktop(); rebuildFillers();       // runs route around doors — keep them honest
+  ui.focusOpening?.(id);
+  room.flashOpening?.(id);
 }
-document.getElementById('omDist')?.addEventListener('change', applyOpeningEdit);
-document.getElementById('omWidth')?.addEventListener('change', applyOpeningEdit);
-document.getElementById('omDelete')?.addEventListener('click', () => {
-  if (openingTarget == null) return;
-  store.removeOpening(openingTarget);
-  buildRoom(false); rebuildWorktop(); rebuildFillers();
-  hideOpeningMenu();
-});
-window.addEventListener('pointerdown', (e) => { if (openingMenu && !openingMenu.contains(e.target) && !e.target.closest('canvas')) hideOpeningMenu(); });
 
 const controls = new PointerControls({
   scene,
@@ -218,7 +177,7 @@ const controls = new PointerControls({
   onCommit: () => { store.syncIslands(); rebuildWorktop(); },
   onSelect: (id) => ui.showSelbar(id),
   onWallClick: (info) => showWallMenu(info),
-  onOpeningClick: (info) => { hideWallMenu(); showOpeningMenu(info); },
+  onOpeningClick: (info) => { hideWallMenu(); openOpeningCard(info); },
 });
 ui.controls = controls; // late-bind so UI buttons can drive the controls
 
