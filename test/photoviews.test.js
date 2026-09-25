@@ -17,7 +17,7 @@ test('five views, all inside the room, none above the ceiling, every one facing 
       assert.ok(v.fov >= 45 && v.fov <= 65, `${v.key}: a wide-angle lens, not a fisheye`);
     }
     const eye = vs.filter((v) => v.key.startsWith('hero') || v.key === 'straight-on');
-    for (const v of eye) assert.ok(v.pos[1] >= 55 && v.pos[1] <= 63, `${v.key}: standing eye height, got ${v.pos[1]}`);
+    for (const v of eye) assert.ok(v.pos[1] >= 50 && v.pos[1] <= 60, `${v.key}: camera at chest-to-eye height, got ${v.pos[1]}`);
     assert.ok(vs.find((v) => v.key === 'worktop').pos[1] < 50, 'the close-up is low');
     assert.ok(vs.find((v) => v.key === 'overview').pos[1] > eye[0].pos[1], 'the overview is raised');
   }

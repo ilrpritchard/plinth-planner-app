@@ -265,12 +265,21 @@ document.getElementById('navSwitch')?.addEventListener('click', (e) => {
   scene.setNavMode(b.dataset.nav);
 });
 
-// Photo: five standpoints inside the kitchen at human height (core/photoviews.js), each a 4K JPEG,
-// zipped into one download (her ask 2026-09-25: realistic angles, several per click, and big
-// enough to render from). Signed-in only: the photos are a saved-design perk, and it puts a name
-// to who is taking the kitchen away (her ask: "make sure people can only take photos when logged in").
+// PHOTO MODE (her asks 2026-09-25: "realistic camera angles / heights", "not auto download but
+// show a preview", "auto put the camera at eye level, the best level for shooting a kitchen").
+// Photo moves the LIVE camera to a kitchen-photography standpoint (core/photoviews.js: eye level,
+// wide lens, aimed at the run) so the shot is seen before it is saved. A bar steps through the
+// five angles; orbit is left on so the shot can be tuned by hand; "Save this photo" renders
+// exactly what is on screen at 3840x2560, "Save all five" renders the five standpoints into one
+// zip; Done puts the view back. Signed-in only when cloud is configured: the photos are an
+// account perk, and it puts a name to who is taking the kitchen away.
 const PHOTO = { width: 3840, height: 2560, type: 'image/jpeg', quality: 0.94 };
+let photoMode = null;                                 // { views, i, was: { pos, target, fov } }
+const bytesOf = (url) => { const b64 = url.slice(url.indexOf(',') + 1), bin = atob(b64), data = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) data[k] = bin.charCodeAt(k); return data; };
+const saveBlob = (name, blob) => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); };
+const photoFile = (v, i) => `PLINTH_kitchen_${i + 1}_${v.key}.jpg`;
 document.getElementById('btnPhoto')?.addEventListener('click', async () => {
+  if (photoMode) { photoAngle(photoMode.i + 1); return; }          // pressed again: next angle
   if (isCloud()) {
     let u = null;
     try { u = await currentUser(); } catch { /* offline: treated as signed out */ }
@@ -281,36 +290,67 @@ document.getElementById('btnPhoto')?.addEventListener('click', async () => {
     }
   }
   if (!store.state.items.length) { toast('Nothing to photograph yet: add some cabinets first.'); return; }
-  const btn = document.getElementById('btnPhoto');
-  btn.disabled = true; btn.textContent = 'Photographing…';
+  startPhotoMode();
+});
+function startPhotoMode() {
+  if (scene.view !== '3d') { document.querySelector('#viewSwitch [data-view="3d"]')?.click(); }
+  const cam = scene.persp;
+  photoMode = { views: photoViews(store.state.room, store.state.items), i: 0, was: { pos: cam.position.clone(), target: scene.controls.target.clone(), fov: cam.fov } };
   layer.select(null); ui.showSelbar(null); layer.setHover?.(null);
   room.setGridVisible(false);
   document.getElementById('emptyState')?.classList.add('hidden');
-  // let the deselect/grid changes apply, then capture next frame
-  requestAnimationFrame(() => {
-    try {
-      const shots = scene.captureViews(photoViews(store.state.room, store.state.items), PHOTO);
-      const files = shots.map((s, i) => {
-        const b64 = s.url.slice(s.url.indexOf(',') + 1), bin = atob(b64), data = new Uint8Array(bin.length);
-        for (let k = 0; k < bin.length; k++) data[k] = bin.charCodeAt(k);
-        return { name: `PLINTH_kitchen_${i + 1}_${s.key}.jpg`, data };
-      });
-      const blob = new Blob([buildZip(files)], { type: 'application/zip' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'PLINTH_kitchen_photos.zip';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-      toast(`${files.length} photos saved (4K), one zip: ${shots.map((s) => s.name.toLowerCase()).join(' · ')}.`);
-    } catch (e) {
-      console.error(e);
-      toast('The photos could not be rendered. Try a smaller window, or again in a moment.');
-    } finally {
-      room.setGridVisible(true);
-      btn.disabled = false; btn.textContent = '⤓ Photo';
-    }
+  document.getElementById('btnPhoto')?.classList.add('active');
+  let bar = document.getElementById('photoBar');
+  if (!bar) { bar = document.createElement('div'); bar.id = 'photoBar'; document.body.appendChild(bar); }
+  bar.innerHTML = `<button type="button" class="pb-ghost" id="pbPrev" title="Previous angle (←)">‹</button>
+    <span id="pbCap"></span>
+    <button type="button" class="pb-ghost" id="pbNext" title="Next angle (→)">›</button>
+    <button type="button" id="pbSave" title="Render what is on screen at ${PHOTO.width} × ${PHOTO.height} and save it">Save this photo</button>
+    <button type="button" class="pb-ghost" id="pbAll" title="The five standpoints, rendered at ${PHOTO.width} × ${PHOTO.height}, in one zip">Save all five (zip)</button>
+    <button type="button" class="pb-ghost" id="pbDone">Done</button>`;
+  bar.querySelector('#pbPrev').addEventListener('click', () => photoAngle(photoMode.i - 1));
+  bar.querySelector('#pbNext').addEventListener('click', () => photoAngle(photoMode.i + 1));
+  bar.querySelector('#pbSave').addEventListener('click', () => {
+    const v = photoMode.views[photoMode.i];
+    saveBlob(photoFile(v, photoMode.i), new Blob([bytesOf(scene.captureImage(PHOTO))], { type: 'image/jpeg' }));
+    toast(`Saved ${photoFile(v, photoMode.i)} at ${PHOTO.width} × ${PHOTO.height}.`);
   });
-});
+  bar.querySelector('#pbAll').addEventListener('click', () => {
+    const shots = scene.captureViews(photoMode.views, PHOTO);
+    saveBlob('PLINTH_kitchen_photos.zip', new Blob([buildZip(shots.map((sh, i) => ({ name: photoFile(sh, i), data: bytesOf(sh.url) })))], { type: 'application/zip' }));
+    toast(`${shots.length} photos saved in one zip.`);
+  });
+  bar.querySelector('#pbDone').addEventListener('click', endPhotoMode);
+  document.addEventListener('keydown', photoKeys, true);
+  photoAngle(0);
+  toast('Camera at eye level. Orbit to tune the shot, ‹ › for the other angles, then Save.');
+}
+function photoAngle(i) {
+  if (!photoMode) return;
+  const n = photoMode.views.length;
+  photoMode.i = ((i % n) + n) % n;
+  scene.lookFrom(photoMode.views[photoMode.i]);
+  const cap = document.getElementById('pbCap');
+  if (cap) cap.innerHTML = `<strong>Photo</strong> ${photoMode.i + 1} / ${n} · ${esc(photoMode.views[photoMode.i].name)}`;
+}
+function photoKeys(e) {
+  const t = e.target;
+  if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''))) return;
+  if (e.key === 'Escape') { e.stopPropagation(); endPhotoMode(); }
+  else if (e.key === 'ArrowRight') { e.stopPropagation(); photoAngle(photoMode.i + 1); }
+  else if (e.key === 'ArrowLeft') { e.stopPropagation(); photoAngle(photoMode.i - 1); }
+}
+function endPhotoMode() {
+  if (!photoMode) return;
+  const { was } = photoMode;
+  photoMode = null;
+  document.removeEventListener('keydown', photoKeys, true);
+  document.getElementById('photoBar')?.remove();
+  document.getElementById('btnPhoto')?.classList.remove('active');
+  room.setGridVisible(true);
+  scene.lookFrom({ pos: was.pos.toArray(), target: was.target.toArray(), fov: was.fov });
+}
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // view switcher: 3D / plan / elevations
 document.getElementById('viewSwitch')?.addEventListener('click', (e) => {
@@ -800,6 +840,7 @@ if (new URLSearchParams(location.search).get('reset') === '1') {
 
 window.PlinthPlanner = {
   store, scene, room, controls,
+  photoMode: { start: startPhotoMode, angle: photoAngle, end: endPhotoMode },   // photo mode without the sign-in gate (checks)
   loadState(json) {
     store.replace(JSON.parse(JSON.stringify(json)));
     buildRoom(true); rebuildWorktop(); rebuildFillers(); rebuildCornice(); layer.rebuildAll(); ui.refresh(); applyMode();

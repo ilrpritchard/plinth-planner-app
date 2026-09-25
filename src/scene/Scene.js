@@ -139,6 +139,20 @@ export class Scene {
     return url;
   }
 
+  /** Put the perspective camera at a standpoint { pos, target, fov } (core/photoviews.js) with the
+   *  orbit target there too, so orbiting afterwards turns about what the shot looks at. */
+  lookFrom(v) {
+    const cam = this.persp, c = this.controls;
+    cam.position.set(v.pos[0], v.pos[1], v.pos[2]);
+    c.target.set(v.target[0], v.target[1], v.target[2]);
+    if (v.fov) cam.fov = v.fov;
+    cam.near = 1; cam.far = 6000;
+    cam.lookAt(c.target);
+    cam.updateProjectionMatrix();
+    c.minDistance = 12;                    // room-scale: stand close to the run if the shot wants it
+    c.update();
+  }
+
   /** Photograph the kitchen from several standpoints (core/photoviews.js) and come back to
    *  exactly the view the visitor had. Each view: { key, name, pos, target, fov }.
    *  Returns [{ key, name, url }] — data URLs of the size/type in `opts` (see captureImage). */
@@ -150,11 +164,7 @@ export class Scene {
     const out = [];
     try {
       for (const v of views) {
-        cam.position.set(v.pos[0], v.pos[1], v.pos[2]);
-        c.target.set(v.target[0], v.target[1], v.target[2]);
-        cam.fov = v.fov || 55; cam.near = 1; cam.far = 6000;
-        cam.lookAt(c.target);
-        cam.updateProjectionMatrix();
+        this.lookFrom(v);
         out.push({ key: v.key, name: v.name, url: this.captureImage(opts) });
       }
     } finally {

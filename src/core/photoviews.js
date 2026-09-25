@@ -12,8 +12,8 @@
 
 import { getCab } from './catalogue.js';
 
-const EYE = 62;             // standing eye height, 5'2"
-const LOW = 46;             // worktop-level close-up
+const EYE = 56;             // 4'8": where kitchen photographers stand the camera (chest height keeps verticals straight and reads the counters)
+const LOW = 44;             // worktop-level close-up
 const MARGIN = 6;           // the camera never stands in a wall
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
