@@ -5,17 +5,25 @@ import { CATALOGUE, getCab, familyOf, swapAlternatives, FAMILY_ORDER } from '../
 import { planStackers } from '../src/core/stackers.js';
 import { planCornice } from '../src/core/cornice.js';
 
-test('W14-W24: every non-corner W cabinet at 51" (a tall + its 21" stacker), hung at 56", priced at the wall cabinet + 20%', () => {
+test('W14-W24 and W27-W30: every W cabinet, corners included, at 51" (a tall + its 21" stacker), hung at 56", priced at the wall cabinet + 20%', () => {
   const high = CATALOGUE.filter((c) => c.high);
-  assert.equal(high.length, 11);
-  assert.deepEqual(high.map((c) => c.code), Array.from({ length: 11 }, (_, i) => `W${14 + i}`));
+  assert.equal(high.length, 15);
+  assert.deepEqual(high.map((c) => c.code), [...Array.from({ length: 11 }, (_, i) => `W${14 + i}`), 'W27', 'W28', 'W29', 'W30']);
   for (const c of high) {
     const src = getCab(c.grewFrom);
     assert.equal(c.type, 'WALL'); assert.equal(c.w, src.w); assert.equal(c.d, src.d); assert.equal(c.form, src.form);
     assert.equal(c.h, 51); assert.equal(c.high, 21);
     assert.equal(c.usd, Math.round(src.usd * 1.2), `${c.code} is ${c.grewFrom} + 20%`);
-    assert.equal(familyOf(c), 'HIGH'); assert.ok(!c.corner && !c.stacker);
+    assert.equal(familyOf(c), 'HIGH'); assert.ok(!c.stacker);
+    assert.equal(!!c.corner, !!src.corner); assert.equal(c.cornerSide, src.cornerSide);
   }
+  // the full-height corners (her ask 2026-09-25): W9 / W9R / W10 / W10R grown, skipping the taken W25 / W26
+  const corners = high.filter((c) => c.corner);
+  assert.deepEqual(corners.map((c) => [c.code, c.grewFrom, c.w, c.cornerSide]), [['W27', 'W9', 20, 'left'], ['W28', 'W9R', 20, 'right'], ['W29', 'W10', 24, 'left'], ['W30', 'W10R', 24, 'right']]);
+  assert.equal(getCab('W27').usd, Math.round(2011 * 1.2)); assert.equal(getCab('W29').usd, Math.round(2160 * 1.2));
+  assert.ok(!getCab('W26').high && getCab('W26').hoodCover, 'W26 is still the hood cover');
+  const alts = swapAlternatives('W9').map((c) => c.code);
+  assert.ok(alts.includes('W27') && alts.includes('W28') && !alts.includes('W15'), 'a corner swaps in place for its full-height version, never for a plain door');
   assert.ok(FAMILY_ORDER.indexOf('HIGH') === FAMILY_ORDER.indexOf('WALL') + 1, 'listed right after Wall');
   assert.equal(getCab('W15').usd, 2268); assert.equal(getCab('W15').h, 51); assert.ok(!getCab('W25').high, 'W25 is the 16in open shelf now, not a retired 51in code');
 });

@@ -346,7 +346,8 @@ export function buildCabinet(cab, finishHex, opts = {}) {
       g.add(shelf);
     }
   } else if (hasShelf && cab.high) {                // a full-height wall cabinet: two shelves, equally spaced (her spec 2026-09-22)
-    for (const k of [1, 2]) { const shelf = box(inW - 0.3, SHELF, inD - 1.2, oakMat()); shelf.position.set(0, openY0 + (openH * k) / 3, -0.2); g.add(shelf); }
+    const extra = cab.corner ? cornerRet : 0;                     // a full-height corner: both shelves run on through the return
+    for (const k of [1, 2]) { const shelf = box(inW - 0.3 + extra, SHELF, inD - 1.2, oakMat()); shelf.position.set(cornerDir * extra / 2, openY0 + (openH * k) / 3, -0.2); g.add(shelf); }
   } else if (hasShelf) {
     // a corner unit's shelf carries on through the return to the end panel in the corner
     const extra = cab.corner ? cornerRet : 0;                     // door cavity + the return cavity (the shared side panel is gone)
@@ -589,7 +590,7 @@ function buildFront(g, cab, ctx) {
       revealRing(g, 0, cy, faceW, openH, frontZ);
       return false;
     }
-    case 'corner': singleDoor(false, 1, cab.cornerSide === 'right' ? 1 : -1); return true; // hinge on the blank side
+    case 'corner': singleDoor(false, cab.high ? 2 : 1, cab.cornerSide === 'right' ? 1 : -1); return true; // hinge on the blank side; a full-height corner door gets the centre rail too
     case 'glazed': singleDoor(true); return true;
     case 'double': doublePair(false); return true;
     case 'glazedDouble': doublePair(true); return true;

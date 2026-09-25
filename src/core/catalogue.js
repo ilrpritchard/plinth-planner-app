@@ -221,12 +221,17 @@ function classify(it) {
 // in the order of the cabinets they grow from. Price: the wall cabinet + 20% ("take the cost
 // of the wall cabinet + 20%"), rounded to the dollar. `high` = the inches added, so the
 // catalogue can group them and the ceiling check can read them.
-const HIGH_BASES = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W11', 'W12', 'W13'];
+// The CORNER wall cabinets grow too (her ask 2026-09-25, "full height wall corner cabinets"):
+// W9 / W9R / W10 / W10R at 51" on W27-W30 (W25 is the 10" open shelf and W26 the hood cover,
+// so the corners skip past them), same 10" blank return, same +20%, handed the same way.
+const HIGH_BASES = [['W1', 'W14'], ['W2', 'W15'], ['W3', 'W16'], ['W4', 'W17'], ['W5', 'W18'], ['W6', 'W19'], ['W7', 'W20'], ['W8', 'W21'], ['W11', 'W22'], ['W12', 'W23'], ['W13', 'W24'],
+  ['W9', 'W27'], ['W9R', 'W28'], ['W10', 'W29'], ['W10R', 'W30']];
 const HIGH_ADD = 21;
-const HIGH_WALLS = HIGH_BASES.map((base, i) => {
+const HIGH_WALLS = HIGH_BASES.map(([base, code]) => {
   const src = RAW.find((c) => c.code === base);
-  return { ...src, code: `W${14 + i}`, desc: `${src.desc}, full height ${30 + HIGH_ADD}"`, h: 30 + HIGH_ADD, usd: Math.round(src.usd * 1.2), high: HIGH_ADD, grewFrom: base,
-    notes: `A ${src.desc.toLowerCase()} wall cabinet ${30 + HIGH_ADD}" high in one door with two shelves: the height of the standard cabinet plus a 21" stacker, hung at the same 56". Tops at ${56 + 30 + HIGH_ADD}": needs a 10' ceiling.` };
+  const what = src.corner ? `corner wall cabinet with its 10" blank return` : `${src.desc.toLowerCase()} wall cabinet`;
+  return { ...src, code, desc: `${src.desc}, full height ${30 + HIGH_ADD}"`, h: 30 + HIGH_ADD, usd: Math.round(src.usd * 1.2), high: HIGH_ADD, grewFrom: base,
+    notes: `A ${what} ${30 + HIGH_ADD}" high in one door with two shelves: the height of the standard cabinet plus a 21" stacker, hung at the same 56". Tops at ${56 + 30 + HIGH_ADD}": needs a 10' ceiling.` };
 });
 
 const BASE_CATALOGUE = RAW.concat(HIGH_WALLS).map((it) => ({
