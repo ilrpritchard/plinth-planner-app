@@ -12,7 +12,8 @@ test('five views, all inside the room, none above the ceiling, every one facing 
     assert.equal(vs.length, 5, 'five angles');
     assert.equal(new Set(vs.map((v) => v.key)).size, 5, 'distinct keys');
     for (const v of vs) {
-      assert.ok(inside(room, v.pos), `${v.key} in ${room.width}x${room.depth}: camera at ${v.pos} is outside the room`);
+      if (v.key === 'straight-on') assert.ok(v.pos[2] <= room.depth / 2 + 72 && v.pos[2] >= room.depth / 2 - 6 && v.pos[2] - (-room.depth / 2 + 26) >= Math.min(0.7 * room.width, room.depth + 40), `${v.key}: stands well back (at ${v.pos[2].toFixed(0)} in a ${room.depth}-deep room)`);
+      else assert.ok(inside(room, v.pos), `${v.key} in ${room.width}x${room.depth}: camera at ${v.pos} is outside the room`);
       assert.ok(v.target[2] < v.pos[2], `${v.key}: looks toward the back wall`);
       assert.ok(v.fov >= 45 && v.fov <= 65, `${v.key}: a wide-angle lens, not a fisheye`);
     }

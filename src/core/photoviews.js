@@ -46,7 +46,10 @@ export function photoViews(room = {}, items = []) {
   const views = [
     { key: 'hero-right', name: 'From the front right, standing', pos: [x(W * 0.32), eye, z(front - D * 0.12)], target: [runX - W * 0.10, aimY, back + 10], fov: 56 },
     { key: 'hero-left', name: 'From the front left, standing', pos: [x(-W * 0.32), eye, z(front - D * 0.12)], target: [runX + W * 0.10, aimY, back + 10], fov: 56 },
-    { key: 'straight-on', name: 'Straight on to the run', pos: [x(runX), eye - 2, z(front - D * 0.08)], target: [runX, aimY, back], fov: 58 },
+    // straight on: far enough back to take the whole run in (about 0.7x the room width from the
+    // run's face, her catch 2026-09-25: "too close"); when the room is shallower than that the
+    // camera steps back THROUGH the front wall (the wall auto-hides behind the camera), up to 6'
+    { key: 'straight-on', name: 'Straight on to the run', pos: [x(runX), eye - 2, Math.min(front + 72, Math.max(front - MARGIN, back + 26 + 0.7 * W))], target: [runX, aimY, back], fov: 58 },
     { key: 'worktop', name: 'Low, across the worktop', pos: [x(runX + W * 0.18), low, z(back + Math.min(D * 0.45, 96))], target: [runX - W * 0.12, 38, back + 6], fov: 52 },
     { key: 'overview', name: 'Raised corner view of the whole kitchen', pos: [x(W * 0.44), Math.max(eye, H - 8), z(front - MARGIN)], target: [-W * 0.08, 30, back + D * 0.35], fov: 60 },
   ];
