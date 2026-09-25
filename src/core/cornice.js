@@ -234,43 +234,5 @@ export function planCornice(state) {
       totalIn += len;                                    // priced like any moulding run
     }
   }
-  // RULE (her call 2026-09-25: "the crown on the hood side should mitre into the plaster"): the
-  // crown does not stop at a plaster hood's flank, it MITRES round it — from the upper's face
-  // line forward along the hood's flank, across the hood's front and back down the other flank,
-  // to the upper there or all the way to the wall. The moulding line runs unbroken across the
-  // plaster, as it does in the reference photograph; the hood itself stays a plain box above it.
-  for (const hd of cabs.filter((c) => c.hood)) {
-    const th = (hd.it.rotDeg || 0) * Math.PI / 180, s = Math.sin(th), co = Math.cos(th);
-    const fx = s, fz = co, wx = co, wz = -s;                       // front / width directions
-    const butt = { [-1]: null, [1]: null };
-    for (const u of cabs) {
-      if (u === hd || u.cab.onTall || (u.cab.type !== 'WALL' && u.cab.type !== 'COUNTER')) continue;
-      if (((u.it.rotDeg || 0) % 180) !== ((hd.it.rotDeg || 0) % 180)) continue;
-      const dx = u.it.x - hd.it.x, dz = u.it.z - hd.it.z;
-      const along = dx * wx + dz * wz, depth = dx * fx + dz * fz;
-      if (Math.abs(depth) > 14) continue;
-      const gap = Math.abs(along) - (hd.w + u.w) / 2;
-      if (gap < -2 || gap > 2.5) continue;
-      const face = depth + u.d / 2, top = u.top ?? TOP[u.cab.type];
-      const side = along > 0 ? 1 : -1;
-      if (!butt[side] || top > butt[side].top) butt[side] = { face, top };
-    }
-    if (!butt[-1] && !butt[1]) continue;
-    const topY = Math.max(butt[-1]?.top ?? 0, butt[1]?.top ?? 0);
-    // the hood's back sits a hair off the wall: the flank strip runs from the WALL when no upper meets it
-    const bx = hd.it.x - fx * (hd.d / 2), bz = hd.it.z - fz * (hd.d / 2);
-    const backGap = Math.max(0, Math.min(4, fx > 0.5 ? bx - minX : fx < -0.5 ? maxX - bx : fz > 0.5 ? bz - minZ : maxZ - bz));
-    for (const side of [-1, 1]) {
-      const from = butt[side] ? Math.min(butt[side].face, hd.d / 2 - 0.5) : -hd.d / 2 - backGap;
-      const len = hd.d / 2 - from;
-      if (len < 0.5) continue;
-      const mid = from + len / 2;
-      segments.push({ x: hd.it.x + wx * side * (hd.w / 2) + fx * mid, z: hd.it.z + wz * side * (hd.w / 2) + fz * mid, topY, angle: Math.atan2(wx * side, wz * side), length: len });
-      totalIn += len;
-    }
-    segments.push({ x: hd.it.x + fx * (hd.d / 2), z: hd.it.z + fz * (hd.d / 2), topY, angle: Math.atan2(fx, fz), length: hd.w });
-    totalIn += hd.w;
-    for (const sx of [-1, 1]) corners.push({ x: hd.it.x + wx * sx * (hd.w / 2) + fx * (hd.d / 2), z: hd.it.z + wz * sx * (hd.w / 2) + fz * (hd.d / 2), topY, angle: th, sx, sz: 1 });
-  }
   return { segments, corners, drops, totalIn, profile };
 }
