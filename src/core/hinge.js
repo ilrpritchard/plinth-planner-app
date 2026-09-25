@@ -30,7 +30,7 @@ export function canFlipHinge(cab) {
 /** @returns {'L'|'R'|'PAIR'|null} */
 export function hingeOf(cab, it = null) {
   if (!cab || cab.type === 'APPLIANCES') return null;
-  if (cab.form === 'corner') return cab.cornerSide === 'right' ? 'R' : 'L';   // hinge on the blank side
+  if (cab.form === 'corner') return cab.pair ? 'PAIR' : cab.cornerSide === 'right' ? 'R' : 'L';   // hinge on the blank side; a double corner is a pair
   if (isPair(cab)) return 'PAIR';
   if (!SINGLE_LEAF.has(cab.form)) return null;
   return it && it.hinge === 'R' ? 'R' : 'L';

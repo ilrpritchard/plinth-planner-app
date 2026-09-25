@@ -137,13 +137,13 @@ function drawFront(p, cab, a) {
     case 'corner': {
       // blank return panel BEYOND the door (toward the corner) + the door beside it
       const retPx = (cab.type === 'FLOOR' ? 20 : 10) * a.s;
-      if (cab.cornerSide === 'right') {
-        doorPanel(ox + rev, oy + rev, ow - retPx - 2 * rev, oh - 2 * rev, -1);
-        blankPanel(ox + ow - retPx, oy, retPx, oh);
-      } else {
-        blankPanel(ox, oy, retPx, oh);
-        doorPanel(ox + retPx + rev, oy + rev, ow - retPx - 2 * rev, oh - 2 * rev, +1);
-      }
+      const doorX = cab.cornerSide === 'right' ? ox : ox + retPx, doorW = ow - retPx;
+      if (cab.cornerSide === 'right') blankPanel(ox + ow - retPx, oy, retPx, oh); else blankPanel(ox, oy, retPx, oh);
+      if (cab.pair) {                                   // a double corner: two leaves meeting in the middle
+        const lw = (doorW - 3 * rev) / 2;
+        doorPanel(doorX + rev, oy + rev, lw, oh - 2 * rev, +1);
+        doorPanel(doorX + 2 * rev + lw, oy + rev, lw, oh - 2 * rev, -1);
+      } else doorPanel(doorX + rev, oy + rev, doorW - 2 * rev, oh - 2 * rev, cab.cornerSide === 'right' ? -1 : +1);
       break;
     }
     case 'glazed': glazedDoor(p, ox + rev, oy + rev, ow - 2 * rev, oh - 2 * rev, frame); break;

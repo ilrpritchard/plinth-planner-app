@@ -86,6 +86,15 @@ const RAW = [
   { code: 'W9R', type: 'WALL', desc: 'Corner (+10") · blank right', w: 20, d: 14, h: 30, hinge: 'L&R', usd: 2011, corner: true, cornerSide: 'right' },
   { code: 'W10', type: 'WALL', desc: 'Corner (+10") · blank left', w: 24, d: 14, h: 30, hinge: 'L&R', usd: 2160, corner: true, cornerSide: 'left' },
   { code: 'W10R', type: 'WALL', desc: 'Corner (+10") · blank right', w: 24, d: 14, h: 30, hinge: 'L&R', usd: 2160, corner: true, cornerSide: 'right' },
+  // DOUBLE corners (her ask 2026-09-25, "double full height wall corners"): the 36" / 42" doubles
+  // with the 10" blank return, a door pair meeting in the middle, both hands. `pair` marks the
+  // two leaves (hinge / plan / 3D / elevation / DXF all read it). Price to confirm: she has not
+  // set one (W5 / W6 plus the corner uplift would be the place to start). The full-height ones
+  // grow from these below (W33-W36).
+  { code: 'W31', type: 'WALL', desc: 'Corner Double (+10") · blank left', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 0, priceTBC: true, corner: true, pair: true, cornerSide: 'left' },
+  { code: 'W31R', type: 'WALL', desc: 'Corner Double (+10") · blank right', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 0, priceTBC: true, corner: true, pair: true, cornerSide: 'right' },
+  { code: 'W32', type: 'WALL', desc: 'Corner Double (+10") · blank left', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 0, priceTBC: true, corner: true, pair: true, cornerSide: 'left' },
+  { code: 'W32R', type: 'WALL', desc: 'Corner Double (+10") · blank right', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 0, priceTBC: true, corner: true, pair: true, cornerSide: 'right' },
   { code: 'W11', type: 'WALL', desc: 'Open Shelves', w: 20, d: 14, h: 30, hinge: 'n/a', usd: 1389 },
   { code: 'W12', type: 'WALL', desc: 'Open Shelves', w: 24, d: 14, h: 30, hinge: 'n/a', usd: 1410 },
   { code: 'W13', type: 'WALL', desc: 'Open Shelves', w: 28, d: 14, h: 30, hinge: 'n/a', usd: 1537 },
@@ -225,13 +234,14 @@ function classify(it) {
 // W9 / W9R / W10 / W10R at 51" on W27-W30 (W25 is the 10" open shelf and W26 the hood cover,
 // so the corners skip past them), same 10" blank return, same +20%, handed the same way.
 const HIGH_BASES = [['W1', 'W14'], ['W2', 'W15'], ['W3', 'W16'], ['W4', 'W17'], ['W5', 'W18'], ['W6', 'W19'], ['W7', 'W20'], ['W8', 'W21'], ['W11', 'W22'], ['W12', 'W23'], ['W13', 'W24'],
-  ['W9', 'W27'], ['W9R', 'W28'], ['W10', 'W29'], ['W10R', 'W30']];
+  ['W9', 'W27'], ['W9R', 'W28'], ['W10', 'W29'], ['W10R', 'W30'],
+  ['W31', 'W33'], ['W31R', 'W34'], ['W32', 'W35'], ['W32R', 'W36']];   // the double corners (her ask 2026-09-25)
 const HIGH_ADD = 21;
 const HIGH_WALLS = HIGH_BASES.map(([base, code]) => {
   const src = RAW.find((c) => c.code === base);
-  const what = src.corner ? `corner wall cabinet with its 10" blank return` : `${src.desc.toLowerCase()} wall cabinet`;
+  const what = src.corner ? `${src.pair ? 'double ' : ''}corner wall cabinet with its 10" blank return` : `${src.desc.toLowerCase()} wall cabinet`;
   return { ...src, code, desc: `${src.desc}, full height ${30 + HIGH_ADD}"`, h: 30 + HIGH_ADD, usd: Math.round(src.usd * 1.2), high: HIGH_ADD, grewFrom: base,
-    notes: `A ${what} ${30 + HIGH_ADD}" high in one door with two shelves: the height of the standard cabinet plus a 21" stacker, hung at the same 56". Tops at ${56 + 30 + HIGH_ADD}": needs a 10' ceiling.` };
+    notes: `A ${what} ${30 + HIGH_ADD}" high in ${src.pair ? 'a pair of doors' : 'one door'} with two shelves: the height of the standard cabinet plus a 21" stacker, hung at the same 56". Tops at ${56 + 30 + HIGH_ADD}": needs a 10' ceiling.` };
 });
 
 const BASE_CATALOGUE = RAW.concat(HIGH_WALLS).map((it) => ({
@@ -240,6 +250,7 @@ const BASE_CATALOGUE = RAW.concat(HIGH_WALLS).map((it) => ({
   halfDepth: /half depth/i.test(it.desc),
   glazed: !!it.glazed,
   corner: !!it.corner,
+  pair: !!it.pair,
   form: classify(it),
   placeable: it.type !== 'ACCESSORIES' && it.h > 0,
   notSupplied: false,

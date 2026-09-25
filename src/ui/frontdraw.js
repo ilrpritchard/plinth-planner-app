@@ -198,8 +198,9 @@ export function frontParts(cab) {
       drawerStack(dx0, dx1, zB, stackTop);
       break;
     }
-    case 'corner': {                             // door + hatched blank return
-      leaf(dx0, dx1, doorZones);
+    case 'corner': {                             // door (or a pair) + hatched blank return
+      if (cab.pair) { vline('leaf', w / 2, zB, zT); leaf(dx0, w / 2, doorZones); leaf(w / 2, dx1, doorZones); }
+      else leaf(dx0, dx1, doorZones);
       const R = cornerReturnIn(cab);
       if (cab.cornerSide === 'right') { rect('return', w, 0, R, h); out.x1 = w + R; }
       else { rect('return', -R, 0, R, h); out.x0 = -R; }

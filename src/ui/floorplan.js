@@ -403,7 +403,9 @@ function formDoors(cab, it) {
   const half = openHalf - 0.5;         // each leaf of a pair (small centre reveal)
   const hingeSign = hingeOf(cab, it) === 'R' ? 1 : -1;     // core/hinge.js — corners hinge on their blank side
   switch (cab.form) {
-    case 'door': case 'glazed': case 'corner':
+    case 'corner':
+      return cab.pair ? [{ hinge: -1, dw: half }, { hinge: 1, dw: half }] : [{ hinge: hingeSign, dw: single }];
+    case 'door': case 'glazed':
       return [{ hinge: hingeSign, dw: single }];
     case 'double': case 'glazedDouble':
       return [{ hinge: -1, dw: half }, { hinge: 1, dw: half }];

@@ -7,8 +7,8 @@ import { planCornice } from '../src/core/cornice.js';
 
 test('W14-W24 and W27-W30: every W cabinet, corners included, at 51" (a tall + its 21" stacker), hung at 56", priced at the wall cabinet + 20%', () => {
   const high = CATALOGUE.filter((c) => c.high);
-  assert.equal(high.length, 15);
-  assert.deepEqual(high.map((c) => c.code), [...Array.from({ length: 11 }, (_, i) => `W${14 + i}`), 'W27', 'W28', 'W29', 'W30']);
+  assert.equal(high.length, 19);
+  assert.deepEqual(high.map((c) => c.code), [...Array.from({ length: 11 }, (_, i) => `W${14 + i}`), 'W27', 'W28', 'W29', 'W30', 'W33', 'W34', 'W35', 'W36']);
   for (const c of high) {
     const src = getCab(c.grewFrom);
     assert.equal(c.type, 'WALL'); assert.equal(c.w, src.w); assert.equal(c.d, src.d); assert.equal(c.form, src.form);
@@ -19,7 +19,8 @@ test('W14-W24 and W27-W30: every W cabinet, corners included, at 51" (a tall + i
   }
   // the full-height corners (her ask 2026-09-25): W9 / W9R / W10 / W10R grown, skipping the taken W25 / W26
   const corners = high.filter((c) => c.corner);
-  assert.deepEqual(corners.map((c) => [c.code, c.grewFrom, c.w, c.cornerSide]), [['W27', 'W9', 20, 'left'], ['W28', 'W9R', 20, 'right'], ['W29', 'W10', 24, 'left'], ['W30', 'W10R', 24, 'right']]);
+  assert.deepEqual(corners.map((c) => [c.code, c.grewFrom, c.w, c.cornerSide, c.pair]), [['W27', 'W9', 20, 'left', false], ['W28', 'W9R', 20, 'right', false], ['W29', 'W10', 24, 'left', false], ['W30', 'W10R', 24, 'right', false],
+    ['W33', 'W31', 36, 'left', true], ['W34', 'W31R', 36, 'right', true], ['W35', 'W32', 42, 'left', true], ['W36', 'W32R', 42, 'right', true]]);
   assert.equal(getCab('W27').usd, Math.round(2011 * 1.2)); assert.equal(getCab('W29').usd, Math.round(2160 * 1.2));
   assert.ok(!getCab('W26').high && getCab('W26').hoodCover, 'W26 is still the hood cover');
   const alts = swapAlternatives('W9').map((c) => c.code);
@@ -63,4 +64,24 @@ test('an open shelf at any depth: W25:24 is the 10" shelf made 24" deep, whole i
   assert.equal(sizedShelfCode('W25', 14), 'W25', 'its own depth is its own code');
   assert.equal(sizedShelfCode('W11', 31.4), 'W11:31'); assert.equal(sizedShelfCode('W25', 60), 'W25:36');
   assert.equal(getCab('W2:24'), undefined, 'a door cabinet never sizes');
+});
+
+test('double wall corners W31 / W32 (+R) and their full-height W33-W36: a door PAIR beside the 10" return, both hands, price to confirm (her ask 2026-09-25)', async () => {
+  const { getCab } = await import('../src/core/catalogue.js');
+  const { hingeOf, canFlipHinge } = await import('../src/core/hinge.js');
+  const { frontParts, cornerReturnIn } = await import('../src/ui/frontdraw.js');
+  for (const [code, w, side, h] of [['W31', 36, 'left', 30], ['W31R', 36, 'right', 30], ['W32', 42, 'left', 30], ['W32R', 42, 'right', 30], ['W33', 36, 'left', 51], ['W34', 36, 'right', 51], ['W35', 42, 'left', 51], ['W36', 42, 'right', 51]]) {
+    const c = getCab(code);
+    assert.ok(c && c.type === 'WALL' && c.corner && c.pair && c.form === 'corner', `${code} is a double corner`);
+    assert.equal(c.w, w); assert.equal(c.d, 14); assert.equal(c.h, h); assert.equal(c.cornerSide, side);
+    assert.ok(c.priceTBC && c.usd === 0, `${code} price to confirm`);
+    assert.equal(hingeOf(c), 'PAIR'); assert.ok(!canFlipHinge(c));
+    assert.equal(cornerReturnIn(c), 10);
+    const parts = frontParts(c).parts;
+    assert.equal(parts.filter((p) => p.k === 'line' && p.cls === 'leaf').length, 1, `${code} elevation draws the centre meeting line`);
+    assert.ok(parts.some((p) => p.cls === 'return' && p.w === 10), `${code} elevation draws the return`);
+  }
+  assert.equal(hingeOf(getCab('W9')), 'L'); assert.equal(hingeOf(getCab('W30')), 'R');
+  const alts = swapAlternatives('W31').map((c) => c.code);
+  assert.ok(alts.includes('W33') && alts.includes('W31R') && !alts.includes('W18'), 'a double corner swaps for its other hand or its full-height version, never a plain double');
 });

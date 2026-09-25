@@ -590,7 +590,9 @@ function buildFront(g, cab, ctx) {
       revealRing(g, 0, cy, faceW, openH, frontZ);
       return false;
     }
-    case 'corner': singleDoor(false, cab.high ? 2 : 1, cab.cornerSide === 'right' ? 1 : -1); return true; // hinge on the blank side; a full-height corner door gets the centre rail too
+    case 'corner':                                    // hinge on the blank side; a full-height corner door gets the centre rail too
+      if (cab.pair) doublePair(false, cab.high ? 2 : 1); else singleDoor(false, cab.high ? 2 : 1, cab.cornerSide === 'right' ? 1 : -1);   // a double corner: the pair meets in the middle
+      return true;
     case 'glazed': singleDoor(true); return true;
     case 'double': doublePair(false); return true;
     case 'glazedDouble': doublePair(true); return true;

@@ -463,7 +463,8 @@ function frontEntities(cab) {
     }
     case 'corner': {                             // door + full-height blank return
       const R = cornerReturnMM(cab), right = cab.cornerSide === 'right';
-      shakerDoor(out, dx0, dx1, zB, zT, glazedPanels);            // one panel, or two about the 80mm rail when full height
+      if (cab.pair) { shakerDoor(out, dx0, W / 2, zB, zT, glazedPanels); shakerDoor(out, W / 2, dx1, zB, zT, glazedPanels); }   // a double corner: a pair
+      else shakerDoor(out, dx0, dx1, zB, zT, glazedPanels);       // one panel, or two about the 80mm rail when full height
       if (right) out.push(...box(W, W + R, 0, M.FRONT, 0, H, 'FRONT'));
       else out.push(...box(-R, 0, 0, M.FRONT, 0, H, 'FRONT'));
       break;
