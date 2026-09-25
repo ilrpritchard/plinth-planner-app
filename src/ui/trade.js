@@ -57,6 +57,7 @@ import { buildInvoiceHTML } from './invoice.js';
 import { buildChangeOrderModel } from '../core/changeorder.js';
 import { buildChangeOrderHTML } from './changeorder.js';
 import { planRowsLayout, rowsNotInDesign, removeFromDesign } from '../core/rowlayout.js';
+import { freshRoom } from '../core/store.js';
 import { trackURL, ORDER_NO } from '../core/ordertrack.js';
 import { trackingHTML, trackingPageHTML, findOrderHTML, buildTrackingDocHTML } from './ordertrack.js';
 import { looksLikeEmail } from './dxfgate.js';
@@ -758,7 +759,7 @@ export class TradeUI {
 
   /** Stash the current state, load this unit's design (or a blank room) into
    *  Home mode, and show the persistent Done/Cancel banner. */
-  enterDesign(u, opts = {}) {
+  enterDesign(u, opts = {}) {                    // opts.roomFirst: open on Room (dimensions, floorplan, doors)
     if (this._stash) {                             // already designing (main.js keeps the Project tab shut meanwhile)
       toast(`Unit ${this.designingUnit()} is open in 3D: Done or Cancel in the bar at the top.`);
       return;
@@ -785,6 +786,10 @@ export class TradeUI {
       }
     } else {
       d = this.store.serialize(); d.items = []; d.accessories = {};
+      // a BRAND-NEW unit (no layout, no cabinets on its list) starts from a fresh room: the
+      // last project's dimensions, doors and windows used to ride along (her catch
+      // 2026-09-25), so it opens on Room for the size to be entered
+      if (!(u.rows || []).some((r) => getCab(r.code))) { d.room = freshRoom(d.room); opts = { ...opts, roomFirst: true }; }
       // accessory rows on the list (drawer inserts, end panels…) ride into the
       // session, or Done — which re-derives the list — would drop them
       for (const r of u.rows || []) { if (getCab(r.code)?.type === 'ACCESSORIES' && Number(r.qty) > 0) d.accessories[r.code] = Number(r.qty); }

@@ -11,6 +11,16 @@ import { housingTakes } from './ovenseat.js';
 export const SCHEMA = 'plinth-planner';
 export const VERSION = 1;
 
+/** A fresh room: the default size, no openings, no boxings. `keep` carries the STYLE across
+ *  (floor, wall, worktop, cornice) so a new unit type in the same building looks like its
+ *  siblings while its DIMENSIONS start blank for the person to enter (her catch 2026-09-25:
+ *  a new project remembered the last project's room size). */
+export function freshRoom(keep = {}) {
+  const r = defaultState().room;
+  for (const k of ['floor', 'wall', 'worktop', 'cornice']) if (keep[k] != null) r[k] = keep[k];
+  return r;
+}
+
 function defaultState() {
   return {
     schema: SCHEMA,
