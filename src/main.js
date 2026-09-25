@@ -277,7 +277,7 @@ const PHOTO = { width: 3840, height: 2560, type: 'image/jpeg', quality: 0.94 };
 let photoMode = null;                                 // { views, i, was: { pos, target, fov } }
 const bytesOf = (url) => { const b64 = url.slice(url.indexOf(',') + 1), bin = atob(b64), data = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) data[k] = bin.charCodeAt(k); return data; };
 const saveBlob = (name, blob) => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); };
-const photoFile = (v, i) => `PLINTH_kitchen_${i + 1}_${v.key}.jpg`;
+const photoFile = (v, i) => `PLINTH_kitchen_${i + 1}_${v.key}.jpg`;   // 1 = your view, 2-6 the suggested angles
 document.getElementById('btnPhoto')?.addEventListener('click', async () => {
   if (photoMode) { photoAngle(photoMode.i + 1); return; }          // pressed again: next angle
   if (isCloud()) {
@@ -295,7 +295,11 @@ document.getElementById('btnPhoto')?.addEventListener('click', async () => {
 function startPhotoMode() {
   if (scene.view !== '3d') { document.querySelector('#viewSwitch [data-view="3d"]')?.click(); }
   const cam = scene.persp;
-  photoMode = { views: photoViews(store.state.room, store.state.items), i: 0, was: { pos: cam.position.clone(), target: scene.controls.target.clone(), fov: cam.fov } };
+  const was = { pos: cam.position.clone(), target: scene.controls.target.clone(), fov: cam.fov };
+  // photo 1 is HER OWN VIEW, exactly as she left it (her catch 2026-09-25: "when I angle the camera
+  // and click photo it removes my view"); the five suggested standpoints are one arrow away
+  const mine = { key: 'your-view', name: 'Your view, as it is', pos: was.pos.toArray(), target: was.target.toArray(), fov: was.fov };
+  photoMode = { views: [mine, ...photoViews(store.state.room, store.state.items)], i: 0, was };
   layer.select(null); ui.showSelbar(null); layer.setHover?.(null);
   room.setGridVisible(false);
   document.getElementById('emptyState')?.classList.add('hidden');
@@ -306,7 +310,7 @@ function startPhotoMode() {
     <span id="pbCap"></span>
     <button type="button" class="pb-ghost" id="pbNext" title="Next angle (→)">›</button>
     <button type="button" id="pbSave" title="Render what is on screen at ${PHOTO.width} × ${PHOTO.height} and save it">Save this photo</button>
-    <button type="button" class="pb-ghost" id="pbAll" title="The five standpoints, rendered at ${PHOTO.width} × ${PHOTO.height}, in one zip">Save all five (zip)</button>
+    <button type="button" class="pb-ghost" id="pbAll" title="Your view and the five suggested standpoints, rendered at ${PHOTO.width} × ${PHOTO.height}, in one zip">Save all (zip)</button>
     <button type="button" class="pb-ghost" id="pbDone">Done</button>`;
   bar.querySelector('#pbPrev').addEventListener('click', () => photoAngle(photoMode.i - 1));
   bar.querySelector('#pbNext').addEventListener('click', () => photoAngle(photoMode.i + 1));
@@ -323,7 +327,7 @@ function startPhotoMode() {
   bar.querySelector('#pbDone').addEventListener('click', endPhotoMode);
   document.addEventListener('keydown', photoKeys, true);
   photoAngle(0);
-  toast('Camera at eye level. Orbit to tune the shot, ‹ › for the other angles, then Save.');
+  toast('Photo 1 is your view as it is: Save it, or ‹ › for five suggested angles at eye level.');
 }
 function photoAngle(i) {
   if (!photoMode) return;

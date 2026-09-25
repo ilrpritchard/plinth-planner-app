@@ -47,16 +47,27 @@ test('no cooker-edge warning for an upper butted to the plaster hood; the warnin
   assert.ok(computeWarnings(store2.state).some((w) => /cooker's edge/.test(w.msg)), 'AP8: still warned');
 });
 
-test('the crown of the uppers dies into the plaster hood: no side return at the hood, no crown on the hood', () => {
+test('the crown MITRES round the plaster hood: no return at the upper, flank strips from the upper face to the hood front, one strip across the front, mitred corners', () => {
   const store = kitchen();
   store.addItem('W2', { x: -half - 12, z: minZ + 7.25, rotDeg: 0 });
   store.addItem('W2', { x: half + 12, z: minZ + 7.25, rotDeg: 0 });
   const plan = planCornice(store.state);
   const fronts = plan.segments.filter((g) => Math.abs(Math.sin(g.angle)) < 0.01 && Math.abs(g.z - (minZ + 14.25)) < 0.5);
   assert.equal(fronts.length, 2, `two front strips, one per upper (${plan.segments.length} segments)`);
-  const sides = plan.segments.filter((g) => Math.abs(Math.cos(g.angle)) < 0.01);
-  for (const g of sides) assert.ok(Math.abs(g.x) > half + 20, `a side return at x ${g.x.toFixed(1)} sits on the hood flank`);
-  assert.ok(!plan.segments.some((g) => Math.abs(g.x) < half - 1 && Math.abs(g.z - (minZ + 20.25)) < 1), 'no crown across the hood front');
+  for (const g of fronts) assert.ok(Math.abs(g.length - 24) < 0.05, `the upper's strip runs its width to the hood (${g.length.toFixed(2)})`);
+  const uppersReturns = plan.segments.filter((g) => Math.abs(Math.cos(g.angle)) < 0.01 && Math.abs(g.length - 14) < 0.1);
+  for (const g of uppersReturns) assert.ok(Math.abs(g.x) > half + 20, `a 14" return at x ${g.x.toFixed(1)} sits on the hood flank`);
+  // round the hood at the uppers' crown line (86"): flank strips 6" long (the hood stands 20" deep, the upper 14") and the full front
+  const flank = plan.segments.filter((g) => Math.abs(Math.cos(g.angle)) < 0.01 && Math.abs(Math.abs(g.x) - half) < 0.05);
+  assert.equal(flank.length, 2, 'a strip on each hood flank');
+  for (const g of flank) { assert.ok(Math.abs(g.length - 6) < 0.05, `flank strip ${g.length.toFixed(2)}"`); assert.equal(g.topY, 86); assert.ok(Math.abs(g.z - (minZ + 17.25)) < 0.05, `from the upper's face to the hood front (z ${g.z.toFixed(2)})`); }
+  const across = plan.segments.find((g) => Math.abs(Math.sin(g.angle)) < 0.01 && Math.abs(g.z - (minZ + 20.25)) < 0.05);
+  assert.ok(across && Math.abs(across.length - hoodCab.w) < 0.01 && across.topY === 86, 'the crown runs across the hood front, mitred');
+  assert.equal(plan.corners.filter((c) => Math.abs(Math.abs(c.x) - half) < 0.05 && Math.abs(c.z - (minZ + 20.25)) < 0.05).length, 2, 'two mitred front corners on the hood');
   assert.equal(plan.drops.length, 0, 'no connector board on plaster');
-  for (const g of fronts) assert.ok(Math.abs(g.length - 24) < 0.05, `the front strip runs the cabinet width to the hood (${g.length.toFixed(2)})`);
+  // one upper only: the other flank carries the crown all the way back to the wall
+  const one = kitchen(); one.addItem('W2', { x: -half - 12, z: minZ + 7.25, rotDeg: 0 });
+  const p1 = planCornice(one.state);
+  const far = p1.segments.find((g) => Math.abs(Math.cos(g.angle)) < 0.01 && Math.abs(g.x - half) < 0.05);
+  assert.ok(far && Math.abs(far.length - (hoodCab.d + 0.25)) < 0.05, `the far flank runs wall to front (${far && far.length.toFixed(2)})`);
 });
