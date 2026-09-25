@@ -85,13 +85,16 @@ function pface(verts, faces, layer) {
     L.push(...ENT('VERTEX', layer), '100', 'AcDbVertex', '100', 'AcDbPolyFaceMeshVertex',
       '10', num(x * K), '20', num(y * K), '30', num(z * K), '70', '192');
   }
+  // face records carry ONLY AcDbFaceRecord (no AcDbVertex marker), and the SEQEND is owned by
+  // the POLYLINE itself ('%P%') — exactly as AutoCAD writes them; SketchUp's importer dropped
+  // every mesh that had the extra marker (her third import 2026-09-25: lines only)
   for (const f of faces) {
-    L.push(...ENT('VERTEX', layer), '100', 'AcDbVertex', '100', 'AcDbFaceRecord',
+    L.push(...ENT('VERTEX', layer), '100', 'AcDbFaceRecord',
       '10', 0, '20', 0, '30', 0, '70', '128',
       '71', String(f[0]), '72', String(f[1]), '73', String(f[2]));
     if (f.length > 3) L.push('74', String(f[3]));
   }
-  L.push(...ENT('SEQEND', layer));
+  L.push('0', 'SEQEND', '5', '%H%', '330', '%P%', '100', 'AcDbEntity', '8', layer);
   return L;
 }
 
@@ -154,9 +157,14 @@ function dxfDoc(blocks, entities, { units = 1, layers = [] } = {}) {
   // number the placeholders in one entity stream, all owned by `owner`
   const fill = (lines, owner) => {
     const out = [];
+    let lastPoly = owner;                                   // a SEQEND is owned by its POLYLINE
     for (let i = 0; i + 1 < lines.length; i += 2) {
       const code = lines[i], val = lines[i + 1];
-      out.push(code, val === '%H%' ? H() : val === '%O%' ? owner : val);
+      let v = val;
+      if (val === '%H%') { v = H(); if (lines[i - 2] === '0' && lines[i - 1] === 'POLYLINE') lastPoly = v; }
+      else if (val === '%O%') v = owner;
+      else if (val === '%P%') v = lastPoly;
+      out.push(code, v);
     }
     return out;
   };
