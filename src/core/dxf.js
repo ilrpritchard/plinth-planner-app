@@ -463,7 +463,7 @@ function frontEntities(cab) {
     }
     case 'corner': {                             // door + full-height blank return
       const R = cornerReturnMM(cab), right = cab.cornerSide === 'right';
-      shakerDoor(out, dx0, dx1, zB, zT, singlePanel);
+      shakerDoor(out, dx0, dx1, zB, zT, glazedPanels);            // one panel, or two about the 80mm rail when full height
       if (right) out.push(...box(W, W + R, 0, M.FRONT, 0, H, 'FRONT'));
       else out.push(...box(-R, 0, 0, M.FRONT, 0, H, 'FRONT'));
       break;
@@ -573,6 +573,36 @@ function unitEntities(cab, frontLayer = 'FRONT') {
   // two label rows never collide where uppers hang over a base run
   out.push(...text(W / 2, hung ? D * 0.75 : D / 2, 63.5, cab.baseCode || cab.code,
     { align: 'center', layer: 'LABEL', z: -zOff }));
+  return out;
+}
+
+/** The 3D meshes of one cabinet, block-local mm (origin front-left-bottom, +X across the front,
+ *  +Y front -> back, +Z up): [{ layer, verts:[[x,y,z]], faces:[[i,..]] (1-based), closed }].
+ *  Parsed from the very entity stream the DXF ships, so the IFC carries the SAME fronts
+ *  (her friend's Revit screenshots 2026-09-25: "why don't the cabinets have the door style"). */
+export function unitMeshes(cab) {
+  const lines = unitEntities(cab);
+  const out = [];
+  let cur = null, ent = null, rec = null;
+  const flush = () => { if (ent === 'VERTEX' && rec) { if (rec.face) cur.faces.push(rec.face.map(Math.abs)); else cur.verts.push([rec.x || 0, rec.y || 0, rec.z || 0]); } rec = null; };
+  for (let i = 0; i + 1 < lines.length; i += 2) {
+    const code = lines[i], val = lines[i + 1];
+    if (code === '0') {
+      flush();
+      ent = val;
+      if (val === 'POLYLINE') { cur = { layer: '0', verts: [], faces: [] }; out.push(cur); }
+      else if (val === 'VERTEX') rec = {};
+      else if (val === 'SEQEND') { cur = null; }
+      continue;
+    }
+    if (ent === 'POLYLINE' && code === '8') cur.layer = val;
+    if (ent !== 'VERTEX' || !rec) continue;
+    if (code === '10') rec.x = Number(val) * IN; else if (code === '20') rec.y = Number(val) * IN; else if (code === '30') rec.z = Number(val) * IN;
+    else if (code === '70' && val === '128') rec.face = [];
+    else if (rec.face && (code === '71' || code === '72' || code === '73' || code === '74')) rec.face.push(Number(val));
+  }
+  flush();
+  for (const m of out) m.closed = m.verts.length === 8 && m.faces.length === 6;   // a box; frames and stitched backs are open shells
   return out;
 }
 

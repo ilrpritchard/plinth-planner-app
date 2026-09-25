@@ -20,8 +20,10 @@
 // a deterministic per-file counter, so the same input yields the same file
 // byte-for-byte (`opts.timestamp` defaults to '' for the same reason).
 
-import { getCab, getFinish } from './catalogue.js';
-import { MOUNT } from './units.js';
+import { getCab, getFinish, WORKTOP_OPTIONS } from './catalogue.js';
+import { MOUNT, SURFACE_Y, WORKTOP_SLAB } from './units.js';
+import { unitMeshes } from './dxf.js';
+import { planWorktopSlabs } from './worktop-plan.js';
 
 // COLOURS CARRY ACROSS (her rule 2026-09-25): every solid gets an IfcStyledItem pointing at an
 // IfcSurfaceStyle (IfcSurfaceStyleShading, the one Revit's IFC link colours faces from) — the
@@ -171,12 +173,6 @@ export function buildUnitIFC(units, opts = {}) {
         `IFCDIRECTION((${real(Math.cos(th))},${real(Math.sin(th))},0.))`);
       const ax = add(`IFCAXIS2PLACEMENT3D(#${pt},#${dirZ},#${rd})`);
       const lp = add(`IFCLOCALPLACEMENT(#${sLP},#${ax})`);
-      // one box: W×D rectangle (centred on the placement) extruded H up,
-      // all in inches — the file's length unit
-      const prof = add(`IFCRECTANGLEPROFILEDEF(.AREA.,$,#${axis2d},` +
-        `${real(cab.w)},${real(cab.d)})`);
-      const solid = add(
-        `IFCEXTRUDEDAREASOLID(#${prof},#${wcs},#${dirZ},${real(cab.h)})`);
       // its colour: the paint it was designed in (the cabinet's own, else the unit's), oak for an
       // open unit or shelf, steel for an appliance, the paint for an integrated one
       const finName = (it.finish && getFinish(it.finish) ? it.finish : null) || (unit.state && unit.state.finish) || 'Ghost';
@@ -184,9 +180,34 @@ export function buildUnitIFC(units, opts = {}) {
       const [sName, sHex] = cab.type === 'APPLIANCES'
         ? (cab.integrated || cab.plaster ? [finName, finHex] : ['Stainless steel', STEEL_HEX])
         : (cab.form === 'open' || cab.form === 'tray' || cab.type === 'SHELF' ? ['Oak', OAK_HEX] : [finName, finHex]);
-      add(`IFCSTYLEDITEM(#${solid},(#${styleFor(sName, sHex)}),$)`);
-      const rep = add(
-        `IFCSHAPEREPRESENTATION(#${ctx},'Body','SweptSolid',(#${solid}))`);
+      let rep;
+      const meshes = cab.type === 'APPLIANCES' || cab.notSupplied ? [] : unitMeshes(cab);
+      if (meshes.length) {
+        // a PL/NTH cabinet: the SAME fronts and carcass the DXF ships, as IFC4 tessellation
+        // (IfcPolygonalFaceSet, what Revit reads natively) — 22mm legs, 80mm shaker frames,
+        // recessed panels, drawer faces, plinth. Block-local mm -> inches about the placement.
+        const items = [];
+        for (const m of meshes) {
+          if (m.layer !== 'FRONT' && m.layer !== 'BODY' && !m.layer.startsWith('FRONT-')) continue;   // footprint lines and labels stay 2D
+          const pts = m.verts.map(([x, y, z]) => `(${real(x / 25.4 - cab.w / 2)},${real(y / 25.4 - cab.d / 2)},${real(z / 25.4)})`).join(',');
+          const list = add(`IFCCARTESIANPOINTLIST3D((${pts}))`);
+          const faces = m.faces.map((f) => add(`IFCINDEXEDPOLYGONALFACE((${f.join(',')}))`));
+          const fs = add(`IFCPOLYGONALFACESET(#${list},${m.closed ? '.T.' : '.F.'},(${faces.map((f) => '#' + f).join(',')}),$)`);
+          const [mName, mHex] = m.layer === 'BODY' ? ['Oak', OAK_HEX] : [sName, sHex];
+          add(`IFCSTYLEDITEM(#${fs},(#${styleFor(mName, mHex)}),$)`);
+          items.push(fs);
+        }
+        rep = add(`IFCSHAPEREPRESENTATION(#${ctx},'Body','Tessellation',(${items.map((i) => '#' + i).join(',')}))`);
+      } else {
+        // an appliance: one box, W×D rectangle (centred on the placement) extruded H up
+        const prof = add(`IFCRECTANGLEPROFILEDEF(.AREA.,$,#${axis2d},` +
+          `${real(cab.w)},${real(cab.d)})`);
+        const solid = add(
+          `IFCEXTRUDEDAREASOLID(#${prof},#${wcs},#${dirZ},${real(cab.h)})`);
+        add(`IFCSTYLEDITEM(#${solid},(#${styleFor(sName, sHex)}),$)`);
+        rep = add(
+          `IFCSHAPEREPRESENTATION(#${ctx},'Body','SweptSolid',(#${solid}))`);
+      }
       const pds = add(`IFCPRODUCTDEFINITIONSHAPE($,$,(#${rep}))`);
       const name = `${cab.code} - ${cab.desc} (${cab.w}in)`;
       const tag = cab.baseCode || cab.code;
@@ -194,6 +215,25 @@ export function buildUnitIFC(units, opts = {}) {
         `IFCFURNISHINGELEMENT('${gid()}',$,'${str(name)}',$,$,` +
         `#${lp},#${pds},'${str(tag)}')`));
     }
+    // the worktops: one furnishing element per slab, in the chosen material's colour, so the
+    // kitchen reads as a kitchen in Revit and not as a row of boxes with nothing on top
+    const room = (unit && unit.state && unit.state.room) || {};
+    const wtKey = room.worktop && WORKTOP_OPTIONS[room.worktop] ? room.worktop : 'marble';
+    let slabs = [];
+    try { slabs = planWorktopSlabs(items, getCab, wtKey, { width: room.width || 144, depth: room.depth || 120 }); } catch { slabs = []; }
+    slabs.forEach((sl, k) => {
+      const w = sl.x1 - sl.x0, d = sl.z1 - sl.z0;
+      if (!(w > 0.5 && d > 0.5)) return;
+      const pt = add(`IFCCARTESIANPOINT((${real((sl.x0 + sl.x1) / 2)},${real(-(sl.z0 + sl.z1) / 2)},${real(SURFACE_Y - WORKTOP_SLAB)}))`);
+      const ax = add(`IFCAXIS2PLACEMENT3D(#${pt},#${dirZ},#${dirX})`);
+      const lp = add(`IFCLOCALPLACEMENT(#${sLP},#${ax})`);
+      const prof = add(`IFCRECTANGLEPROFILEDEF(.AREA.,$,#${axis2d},${real(w)},${real(d)})`);
+      const solid = add(`IFCEXTRUDEDAREASOLID(#${prof},#${wcs},#${dirZ},${real(WORKTOP_SLAB)})`);
+      add(`IFCSTYLEDITEM(#${solid},(#${styleFor(WORKTOP_OPTIONS[wtKey].label, WORKTOP_OPTIONS[wtKey].hex)}),$)`);
+      const rep = add(`IFCSHAPEREPRESENTATION(#${ctx},'Body','SweptSolid',(#${solid}))`);
+      const pds = add(`IFCPRODUCTDEFINITIONSHAPE($,$,(#${rep}))`);
+      elementIds.push(add(`IFCFURNISHINGELEMENT('${gid()}',$,'Worktop ${k + 1} - ${str(WORKTOP_OPTIONS[wtKey].label)} (by others)',$,$,#${lp},#${pds},'WORKTOP')`));
+    });
     if (elementIds.length) {
       add(`IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid()}',$,$,$,` +
         `(${elementIds.map((id) => '#' + id).join(',')}),#${storey})`);

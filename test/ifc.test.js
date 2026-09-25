@@ -103,20 +103,24 @@ test('one IFCBUILDINGSTOREY per unit, named after the unit type', () => {
   assert.match(IFC, /IFCBUILDINGSTOREY\('[^']{22}',\$,'Owner''s Suite  deluxe'/);
 });
 
-test('every placed cabinet AND appliance is an IFCFURNISHINGELEMENT', () => {
+test('every placed cabinet AND appliance is an IFCFURNISHINGELEMENT, plus one per worktop slab', async () => {
+  const { planWorktopSlabs } = await import('../src/core/worktop-plan.js');
+  const slabs = UNITS.reduce((t, u) => t + planWorktopSlabs(u.state.items, getCab, 'marble', u.state.room).length, 0);
   const want = UNITS.reduce((t, u) => t + placedCount(u.state), 0);
   const got = (IFC.match(/^#\d+=IFCFURNISHINGELEMENT\(/gm) || []).length;
-  assert.equal(got, want);
+  assert.equal(got, want + slabs);
   // demoState definitely placed an AP2 range — its Tag must survive
   assert.match(IFC, /IFCFURNISHINGELEMENT\('[^']{22}',\$,'AP2 - Range cooker 36" \(36in\)',\$,\$,#\d+,#\d+,'AP2'\)/);
-  // one solid + one placement per element
+  // appliances and worktops are boxes; every cabinet is a tessellated body
+  const appliances = UNITS.reduce((t, u) => t + u.state.items.filter((it) => getCab(it.code)?.type === 'APPLIANCES').length, 0);
   const solids = (IFC.match(/=IFCEXTRUDEDAREASOLID\(/g) || []).length;
-  assert.equal(solids, want);
+  assert.equal(solids, appliances + slabs);
+  assert.equal((IFC.match(/'Body','Tessellation'/g) || []).length, want - appliances, 'one tessellated body per cabinet');
 });
 
-test('geometry is inches: F20 (36×24×35in) extrudes 36×24 by 35', () => {
-  assert.match(IFC, /IFCRECTANGLEPROFILEDEF\(\.AREA\.,\$,#\d+,36\.,24\.\)/);
-  assert.match(IFC, /IFCEXTRUDEDAREASOLID\(#\d+,#\d+,#\d+,35\.\)/);
+test('geometry is inches: an F20 (36×24×35in) carcass spans -18..18 by -12..12 about its placement, 35 high', () => {
+  assert.ok(IFC.includes('(-18.,-12.,0.)') && IFC.includes('(18.,12.,35.)'), 'carcass corners in inches');
+  assert.match(IFC, /IFCRECTANGLEPROFILEDEF\(\.AREA\.,\$,#\d+,36\.,26\.\)/, 'the 36" range is still a 36 x 26 box');
 });
 
 test('mount heights in inches: wall units lift 56in, counter on the worktop (35in + 30mm)', () => {
@@ -159,14 +163,34 @@ test('empty and unknown-code inputs still yield a valid envelope', () => {
   assert.match(out, /IFCFURNISHINGELEMENT\('[^']{22}',\$,'[^']*',\$,\$,#\d+,#\d+,'AP9'\)/);
 });
 
-test('colours carry across: one IfcSurfaceStyle per colour, an IfcStyledItem on every solid, the finish on cabinets and steel on appliances (her rule 2026-09-25)', () => {
+test('colours carry across: one IfcSurfaceStyle per colour, an IfcStyledItem on every solid, the finish on cabinets and steel on appliances (her rule 2026-09-25)', async () => {
   const { getFinish } = { getFinish: (n) => ({ Swamp: { hex: '#6B6148' } })[n] };
   const state = { finish: 'Swamp', items: [ { id: 1, code: 'F2', x: 0, z: -60, rotDeg: 0 }, { id: 2, code: 'F10', x: 40, z: -60, rotDeg: 0, finish: 'Ghost' }, { id: 3, code: 'AP2', x: 80, z: -60, rotDeg: 0 }, { id: 4, code: 'F23', x: 120, z: -60, rotDeg: 0 } ] };
   const ifc = buildUnitIFC([{ name: 'Type C', state }]);
-  const solids = (ifc.match(/IFCEXTRUDEDAREASOLID/g) || []).length, styled = (ifc.match(/IFCSTYLEDITEM\(/g) || []).length;
-  assert.equal(solids, 4); assert.equal(styled, 4, 'every solid is styled');
+  const solids = (ifc.match(/IFCEXTRUDEDAREASOLID/g) || []).length, sets = (ifc.match(/IFCPOLYGONALFACESET\(/g) || []).length, styled = (ifc.match(/IFCSTYLEDITEM\(/g) || []).length;
+  const { planWorktopSlabs } = await import('../src/core/worktop-plan.js');
+  const slabs = planWorktopSlabs(state.items, getCab, 'marble', { width: 144, depth: 120 }).length;
+  assert.equal(solids, 1 + slabs, `the range is a box, plus one box per worktop slab (${slabs})`);
+  assert.ok(sets >= 3 * 6, `the three cabinets are tessellated, several meshes each (${sets})`);
+  assert.equal(styled, solids + sets, 'every solid and every mesh is styled');
   assert.ok(ifc.includes("IFCSURFACESTYLE('Swamp',.BOTH.,") && ifc.includes("IFCSURFACESTYLE('Ghost',.BOTH.,") && ifc.includes("IFCSURFACESTYLE('Stainless steel',.BOTH.,") && ifc.includes("IFCSURFACESTYLE('Oak',.BOTH.,"));
   const [r, g, b] = [0x6b / 255, 0x61 / 255, 0x48 / 255].map((v) => Math.round(v * 1e6) / 1e6);
   assert.ok(ifc.includes(`IFCCOLOURRGB($,${r},${g},${b})`), `Swamp is ${getFinish('Swamp').hex} in the file`);
-  assert.equal((ifc.match(/IFCSURFACESTYLE\(/g) || []).length, 4, 'one style per colour, shared');
+  assert.equal((ifc.match(/IFCSURFACESTYLE\(/g) || []).length, 5, 'one style per colour, shared (Swamp, Ghost, steel, oak, the worktop)');
+});
+
+test('cabinets carry their real fronts: IfcPolygonalFaceSets in inches about the placement, boxes closed, frames open; appliances stay boxes; the worktop rides along', async () => {
+  const { unitMeshes } = await import('../src/core/dxf.js');
+  const state = { room: { width: 200, depth: 150, height: 96, worktop: 'soapstone' }, finish: 'Ghost', items: [ { id: 1, code: 'F2', x: 0, z: -62.75, rotDeg: 0 }, { id: 2, code: 'AP2', x: 40, z: -62, rotDeg: 0 } ] };
+  const ifc = buildUnitIFC([{ name: 'T', state }]);
+  const meshes = unitMeshes(getCab('F2')).filter((m) => m.layer === 'FRONT' || m.layer === 'BODY');
+  assert.ok(meshes.length >= 6, `F2 has meshes (${meshes.length})`);
+  assert.equal((ifc.match(/IFCPOLYGONALFACESET\(/g) || []).length, meshes.length, 'one face set per mesh');
+  assert.ok(ifc.includes("'Body','Tessellation'"), 'tessellation representation');
+  assert.ok(meshes.some((m) => m.closed) && meshes.some((m) => !m.closed), 'boxes are closed, the frame is an open shell');
+  // a carcass corner: the F2 is 24 x 24: its side panel's outer face sits at x = -12 in the placement frame
+  assert.ok(ifc.includes('(-12.,-12.,0.)'), 'block-local mm became inches about the centre');
+  assert.ok(ifc.includes("IFCSURFACESTYLE('Oak',.BOTH.,") && ifc.includes("IFCSURFACESTYLE('Ghost',.BOTH.,"), 'oak carcass, painted fronts');
+  assert.ok(ifc.includes("'Worktop 1 - Soapstone (by others)'"), 'the worktop slab is an element');
+  assert.equal((ifc.match(/IFCEXTRUDEDAREASOLID/g) || []).length, 2, 'the range and the worktop are boxes');
 });
