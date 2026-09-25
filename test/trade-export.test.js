@@ -310,8 +310,10 @@ test('a two-panel tall door is ONE frame face with the mid rail folded in (no jo
   assert.ok(!t1.some((m) => m.includes('\n71\n8\n') && m.includes('\n72\n6\n') && /\n20\n0\.197\n/.test(m) && !/\n20\n0\.709\n/.test(m)), 'no separate mid-rail box in the recess');
   assert.ok(f1.some((m) => m.includes('\n71\n8\n') && m.includes('\n72\n4\n')), 'F1 frame unchanged: 8 vertices, 4 mitred faces');
   // every join between rail and stile is an invisible edge (negative index) — only the outer door edges and the panel steps draw
-  const frame = t1.find((m) => m.includes('\n71\n16\n'));
-  const faces = frame.split('\nAcDbFaceRecord\n').slice(1).map((f) => [71, 72, 73, 74].map((c) => Number((f.match(new RegExp(`\\n${c}\\n(-?\\d+)\\n`)) || [])[1])));
+  const region = blockRegion(dxf, 'T1_FRONT_FACE');
+  const start = region.indexOf('\n71\n16\n72\n9\n'), mesh = region.slice(start, region.indexOf('\nSEQEND\n', start));
+  const faces = mesh.split('\nAcDbFaceRecord\n').slice(1).map((f) => [71, 72, 73, 74].map((c) => Number((f.match(new RegExp(`\\n${c}\\n(-?\\d+)`)) || [])[1])));
   const neg = faces.flat().filter((v) => v < 0).length;
-  assert.equal(faces.length, 9); assert.equal(neg, 18, `18 hidden joins (${neg})`);
+  assert.equal(faces.length, 9, 'nine faces');
+  assert.equal(neg, 20, `20 hidden edges: 8 mitres/butts on the stiles and rails, 12 on the rail's three pieces (${neg})`);
 });
