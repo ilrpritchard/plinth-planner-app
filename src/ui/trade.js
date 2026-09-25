@@ -233,8 +233,8 @@ export class TradeUI {
           <p>Set the unit mix and specify the kitchen for each unit type. Pricing is live, per unit and for the whole project, with tariffs and delivery to a warehouse in the project's city included.</p>
           <div class="tw-opts">
             <button class="tw-opt" id="twDemo">
-              <strong>Start from an example building</strong>
-              <span>${n} units across three kitchen types, cabinets already specified. Adjust the quantities and cabinets to match the project.</span>
+              <strong>View an example building</strong>
+              <span>See how a project reads: ${n} units across three kitchen types, priced live. Change anything, or start over with your own unit mix.</span>
             </button>
             <button class="tw-opt" id="twMix">
               <strong>Enter the unit mix</strong>
