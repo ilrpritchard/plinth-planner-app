@@ -28,6 +28,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     return { x: host.x, z: host.z, rotDeg: host.rotDeg || 0, hostId: host.id };
   }
   let shelfDepth = null;                       // an open shelf's new depth (see section 1)
+  const noDeepen = !!opts.noDeepen;            // read HERE: section 1 shadows `opts` with its snap-point list
   // a range hood RIDES the cooker: centred over the range or cooktop nearest the pointer; so does
   // the hood COVER (W26), which sits over the hood at its own fixed height (top on the crown line)
   if (cab.appliance === 'hood' || cab.hoodCover) {
@@ -113,7 +114,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       // ...but never while a tapped-in shelf is being CARRIED to its place (opts.noDeepen): the pointer is
       // wherever the hand is, and a 14" shelf arrived 24" deep beside a hood (her screenshot 2026-09-25,
       // "wall full height open shelves, wrong depth"). Only a deliberate drag deepens.
-      if (cab.form === 'open' && cab.type === 'WALL' && !opts.noDeepen) {
+      if (cab.form === 'open' && cab.type === 'WALL' && !noDeepen) {
         const frontFree = rawPerp + d / 2;
         const fronts = [...(flush != null ? [flush + d / 2] : []), ...(cover != null ? [cover + d / 2] : [])];
         const snapF = fronts.find((f) => Math.abs(f - frontFree) < 3);
