@@ -28,7 +28,18 @@ for(const cab of CATALOGUE.filter(c=>c.type==='APPLIANCES')){
   try { const g=buildAppliance(cab); let m=0; g.traverse(o=>o.isMesh&&m++); if(m<1) fail++; apps++; }
   catch(e){ fail++; console.error(`✗ appliance ${cab.code}: ${e.message}`); }
 }
-ok(`built all appliances (${apps})`, apps===25);   // ... + AP23 60cm hood + AP24 washing machine + AP25 Andano 450 sink
+ok(`built all appliances (${apps})`, apps===28);   // ... + AP23 60cm hood + AP24 washing machine + AP25 Andano 450 sink + AP26-28 plaster hoods
+// plaster chimney hoods (her ask 2026-09-25): one per range, 50mm wider overall, seated like every hood, painted with the walls
+{
+  const mm50 = 50 / 25.4;
+  for (const [hood, range] of [['AP26', 'AP1'], ['AP27', 'AP2'], ['AP28', 'AP3']]) {
+    const h = getCab(hood), r = getCab(range);
+    ok(`${hood} is the plaster hood over ${range}, 50mm wider`, h && h.plaster && h.appliance === 'hood' && Math.abs(h.w - (r.w + mm50)) < 0.01 && h.mountY === getCab('AP8').mountY && h.usd === 0 && h.notSupplied);
+    const g = buildAppliance(h, '#eeeeee', { ceiling: 108, wallHex: 0xc3c7b2 });
+    let top = -Infinity, meshes = 0; g.traverse((o) => { if (!o.isMesh) return; meshes++; o.geometry.computeBoundingBox(); top = Math.max(top, o.geometry.boundingBox.max.y + o.position.y); });
+    ok(`${hood} runs to a 9' ceiling as a plain box (${meshes} meshes)`, Math.abs(top - (108 - h.mountY)) < 0.2 && meshes <= 8);
+  }
+}
 
 // AP11 integrated fridge-freezer: correct install dims (84" h, 36" w, 24"
 // counter depth) and a panel look — its meshes must include NO stainless body

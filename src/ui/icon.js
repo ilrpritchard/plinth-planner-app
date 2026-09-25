@@ -352,6 +352,13 @@ function applianceSVG(cab) {
     p.push(`<line x1="50" y1="${f(ty + 2.6)}" x2="50" y2="${f(cy - cd / 2 + cd * 0.2)}" stroke="${STROKE}" stroke-width="1.8" stroke-linecap="round"/>`);
     p.push(`<circle cx="50" cy="${f(ty)}" r="2.6" fill="none" stroke="${STROKE}" stroke-width="1.2"/>`);
     p.push(`<line x1="${f(50 + 5.5)}" y1="${f(ty)}" x2="${f(50 + 10)}" y2="${f(ty - 2.2)}" stroke="${STROKE}" stroke-width="1.4" stroke-linecap="round"/>`);
+  } else if (a === 'hood' && cab.plaster) {
+    // a plaster chimney hood: one plain painted box from the tile's top to the 800mm line, no trim,
+    // the extractor liner as a thin plate underneath
+    const k = 78 / 36, cw = Math.min(90, cab.w * k), top = 6, bot = 78;
+    p.push(rect(50 - cw / 2, top, cw, bot - top, 1.6));
+    p.push(hline(50 - cw / 2 + 6, 50 + cw / 2 - 6, bot - 3, 0.9));
+    for (const sx of [-1, 1]) p.push(`<circle cx="${f(50 + sx * cw * 0.28)}" cy="${f(bot - 1.5)}" r="1.2" fill="none" stroke="${HAIR}" stroke-width="0.8"/>`);
   } else if (a === 'hood') {
     // front elevation: flue, tapered canopy, the lip with its lights and buttons, a baffle line
     const k = 78 / 36, cw = cab.w * k, top = 12, shoulder = 46, lipTop = 70, lipBot = 78, flue = 15;

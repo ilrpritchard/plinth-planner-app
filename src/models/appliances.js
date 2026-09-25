@@ -254,6 +254,20 @@ export function buildAppliance(cab, finishHex = '#efece3', opts = {}) {
     }
     case 'hood': {
       if (opts.covered) break;                                      // inside a W26 hood cover: the cover's liner is all you see (her call 2026-09-22)
+      if (cab.plaster) {
+        // a PLASTER chimney hood (her reference 2026-09-25): one plain painted box in the wall
+        // colour, no trim, no cornice, from the 800mm line up to the ceiling; the extractor
+        // liner (a stainless plate with its filter and two lamps) is all that shows underneath
+        const plaster = mat(opts.wallHex || 0xf1eee6, 0, 0.92, 0.5);
+        const hh = opts.ceiling > 0 && cab.mountY != null ? Math.max(h, opts.ceiling - cab.mountY - 0.05) : h;
+        const body = box(w, hh, d, plaster); body.position.set(0, hh / 2, 0); g.add(body);
+        const lw = Math.min(w - 5, 30), ld = d - 4;
+        const plen = box(lw + 1, 1.2, ld + 1, DARK()); plen.position.set(0, 0.55, -0.4); g.add(plen);
+        const plate = box(lw, 0.3, ld, STAINLESS()); plate.position.set(0, -0.05, -0.4); g.add(plate);
+        const filt = box(lw * 0.7, 0.12, ld * 0.55, DARK()); filt.position.set(0, -0.22, -0.4); g.add(filt);
+        for (const sx of [-1, 1]) { const lamp = box(1.6, 0.1, 1.6, new THREE.MeshStandardMaterial({ color: 0xfff4d6, emissive: 0xfff0c0, emissiveIntensity: 0.6 })); lamp.position.set(sx * (lw / 2 - 2.4), -0.22, ld * 0.25); g.add(lamp); }
+        break;
+      }
       // a wall-mount chimney hood in the ZLINE / Broan idiom (her reference 2026-09-22): a
       // shallow flat box canopy, baffle filters and a control strip underneath, and a plain
       // rectangular two-piece chimney rising from its back half

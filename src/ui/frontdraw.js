@@ -382,6 +382,12 @@ function applianceFront(cab, s0, y0, Y, opts) {
       code(w / 2, 3.4);
       break;
     case 'hood': {
+      if (cab.plaster) {                                                     // plaster chimney: one plain box, a liner line under it
+        box(0, 0, w, h);
+        ln(2.5, 0.9, w - 2.5, 0.9);
+        code(w / 2, h * 0.45);
+        break;
+      }
       const canopy = Math.min(9, h * 0.34), cw = Math.max(10, w * 0.34);
       box((w - cw) / 2, canopy, cw, h - canopy, A_FILL, P.W_18);             // chimney
       box(0, 0, w, canopy);                                                  // canopy

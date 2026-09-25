@@ -301,6 +301,13 @@ const APPLIANCES = [
   { code: 'AP8', appliance: 'hood', desc: 'Range Hood 36"', w: 36, d: 20, h: 28, mountY: 36 + mmToIn(800) },   // underside 800mm over a range top (core/hoodseat.js)
   // the 24" (60cm) chimney hood over the F32 stack's cooktop (her ask 2026-09-22): same idiom, narrower canopy
   { code: 'AP23', appliance: 'hood', desc: 'Range Hood 24" (60cm)', w: 23.6, d: 19.7, h: 28, mountY: 36 + mmToIn(800) },
+  // PLASTER CHIMNEY HOODS (her ask 2026-09-25, from a painted-plaster reference): a plain boxed
+  // canopy in the wall colour, no trim, running from 800mm over the range to the ceiling, over
+  // an extractor liner. Built on site BY OTHERS; in the planner for context. One per range size,
+  // 50mm wider overall than the range it sits over (25mm each side).
+  { code: 'AP26', appliance: 'hood', plaster: true, desc: 'Plaster Hood 32" (over a 30" range)', w: 30 + mmToIn(50), d: 20, h: 28, mountY: 36 + mmToIn(800), notes: 'A painted-plaster chimney hood built on site by others, shown for layout only: a plain box in the wall color, no trim, from 800mm above the range to the ceiling. 50mm wider than the 30" range (AP1).' },
+  { code: 'AP27', appliance: 'hood', plaster: true, desc: 'Plaster Hood 38" (over a 36" range)', w: 36 + mmToIn(50), d: 20, h: 28, mountY: 36 + mmToIn(800), notes: 'A painted-plaster chimney hood built on site by others, shown for layout only: a plain box in the wall color, no trim, from 800mm above the range to the ceiling. 50mm wider than the 36" range (AP2).' },
+  { code: 'AP28', appliance: 'hood', plaster: true, desc: 'Plaster Hood 50" (over a 48" range)', w: 48 + mmToIn(50), d: 20, h: 28, mountY: 36 + mmToIn(800), notes: 'A painted-plaster chimney hood built on site by others, shown for layout only: a plain box in the wall color, no trim, from 800mm above the range to the ceiling. 50mm wider than the 48" range (AP3).' },
   // a freestanding washing machine UNDER the counter (Samsung WW80CGC04DAE, 600 x 850 x 550mm; her ask
   // 2026-09-22 for one kitchen): stands on the floor in the run, the worktop runs over it
   { code: 'AP24', appliance: 'washer', desc: 'Washing machine 24" (freestanding)', w: 23.6, d: 21.7, h: 33.5, mountY: 0, underCounter: true },
