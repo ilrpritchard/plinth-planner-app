@@ -66,15 +66,19 @@ test('an open shelf at any depth: W25:24 is the 10" shelf made 24" deep, whole i
   assert.equal(getCab('W2:24'), undefined, 'a door cabinet never sizes');
 });
 
-test('double wall corners W31 / W32 (+R) and their full-height W33-W36: a door PAIR beside the 10" return, both hands, price to confirm (her ask 2026-09-25)', async () => {
-  const { getCab } = await import('../src/core/catalogue.js');
+test('double wall corners W31 / W32 (+R) and their full-height W33-W36: a door PAIR beside the 10" return, both hands, priced as the double + the corner uplift (her rule 2026-09-25)', async () => {
+  const { getCab, WALL_CORNER_UPLIFT } = await import('../src/core/catalogue.js');
+  assert.equal(WALL_CORNER_UPLIFT, 270, 'the uplift is what W10 carries over W2');
+  assert.equal(getCab('W31').usd, 2551 + 270); assert.equal(getCab('W32').usd, 2658 + 270);
+  assert.equal(getCab('W33').usd, Math.round((2551 + 270) * 1.2)); assert.equal(getCab('W36').usd, Math.round((2658 + 270) * 1.2));
   const { hingeOf, canFlipHinge } = await import('../src/core/hinge.js');
   const { frontParts, cornerReturnIn } = await import('../src/ui/frontdraw.js');
   for (const [code, w, side, h] of [['W31', 36, 'left', 30], ['W31R', 36, 'right', 30], ['W32', 42, 'left', 30], ['W32R', 42, 'right', 30], ['W33', 36, 'left', 51], ['W34', 36, 'right', 51], ['W35', 42, 'left', 51], ['W36', 42, 'right', 51]]) {
     const c = getCab(code);
     assert.ok(c && c.type === 'WALL' && c.corner && c.pair && c.form === 'corner', `${code} is a double corner`);
     assert.equal(c.w, w); assert.equal(c.d, 14); assert.equal(c.h, h); assert.equal(c.cornerSide, side);
-    assert.ok(c.priceTBC && c.usd === 0, `${code} price to confirm`);
+    assert.ok(!c.priceTBC && c.usd > 0, `${code} is priced`);
+    assert.equal(c.usd, h === 51 ? Math.round(getCab(c.grewFrom).usd * 1.2) : getCab(c.priceFrom).usd + WALL_CORNER_UPLIFT);
     assert.equal(hingeOf(c), 'PAIR'); assert.ok(!canFlipHinge(c));
     assert.equal(cornerReturnIn(c), 10);
     const parts = frontParts(c).parts;

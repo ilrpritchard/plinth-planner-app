@@ -39,7 +39,7 @@ test('a cooktop may sit on the oven housing; a sink may not; priced as the 24" s
   const sum = summarize([{ id: 1, code: 'F32', x: 0, z: 0, rotDeg: 0 }, { id: 2, code: 'F2', x: 30, z: 0, rotDeg: 0 }]);
   const line = sum.lines.find((l) => l.code === 'F32');
   assert.ok(!line.priceTBC && line.line === getCab('F2').usd && sum.subtotal === 2 * getCab('F2').usd, 'F32 is priced as F2 (her call 2026-09-22)');
-  assert.deepEqual(CATALOGUE.filter((c) => c.priceTBC).map((c) => c.code), ['W31', 'W31R', 'W32', 'W32R', 'W25', 'W26', 'S33', 'S34', 'W33', 'W34', 'W35', 'W36'], 'only the 10in open shelf, the hood cover, the shelf stackers and the double corners (2026-09-25) wait on a price');
+  assert.deepEqual(CATALOGUE.filter((c) => c.priceTBC).map((c) => c.code), ['W25', 'W26', 'S33', 'S34'], 'only the 10in open shelf, the hood cover and the shelf stackers wait on a price (the double corners were priced 2026-09-25)');
 });
 
 test('the cooktop (and any sink) rides its base: move the base, turn it, and it comes along', async () => {

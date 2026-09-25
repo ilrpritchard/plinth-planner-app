@@ -88,13 +88,13 @@ const RAW = [
   { code: 'W10R', type: 'WALL', desc: 'Corner (+10") · blank right', w: 24, d: 14, h: 30, hinge: 'L&R', usd: 2160, corner: true, cornerSide: 'right' },
   // DOUBLE corners (her ask 2026-09-25, "double full height wall corners"): the 36" / 42" doubles
   // with the 10" blank return, a door pair meeting in the middle, both hands. `pair` marks the
-  // two leaves (hinge / plan / 3D / elevation / DXF all read it). Price to confirm: she has not
-  // set one (W5 / W6 plus the corner uplift would be the place to start). The full-height ones
-  // grow from these below (W33-W36).
-  { code: 'W31', type: 'WALL', desc: 'Corner Double (+10") · blank left', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 0, priceTBC: true, corner: true, pair: true, cornerSide: 'left' },
-  { code: 'W31R', type: 'WALL', desc: 'Corner Double (+10") · blank right', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 0, priceTBC: true, corner: true, pair: true, cornerSide: 'right' },
-  { code: 'W32', type: 'WALL', desc: 'Corner Double (+10") · blank left', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 0, priceTBC: true, corner: true, pair: true, cornerSide: 'left' },
-  { code: 'W32R', type: 'WALL', desc: 'Corner Double (+10") · blank right', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 0, priceTBC: true, corner: true, pair: true, cornerSide: 'right' },
+  // two leaves (hinge / plan / 3D / elevation / DXF all read it). PRICE (her rule 2026-09-25, "W5 and
+  // W6 plus the corner uplift"): the double + what the 24" wall corner carries over its plain single
+  // (W10 - W2, $270; the 20" pair W9 - W1 is $143 — the wider one taken), set below from `priceFrom`.
+  { code: 'W31', type: 'WALL', desc: 'Corner Double (+10") · blank left', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 0, priceFrom: 'W5', corner: true, pair: true, cornerSide: 'left' },
+  { code: 'W31R', type: 'WALL', desc: 'Corner Double (+10") · blank right', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 0, priceFrom: 'W5', corner: true, pair: true, cornerSide: 'right' },
+  { code: 'W32', type: 'WALL', desc: 'Corner Double (+10") · blank left', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 0, priceFrom: 'W6', corner: true, pair: true, cornerSide: 'left' },
+  { code: 'W32R', type: 'WALL', desc: 'Corner Double (+10") · blank right', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 0, priceFrom: 'W6', corner: true, pair: true, cornerSide: 'right' },
   { code: 'W11', type: 'WALL', desc: 'Open Shelves', w: 20, d: 14, h: 30, hinge: 'n/a', usd: 1389 },
   { code: 'W12', type: 'WALL', desc: 'Open Shelves', w: 24, d: 14, h: 30, hinge: 'n/a', usd: 1410 },
   { code: 'W13', type: 'WALL', desc: 'Open Shelves', w: 28, d: 14, h: 30, hinge: 'n/a', usd: 1537 },
@@ -230,6 +230,10 @@ function classify(it) {
 // in the order of the cabinets they grow from. Price: the wall cabinet + 20% ("take the cost
 // of the wall cabinet + 20%"), rounded to the dollar. `high` = the inches added, so the
 // catalogue can group them and the ceiling check can read them.
+// ----- the double corners' price: the double + the corner uplift (her rule 2026-09-25) --------------
+export const WALL_CORNER_UPLIFT = RAW.find((c) => c.code === 'W10').usd - RAW.find((c) => c.code === 'W2').usd;   // $270
+for (const c of RAW) if (c.priceFrom) c.usd = RAW.find((b) => b.code === c.priceFrom).usd + WALL_CORNER_UPLIFT;
+
 // The CORNER wall cabinets grow too (her ask 2026-09-25, "full height wall corner cabinets"):
 // W9 / W9R / W10 / W10R at 51" on W27-W30 (W25 is the 10" open shelf and W26 the hood cover,
 // so the corners skip past them), same 10" blank return, same +20%, handed the same way.
