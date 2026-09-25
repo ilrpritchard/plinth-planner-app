@@ -118,14 +118,18 @@ export function planCornice(state) {
   const tallReach = (c) => {
     const out = { [-1]: null, [1]: null };
     if (kind(c) !== 'WALL' && kind(c) !== 'COUNTER') return out;
+    // in the CABINET'S OWN frame (+1 = its local +X = face 2): comparing world x or z picked the
+    // wrong flank on the left and front walls, so the return went missing at the open end and
+    // the crown butted nothing at the tall (her screenshot 2026-09-25: "why didn't the cornice return")
+    const th = (c.it.rotDeg || 0) * Math.PI / 180, s = Math.sin(th), co = Math.cos(th);
     for (const t of cabs) {
       if (kind(t) !== 'TALL') continue;
       if (((t.it.rotDeg || 0) % 180) !== ((c.it.rotDeg || 0) % 180)) continue;
-      const horiz = ((c.it.rotDeg || 0) % 180) === 0;
-      if (Math.abs(horiz ? t.it.z - c.it.z : t.it.x - c.it.x) > 14) continue;   // same run
-      const tA = horiz ? t.it.x : t.it.z, cA = horiz ? c.it.x : c.it.z;
-      const gap = Math.abs(tA - cA) - ((t.w || t.cab.w) + c.w) / 2;
-      if (gap >= -2 && gap <= 2.5) out[tA > cA ? 1 : -1] = Math.max(0, gap);
+      const dx = t.it.x - c.it.x, dz = t.it.z - c.it.z;
+      const along = dx * co - dz * s, depth = dx * s + dz * co;
+      if (Math.abs(depth) > 14) continue;                                    // same run
+      const gap = Math.abs(along) - ((t.w || t.cab.w) + c.w) / 2;
+      if (gap >= -2 && gap <= 2.5) out[along > 0 ? 1 : -1] = Math.max(0, gap);
     }
     return out;
   };
@@ -202,17 +206,17 @@ export function planCornice(state) {
   for (const t of talls) {
     for (const u of uppers) {
       if (((t.it.rotDeg || 0) % 180) !== ((u.it.rotDeg || 0) % 180)) continue;
-      const horiz = ((t.it.rotDeg || 0) % 180) === 0;
-      const tA = horiz ? t.it.x : t.it.z, uA = horiz ? u.it.x : u.it.z;
-      const gap = Math.abs(tA - uA) - (t.w + u.w) / 2;
-      if (gap > 2.5 || gap < -2) continue;               // must be butted side-by-side
-      if (Math.abs(horiz ? t.it.z - u.it.z : t.it.x - u.it.x) > 14) continue;  // same run
-      const tTop = t.top ?? TOP.TALL, uTop = u.top ?? TOP[u.cab.type];
-      if (tTop - uTop < 0.25) continue;   // tops level (or the upper higher): one crown line, nothing to connect
-      const side = uA > tA ? 1 : -1;                     // which flank of the tall
       const th = (t.it.rotDeg || 0) * Math.PI / 180;
       const fx = Math.sin(th), fz = Math.cos(th);        // front dir
       const wx = Math.cos(th), wz = -Math.sin(th);       // width dir
+      // the tall's OWN frame (see tallReach): world x/z put the board on the wrong flank on side walls
+      const along = (u.it.x - t.it.x) * wx + (u.it.z - t.it.z) * wz, depth = (u.it.x - t.it.x) * fx + (u.it.z - t.it.z) * fz;
+      const gap = Math.abs(along) - (t.w + u.w) / 2;
+      if (gap > 2.5 || gap < -2) continue;               // must be butted side-by-side
+      if (Math.abs(depth) > 14) continue;                // same run
+      const tTop = t.top ?? TOP.TALL, uTop = u.top ?? TOP[u.cab.type];
+      if (tTop - uTop < 0.25) continue;   // tops level (or the upper higher): one crown line, nothing to connect
+      const side = along > 0 ? 1 : -1;                   // which flank of the tall
       // the connector runs from the ROOM WALL (talls stand 30mm proud — their
       // back is NOT on the wall) forward to just proud of the upper's face:
       // extend BACK by the tall's wall gap or the board floats off the wall
