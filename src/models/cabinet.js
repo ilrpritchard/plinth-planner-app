@@ -121,7 +121,7 @@ function shakerLeaf(w, h, mat, glazed, panels = 1) {
     // shadow line where the recessed panel meets the stiles — a slightly darker
     // frame hugging the inside of the rails so the relief reads even in flat light
     const edge = paintEdgeMat('#' + mat.color.getHexString());
-    edgeRing(g, 0, 0, Math.max(1, w - 2 * STILE), Math.max(1, h - 2 * STILE), DOOR_T / 2 + 0.02, 0.3, 0.04, edge);
+    const iw = Math.max(1, w - 2 * STILE), ih = Math.max(1, h - 2 * STILE);
     // tall 2-panel door: a proud mid-rail splits upper (1184) / lower (490) per
     // the PL/NTH spec, with a 200mm mid-rail band between them.
     if (panels === 2) {
@@ -131,6 +131,16 @@ function shakerLeaf(w, h, mat, glazed, panels = 1) {
       const rail = box(w, midH, ft, mat);
       rail.position.set(0, midY, DOOR_T / 2 + RECESS - ft / 2);
       g.add(rail);
+      // EACH panel gets its own shadow line, so the rail's top and bottom edges read as clearly
+      // as the stiles (her catch 2026-09-25: one ring round the whole interior left the rail
+      // all but invisible in flat light)
+      const topPanelH = Math.max(0.5, (h / 2 - STILE) - (midY + midH / 2)), botPanelH = Math.max(0.5, (midY - midH / 2) - (-h / 2 + STILE));
+      edgeRing(g, 0, midY + midH / 2 + topPanelH / 2, iw, topPanelH, DOOR_T / 2 + 0.02, 0.3, 0.04, edge);
+      edgeRing(g, 0, midY - midH / 2 - botPanelH / 2, iw, botPanelH, DOOR_T / 2 + 0.02, 0.3, 0.04, edge);
+    } else {
+      // shadow line where the recessed panel meets the stiles — a slightly darker
+      // frame hugging the inside of the rails so the relief reads even in flat light
+      edgeRing(g, 0, 0, iw, ih, DOOR_T / 2 + 0.02, 0.3, 0.04, edge);
     }
   }
   return g;
