@@ -110,7 +110,10 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       // an OPEN SHELF pulled forward does not leave the wall: it gets DEEPER (her ask 2026-09-23, "any depth
       // i need"). Its front follows the pointer to the inch, snapping within 3" onto a tall's front or a
       // corner wall unit's body edge; the depth comes back as `depth` for the controller to apply.
-      if (cab.form === 'open' && cab.type === 'WALL') {
+      // ...but never while a tapped-in shelf is being CARRIED to its place (opts.noDeepen): the pointer is
+      // wherever the hand is, and a 14" shelf arrived 24" deep beside a hood (her screenshot 2026-09-25,
+      // "wall full height open shelves, wrong depth"). Only a deliberate drag deepens.
+      if (cab.form === 'open' && cab.type === 'WALL' && !opts.noDeepen) {
         const frontFree = rawPerp + d / 2;
         const fronts = [...(flush != null ? [flush + d / 2] : []), ...(cover != null ? [cover + d / 2] : [])];
         const snapF = fronts.find((f) => Math.abs(f - frontFree) < 3);

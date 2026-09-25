@@ -211,7 +211,7 @@ export class PointerControls {
       const hit = this._wallHit(), cab = getCab(this.store.getItem(this.drag.id)?.code);
       if (hit && cab) ({ x: rawX, z: rawZ } = this._wallRaw(hit, cab, p));
     }
-    const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds());
+    const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds(), { noDeepen: !!this.drag.carry });   // a carried shelf keeps its depth
     // an open shelf pulled forward gets deeper instead (snapping returns `depth`): swap to the sized code
     // and keep its back on the wall
     if (snapped.depth != null) {
