@@ -468,6 +468,14 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     // the classic sink-under-the-window — so the glass isn't solid to them
     const winSolid = cab.appliance !== 'sink' && cab.appliance !== 'hob';
     const overCooker = cab.type === 'COUNTER' || (cab.type === 'WALL' && !cab.stacker && !cab.hoodCover);
+    // a cooker under a PLASTER hood (AP26-28) needs no 50mm keep-clear beside it: the hood is
+    // wider than the cooker and solid, and the uppers butt its flank (her rule 2026-09-25)
+    const plasterOver = new Set();
+    for (const o of others) { const oc = getCab(o.code); if (!oc || !oc.plaster) continue; const hb = worldBox(o, oc);
+      for (const k of others) { const kc = getCab(k.code); if (kc && (kc.appliance === 'range' || kc.appliance === 'hob') && k.x > hb.x0 && k.x < hb.x1 && k.z > hb.z0 - 8 && k.z < hb.z1 + 8) plasterOver.add(k.id); } }
+    // the plaster hoods are tested FIRST: an upper dropped into one butts the hood's flank, and
+    // never reaches the cooker column behind it (which would raise the cooker flag on the way)
+    const ordered = [...others].sort((a, b) => ((getCab(b.code)?.plaster ? 1 : 0) - (getCab(a.code)?.plaster ? 1 : 0)));
     const hitAt = (px, pz) => {
       const me = worldBox({ x: px, z: pz, rotDeg }, cab);
       const testOn = (m) => (ob) =>
@@ -480,7 +488,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       // (her call 2026-09-23: "it should still be allowed there, that can be cut in on site"); the live
       // warning notes the cut. Everything else treats a boxing as a wall.
       if (!cab.corner) for (const bb of boxBoxes) if (test(bb)) return bb;
-      for (const o of others) {
+      for (const o of ordered) {
         const oc = getCab(o.code);
         if (!oc || !oc.placeable) continue;
         if ((cab.hoodCover && oc.appliance === 'hood') || (cab.appliance === 'hood' && oc.hoodCover)) continue;   // the cover wraps the hood
@@ -490,7 +498,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
         // cabinet that is not in its height band still cannot be dropped on it.
         if (overCooker && (oc.appliance === 'range' || oc.appliance === 'hob')) {
           // ...and a WALL cabinet also keeps 50mm clear of the cooker's edges either side (her rule 2026-09-22)
-          const side = cab.type === 'WALL' ? COOK_SIDE_IN : 0;
+          const side = cab.type === 'WALL' && !plasterOver.has(o.id) ? COOK_SIDE_IN : 0;
           const col = { ...ob, x0: ob.x0 - side, x1: ob.x1 + side, z0: ob.z0 - side, z1: ob.z1 + side, y0: -1, y1: 999, cooker: true };
           if (test(col)) return col;
           continue;

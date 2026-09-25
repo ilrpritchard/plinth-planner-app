@@ -253,7 +253,10 @@ export function computeWarnings(state) {
   {
     const isCookBox = (b) => b.cab.appliance === 'range' || b.cab.appliance === 'hob';
     const isUpper = (b) => b.cab.type === 'WALL' && !b.cab.stacker && !b.cab.hoodCover;   // the cover sits over the cooker by design
+    // under a PLASTER hood (AP26-28) the uppers butt the hood's flank, 25mm out from the cooker: no keep-clear (her rule 2026-09-25)
+    const underPlaster = (c) => boxes.some((h) => h.cab.plaster && Math.abs(h.x - c.x) < h.hx && Math.abs(h.z - c.z) < h.hz + 8);
     for (const c of boxes.filter(isCookBox)) {
+      if (underPlaster(c)) continue;
       for (const u of boxes.filter(isUpper)) {
         const dx = Math.abs(c.x - u.x) - (c.hx + u.hx);
         const dz = Math.abs(c.z - u.z) - (c.hz + u.hz);

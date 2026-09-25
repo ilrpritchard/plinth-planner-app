@@ -76,7 +76,7 @@ export function planCornice(state) {
   const topOf = (cab) => (cab.type === 'TALL' ? cab.h : (cab.mountY ?? MOUNT[cab.type] ?? 0) + cab.h);
   // for the crown, a stacker standing on a tall IS the top of that tall column: 24" deep, proud of
   // the uppers, so its flank returns like a tall's (her screenshot 2026-09-22: "cornice doesn't return")
-  const kind = (c) => (c.cab.type === 'TALL' || c.cab.onTall ? 'TALL' : c.cab.type);
+  const kind = (c) => (c.cab.type === 'TALL' || c.cab.onTall || c.hood ? 'TALL' : c.cab.type);
   const rotOf = (it) => (((it.rotDeg || 0) % 360) + 360) % 360;
   const all = (state.items || []).map((it) => ({ it, cab: getCab(it.code) })).filter((x) => x.cab && QUALIFY.has(x.cab.type));
   const stackedOver = (x) => all.some((o) => o.cab.stacker && rotOf(o.it) === rotOf(x.it) && Math.abs((rotOf(x.it) % 180 === 0 ? o.it.x - x.it.x : o.it.z - x.it.z)) < 1 && Math.abs((o.cab.mountY || 0) - TOP[x.cab.type]) < 1);
@@ -84,6 +84,14 @@ export function planCornice(state) {
   for (const { it, cab } of all) {
     if (!cab.stacker && stackedOver({ it, cab })) continue;
     cabs.push({ it, cab, w: cab.w, d: cab.d, top: topOf(cab) });
+  }
+  // a PLASTER HOOD (AP26-28) is a solid plaster box from the 800mm line to the ceiling: an upper
+  // beside it butts its flank and the crown DIES INTO that flank exactly as at a tall (her rule
+  // 2026-09-25: "wall cabinets sit right up against it and the cornice runs into the side"). It
+  // carries no crown of its own and needs no connector board: it is plaster to the ceiling.
+  for (const it of state.items || []) {
+    const cab = getCab(it.code);
+    if (cab && cab.plaster && cab.appliance === 'hood') cabs.push({ it, cab, w: cab.w, d: cab.d, hood: true, top: (r.height || 96) });
   }
   // RULE: a scribe filler that reaches the top of its run carries the cornice too — the
   // moulding runs OVER the filler to the wall, never stopping short at the cabinet edge.
@@ -123,6 +131,7 @@ export function planCornice(state) {
   };
 
   for (const c of cabs) {
+    if (c.hood) continue;                              // plaster to the ceiling: no crown on it
     const th = (c.it.rotDeg || 0) * Math.PI / 180;
     const s = Math.sin(th), co = Math.cos(th);
     const topY = c.top ?? TOP[c.cab.type];
@@ -188,7 +197,7 @@ export function planCornice(state) {
   // runs DOWN the tall's side to connect the two levels — a vertical connector
   // board on the tall's flank, from the upper's cornice line up to the tall's.
   const drops = [];
-  const talls = cabs.filter((c) => kind(c) === 'TALL' && !c.filler);
+  const talls = cabs.filter((c) => kind(c) === 'TALL' && !c.filler && !c.hood);
   const uppers = cabs.filter((c) => (c.cab.type === 'WALL' || c.cab.type === 'COUNTER') && !c.cab.onTall);
   for (const t of talls) {
     for (const u of uppers) {
