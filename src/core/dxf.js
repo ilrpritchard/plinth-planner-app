@@ -26,6 +26,7 @@ import { MOUNT, counterShelfTops, SURFACE_Y, WORKTOP_SLAB, mmToIn } from './unit
 import { planWorktopSlabs } from './worktop-plan.js';
 import { computeFillers } from './fillers.js';
 import { planCornice } from './cornice.js';
+import { FLOORS, WALLS, hexOf } from './roomstyle.js';
 import { ovenSeat } from './ovenseat.js';
 import { openingCenter, openingWidth } from './openings.js';
 
@@ -45,23 +46,30 @@ function num(v) {
   return isFinite(n) ? Math.round(n * 1000) / 1000 : 0; // never emit NaN/Inf
 }
 
+// Every entity carries a HANDLE ('%H%', numbered when the document is assembled) and an OWNER
+// ('%O%': the block record it lives in) — the DXF R2000 (AC1015) shape. R2000 is what lets the
+// EXACT finish colour travel (group 420 is official from R2000; an R12 file only had the 256
+// AutoCAD indices, which turned oak yellow in SketchUp, her screenshot 2026-09-25).
+const ENT = (type, layer) => ['0', type, '5', '%H%', '330', '%O%', '100', 'AcDbEntity', '8', layer];
+
 function line(x1, y1, x2, y2, layer = '0', z = 0) {
-  return ['0', 'LINE', '8', layer,
+  return [...ENT('LINE', layer), '100', 'AcDbLine',
     '10', num(x1 * K), '20', num(y1 * K), '30', num(z * K),
     '11', num(x2 * K), '21', num(y2 * K), '31', num(z * K)];
 }
 
 function text(x, y, h, str, { align = 'left', rot = 0, layer = '0', z = 0 } = {}) {
-  const out = ['0', 'TEXT', '8', layer,
+  const out = [...ENT('TEXT', layer), '100', 'AcDbText',
     '10', num(x * K), '20', num(y * K), '30', num(z * K),
     '40', num(h * K), '1', String(str ?? '')];
   if (rot) out.push('50', num(rot));
   if (align === 'center') out.push('72', '1', '11', num(x * K), '21', num(y * K), '31', num(z * K));
+  out.push('100', 'AcDbText');
   return out;
 }
 
 function insert(name, x, y, { z = 0, rot = 0 } = {}) {
-  const out = ['0', 'INSERT', '8', '0', '2', name,
+  const out = [...ENT('INSERT', '0'), '100', 'AcDbBlockReference', '2', name,
     '10', num(x * K), '20', num(y * K), '30', num(z * K)];
   if (rot) out.push('50', num(rot));
   return out;
@@ -70,19 +78,20 @@ function insert(name, x, y, { z = 0, rot = 0 } = {}) {
 // A 3D polyface mesh (POLYLINE flags 70=64 + VERTEX records + SEQEND).
 // verts: [[x,y,z], …]  faces: [[i1,i2,i3,i4?], …] (1-based indices)
 function pface(verts, faces, layer) {
-  const L = ['0', 'POLYLINE', '8', layer, '66', '1', '70', '64',
-    '71', String(verts.length), '72', String(faces.length),
-    '10', 0, '20', 0, '30', 0];
+  const L = [...ENT('POLYLINE', layer), '100', 'AcDbPolyFaceMesh', '66', '1',
+    '10', 0, '20', 0, '30', 0, '70', '64',
+    '71', String(verts.length), '72', String(faces.length)];
   for (const [x, y, z] of verts) {
-    L.push('0', 'VERTEX', '8', layer,
+    L.push(...ENT('VERTEX', layer), '100', 'AcDbVertex', '100', 'AcDbPolyFaceMeshVertex',
       '10', num(x * K), '20', num(y * K), '30', num(z * K), '70', '192');
   }
   for (const f of faces) {
-    L.push('0', 'VERTEX', '8', layer, '10', 0, '20', 0, '30', 0, '70', '128',
+    L.push(...ENT('VERTEX', layer), '100', 'AcDbVertex', '100', 'AcDbFaceRecord',
+      '10', 0, '20', 0, '30', 0, '70', '128',
       '71', String(f[0]), '72', String(f[1]), '73', String(f[2]));
     if (f.length > 3) L.push('74', String(f[3]));
   }
-  L.push('0', 'SEQEND', '8', layer);
+  L.push(...ENT('SEQEND', layer));
   return L;
 }
 
@@ -128,46 +137,103 @@ const coloured = (name, hex, ltype) => ({ name, hex, ...(ltype ? { ltype } : {})
 const finishLayer = (name, main) => (name === main ? 'FRONT' : 'FRONT-' + String(name || 'Finish').replace(/[^A-Za-z0-9]+/g, ''));
 const finishHex = (name) => (getFinish(name) || {}).hex || '#F7F4EB';
 
-/** Assemble a whole document: HEADER + TABLES + (optional) BLOCKS + ENTITIES.
- *  layers: names, or { name, ltype: 'DASHED' } for dashed layers. */
+/** Assemble a whole document — DXF R2000 (AC1015): HEADER, CLASSES, TABLES (VPORT, LTYPE,
+ *  LAYER, STYLE, VIEW, UCS, APPID, DIMSTYLE, BLOCK_RECORD), BLOCKS (*Model_Space, *Paper_Space,
+ *  ours), ENTITIES, OBJECTS. blocks = [{ name, lines }], entities = lines; every entity line
+ *  array carries '%H%' / '%O%' placeholders that are numbered here. layers: names, or
+ *  { name, hex?, ltype?: 'DASHED' }. */
 function dxfDoc(blocks, entities, { units = 1, layers = [] } = {}) {
+  let next = 0x100;
+  const H = () => (next++).toString(16).toUpperCase();
+  // fixed handles for the skeleton objects
+  const ROOT = 'C', GROUPS = 'D', PLOTSTYLES = 'E', NORMAL = 'F';
+  const rec = (name) => ({ name, h: H() });
+  const tblH = { VPORT: H(), LTYPE: H(), LAYER: H(), STYLE: H(), VIEW: H(), UCS: H(), APPID: H(), DIMSTYLE: H(), BLOCK_RECORD: H() };
+  const msRec = rec('*Model_Space'), psRec = rec('*Paper_Space');
+  const userRecs = (blocks || []).map((bk) => rec(bk.name));
+  // number the placeholders in one entity stream, all owned by `owner`
+  const fill = (lines, owner) => {
+    const out = [];
+    for (let i = 0; i + 1 < lines.length; i += 2) {
+      const code = lines[i], val = lines[i + 1];
+      out.push(code, val === '%H%' ? H() : val === '%O%' ? owner : val);
+    }
+    return out;
+  };
   const L = [];
-  L.push('0', 'SECTION', '2', 'HEADER',
-    '9', '$ACADVER', '1', 'AC1009',       // R12
-    '9', '$INSUNITS', '70', String(units), // 1 = inches, 4 = millimetres
-    '0', 'ENDSEC');
-  if (layers.length) {
-    L.push('0', 'SECTION', '2', 'TABLES');
-    L.push('0', 'TABLE', '2', 'LTYPE', '70', '2',
-      '0', 'LTYPE', '2', 'CONTINUOUS', '70', '0', '3', 'Solid line',
-      '72', '65', '73', '0', '40', '0',
-      '0', 'LTYPE', '2', 'DASHED', '70', '0', '3', 'Dashed __ __ __',
-      '72', '65', '73', '2', '40', '0.75', '49', '0.5', '49', '-0.25',
-      '0', 'ENDTAB');
-    L.push('0', 'TABLE', '2', 'LAYER', '70', String(layers.length));
-    for (const l of layers) {
-      const name = typeof l === 'string' ? l : l.name;
-      const ltype = (typeof l === 'object' && l.ltype) || 'CONTINUOUS';
-      const hex = typeof l === 'object' ? l.hex : null;
-      L.push('0', 'LAYER', '2', name, '70', '0', '62', String(hex ? nearestACI(hex) : 7), '6', ltype);
-      if (hex) L.push('420', String(trueColour(hex)));
-    }
-    L.push('0', 'ENDTAB', '0', 'ENDSEC');
+  const push = (...v) => { for (const x of v) L.push(x); };
+  // HEADER
+  push('0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1015', '9', '$HANDSEED', '5', '%SEED%',
+    '9', '$INSUNITS', '70', String(units), '9', '$DWGCODEPAGE', '3', 'ANSI_1252', '0', 'ENDSEC');
+  push('0', 'SECTION', '2', 'CLASSES', '0', 'ENDSEC');
+  // TABLES
+  push('0', 'SECTION', '2', 'TABLES');
+  push('0', 'TABLE', '2', 'VPORT', '5', tblH.VPORT, '330', '0', '100', 'AcDbSymbolTable', '70', '1',
+    '0', 'VPORT', '5', H(), '330', tblH.VPORT, '100', 'AcDbSymbolTableRecord', '100', 'AcDbViewportTableRecord', '2', '*Active', '70', '0',
+    '10', '0', '20', '0', '11', '1', '21', '1', '12', '0', '22', '0', '13', '0', '23', '0', '14', '10', '24', '10', '15', '10', '25', '10',
+    '16', '1', '26', '-1', '36', '1', '17', '0', '27', '0', '37', '0', '40', '200', '41', '1.5', '42', '50', '43', '0', '44', '0',
+    '50', '0', '51', '0', '71', '0', '72', '100', '73', '1', '74', '3', '75', '0', '76', '0', '77', '0', '78', '0', '281', '0', '65', '1',
+    '110', '0', '120', '0', '130', '0', '111', '1', '121', '0', '131', '0', '112', '0', '122', '1', '132', '0', '79', '0', '146', '0',
+    '0', 'ENDTAB');
+  const lt = (name, desc, elems) => {
+    push('0', 'LTYPE', '5', H(), '330', tblH.LTYPE, '100', 'AcDbSymbolTableRecord', '100', 'AcDbLinetypeTableRecord', '2', name, '70', '0', '3', desc,
+      '72', '65', '73', String(elems.length), '40', String(elems.reduce((t, e) => t + Math.abs(e), 0)));
+    for (const e of elems) push('49', String(e), '74', '0');
+  };
+  push('0', 'TABLE', '2', 'LTYPE', '5', tblH.LTYPE, '330', '0', '100', 'AcDbSymbolTable', '70', '4');
+  lt('ByBlock', '', []); lt('ByLayer', '', []); lt('CONTINUOUS', 'Solid line', []); lt('DASHED', 'Dashed __ __ __', [0.5, -0.25]);
+  push('0', 'ENDTAB');
+  push('0', 'TABLE', '2', 'LAYER', '5', tblH.LAYER, '330', '0', '100', 'AcDbSymbolTable', '70', String(Math.max(1, layers.length)));
+  const names = layers.length ? layers : ['0'];
+  for (const l of names) {
+    const name = typeof l === 'string' ? l : l.name;
+    const ltype = (typeof l === 'object' && l.ltype) || 'CONTINUOUS';
+    const hex = typeof l === 'object' ? l.hex : null;
+    push('0', 'LAYER', '5', H(), '330', tblH.LAYER, '100', 'AcDbSymbolTableRecord', '100', 'AcDbLayerTableRecord',
+      '2', name, '70', '0', '62', String(hex ? nearestACI(hex) : 7));
+    if (hex) push('420', String(trueColour(hex)));                 // the exact colour: what AutoCAD 2004+, SketchUp and Revit read
+    push('6', ltype, '370', '-3', '390', NORMAL);
   }
-  if (blocks && blocks.length) {
-    L.push('0', 'SECTION', '2', 'BLOCKS');
-    for (const b of blocks) {
-      L.push('0', 'BLOCK', '8', '0', '2', b.name, '70', '0',
-        '10', 0, '20', 0, '30', 0, '3', b.name);
-      for (const e of b.lines) L.push(e);
-      L.push('0', 'ENDBLK', '8', '0');
-    }
-    L.push('0', 'ENDSEC');
-  }
-  L.push('0', 'SECTION', '2', 'ENTITIES');
-  for (const e of entities) L.push(e);       // never spread: the cabinet library runs past the argument limit
-  L.push('0', 'ENDSEC', '0', 'EOF');
-  return L.join('\n');
+  push('0', 'ENDTAB');
+  push('0', 'TABLE', '2', 'STYLE', '5', tblH.STYLE, '330', '0', '100', 'AcDbSymbolTable', '70', '1',
+    '0', 'STYLE', '5', H(), '330', tblH.STYLE, '100', 'AcDbSymbolTableRecord', '100', 'AcDbTextStyleTableRecord',
+    '2', 'Standard', '70', '0', '40', '0', '41', '1', '50', '0', '71', '0', '42', '2.5', '3', 'txt', '4', '', '0', 'ENDTAB');
+  push('0', 'TABLE', '2', 'VIEW', '5', tblH.VIEW, '330', '0', '100', 'AcDbSymbolTable', '70', '0', '0', 'ENDTAB');
+  push('0', 'TABLE', '2', 'UCS', '5', tblH.UCS, '330', '0', '100', 'AcDbSymbolTable', '70', '0', '0', 'ENDTAB');
+  push('0', 'TABLE', '2', 'APPID', '5', tblH.APPID, '330', '0', '100', 'AcDbSymbolTable', '70', '1',
+    '0', 'APPID', '5', H(), '330', tblH.APPID, '100', 'AcDbSymbolTableRecord', '100', 'AcDbRegAppTableRecord', '2', 'ACAD', '70', '0', '0', 'ENDTAB');
+  push('0', 'TABLE', '2', 'DIMSTYLE', '5', tblH.DIMSTYLE, '330', '0', '100', 'AcDbSymbolTable', '70', '0', '100', 'AcDbDimStyleTable', '71', '0', '0', 'ENDTAB');
+  push('0', 'TABLE', '2', 'BLOCK_RECORD', '5', tblH.BLOCK_RECORD, '330', '0', '100', 'AcDbSymbolTable', '70', String(2 + userRecs.length));
+  for (const r of [msRec, psRec, ...userRecs]) push('0', 'BLOCK_RECORD', '5', r.h, '330', tblH.BLOCK_RECORD, '100', 'AcDbSymbolTableRecord', '100', 'AcDbBlockTableRecord', '2', r.name, '340', '0');
+  push('0', 'ENDTAB', '0', 'ENDSEC');
+  // BLOCKS
+  push('0', 'SECTION', '2', 'BLOCKS');
+  const blockShell = (r, paper, lines) => {
+    push('0', 'BLOCK', '5', H(), '330', r.h, '100', 'AcDbEntity');
+    if (paper) push('67', '1');
+    push('8', '0', '100', 'AcDbBlockBegin', '2', r.name, '70', '0', '10', '0', '20', '0', '30', '0', '3', r.name, '1', '');
+    if (lines) for (const x of fill(lines, r.h)) L.push(x);
+    push('0', 'ENDBLK', '5', H(), '330', r.h, '100', 'AcDbEntity');
+    if (paper) push('67', '1');
+    push('8', '0', '100', 'AcDbBlockEnd');
+  };
+  blockShell(msRec, false, null);
+  blockShell(psRec, true, null);
+  (blocks || []).forEach((bk, i) => blockShell(userRecs[i], false, bk.lines));
+  push('0', 'ENDSEC');
+  // ENTITIES (modelspace)
+  push('0', 'SECTION', '2', 'ENTITIES');
+  for (const x of fill(entities, msRec.h)) L.push(x);       // never spread: the cabinet library runs past the argument limit
+  push('0', 'ENDSEC');
+  // OBJECTS: the root dictionary, groups, and the plot-style dictionary the layers point at
+  push('0', 'SECTION', '2', 'OBJECTS',
+    '0', 'DICTIONARY', '5', ROOT, '330', '0', '100', 'AcDbDictionary', '281', '1', '3', 'ACAD_GROUP', '350', GROUPS, '3', 'ACAD_PLOTSTYLENAME', '350', PLOTSTYLES,
+    '0', 'DICTIONARY', '5', GROUPS, '330', ROOT, '100', 'AcDbDictionary', '281', '1',
+    '0', 'ACDBDICTIONARYWDFLT', '5', PLOTSTYLES, '330', ROOT, '100', 'AcDbDictionary', '281', '1', '3', 'Normal', '350', NORMAL, '100', 'AcDbDictionaryWithDefault', '340', NORMAL,
+    '0', 'ACDBPLACEHOLDER', '5', NORMAL, '330', PLOTSTYLES,
+    '0', 'ENDSEC', '0', 'EOF');
+  const seed = (next + 1).toString(16).toUpperCase();
+  return L.map((x) => (x === '%SEED%' ? seed : x)).join('\n');
 }
 
 // ---- the 3D cabinet model (millimetres) ------------------------------------
@@ -585,6 +651,7 @@ export function buildPlanDXF(state, { walls = true } = {}) {
   // MODELSPACE STAYS LINES + INSERTS ONLY (client-mandated movability): the worktops, fillers and
   // crown each live in ONE block inserted at the origin, every appliance in its own block
   // inserted like a cabinet, so a CAD user still moves whole things, never loose faces.
+  const layerExtra = [];
   const worktopKey = (r.worktop && WORKTOP_OPTIONS[r.worktop]) ? r.worktop : 'marble';
   const slabs = [];
   for (const sl of planWorktopSlabs(items, getCab, worktopKey, { width: W, depth: D })) {
@@ -614,11 +681,50 @@ export function buildPlanDXF(state, { walls = true } = {}) {
   for (const g of crown.segments) moulding.push(...obox(g.x, g.z, g.angle, g.length, PROUD + OVER, g.topY, g.topY + BAR, 'CROWN', (PROUD - OVER) / 2));
   for (const d of crown.drops || []) moulding.push(...obox(d.x, d.z, d.angle, d.len, PROUD, d.y0, d.y1, 'CROWN', PROUD / 2));
   if (moulding.length) { blocks.push({ name: 'CROWN', lines: moulding }); ents.push(...insert('CROWN', 0, 0)); }
+  // ---- the ROOM as a room (her SketchUp import 2026-09-25: "the walls are not extruded up? and
+  // windows aren't in?"): a floor slab, and each wall extruded to the ceiling with its windows and
+  // doors cut in — a window leaves the wall below its sill and above its head, a door only the
+  // lintel above — plus a pane of glass in every window. Same sill / head maths as the 3D room.
+  if (walls) {
+    const Hc = Number(r.height) || 96;
+    const wallHex = hexOf(WALLS, r.wall, 0xf7f6f2), floorHex = hexOf(FLOORS, r.floor, 0xc2a27b);
+    const shell = [];
+    shell.push(...box(-W / 2 * IN, W / 2 * IN, -D / 2 * IN, D / 2 * IN, -1 * IN, 0, 'FLOOR'));
+    // a slab of wall: along a..b (plan inches along the wall), between the inner and outer face, from y0 to y1
+    const slab = (wd, a, b, y0, y1, layer = 'WALL', inner = wd.fixed, outer = wd.out) => {
+      const lo = Math.min(inner, outer), hi = Math.max(inner, outer);
+      return wd.horiz
+        ? box(a * IN, b * IN, -hi * IN, -lo * IN, y0 * IN, y1 * IN, layer)
+        : box(lo * IN, hi * IN, -b * IN, -a * IN, y0 * IN, y1 * IN, layer);
+    };
+    for (const wd of wallDefs) {
+      const room = { width: W, depth: D };
+      const ops = (r.openings || []).filter((o) => (o.wall || 'back') === wd.wall)
+        .map((o) => { const c = openingCenter(room, o), w = openingWidth(o, room); return { o, a: c - w / 2, b: c + w / 2 }; })
+        .sort((p, q) => p.a - q.a);
+      let cur = -wd.len / 2;
+      const ext = (v, atStart) => (atStart && v <= -wd.len / 2 + 0.01 ? v - T : !atStart && v >= wd.len / 2 - 0.01 ? v + T : v);   // reach the corners
+      for (const { o, a, b } of ops) {
+        if (a > cur) shell.push(...slab(wd, ext(cur, true), a, 0, Hc));
+        const isWin = o.type === 'window';
+        const hgt = Math.max(6, Math.min(isWin ? (o.hgt || Math.min(46, Hc * 0.45)) : Math.min(82, Hc * 0.86), Hc));
+        const sill = isWin ? Math.max(0, Math.min(o.sill ?? Math.max(36, Hc * 0.42), Hc - 6)) : 0;
+        const head = Math.min(Hc, sill + hgt);
+        if (sill > 0) shell.push(...slab(wd, a, b, 0, sill));
+        if (head < Hc) shell.push(...slab(wd, a, b, head, Hc));
+        if (isWin) { const mid = (wd.fixed + wd.out) / 2; shell.push(...slab(wd, a, b, sill, head, 'GLASS', mid - 0.1, mid + 0.1)); }
+        cur = Math.max(cur, b);
+      }
+      if (cur < wd.len / 2) shell.push(...slab(wd, ext(cur, true), ext(wd.len / 2, false), 0, Hc));
+    }
+    blocks.push({ name: 'ROOM', lines: shell }); ents.push(...insert('ROOM', 0, 0));
+    layerExtra.push(coloured('WALL', wallHex), coloured('FLOOR', floorHex), coloured('GLASS', '#bfe3f5'));
+  }
 
   return dxfDoc(blocks, ents, {
     units: 1,
     layers: ['0', coloured('PLAN', '#333333'), coloured('PLAN-UPPER', '#7a7a7a', 'DASHED'), coloured('BODY', BRAND.oak),
       ...[...finishes].map((f) => coloured(finishLayer(f, mainFinish), finishHex(f))), coloured('LABEL', '#555555'),
-      coloured('WORKTOP', WORKTOP_OPTIONS[worktopKey].hex), coloured('APPLIANCE', '#c2c6cb'), coloured('HOOD-PLASTER', '#f1eee6'), coloured('CROWN', finishHex(mainFinish))],
+      coloured('WORKTOP', WORKTOP_OPTIONS[worktopKey].hex), coloured('APPLIANCE', '#c2c6cb'), coloured('HOOD-PLASTER', '#f1eee6'), coloured('CROWN', finishHex(mainFinish)), ...layerExtra],
   });
 }

@@ -15,27 +15,8 @@ const WALL_T = 4;
 const KERB_H = 3;   // the footprint left behind by a wall that is hidden to let you see in
 
 // key -> label + base colour; scene/floorTexture.js PAINT says how each is drawn.
-// Keys are saved in designs: never rename one (tile / ash keep theirs).
-export const FLOORS = {
-  oak: { label: 'Oak', color: 0xc2a27b },
-  ash: { label: 'Pale ash', color: 0xd9cab0 },
-  walnut: { label: 'Walnut', color: 0x70503a },
-  herringbone: { label: 'Oak herringbone', color: 0xbf9e74 },
-  tile: { label: 'Limestone', color: 0xd7d1c4 },
-  slate: { label: 'Slate', color: 0x5b5e61 },
-  checker: { label: 'Checkerboard', color: 0x8c8b88 },
-  terrazzo: { label: 'Terrazzo', color: 0xe5e0d5 },
-  concrete: { label: 'Concrete', color: 0xb8b5ad },
-};
-export const WALLS = {
-  white: { label: 'White', color: 0xf7f6f2 },     // plain white (her ask 2026-09-17); a hair off pure so it still shades
-  chalk: { label: 'Chalk', color: 0xefe9db },
-  warm: { label: 'Warm white', color: 0xe7ddca },
-  clay: { label: 'Clay', color: 0xd9c4b0 },
-  sage: { label: 'Sage', color: 0xc3c7b2 },
-  bluegrey: { label: 'Blue gray', color: 0xb7c1c4 },
-  charcoal: { label: 'Charcoal', color: 0x6f6f6e },
-};
+import { FLOORS, WALLS } from '../core/roomstyle.js';
+export { FLOORS, WALLS };   // the tables live in core/roomstyle.js (shared with the DXF export)
 
 export class Room {
   constructor(scene) {

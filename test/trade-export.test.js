@@ -8,6 +8,16 @@ import { rowsFromDesign, tradeSummary, unitQty } from '../src/core/cost.js';
 import { buildTradeOrderCSV } from '../src/core/tradecsv.js';
 import { buildCabinetLibraryDXF, buildPlanDXF, librarySKUs } from '../src/core/dxf.js';
 
+// DXF R2000 helpers: an entity is '0\nTYPE\n5\nhandle\n330\nowner\n100\nAcDbEntity\n8\nlayer...' — find by type + a group value
+const entities = (dxf) => { const ls = dxf.split('\n'), out = []; let cur = null; for (let i = 0; i + 1 < ls.length; i += 2) { if (ls[i] === '0') { cur = [ls[i + 1]]; out.push(cur); } else if (cur) cur.push(ls[i], ls[i + 1]); } return out; };
+const blockRegion = (dxf, name) => { const m = dxf.indexOf(`\nAcDbBlockBegin\n2\n${name}\n`); assert.ok(m > 0, `block ${name}`); const a = dxf.lastIndexOf('\n0\nBLOCK\n', m) + 1; return dxf.slice(a, dxf.indexOf('\nENDBLK', m)); };
+const withGroup = (dxf, type, code, value) => entities(dxf).filter((e) => e[0] === type && e.some((v, i) => i % 2 === 1 && v === String(code) && e[i + 1] === String(value)));
+const hasBlock = (dxf, name) => withGroup(dxf, 'BLOCK', 2, name).length > 0;
+const hasInsert = (dxf, name) => withGroup(dxf, 'INSERT', 2, name).length > 0;
+const hasLayer = (dxf, name) => withGroup(dxf, 'LAYER', 2, name).length > 0;
+const layerRec = (dxf, name) => withGroup(dxf, 'LAYER', 2, name)[0].join('\n');
+
+
 // ---- shared fixtures -------------------------------------------------------
 
 function demoState() {
@@ -113,7 +123,7 @@ test('cabinet library DXF: R12 skeleton, inch units, finite coordinates', () => 
   assert.ok(dxf.includes('\n2\nBLOCKS\n'), 'has BLOCKS section');
   assert.ok(dxf.includes('\n2\nTABLES\n'), 'declares the layer table');
   for (const layer of ['BODY', 'FRONT', 'LABEL']) {
-    assert.ok(dxf.includes(`\nLAYER\n2\n${layer}\n`), `layer ${layer} declared`);
+    assert.ok(hasLayer(dxf, layer), `layer ${layer} declared`);
   }
   assertFiniteCoords(dxf);
   // R12: no LWPOLYLINE anywhere (POLYLINE polyface meshes only)
@@ -131,8 +141,8 @@ test('cabinet library DXF: a FRONT_FACE BLOCK + INSERT + TEXT label per SKU', ()
   assert.ok(skus.length > 40, 'library covers the catalogue');
   assert.ok(skus.every((c) => !c.notSupplied && c.h > 0));
   for (const c of skus) {
-    assert.ok(dxf.includes(`\nBLOCK\n8\n0\n2\n${c.code}_FRONT_FACE\n`), `BLOCK for ${c.code}`);
-    assert.ok(dxf.includes(`\nINSERT\n8\n0\n2\n${c.code}_FRONT_FACE\n`), `INSERT for ${c.code}`);
+    assert.ok(hasBlock(dxf, `${c.code}_FRONT_FACE`), `BLOCK for ${c.code}`);
+    assert.ok(hasInsert(dxf, `${c.code}_FRONT_FACE`), `INSERT for ${c.code}`);
     assert.ok(dxf.includes(`\n1\n${c.code}\n`), `TEXT label for ${c.code}`);
   }
   // appliances are not Plinth SKUs — no blocks for them
@@ -141,10 +151,7 @@ test('cabinet library DXF: a FRONT_FACE BLOCK + INSERT + TEXT label per SKU', ()
 
 test('cabinet library DXF: geometry follows the client reference (mm detail, inch output)', () => {
   const dxf = buildCabinetLibraryDXF();
-  const block = (code) => {
-    const a = dxf.indexOf(`\nBLOCK\n8\n0\n2\n${code}_FRONT_FACE\n`);
-    return dxf.slice(a, dxf.indexOf('\nENDBLK', a));
-  };
+  const block = (code) => blockRegion(dxf, `${code}_FRONT_FACE`);
   // F1 single door — mm construction emitted in inches: 22mm end strip
   // (0.866"), 115mm plinth (4.528"), top-rail underside at 854mm (33.622"),
   // 80mm shaker frame (stile inner edge 102mm = 4.016") and 5mm recess (0.197")
@@ -188,7 +195,7 @@ test('plan DXF: 3D kitchen — inch units, blocks INSERTed per cabinet, no appli
   for (const code of ['T3', 'F18', 'F20', 'W2']) {
     assert.ok(dxf.includes(`\n2\n${code}_UNIT\n`), `block for ${code}`);
   }
-  assert.equal((dxf.match(/\n2\nF18_UNIT\n/g) || []).length, 3,
+  assert.ok(withGroup(dxf, 'BLOCK', 2, 'F18_UNIT').length === 1 && withGroup(dxf, 'INSERT', 2, 'F18_UNIT').length === 2,
     'duplicate F18s share ONE block definition (1 def in BLOCKS + 2 INSERT refs)');
   // 3D content: polyface meshes for carcasses + INSERTs lifted/rotated
   assert.ok(dxf.includes('\nPOLYLINE\n'), 'carcass polyface meshes present');
@@ -203,16 +210,16 @@ test('plan DXF: 3D kitchen — inch units, blocks INSERTed per cabinet, no appli
   const entSec = dxf.split('\n2\nENTITIES\n')[1];
   assert.ok(!entSec.includes('\nPOLYLINE\n'), 'no loose meshes in modelspace');
   assert.ok(!entSec.includes('\nTEXT\n'), 'no loose labels in modelspace');
-  assert.equal((entSec.match(/\nINSERT\n8\n0\n2\n[A-Z0-9]+_UNIT/g) || []).length, 6,
+  assert.equal(entities(entSec).filter((e) => e[0] === 'INSERT' && /_UNIT/.test(e.join('\n'))).length, 6,
     'one cabinet INSERT per supplied cabinet (6 placed, AP2 is an appliance block instead)');
-  assert.ok(entSec.includes('\nINSERT\n8\n0\n2\nAP2_APPLIANCE\n'), 'the range is a grey placeholder block');
-  assert.ok(entSec.includes('\nINSERT\n8\n0\n2\nWORKTOPS\n') && entSec.includes('\nINSERT\n8\n0\n2\nCROWN\n') || entSec.includes('\nINSERT\n8\n0\n2\nWORKTOPS\n'), 'worktops (and crown when on) ride in blocks of their own');
+  assert.ok(hasInsert(entSec, 'AP2_APPLIANCE'), 'the range is a grey placeholder block');
+  assert.ok(hasInsert(entSec, 'WORKTOPS') && hasInsert(entSec, 'ROOM'), 'worktops and the room ride in blocks of their own');
   // clean plan read: walls + floor footprints on PLAN, hung units dashed on
   // PLAN-UPPER (DASHED linetype declared), labels on LABEL
   assert.ok(dxf.includes('\nLINE\n'), 'wall plan drawn as LINEs');
   assert.ok(dxf.includes('\n8\nPLAN\n'), 'plan layer used');
   assert.ok(dxf.includes('\n8\nPLAN-UPPER\n'), 'hung-unit footprint layer used');
-  assert.ok(dxf.includes('\nLTYPE\n2\nDASHED\n'), 'dashed linetype declared');
+  assert.ok(withGroup(dxf, 'LTYPE', 2, 'DASHED').length === 1, 'dashed linetype declared');
   // the doorway breaks the left wall: jamb lines at x=-120" and x=-124"
   assert.ok(dxf.includes('\n10\n-120\n'));
   assert.ok(dxf.includes('\n11\n-124\n'));
@@ -225,7 +232,7 @@ test('plan DXF: cabinets-only variant drops the walls, keeps movable blocks', ()
   assertFiniteCoords(dxf);
   const entSec = dxf.split('\n2\nENTITIES\n')[1];
   assert.ok(!entSec.includes('\nLINE\n'), 'no wall linework in modelspace');
-  assert.equal((entSec.match(/\nINSERT\n8\n0\n2\n[A-Z0-9]+_UNIT/g) || []).length, 6,
+  assert.equal(entities(entSec).filter((e) => e[0] === 'INSERT' && /_UNIT/.test(e.join('\n'))).length, 6,
     'all six cabinets still INSERTed');
   // footprints + labels still ship INSIDE the blocks
   assert.ok(dxf.includes('\n8\nPLAN-UPPER\n'), 'hung footprint inside block');
@@ -246,13 +253,13 @@ test('DXF layers carry their colours: the finish on FRONT (nearest ACI + exact t
   const state = { room: { width: 200, depth: 150, height: 96, openings: [] }, finish: 'Swamp', items: [
     { id: 1, code: 'F2', x: -64, z: -62.75, rotDeg: 0 }, { id: 2, code: 'F10', x: -34, z: -62.75, rotDeg: 0, finish: 'Ghost' } ] };
   const dxf = buildPlanDXF(state, { walls: true });
-  const layer = (name) => { const i = dxf.indexOf(`\nLAYER\n2\n${name}\n`); assert.ok(i > 0, `layer ${name}`); return dxf.slice(i, i + 80); };
+  const layer = (name) => { assert.ok(hasLayer(dxf, name), `layer ${name}`); return layerRec(dxf, name); };
   const swamp = getFinish('Swamp').hex, ghost = getFinish('Ghost').hex;
   assert.ok(layer('FRONT').includes(`\n62\n${nearestACI(swamp)}\n`) && layer('FRONT').includes(`\n420\n${trueColour(swamp)}\n`), 'FRONT is the kitchen finish');
   assert.ok(layer('FRONT-Ghost').includes(`\n420\n${trueColour(ghost)}\n`), 'the Ghost cabinet has its own layer, in Ghost');
   assert.ok(layer('BODY').includes(`\n420\n${trueColour('#c9a978')}\n`), 'BODY is oak');
-  assert.ok(dxf.includes('\nBLOCK\n8\n0\n2\nF10_UNIT-Ghost\n') && dxf.includes('\nINSERT\n8\n0\n2\nF10_UNIT-Ghost\n'), 'a block per paint');
-  const ff = dxf.slice(dxf.indexOf('\n2\nF10_UNIT-Ghost\n'), dxf.indexOf('\nENDBLK', dxf.indexOf('\n2\nF10_UNIT-Ghost\n')));
+  assert.ok(hasBlock(dxf, 'F10_UNIT-Ghost') && hasInsert(dxf, 'F10_UNIT-Ghost'), 'a block per paint');
+  const ff = blockRegion(dxf, 'F10_UNIT-Ghost');
   assert.ok(ff.includes('\n8\nFRONT-Ghost\n') && !ff.includes('\n8\nFRONT\n'), 'its fronts sit on the Ghost layer');
   assert.ok(buildCabinetLibraryDXF().includes(`\n420\n${trueColour(ghost)}\n`), 'the library ships in Ghost');
   assert.equal(nearestACI('#333333'), 250); assert.equal(nearestACI('#ff0000'), 1); assert.equal(nearestACI('#ffffff'), 7);
@@ -266,12 +273,30 @@ test('the plan DXF carries the whole kitchen: worktop slabs, scribe fillers, the
     { id: 4, code: 'AP19', x: -34, z: -62.75, rotDeg: 0 }, { id: 5, code: 'AP2', x: 2, z: -62, rotDeg: 0 }, { id: 6, code: 'F2', x: 32, z: -62.75, rotDeg: 0 },
     { id: 7, code: 'W2', x: -64, z: -68, rotDeg: 0 }, { id: 8, code: 'AP8', x: 2, z: -65, rotDeg: 0 } ] };
   const dxf = buildPlanDXF(state, { walls: true });
-  const blockOf = (name) => { const a = dxf.indexOf(`\nBLOCK\n8\n0\n2\n${name}\n`); assert.ok(a > 0, `block ${name}`); return dxf.slice(a, dxf.indexOf('\nENDBLK', a)); };
+  const blockOf = (name) => blockRegion(dxf, name);
   assert.ok(blockOf('WORKTOPS').includes('\n8\nWORKTOP\n'), 'worktop slabs on WORKTOP');
-  assert.ok(dxf.includes(`\nLAYER\n2\nWORKTOP\n70\n0\n62\n`) && dxf.includes(`\n420\n${trueColour(WORKTOP_OPTIONS.soapstone.hex)}\n`), 'WORKTOP layer is the chosen soapstone');
+  assert.ok(layerRec(dxf, 'WORKTOP').includes(`\n420\n${trueColour(WORKTOP_OPTIONS.soapstone.hex)}\n`), 'WORKTOP layer is the chosen soapstone');
   assert.ok(blockOf('CROWN').includes('\n8\nCROWN\n'), 'crown strips on CROWN');
   assert.ok(blockOf('AP2_APPLIANCE').includes('\n8\nAPPLIANCE\n') && blockOf('AP8_APPLIANCE').includes('\n8\nAPPLIANCE\n'), 'range and hood as grey boxes');
   assert.ok(!dxf.includes('AP19_APPLIANCE'), 'the sink stays out (it sits under the slab)');
   const entSec = dxf.split('\n2\nENTITIES\n')[1];
   assert.ok(!entSec.includes('\nPOLYLINE\n'), 'modelspace is still lines + inserts only');
+});
+
+test('the DXF is R2000 (true colour is official there), and the room comes as a floor slab + walls extruded to the ceiling with the windows and doors cut in, a pane of glass in each window', async () => {
+  const { buildPlanDXF } = await import('../src/core/dxf.js');
+  const state = { room: { width: 200, depth: 150, height: 96, wall: 'sage', floor: 'walnut', openings: [
+    { id: 1, type: 'window', wall: 'back', pos: 0.5, width: 48, sill: 40, hgt: 40 }, { id: 2, type: 'door', wall: 'left', pos: 0.6, width: 34 } ] }, items: [] };
+  const dxf = buildPlanDXF(state, { walls: true });
+  assert.ok(dxf.includes('\n$ACADVER\n1\nAC1015\n'), 'AC1015 = R2000');
+  assert.ok(hasBlock(dxf, 'ROOM') && hasInsert(dxf, 'ROOM'));
+  const room = blockRegion(dxf, 'ROOM');
+  const meshes = entities(room).filter((e) => e[0] === 'POLYLINE');
+  const on = (layer) => meshes.filter((e) => e.join('\n').includes(`\n8\n${layer}\n`)).length;
+  assert.equal(on('FLOOR'), 1, 'one floor slab');
+  assert.equal(on('GLASS'), 1, 'one pane of glass');
+  // back wall: left of the window, under the sill, over the head, right of the window = 4; left wall: before the door, lintel, after = 3; front + right = 1 each
+  assert.equal(on('WALL'), 9, `wall slabs (${on('WALL')})`);
+  assert.ok(layerRec(dxf, 'WALL').includes('\n420\n') && layerRec(dxf, 'FLOOR').includes('\n420\n'), 'wall and floor carry their colours');
+  assert.ok(!buildPlanDXF(state, { walls: false }).includes('\n2\nROOM\n'), 'cabinets-only variant has no room');
 });
