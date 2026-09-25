@@ -89,8 +89,8 @@ const RAW = [
   // DOUBLE corners (her ask 2026-09-25, "double full height wall corners"): the 36" / 42" doubles
   // with the 10" blank return, a door pair meeting in the middle, both hands. `pair` marks the
   // two leaves (hinge / plan / 3D / elevation / DXF all read it). PRICE (her rule 2026-09-25, "W5 and
-  // W6 plus the corner uplift"): the double + what the 24" wall corner carries over its plain single
-  // (W10 - W2, $270; the 20" pair W9 - W1 is $143 — the wider one taken), set below from `priceFrom`.
+  // W6 plus the corner uplift", then "use the average"): the double + the AVERAGE of what the two wall
+  // corners carry over their plain singles (W9 - W1 $143, W10 - W2 $270 → $207), set below from `priceFrom`.
   { code: 'W31', type: 'WALL', desc: 'Corner Double (+10") · blank left', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 0, priceFrom: 'W5', corner: true, pair: true, cornerSide: 'left' },
   { code: 'W31R', type: 'WALL', desc: 'Corner Double (+10") · blank right', w: 36, d: 14, h: 30, hinge: 'n/a', usd: 0, priceFrom: 'W5', corner: true, pair: true, cornerSide: 'right' },
   { code: 'W32', type: 'WALL', desc: 'Corner Double (+10") · blank left', w: 42, d: 14, h: 30, hinge: 'n/a', usd: 0, priceFrom: 'W6', corner: true, pair: true, cornerSide: 'left' },
@@ -231,7 +231,8 @@ function classify(it) {
 // of the wall cabinet + 20%"), rounded to the dollar. `high` = the inches added, so the
 // catalogue can group them and the ceiling check can read them.
 // ----- the double corners' price: the double + the corner uplift (her rule 2026-09-25) --------------
-export const WALL_CORNER_UPLIFT = RAW.find((c) => c.code === 'W10').usd - RAW.find((c) => c.code === 'W2').usd;   // $270
+const usdOf = (code) => RAW.find((c) => c.code === code).usd;
+export const WALL_CORNER_UPLIFT = Math.round(((usdOf('W9') - usdOf('W1')) + (usdOf('W10') - usdOf('W2'))) / 2);   // (143 + 270) / 2 → $207
 for (const c of RAW) if (c.priceFrom) c.usd = RAW.find((b) => b.code === c.priceFrom).usd + WALL_CORNER_UPLIFT;
 
 // The CORNER wall cabinets grow too (her ask 2026-09-25, "full height wall corner cabinets"):

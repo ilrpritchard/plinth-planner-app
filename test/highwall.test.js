@@ -68,9 +68,9 @@ test('an open shelf at any depth: W25:24 is the 10" shelf made 24" deep, whole i
 
 test('double wall corners W31 / W32 (+R) and their full-height W33-W36: a door PAIR beside the 10" return, both hands, priced as the double + the corner uplift (her rule 2026-09-25)', async () => {
   const { getCab, WALL_CORNER_UPLIFT } = await import('../src/core/catalogue.js');
-  assert.equal(WALL_CORNER_UPLIFT, 270, 'the uplift is what W10 carries over W2');
-  assert.equal(getCab('W31').usd, 2551 + 270); assert.equal(getCab('W32').usd, 2658 + 270);
-  assert.equal(getCab('W33').usd, Math.round((2551 + 270) * 1.2)); assert.equal(getCab('W36').usd, Math.round((2658 + 270) * 1.2));
+  assert.equal(WALL_CORNER_UPLIFT, 207, 'the uplift is the average of W9 over W1 ($143) and W10 over W2 ($270)');
+  assert.equal(getCab('W31').usd, 2551 + 207); assert.equal(getCab('W32').usd, 2658 + 207);
+  assert.equal(getCab('W33').usd, Math.round((2551 + 207) * 1.2)); assert.equal(getCab('W36').usd, Math.round((2658 + 207) * 1.2));
   const { hingeOf, canFlipHinge } = await import('../src/core/hinge.js');
   const { frontParts, cornerReturnIn } = await import('../src/ui/frontdraw.js');
   for (const [code, w, side, h] of [['W31', 36, 'left', 30], ['W31R', 36, 'right', 30], ['W32', 42, 'left', 30], ['W32R', 42, 'right', 30], ['W33', 36, 'left', 51], ['W34', 36, 'right', 51], ['W35', 42, 'left', 51], ['W36', 42, 'right', 51]]) {
