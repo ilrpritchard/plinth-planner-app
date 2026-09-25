@@ -170,7 +170,10 @@ function showOpeningMenu({ id, clientX, clientY }) {
   const len = (o.wall === 'left' || o.wall === 'right') ? r.depth : r.width;
   const w = o.width || (o.type === 'window' ? 48 : 34);
   const dist = Math.max(0, (o.pos ?? 0.5) * len - w / 2);   // near-edge, like the wizard
-  document.getElementById('omTitle').textContent = o.type === 'doorway' ? 'Doorway' : o.type === 'door' ? 'Door' : 'Window';
+  const WALLN = { back: 'Back wall', front: 'Front wall', left: 'Left wall', right: 'Right wall' };
+  document.getElementById('omTitle').textContent = `${o.type === 'doorway' ? 'Doorway' : o.type === 'door' ? 'Door' : 'Window'}${ui.openingOrdinal?.(o) || ''} · ${WALLN[o.wall] || 'Back wall'}`;
+  ui.focusOpening?.(id);                 // its card comes to the front, lit, in the Doors & windows panel
+  room.flashOpening?.(id);               // and the window itself lights up for a moment
   document.getElementById('omDistLabel').textContent = (o.wall === 'left' || o.wall === 'right') ? 'Back wall → edge' : 'Left wall → edge';
   document.getElementById('omDist').value = fmtFeetIn(dist);
   document.getElementById('omWidth').value = fmtFeetIn(w);

@@ -462,16 +462,20 @@ export class UI {
     // TYPED, NOT SLID (her ask 2026-09-25: "adding a window and door could definitely be more
     // accurate, easier to work with"): distance from a named corner to the near edge, width,
     // sill and height, all as numbers in feet-and-inches or inches. The slider stays for a nudge.
+    // "Window 2 of 2 · Back wall": numbered along its wall when there is more than one of its kind there
+    const nthOf = (o) => { const same = ops.filter((p) => p.type === o.type && (p.wall || 'back') === (o.wall || 'back')).sort((p, q) => (p.pos ?? 0.5) - (q.pos ?? 0.5)); return same.length > 1 ? ` ${same.indexOf(o) + 1} of ${same.length}` : ''; };
+    this._nthOpening = nthOf;
     el.innerHTML = ops.map((o) => {
       const len = openingWallLen(r, o.wall), w = openingWidth(o, r), near = openingNearEdge(r, o);
+      const picked = this._pickedOpening === o.id;
       const from = this._opFrom.get(o.id) || 'start';
       const dist = from === 'start' ? near : len - near - w;
       const [e0, e1] = ENDS(o.wall || 'back');
       const isWin = o.type === 'window';
       const sill = o.sill ?? Math.max(36, r.height * 0.42);
       const hgt = o.hgt ?? Math.min(46, r.height * 0.45);
-      return `<div class="op-row" data-id="${o.id}">
-        <div class="op-head"><span><strong>${label[o.type] || 'Opening'}</strong> · ${WALLN[o.wall] || 'Back wall'}</span>
+      return `<div class="op-row${picked ? ' is-picked' : ''}" data-id="${o.id}">
+        <div class="op-head"><span><strong>${label[o.type] || 'Opening'}${nthOf(o)}</strong> · ${WALLN[o.wall] || 'Back wall'}${picked ? '<span class="op-picked">this one</span>' : ''}</span>
           <button class="op-del" data-act="del" title="Remove">&times;</button></div>
         <div class="op-grid">
           <label class="op-mini op-span">From the <select class="op-from"><option value="start" ${from === 'start' ? 'selected' : ''}>${e0}</option><option value="end" ${from === 'end' ? 'selected' : ''}>${e1}</option></select></label>
@@ -1269,6 +1273,25 @@ export class UI {
       });
     });
   }
+
+  /** A window / door clicked in 3D: bring ITS card to the front — the Room tab, the Doors & windows
+   *  drop open, the card scrolled into view and lit, "this one" on its head — so the numbers she
+   *  changes are that opening's (her ask 2026-09-25: "when i click on this window it should
+   *  highlight... which window it is so i can make changes"). Stays lit until another is clicked. */
+  focusOpening(id) {
+    const tabs = document.getElementById('lpTabs'), body = document.getElementById('leftBody');
+    if (tabs && body) { tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x.dataset.tab === 'room')); body.classList.add('tab-room'); }
+    document.getElementById('leftPanel')?.classList.remove('collapsed');
+    const drop = document.getElementById('dropOpenings'); if (drop) drop.open = true;
+    this._pickedOpening = id;
+    this._renderOpenings();
+    const row = document.querySelector(`#openingsList .op-row[data-id="${id}"]`);
+    if (!row) return;
+    try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { row.scrollIntoView(); }
+  }
+
+  /** "Window 2 of 2" — the same numbering the card carries, for the 3D popup's title. */
+  openingOrdinal(o) { if (!this._nthOpening) this._renderOpenings(); return this._nthOpening ? this._nthOpening(o) : ''; }
 
   /** Public: show the left panel on its ROOM tab with the given setup drops open
    *  (a brand-new project unit starts here: room size, floorplan underlay, doors & windows). */

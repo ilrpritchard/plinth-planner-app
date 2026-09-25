@@ -147,6 +147,22 @@ export class Room {
   }
 
   // ---- wall visibility ----
+  /** Light the clicked opening for a moment (its casing and frame glow the accent green), so
+   *  "which window" is answered in 3D as well as on its card (2026-09-25). Materials are swapped for
+   *  lit clones and put back, so shared materials on the other openings are untouched. */
+  flashOpening(id, ms = 1400) {
+    const g = Object.values(this.wallAttached || {}).flat().find((x) => x && x.userData?.openingId === id);
+    if (!g) return;
+    const swapped = [];
+    g.traverse((m) => {
+      if (!m.isMesh || !m.material || !m.material.emissive) return;
+      const lit = m.material.clone(); lit.emissive.set(0x645b3d); lit.emissiveIntensity = 0.55;
+      swapped.push([m, m.material]); m.material = lit;
+    });
+    if (this._flashTimer) clearTimeout(this._flashTimer);
+    this._flashTimer = setTimeout(() => { for (const [m, mat] of swapped) { if (m.material !== mat) { m.material.dispose?.(); m.material = mat; } } }, ms);
+  }
+
   /** Every opening group (window/door/doorway) that can be clicked. */
   openingPickables() {
     const out = [];

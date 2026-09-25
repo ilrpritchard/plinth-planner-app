@@ -560,6 +560,10 @@ kbd {
 .op-btns button:hover { border-color: var(--brass); color: var(--cream-hi); }
 .op-row { background: var(--brown-soft); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; margin-bottom: 7px; }
 .op-head { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: var(--cream); }
+/* the card of the window / door just clicked in 3D (ui.focusOpening) */
+.op-row.is-picked { border-color: var(--brass); box-shadow: 0 0 0 2px rgba(100,91,61,0.22); animation: opPick 1.4s ease-out; }
+@keyframes opPick { 0% { background: rgba(100,91,61,0.26); } 100% { background: var(--brown-soft); } }
+.op-picked { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: 999px; background: var(--brass); color: #fff; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; vertical-align: 1px; }
 .op-del { background: none; border: none; color: var(--dim); font-size: 16px; cursor: pointer; line-height: 1; padding: 0 2px; }
 .op-del:hover { color: var(--red); }
 .op-controls { display: grid; grid-template-columns: 1fr 56px; gap: 8px; align-items: center; margin-top: 8px; }
