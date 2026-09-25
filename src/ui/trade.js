@@ -501,7 +501,8 @@ export class TradeUI {
         <div class="unit-docs">
           <span class="ud-l">Documents · Rev ${esc(unitRev(u))}</span>
           <button class="ghost sm" data-act="u-submittal" title="Architect-ready submittal PDF: cover, plan, elevations, schedule, cut sheets &amp; product specification">Submittal PDF</button>
-          <button class="ghost sm" data-act="u-dxf" title="This unit's kitchen plan as AutoCAD DXF">DXF plan</button>
+          <button class="ghost sm" data-act="u-dxf" title="This unit's kitchen as a 3D AutoCAD DXF, colours included (also opens in SketchUp Pro)">DXF plan</button>
+          <button class="ghost sm" data-act="u-ifc" title="This unit's kitchen as an IFC4 model for Revit: every cabinet its own element, in the finish, in inches">Revit / IFC</button>
           <button class="tquiet" data-act="u-rev" title="Bump the revision letter (records the date on this unit's revision history)">Start a new revision</button>
         </div>
       </div>
@@ -750,6 +751,15 @@ export class TradeUI {
           toast('Unit plan DXF downloaded.');
         });
       }
+    }
+    else if (act === 'u-ifc') {
+      if (!u.design) return toast('Design this unit first. The IFC is built from its layout.');
+      ensureDxfEmail('unit-ifc').then((ok) => {
+        if (!ok) return;
+        const ifc = buildUnitIFC([{ name: unitName(u), state: u.design }], { timestamp: new Date().toISOString() });
+        download(`PLINTH_${unitName(u).replace(/\s+/g, '_')}.ifc`, ifc, 'application/x-step');
+        toast('IFC model downloaded. In Revit, use Insert → Link IFC.');
+      });
     }
     else if (act === 'r-pick') {
       const r = this.rowFor(el, u); if (!r) return;
