@@ -17,6 +17,7 @@ import { planMirror, mirrorTargets } from '../core/mirror.js';
 import { summarizeState, deliveryEstimate } from '../core/cost.js';
 import { computeWarnings } from '../core/warnings.js';
 import { openingWallLen, openingNearEdge } from '../core/openings.js';
+import { findFreeSpot } from '../core/placement.js';
 import { buildOrderEmail } from '../core/order.js';
 import { isCloud, submitOrder } from '../core/cloud.js';
 import { exportJSON, importJSON } from '../core/persistence.js';
@@ -576,6 +577,20 @@ export class UI {
     let html = '';
     let hiddenAny = false;
     const tooWide = new Set();
+    // A tile is greyed only when the cabinet can stand NOWHERE: the same search a tap makes
+    // (placement.js findFreeSpot: this wall first, then the others, then the floor). It used to
+    // compare the width with "wall length minus widths on this wall", which read the back wall as
+    // full while the run had a clear stretch and two other walls stood empty (her screenshot
+    // 2026-09-25: "why are the range cookers greyed out, there is tonnes of space"). Cabinets
+    // with the same footprint share one answer, so the catalogue stays quick to redraw.
+    const r = this.store.state.room, bounds = { minX: -r.width / 2, maxX: r.width / 2, minZ: -r.depth / 2, maxZ: r.depth / 2 };
+    const fitCache = new Map();
+    const fitsSomewhere = (c) => {
+      if (this.activeWall === 'island') return true;
+      const key = `${c.w}|${c.d}|${c.type}|${c.corner ? c.cornerSide : ''}|${c.onTall ? 1 : 0}|${c.appliance || ''}|${c.form}`;
+      if (!fitCache.has(key)) fitCache.set(key, !!findFreeSpot(this.store.state, c, bounds, this.activeWall));
+      return fitCache.get(key);
+    };
     for (const fam of FAMILY_ORDER) {
       // an island is built from base cabinets plus the appliances that really
       // live in one — ranges, cooktops and sinks (Rockledge-style island
@@ -588,7 +603,7 @@ export class UI {
         if (this.activeWall === 'island' && c.type === 'APPLIANCES' &&
             !['range', 'hob', 'sink'].includes(c.appliance)) return false;
         if (!this._isBaseRun(c)) return true;
-        const fits = c.w <= remaining + TOL;
+        const fits = c.w <= remaining + TOL || fitsSomewhere(c);
         // what will not fit stays on the shelf, dimmed, saying what it needs: a hidden
         // 36" double read as "there are no double counter cabinets" (her question 2026-09-22)
         if (!fits) { tooWide.add(c.code); hiddenAny = true; }
@@ -616,7 +631,7 @@ export class UI {
         for (const combo of SINK_BASES) {
           const b = getCab(combo.base), sk = getCab(combo.sink);
           if (!b || !sk) continue;
-          if (this.activeWall !== 'island' && b.w > remaining + TOL) continue;
+          if (this.activeWall !== 'island' && b.w > remaining + TOL && !fitsSomewhere(b)) continue;
           html += `<button type="button" class="cat-item cat-combo" data-combo="${combo.id}" title="Adds ${b.code} · ${b.desc} ${fmtIn(b.w)} with a ${sk.desc} centred in it. The sink is not supplied">
           <span class="cat-thumb">${cabinetSVG(b, { sink: sk })}</span>
           <span class="ci-code">${b.code} + sink</span>
@@ -644,7 +659,7 @@ export class UI {
         const wide = tooWide.has(c.code);
         const meta = wide ? (c.high ? `needs a ${fmtFeetIn(56 + c.h + 3)} ceiling` : `needs ${fmtIn(c.w)} of wall`)
           : c.notSupplied ? `${fmtIn(c.w)} &middot; <em>not supplied</em>` : c.priceTBC ? `${fmtIn(c.w)} &middot; <em>price to confirm</em>` : `${fmtIn(c.w)} &middot; ${fmtUSD(sellUSD(c))}`;
-        html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}${wide ? ' is-toowide' : ''}" data-code="${c.code}" ${wide ? 'disabled' : ''} title="${wide ? (c.high ? `${c.code} · ${c.desc} tops out at ${fmtIn(56 + c.h)} and needs ${fmtFeetIn(56 + c.h + 3)} of ceiling for its crown. The room is ${fmtFeetIn(ceiling)}: change it under Room` : `${c.code} · ${c.desc} needs ${fmtIn(c.w)} of wall and this one has ${fmtIn(remaining)} left. Make room, switch walls, or use Island`) : `Add ${c.code} · ${c.desc}${c.notes ? ', ' + c.notes : ''}`}">
+        html += `<button type="button" class="cat-item${c.notSupplied ? ' is-appliance' : ''}${wide ? ' is-toowide' : ''}" data-code="${c.code}" ${wide ? 'disabled' : ''} title="${wide ? (c.high ? `${c.code} · ${c.desc} tops out at ${fmtIn(56 + c.h)} and needs ${fmtFeetIn(56 + c.h + 3)} of ceiling for its crown. The room is ${fmtFeetIn(ceiling)}: change it under Room` : `${c.code} · ${c.desc} needs ${fmtIn(c.w)} of clear wall and no wall has that left. Make room, or use Island`) : `Add ${c.code} · ${c.desc}${c.notes ? ', ' + c.notes : ''}`}">
           <span class="cat-thumb">${cabinetSVG(c)}</span>
           <span class="ci-code">${c.code}</span>
           <span class="ci-desc">${c.desc}</span>
@@ -654,7 +669,7 @@ export class UI {
       html += `</div></details>`;
     }
     if (this.activeWall !== 'island' && hiddenAny) {
-      html += `<div class="hint" style="margin-top:8px">Greyed-out cabinets are wider than the ${fmtIn(remaining)} left on this wall, or taller than the ceiling. Pick a narrower one, make room, switch walls, use Island, or change the ceiling under Room.</div>`;
+      html += `<div class="hint" style="margin-top:8px">Greyed-out cabinets have no clear stretch of wall left for them on any wall, or are taller than the ceiling. Pick a narrower one, make room, use Island, or change the ceiling under Room.</div>`;
     }
     return html;
   }
