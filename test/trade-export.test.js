@@ -203,8 +203,10 @@ test('plan DXF: 3D kitchen — inch units, blocks INSERTed per cabinet, no appli
   const entSec = dxf.split('\n2\nENTITIES\n')[1];
   assert.ok(!entSec.includes('\nPOLYLINE\n'), 'no loose meshes in modelspace');
   assert.ok(!entSec.includes('\nTEXT\n'), 'no loose labels in modelspace');
-  assert.equal((entSec.match(/\nINSERT\n/g) || []).length, 6,
-    'one INSERT per supplied cabinet (6 placed, AP2 skipped)');
+  assert.equal((entSec.match(/\nINSERT\n8\n0\n2\n[A-Z0-9]+_UNIT/g) || []).length, 6,
+    'one cabinet INSERT per supplied cabinet (6 placed, AP2 is an appliance block instead)');
+  assert.ok(entSec.includes('\nINSERT\n8\n0\n2\nAP2_APPLIANCE\n'), 'the range is a grey placeholder block');
+  assert.ok(entSec.includes('\nINSERT\n8\n0\n2\nWORKTOPS\n') && entSec.includes('\nINSERT\n8\n0\n2\nCROWN\n') || entSec.includes('\nINSERT\n8\n0\n2\nWORKTOPS\n'), 'worktops (and crown when on) ride in blocks of their own');
   // clean plan read: walls + floor footprints on PLAN, hung units dashed on
   // PLAN-UPPER (DASHED linetype declared), labels on LABEL
   assert.ok(dxf.includes('\nLINE\n'), 'wall plan drawn as LINEs');
@@ -223,7 +225,7 @@ test('plan DXF: cabinets-only variant drops the walls, keeps movable blocks', ()
   assertFiniteCoords(dxf);
   const entSec = dxf.split('\n2\nENTITIES\n')[1];
   assert.ok(!entSec.includes('\nLINE\n'), 'no wall linework in modelspace');
-  assert.equal((entSec.match(/\nINSERT\n/g) || []).length, 6,
+  assert.equal((entSec.match(/\nINSERT\n8\n0\n2\n[A-Z0-9]+_UNIT/g) || []).length, 6,
     'all six cabinets still INSERTed');
   // footprints + labels still ship INSIDE the blocks
   assert.ok(dxf.includes('\n8\nPLAN-UPPER\n'), 'hung footprint inside block');
@@ -254,4 +256,22 @@ test('DXF layers carry their colours: the finish on FRONT (nearest ACI + exact t
   assert.ok(ff.includes('\n8\nFRONT-Ghost\n') && !ff.includes('\n8\nFRONT\n'), 'its fronts sit on the Ghost layer');
   assert.ok(buildCabinetLibraryDXF().includes(`\n420\n${trueColour(ghost)}\n`), 'the library ships in Ghost');
   assert.equal(nearestACI('#333333'), 250); assert.equal(nearestACI('#ff0000'), 1); assert.equal(nearestACI('#ffffff'), 7);
+});
+
+test('the plan DXF carries the whole kitchen: worktop slabs, scribe fillers, the crown and appliance placeholders, each in a block on a coloured layer; sinks stay out', async () => {
+  const { buildPlanDXF, trueColour } = await import('../src/core/dxf.js');
+  const { WORKTOP_OPTIONS } = await import('../src/core/catalogue.js');
+  const state = { room: { width: 200, depth: 150, height: 96, openings: [], worktop: 'soapstone', cornice: 'plain' }, finish: 'Swamp', items: [
+    { id: 1, code: 'T1', x: -88, z: -61.57, rotDeg: 0 }, { id: 2, code: 'F2', x: -64, z: -62.75, rotDeg: 0 }, { id: 3, code: 'F10', x: -34, z: -62.75, rotDeg: 0 },
+    { id: 4, code: 'AP19', x: -34, z: -62.75, rotDeg: 0 }, { id: 5, code: 'AP2', x: 2, z: -62, rotDeg: 0 }, { id: 6, code: 'F2', x: 32, z: -62.75, rotDeg: 0 },
+    { id: 7, code: 'W2', x: -64, z: -68, rotDeg: 0 }, { id: 8, code: 'AP8', x: 2, z: -65, rotDeg: 0 } ] };
+  const dxf = buildPlanDXF(state, { walls: true });
+  const blockOf = (name) => { const a = dxf.indexOf(`\nBLOCK\n8\n0\n2\n${name}\n`); assert.ok(a > 0, `block ${name}`); return dxf.slice(a, dxf.indexOf('\nENDBLK', a)); };
+  assert.ok(blockOf('WORKTOPS').includes('\n8\nWORKTOP\n'), 'worktop slabs on WORKTOP');
+  assert.ok(dxf.includes(`\nLAYER\n2\nWORKTOP\n70\n0\n62\n`) && dxf.includes(`\n420\n${trueColour(WORKTOP_OPTIONS.soapstone.hex)}\n`), 'WORKTOP layer is the chosen soapstone');
+  assert.ok(blockOf('CROWN').includes('\n8\nCROWN\n'), 'crown strips on CROWN');
+  assert.ok(blockOf('AP2_APPLIANCE').includes('\n8\nAPPLIANCE\n') && blockOf('AP8_APPLIANCE').includes('\n8\nAPPLIANCE\n'), 'range and hood as grey boxes');
+  assert.ok(!dxf.includes('AP19_APPLIANCE'), 'the sink stays out (it sits under the slab)');
+  const entSec = dxf.split('\n2\nENTITIES\n')[1];
+  assert.ok(!entSec.includes('\nPOLYLINE\n'), 'modelspace is still lines + inserts only');
 });

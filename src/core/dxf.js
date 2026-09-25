@@ -21,8 +21,11 @@
 // citizens — LWPOLYLINE is R14+ so it is never used). No DOM, no Three.js —
 // testable in plain node.
 
-import { CATALOGUE, getCab, getFinish, BRAND } from './catalogue.js';
-import { MOUNT, counterShelfTops } from './units.js';
+import { CATALOGUE, getCab, getFinish, BRAND, WORKTOP_OPTIONS } from './catalogue.js';
+import { MOUNT, counterShelfTops, SURFACE_Y, WORKTOP_SLAB, mmToIn } from './units.js';
+import { planWorktopSlabs } from './worktop-plan.js';
+import { computeFillers } from './fillers.js';
+import { planCornice } from './cornice.js';
 import { ovenSeat } from './ovenseat.js';
 import { openingCenter, openingWidth } from './openings.js';
 
@@ -541,26 +544,81 @@ export function buildPlanDXF(state, { walls = true } = {}) {
   const blocks = [...used.entries()].map(([name, { cab, fin }]) => ({ name, lines: unitEntities(cab, finishLayer(fin, mainFinish)) }));
 
   // place every cabinet: ONE block INSERT, rotated + lifted to mount height
-  for (const it of (state && state.items) || []) {
-    const cab = getCab(it.code);
-    if (!cab || !cab.placeable || cab.notSupplied) continue;
+  const insertAt = (name, w, d, it, z) => {
     const th = (it.rotDeg || 0) * Math.PI / 180;
     const fx = Math.sin(th), fz = Math.cos(th);        // front (into the room), plan coords
     // block axes in DXF coords (plan z → −y): local +X runs across the front,
     // local +Y runs from the front plane into the cabinet
     const v = [-fx, fz];                               // block +Y (front → back)
     const u = [fz, fx];                                // block +X (right-handed with z-up)
-    const Wmm = cab.w * IN, Dmm = cab.d * IN;
+    const Wmm = w * IN, Dmm = d * IN;
     const cx = it.x * IN, cy = -it.z * IN;             // footprint centre, mm
     const ox = cx - u[0] * Wmm / 2 - v[0] * Dmm / 2;   // block origin = front-left corner
     const oy = cy - u[1] * Wmm / 2 - v[1] * Dmm / 2;
     const rotDXF = Math.atan2(u[1], u[0]) * 180 / Math.PI;
-    ents.push(...insert(blockName(cab, finishOf(it)), ox, oy, { z: mountMM(cab), rot: rotDXF }));
+    return insert(name, ox, oy, { z, rot: rotDXF });
+  };
+  for (const it of (state && state.items) || []) {
+    const cab = getCab(it.code);
+    if (!cab || !cab.placeable || cab.notSupplied) continue;
+    ents.push(...insertAt(blockName(cab, finishOf(it)), cab.w, cab.d, it, mountMM(cab)));
   }
+
+  // ---- the rest of the kitchen, so the model reads as the planner draws it (her SketchUp import
+  // 2026-09-25: cabinets alone looked like a showroom with the counters missing). Worktops,
+  // scribe fillers, the crown and grey appliance placeholders, each on its own coloured layer.
+  // A sink stays out: it sits UNDER the worktop, a box for it would poke through the slab.
+  const items = (state && state.items) || [];
+  // an oriented box in plan: centre (cx, cz) inches, `angle` the Y rotation (radians, as
+  // cornice.js and item.rotDeg use it), `len` along its local X, `depth` along its local Z
+  // (+ = its front / outward), from y0 to y1 inches; `off` shifts it along local Z
+  const obox = (cx, cz, angle, len, depth, y0, y1, layer, off = 0) => {
+    const ax = Math.cos(angle), az = -Math.sin(angle), fx = Math.sin(angle), fz = Math.cos(angle);
+    const P = (a, f) => [(cx + ax * a + fx * (f + off)) * IN, -(cz + az * a + fz * (f + off)) * IN];
+    const c = [P(-len / 2, -depth / 2), P(len / 2, -depth / 2), P(len / 2, depth / 2), P(-len / 2, depth / 2)];
+    const z0 = y0 * IN, z1 = y1 * IN;
+    return pface([
+      [c[0][0], c[0][1], z0], [c[1][0], c[1][1], z0], [c[2][0], c[2][1], z0], [c[3][0], c[3][1], z0],
+      [c[0][0], c[0][1], z1], [c[1][0], c[1][1], z1], [c[2][0], c[2][1], z1], [c[3][0], c[3][1], z1],
+    ], BOXF, layer);
+  };
+  // MODELSPACE STAYS LINES + INSERTS ONLY (client-mandated movability): the worktops, fillers and
+  // crown each live in ONE block inserted at the origin, every appliance in its own block
+  // inserted like a cabinet, so a CAD user still moves whole things, never loose faces.
+  const worktopKey = (r.worktop && WORKTOP_OPTIONS[r.worktop]) ? r.worktop : 'marble';
+  const slabs = [];
+  for (const sl of planWorktopSlabs(items, getCab, worktopKey, { width: W, depth: D })) {
+    slabs.push(...box(sl.x0 * IN, sl.x1 * IN, -sl.z1 * IN, -sl.z0 * IN, (SURFACE_Y - WORKTOP_SLAB) * IN, SURFACE_Y * IN, 'WORKTOP'));
+  }
+  if (slabs.length) { blocks.push({ name: 'WORKTOPS', lines: slabs }); ents.push(...insert('WORKTOPS', 0, 0)); }
+  const scribes = [];
+  for (const f of computeFillers(state || {})) {
+    scribes.push(...obox(f.x, f.z, (f.rotDeg || 0) * Math.PI / 180, f.w, f.d, f.y0 || 0, (f.y0 || 0) + f.h, 'FRONT'));
+  }
+  if (scribes.length) { blocks.push({ name: 'FILLERS', lines: scribes }); ents.push(...insert('FILLERS', 0, 0)); }
+  const applianceBlocks = new Set();
+  for (const it of items) {                                     // appliances: honest grey boxes where the client's own go
+    const cab = getCab(it.code);
+    if (!cab || !cab.placeable || !cab.notSupplied || cab.appliance === 'sink') continue;
+    const name = cab.code.replace(/[^A-Za-z0-9]+/g, '_') + '_APPLIANCE';
+    if (!applianceBlocks.has(name)) {
+      applianceBlocks.add(name);
+      const layer = cab.integrated ? 'FRONT' : cab.plaster ? 'HOOD-PLASTER' : 'APPLIANCE';
+      blocks.push({ name, lines: box(0, cab.w * IN, 0, cab.d * IN, 0, cab.h * IN, layer) });   // block-local: front-left origin, like a cabinet
+    }
+    ents.push(...insertAt(name, cab.w, cab.d, it, (typeof cab.mountY === 'number' ? cab.mountY : 0) * IN));
+  }
+  const crown = planCornice(state || {});
+  const BAR = mmToIn(22), PROUD = mmToIn(15), OVER = 0.3;       // the plain profile as built (models/cornice.js)
+  const moulding = [];
+  for (const g of crown.segments) moulding.push(...obox(g.x, g.z, g.angle, g.length, PROUD + OVER, g.topY, g.topY + BAR, 'CROWN', (PROUD - OVER) / 2));
+  for (const d of crown.drops || []) moulding.push(...obox(d.x, d.z, d.angle, d.len, PROUD, d.y0, d.y1, 'CROWN', PROUD / 2));
+  if (moulding.length) { blocks.push({ name: 'CROWN', lines: moulding }); ents.push(...insert('CROWN', 0, 0)); }
 
   return dxfDoc(blocks, ents, {
     units: 1,
     layers: ['0', coloured('PLAN', '#333333'), coloured('PLAN-UPPER', '#7a7a7a', 'DASHED'), coloured('BODY', BRAND.oak),
-      ...[...finishes].map((f) => coloured(finishLayer(f, mainFinish), finishHex(f))), coloured('LABEL', '#555555')],
+      ...[...finishes].map((f) => coloured(finishLayer(f, mainFinish), finishHex(f))), coloured('LABEL', '#555555'),
+      coloured('WORKTOP', WORKTOP_OPTIONS[worktopKey].hex), coloured('APPLIANCE', '#c2c6cb'), coloured('HOOD-PLASTER', '#f1eee6'), coloured('CROWN', finishHex(mainFinish))],
   });
 }
