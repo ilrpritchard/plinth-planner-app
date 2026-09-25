@@ -56,7 +56,7 @@ import { buildInvoiceModel } from '../core/invoice.js';
 import { buildInvoiceHTML } from './invoice.js';
 import { buildChangeOrderModel } from '../core/changeorder.js';
 import { buildChangeOrderHTML } from './changeorder.js';
-import { planRowsLayout, rowsNotInDesign } from '../core/rowlayout.js';
+import { planRowsLayout, rowsNotInDesign, removeFromDesign } from '../core/rowlayout.js';
 import { trackURL, ORDER_NO } from '../core/ordertrack.js';
 import { trackingHTML, trackingPageHTML, findOrderHTML, buildTrackingDocHTML } from './ordertrack.js';
 import { looksLikeEmail } from './dxfgate.js';
@@ -67,9 +67,10 @@ const BED_TYPES = ['Studio', '1 Bed', '2 Bed', '3 Bed', '4 Bed', 'Penthouse'];
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 export class TradeUI {
-  constructor({ store, onDesignLoad, openAccount } = { store: null }) {
+  constructor({ store, onDesignLoad, onRoomFirst, openAccount } = { store: null }) {
     this.store = store;
     this.onDesignLoad = onDesignLoad || null;
+    this.onRoomFirst = onRoomFirst || null;  // a new unit opens in 3D on the Room page (dimensions, floorplan, doors)
     this.openAccount = openAccount || null;  // opens the existing sign-in modal
     this.approval = false;                   // read-only ?tshare= approval view
     this.view = 'build';                     // 'build' | 'orders' | 'track' (read-only, from a tracking link)
@@ -247,7 +248,13 @@ export class TradeUI {
       </div>`;
     const $ = (id) => document.getElementById(id);
     $('twDemo').addEventListener('click', () => this.loadDemo());
-    $('twMix').addEventListener('click', () => { this.t.units.push(this.newUnit()); this._detailsOpen = true; this.store.touchTrade(); this.render(); });
+    $('twMix').addEventListener('click', () => {
+      // straight into the first unit's room, on the page where the dimensions and the floorplan
+      // go in (her ask 2026-09-25); the project page is where it comes back to on Done
+      const u = this.newUnit();
+      this.t.units.push(u); this._detailsOpen = true; this.store.touchTrade(); this.render();
+      this.enterDesign(u, { roomFirst: true });
+    });
     $('tCloudOpen')?.addEventListener('click', () => this.cloudOpen());
     $('tOrders')?.addEventListener('click', () => { this.view = 'orders'; this.render(); });
   }
@@ -718,7 +725,26 @@ export class TradeUI {
         onPick: (code) => { r.code = code; this.store.touchTrade(); this.render(); },
       });
     }
-    else if (act === 'r-del') { const r = this.rowFor(el, u); u.rows = u.rows.filter((x) => x.id !== r.id); this.store.touchTrade(); this.render(); }
+    else if (act === 'r-del') {
+      const r = this.rowFor(el, u); if (!r) return;
+      u.rows = u.rows.filter((x) => x.id !== r.id);
+      // a laid-out unit: the cabinet leaves the 3D layout too, or Done would put the row back
+      // (her catch 2026-09-25). The list is then re-read from the layout so riders' rows follow.
+      if (u.design && getCab(r.code)) this._syncDesignRows(u, r.code, 0);
+      this.store.touchTrade(); this.render();
+    }
+  }
+
+  /** Bring a laid-out unit's 3D layout down to `qty` cabinets of `code`, then re-derive the
+   *  rows from the layout (so a sink set in a removed base leaves the list with it). */
+  _syncDesignRows(u, code, qty) {
+    if (!u.design) return;
+    const have = (u.design.items || []).filter((it) => it.code === code).length;
+    if (have <= qty) return;
+    const { items } = removeFromDesign(u.design, code, have - qty);
+    u.design.items = items;
+    const keep = new Map(u.rows.map((r) => [r.code, r]));   // keep row ids where the code survives (open pickers, focus)
+    u.rows = rowsFromDesign(items, u.design.accessories).map((r) => keep.get(r.code) ? { ...keep.get(r.code), qty: r.qty } : { id: this.t.nextRowId++, code: r.code, qty: r.qty });
   }
 
   // ---- design-per-unit-type: one design → every floor --------------------
@@ -732,7 +758,7 @@ export class TradeUI {
 
   /** Stash the current state, load this unit's design (or a blank room) into
    *  Home mode, and show the persistent Done/Cancel banner. */
-  enterDesign(u) {
+  enterDesign(u, opts = {}) {
     if (this._stash) {                             // already designing (main.js keeps the Project tab shut meanwhile)
       toast(`Unit ${this.designingUnit()} is open in 3D: Done or Cancel in the bar at the top.`);
       return;
@@ -777,6 +803,7 @@ export class TradeUI {
     this.onDesignLoad?.();
     this.showBanner(unitName(u));
     this._setDesignChrome(unitName(u));
+    if (opts.roomFirst) this.onRoomFirst?.();      // a brand-new unit: open on Room (dimensions, floorplan, doors)
     if (seeded && seeded.placed) {
       const left = seeded.unplaced.reduce((n, r) => n + r.qty, 0);
       // a shortfall matters (Done rewrites the list from the layout): say it in a dialog, not a 2.6s toast
@@ -892,7 +919,12 @@ export class TradeUI {
     const el = e.target.closest('[data-act]'); if (!el) return;
     const u = this.unitFor(el); if (!u) return;
     const act = el.dataset.act;
-    if (act === 'u-beds') { u.beds = el.value; this.store.touchTrade(); this.render(); }
+    if (act === 'r-qty') {
+      const r = this.rowFor(el, u); if (!r || !u.design) return;
+      const have = (u.design.items || []).filter((it) => it.code === r.code).length;
+      if ((Number(r.qty) || 0) < have) { this._syncDesignRows(u, r.code, Number(r.qty) || 0); this.store.touchTrade(); this.render(); }
+    }
+    else if (act === 'u-beds') { u.beds = el.value; this.store.touchTrade(); this.render(); }
     else if (act === 'u-letter') { u.letter = el.value; this.store.touchTrade(); this.render(); }
   }
 

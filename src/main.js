@@ -30,7 +30,9 @@ import { openPrintWindow } from './ui/submittal.js';
 import { TradeUI } from './ui/trade.js';
 import { CloudUI } from './ui/cloudUI.js';
 import { Wizard } from './ui/wizard.js';
-import { isCloud, requestOrderCheck } from './core/cloud.js';
+import { isCloud, requestOrderCheck, currentUser } from './core/cloud.js';
+import { photoViews } from './core/photoviews.js';
+import { buildZip } from './core/xlsxmini.js';
 import { fetchSharedProject } from './core/tradecloud.js';
 
 // Build stamp — bump on each change so you can confirm the browser is running
@@ -263,18 +265,50 @@ document.getElementById('navSwitch')?.addEventListener('click', (e) => {
   scene.setNavMode(b.dataset.nav);
 });
 
-// photo mode: clean the view, render at high-res, download a PNG for the website
-document.getElementById('btnPhoto')?.addEventListener('click', () => {
-  layer.select(null); ui.showSelbar(null);
+// Photo: five standpoints inside the kitchen at human height (core/photoviews.js), each a 4K JPEG,
+// zipped into one download (her ask 2026-09-25: realistic angles, several per click, and big
+// enough to render from). Signed-in only: the photos are a saved-design perk, and it puts a name
+// to who is taking the kitchen away (her ask: "make sure people can only take photos when logged in").
+const PHOTO = { width: 3840, height: 2560, type: 'image/jpeg', quality: 0.94 };
+document.getElementById('btnPhoto')?.addEventListener('click', async () => {
+  if (isCloud()) {
+    let u = null;
+    try { u = await currentUser(); } catch { /* offline: treated as signed out */ }
+    if (!u) {
+      if (cloudUI) cloudUI.openFor({ title: 'Sign in to save photos', sub: 'Photos of your kitchen come with a free PL/NTH account: sign in or create one, then press Photo again.' });
+      else toast('Sign in to save photos of your kitchen.');
+      return;
+    }
+  }
+  if (!store.state.items.length) { toast('Nothing to photograph yet: add some cabinets first.'); return; }
+  const btn = document.getElementById('btnPhoto');
+  btn.disabled = true; btn.textContent = 'Photographing…';
+  layer.select(null); ui.showSelbar(null); layer.setHover?.(null);
   room.setGridVisible(false);
   document.getElementById('emptyState')?.classList.add('hidden');
   // let the deselect/grid changes apply, then capture next frame
   requestAnimationFrame(() => {
-    const url = scene.captureImage(3);
-    room.setGridVisible(true);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'PLINTH_kitchen.png';
-    document.body.appendChild(a); a.click(); a.remove();
+    try {
+      const shots = scene.captureViews(photoViews(store.state.room, store.state.items), PHOTO);
+      const files = shots.map((s, i) => {
+        const b64 = s.url.slice(s.url.indexOf(',') + 1), bin = atob(b64), data = new Uint8Array(bin.length);
+        for (let k = 0; k < bin.length; k++) data[k] = bin.charCodeAt(k);
+        return { name: `PLINTH_kitchen_${i + 1}_${s.key}.jpg`, data };
+      });
+      const blob = new Blob([buildZip(files)], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'PLINTH_kitchen_photos.zip';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast(`${files.length} photos saved (4K), one zip: ${shots.map((s) => s.name.toLowerCase()).join(' · ')}.`);
+    } catch (e) {
+      console.error(e);
+      toast('The photos could not be rendered. Try a smaller window, or again in a moment.');
+    } finally {
+      room.setGridVisible(true);
+      btn.disabled = false; btn.textContent = '⤓ Photo';
+    }
   });
 });
 
@@ -427,9 +461,12 @@ const tradeUI = document.getElementById('tradePanel') ? new TradeUI({
   store,
   // entering/leaving a unit design swaps the whole state — rebuild everything
   onDesignLoad: () => {
+    layer.select(null); ui.showSelbar(null);       // nothing from the previous kitchen stays selected
     buildRoom(true); rebuildWorktop(); rebuildFillers(); rebuildCornice();
     layer.rebuildAll(); ui.refresh?.(); applyMode();
   },
+  // "Enter the unit mix" lands on the page where the dimensions and floorplan go in
+  onRoomFirst: () => ui.showRoomTab?.(['dropRoom', 'dropFloorplan', 'dropOpenings']),
   openAccount: () => { if (isCloud()) cloudUI.open(); },   // reuse the home sign-in modal
 }) : null;
 function applyMode() {

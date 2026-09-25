@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { snapPosition } from './snapping.js';
 import { getCab, sizedShelfCode } from '../core/catalogue.js';
 import { measureRun } from '../core/measure.js';
-import { fmtIn } from '../core/units.js';
+import { fmtIn, MOUNT } from '../core/units.js';
 import { isOven, findOvenHost, housingCodeFor } from '../core/ovenseat.js';
 import { findHoodSeat } from '../core/hoodseat.js';
 import { bestBaseFor } from '../core/sinkspec.js';
@@ -103,8 +103,34 @@ export class PointerControls {
     return null;
   }
 
+  /** A cabinet just tapped in from the catalogue RIDES ON THE POINTER until the next click drops
+   *  it, snapping as it goes (her ask 2026-09-25: "at the moment a cabinet drops in and kind of
+   *  gets lost in the plan"). Esc puts it back where it was placed. On a phone: tap the tile, then
+   *  tap where it goes. Returns true when the carry started. */
+  carry(id) {
+    const item = this.store.getItem(id); if (!item) return false;
+    const cab = getCab(item.code); if (!cab) return false;
+    if (this.drag) this._up();
+    // the pointer maps onto a plane at the cabinet's own height, so a hung cabinet follows the
+    // hand instead of lurching (see _down)
+    const hung = cab.type === 'WALL' || cab.type === 'COUNTER' || cab.stacker;
+    this.floor.constant = hung ? -((cab.mountY ?? MOUNT[cab.type] ?? 0) + Math.min(cab.h || 30, 30) / 2) : 0;
+    this.drag = { id, ox: 0, oz: 0, carry: true, start: { x: item.x, z: item.z, rotDeg: item.rotDeg || 0 } };
+    if (['WALL', 'COUNTER', 'TALL'].includes(cab.type) && !cab.corner) { this.drag.onWall = true; this.drag.wall = PointerControls._wallOf(item); this.drag.oa = 0; }
+    this.store.beginHistory();             // tap-in + carry + drop = ONE undo step (placeNew ended its own)
+    this.s.controls.enabled = false;
+    this.el.style.cursor = 'grabbing';
+    this.layer.select(id);
+    return true;
+  }
+
   _down(e) {
     if (e.button != null && e.button !== 0) return;
+    if (this.drag && this.drag.carry) {    // the click that DROPS a carried cabinet, where the pointer is
+      this._move(e);
+      this._up();
+      return;
+    }
     this._setNDC(e);
     this.ray.setFromCamera(this.ndc, this.s.camera);
     const hits = this.ray.intersectObjects(this.layer.pickables(), true);
@@ -225,6 +251,7 @@ export class PointerControls {
     this._hideDims();
     this._hideRuleFlag();
     this.s.controls.enabled = true;
+    this.el.style.cursor = '';
     // a drop that broke a rule pings back to where the drag started
     const it = this.store.getItem(id);
     if (it && flag && start && !flag.startsWith('cornerReturn:')) this.store.updateItem(id, { x: start.x, z: start.z, rotDeg: start.rotDeg }, { quiet: false });   // a held corner unit keeps the joint it was held at
@@ -268,6 +295,9 @@ export class PointerControls {
   _hideRuleFlag() { if (this._ruleFlag) this._ruleFlag.style.display = 'none'; }
 
   _key(e) {
+    if (e.key === 'Escape' && this.drag && this.drag.carry) {   // a carried cabinet goes back where it was placed
+      this.drag.flag = 'cancelled'; this._up(); return;
+    }
     const id = this.layer.selectedId;
     if (id == null) return;
     // NEVER while typing: Backspace in the room-size / name / email box used to
@@ -323,7 +353,7 @@ export class PointerControls {
       if (base) {
         const item = this.store.addItem(code, { x: base.x, z: base.z, rotDeg: base.rotDeg || 0 });
         this.layer.select(item.id); this.onSelect(item.id); this.onCommit();
-        return item;
+        return { ...item, seated: true };
       }
     }
     const b = this.room.bounds();

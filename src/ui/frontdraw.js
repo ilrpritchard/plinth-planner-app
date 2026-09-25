@@ -146,9 +146,12 @@ export function frontParts(cab) {
       break;
     case 'double': case 'glazedDouble': {
       const mid = w / 2, glazed = cab.form === 'glazedDouble';
+      // a TALL pair (T13) is two full-height tall doors: 1184 / 200 rail / 490 in each leaf,
+      // exactly like the single (her catch 2026-09-25: the catalogue drew it with no mid rail)
+      const zones = cab.type === 'TALL' ? doorZones : cab.high ? glazedZones : singleZone;
       vline('leaf', mid, zB, zT);
-      leaf(dx0, mid, cab.high ? glazedZones : singleZone, glazed);
-      leaf(mid, dx1, cab.high ? glazedZones : singleZone, glazed);
+      leaf(dx0, mid, zones, glazed);
+      leaf(mid, dx1, zones, glazed);
       break;
     }
     case 'drawers':

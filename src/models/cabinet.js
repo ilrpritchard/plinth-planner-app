@@ -76,6 +76,18 @@ function flushRing(parent, cx, cy, w, h, faceZ, lw = 0.11) {
 }
 
 // A shaker leaf centred on its own origin, front face at +DOOR_T/2.
+/** The tall two-panel door's mid rail: { y, h } in leaf-local inches (y = rail centre, 0 = leaf
+ *  centre). 1184 / 200 / 490 top-to-bottom across the interior (the PL/NTH spec); a 51" full-height
+ *  upper takes an 80mm rail across the centre instead. The knob sits ON this rail (her call
+ *  2026-09-25: "need to sit on mid rail"), so the leaf and the knob read the same numbers. */
+export function tallMidRail(h) {
+  const interior = Math.max(2, h - 2 * STILE);
+  const U = 1184, M = 200, L = 490, T = U + M + L;
+  const midH = h > 60 ? interior * M / T : STILE;
+  const upperH = h > 60 ? interior * U / T : (interior - STILE) / 2;
+  return { y: (h / 2 - STILE) - upperH - midH / 2, h: midH };
+}
+
 function shakerLeaf(w, h, mat, glazed, panels = 1) {
   const g = new THREE.Group();
   if (glazed) {
@@ -115,11 +127,7 @@ function shakerLeaf(w, h, mat, glazed, panels = 1) {
     if (panels === 2) {
       // the tall's 1184 / 200 / 490 split; a 51" full-height upper gets an 80mm rail across
       // the CENTRE instead, two equal panels (her spec 2026-09-22), the same bar as its glazed twin
-      const interior = Math.max(2, h - 2 * STILE);
-      const U = 1184, M = 200, L = 490, T = U + M + L;
-      const midH = h > 60 ? interior * M / T : STILE;
-      const upperH = h > 60 ? interior * U / T : (interior - STILE) / 2;
-      const midY = (h / 2 - STILE) - upperH - midH / 2;
+      const { y: midY, h: midH } = tallMidRail(h);
       const rail = box(w, midH, ft, mat);
       rail.position.set(0, midY, DOOR_T / 2 + RECESS - ft / 2);
       g.add(rail);
@@ -482,8 +490,11 @@ function buildFront(g, cab, ctx) {
   const tallPanels = cab.type === 'TALL' || cab.high ? 2 : 1;      // a full-height upper: two panes behind a centre glazing bar
   // knob placement (client spec): EVERY hinged door carries its knob at
   // MID-HEIGHT on the leading edge — never tucked into the top or bottom
-  // corner. (Drawer knobs stay centred on each face.)
-  const knobY = 0;
+  // corner. (Drawer knobs stay centred on each face.) A TALL two-panel door
+  // is the exception her drawings make: its knob sits ON THE MID RAIL (the
+  // 200mm band between the 1184 upper and 490 lower panels), not at the
+  // leaf's centre 13" above it (her catch 2026-09-25).
+  const knobY = tallPanels === 2 && openH > 60 ? tallMidRail(openH).y : 0;
   const singleDoor = (glazed = false, panels = tallPanels, hs = ctx.hinge ?? -1) => {
     hingedDoor(g, doors, { w: faceW, h: openH, mat, glazed, frontZ, hingeX: hs * faceW / 2, centerY: cy, hingeSign: hs, panels, handle, knobY });
   };
@@ -617,8 +628,9 @@ function buildFront(g, cab, ctx) {
         const edgeX = cols === 1
           ? -(ctx.hinge ?? -1) * (colW / 2 - 1.4)
           : (c === 0 ? colW / 2 - 1.4 : -(colW / 2 - 1.4));
-        if (handle === 'knob') { const k = makeKnob(mat); k.position.set(edgeX, 0, DOOR_T / 2); leaf.add(k); }
-        else if (handle === 'bar') { const b = barPull(mat, true, openH); b.position.set(edgeX, 0, DOOR_T / 2 - 0.1); leaf.add(b); }
+        const hy = openH > 60 ? tallMidRail(openH).y : 0;      // on the mid rail, like every tall door
+        if (handle === 'knob') { const k = makeKnob(mat); k.position.set(edgeX, hy, DOOR_T / 2); leaf.add(k); }
+        else if (handle === 'bar') { const b = barPull(mat, true, openH); b.position.set(edgeX, hy, DOOR_T / 2 - 0.1); leaf.add(b); }
         g.add(leaf);
         revealRing(g, cx, cy, colW, openH, frontZ);
       }

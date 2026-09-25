@@ -149,8 +149,9 @@ function drawFront(p, cab, a) {
     case 'glazed': glazedDoor(p, ox + rev, oy + rev, ow - 2 * rev, oh - 2 * rev, frame); break;
     case 'double': {
       const w = (ow - 3 * rev) / 2;
-      doorPanel(ox + rev, oy + rev, w, oh - 2 * rev, +1);
-      doorPanel(ox + 2 * rev + w, oy + rev, w, oh - 2 * rev, -1);
+      const door = isTall ? tallDoor : doorPanel;     // a tall pair (T13) shows its mid rails
+      door(ox + rev, oy + rev, w, oh - 2 * rev, +1);
+      door(ox + 2 * rev + w, oy + rev, w, oh - 2 * rev, -1);
       break;
     }
     case 'glazedDouble': {

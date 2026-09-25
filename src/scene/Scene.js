@@ -117,19 +117,53 @@ export class Scene {
   /** Register a callback run every frame before rendering (e.g. grounding). */
   onBeforeRender(fn) { this._beforeRender = fn; }
 
-  /** Render the current view at `scale`× resolution and return a PNG data URL. */
-  captureImage(scale = 3) {
-    const w = this.container.clientWidth || window.innerWidth;
-    const h = this.container.clientHeight || window.innerHeight;
+  /** Render the current view and return an image data URL.
+   *  captureImage(3)                       → the viewport at 3× its pixel size, PNG (the old call)
+   *  captureImage({ width, height, type, quality }) → a FIXED output size whatever the window is
+   *  (the Photo button renders 4K JPEGs this way: a small laptop window no longer means a small
+   *  photo, her ask 2026-09-25 "higher quality to be able to render them after"). */
+  captureImage(opts = 3) {
+    const o = typeof opts === 'number' ? { scale: opts } : (opts || {});
+    const vw = this.container.clientWidth || window.innerWidth;
+    const vh = this.container.clientHeight || window.innerHeight;
+    const w = o.width || vw, h = o.height || vh;
     const prevRatio = this.renderer.getPixelRatio();
-    this.renderer.setPixelRatio(scale);
+    this.renderer.setPixelRatio(o.width ? 1 : (o.scale || 3));
     this.renderer.setSize(w, h, false);
     if (this.camera.isPerspectiveCamera) { this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); }
+    this._beforeRender?.();                 // grounding + wall auto-hide for THIS camera position
     this.renderer.render(this.scene, this.camera);
-    const url = this.renderer.domElement.toDataURL('image/png');
+    const url = this.renderer.domElement.toDataURL(o.type || 'image/png', o.quality);
     this.renderer.setPixelRatio(prevRatio);
     this._onResize();
     return url;
+  }
+
+  /** Photograph the kitchen from several standpoints (core/photoviews.js) and come back to
+   *  exactly the view the visitor had. Each view: { key, name, pos, target, fov }.
+   *  Returns [{ key, name, url }] — data URLs of the size/type in `opts` (see captureImage). */
+  captureViews(views, opts = {}) {
+    const cam = this.persp, c = this.controls;
+    const was = { view: this.view, cam: this.camera, pos: cam.position.clone(), target: c.target.clone(), fov: cam.fov, near: cam.near, far: cam.far, enabled: c.enabled };
+    if (this.view !== '3d') this._activate(cam);
+    c.enabled = false;
+    const out = [];
+    try {
+      for (const v of views) {
+        cam.position.set(v.pos[0], v.pos[1], v.pos[2]);
+        c.target.set(v.target[0], v.target[1], v.target[2]);
+        cam.fov = v.fov || 55; cam.near = 1; cam.far = 6000;
+        cam.lookAt(c.target);
+        cam.updateProjectionMatrix();
+        out.push({ key: v.key, name: v.name, url: this.captureImage(opts) });
+      }
+    } finally {
+      cam.position.copy(was.pos); c.target.copy(was.target);
+      cam.fov = was.fov; cam.near = was.near; cam.far = was.far; cam.updateProjectionMatrix();
+      if (was.view !== '3d') { this._activate(was.cam); this.setView(was.view); }
+      c.enabled = was.enabled; c.update();
+    }
+    return out;
   }
 
   add(obj) { this.scene.add(obj); }

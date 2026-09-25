@@ -100,6 +100,17 @@ export class Wizard {
     this.lastShape = null;
   }
 
+  /** The doors and doorways the room already has under Room (not the wizard's own picker). */
+  _ownDoors() {
+    return (this.store.state.room.openings || []).filter((o) => (o.type === 'door' || o.type === 'doorway') && !o.wiz);
+  }
+  _ownDoorsNote() {
+    const WALLN = { back: 'back', front: 'front', left: 'left', right: 'right' };
+    const list = this._ownDoors().map((o) => `${o.type === 'door' ? 'door' : 'doorway'} on the ${WALLN[o.wall || 'back']} wall`);
+    const n = list.length;
+    return `The plan already has ${n === 1 ? 'a ' : ''}${list.join(', ')}${n === 1 ? '' : ` (${n})`}: ${n === 1 ? 'it stays' : 'they stay'} exactly where ${n === 1 ? 'it is' : 'they are'} (change ${n === 1 ? 'it' : 'them'} under Room). Add one more here only if the room has another door.`;
+  }
+
   /** The current voice — re-read on every render so entering/leaving a trade
    *  unit-design session swaps the register without any re-wiring. */
   get voice() { return wizardVoice(this.tradeUnit ? this.tradeUnit() : null); }
@@ -150,6 +161,7 @@ export class Wizard {
                 <label><span id="wzDoorDistLabel">${this.door === 'front' ? 'Left wall → door edge' : 'Back wall → door edge'}</span><input id="wzDoorDist" value="${fmtFeetIn(this.doorDist)}"></label>
                 <label>Door width<input id="wzDoorW" value="${fmtFeetIn(this.doorW)}"></label>
               </div>
+              ${this._ownDoors().length ? `<p class="wz-note">${escV(this._ownDoorsNote())}</p>` : ''}
               <p class="wz-note">${escV(v.windowNote)}</p>
             </div>
           </div>
@@ -274,9 +286,19 @@ export class Wizard {
     // the cabinet run lives on the back wall — a soft strip so "Back" reads
     const cabD = Math.min(24 * s, pd * 0.24);
     el.push(`<rect class="g-cab" x="${x0 + 1.5}" y="${y0 + 1.5}" width="${pw - 3}" height="${cabD}"/>`);
-    // the room's OWN windows, where they are (the wizard never adds one); the sink goes under a back-wall one
+    // the room's OWN windows and doors, where they are (the wizard never adds or moves them); the sink goes under a back-wall window
     for (const o of (r.openings || [])) {
-      if (o.type !== 'window') continue;
+      if (o.type !== 'window' && o.wiz) continue;
+      if (o.type !== 'window') {          // a door from Room: a gap in the wall, drawn as its leaf
+        const wl = o.wall || 'back', len = (wl === 'left' || wl === 'right') ? rd : rw;
+        const c = openingCenter({ width: rw, depth: rd }, o) + len / 2, hw = openingWidth(o, { width: rw, depth: rd }) / 2;
+        const a = Math.max(0, c - hw) * s, b = Math.min(len, c + hw) * s, d = b - a;
+        if (wl === 'back') el.push(`<line class="g-door" x1="${x0 + a}" y1="${y0}" x2="${x0 + a}" y2="${y0 + d}"/>`);
+        else if (wl === 'front') el.push(`<line class="g-door" x1="${x0 + a}" y1="${y1}" x2="${x0 + a}" y2="${y1 - d}"/>`);
+        else if (wl === 'left') el.push(`<line class="g-door" x1="${x0}" y1="${y0 + a}" x2="${x0 + d}" y2="${y0 + a}"/>`);
+        else el.push(`<line class="g-door" x1="${x1}" y1="${y0 + a}" x2="${x1 - d}" y2="${y0 + a}"/>`);
+        continue;
+      }
       const wl = o.wall || 'back', len = (wl === 'left' || wl === 'right') ? rd : rw;
       const c = openingCenter({ width: rw, depth: rd }, o) + len / 2, hw = openingWidth(o, { width: rw, depth: rd }) / 2;
       const a = Math.max(0, c - hw) * s, b = Math.min(len, c + hw) * s;
@@ -533,10 +555,13 @@ export class Wizard {
   _generateInner(roomPatch) {
     this.store.clear();                                   // fresh start (keeps room)
     if (roomPatch && Object.keys(roomPatch).length) this.store.setRoom(roomPatch);
-    // doors: replace wizard-managed doorways with the chosen one — the
-    // generator + placement both route the runs around it (wallFreeSpan)
+    // doors: THE ROOM'S DOORS ARE THE ROOM'S, like its windows (her catch 2026-09-25: "if I add
+    // doors and windows then click auto layout it deletes all my doors"). Only the doorway the
+    // wizard's own picker drew last time (`wiz`) is replaced by this draft's choice; every door
+    // and doorway added under Room stays exactly where it is. The generator + placement route
+    // the runs around all of them (wallFreeSpan).
     for (const o of [...(this.store.state.room.openings || [])]) {
-      if (o.type === 'door' || o.type === 'doorway') this.store.removeOpening(o.id);
+      if ((o.type === 'door' || o.type === 'doorway') && o.wiz) this.store.removeOpening(o.id);
     }
     if (this.door) {
       // pos is the CENTRE as a fraction of the wall; the customer measured to
@@ -544,7 +569,7 @@ export class Wizard {
       const r1 = this.store.state.room;
       const wallLen = this.door === 'front' ? r1.width : r1.depth;
       const pos = Math.max(0.02, Math.min(0.98, (this.doorDist + this.doorW / 2) / wallLen));
-      this.store.addOpening({ type: 'doorway', wall: this.door, pos, width: this.doorW });
+      this.store.addOpening({ type: 'doorway', wall: this.door, pos, width: this.doorW, wiz: true });
     }
     // a PL/NTH kitchen wears its crown: default to the plain cornice so the
     // moulding (with its side returns) shows — and is priced — from the start
@@ -761,8 +786,12 @@ export class Wizard {
       const rowD = getCab(island[0].code)?.d || 24;
       const doubleSided = (maxZ - backFront) >= (WALK + 2 * rowD + WALK);
       const islDepth = doubleSided ? 2 * rowD : rowD;
-      const czCenter = (backFront + maxZ) / 2;           // centre island in the clear floor
-      const frontZ = czCenter - islDepth / 2 + rowD / 2; // run-facing row centre
+      // the island stands ONE WALKWAY off the run it works with (her catch 2026-09-25: centred in
+      // the clear floor it stood "way too far from the back cabinets, like 1000mm from every run"
+      // in a deep room). The room's depth goes to the far side, where the seating and the
+      // circulation are; only a shallow room that cannot give 44" both sides centres what it has.
+      const czCenter = (backFront + maxZ) / 2;
+      const frontZ = Math.min(backFront + WALK + rowD / 2, czCenter - islDepth / 2 + rowD / 2); // run-facing row centre
       // breakfast-bar seating: the worktop overhangs the island's OUTER (+z)
       // edge by 12" — only when the walkway behind still clears 1100mm + stools
       const rearEdge = (doubleSided ? frontZ + rowD : frontZ) + rowD / 2;
@@ -914,7 +943,7 @@ export class Wizard {
   _addIslandToLShape() {
     const rm = this.store.state.room;
     const minX = -rm.width / 2, maxX = rm.width / 2, minZ = -rm.depth / 2, maxZ = rm.depth / 2;
-    const WALK = 43.3;
+    const WALK = 44;                                   // 44" clear walkway (hard rule 10)
     const openX0 = minX + 24, openX1 = maxX, openZ0 = minZ + 24, openZ1 = maxZ;
     const islLen = Math.min((openX1 - openX0) - 2 * WALK, 96);
     if (islLen < 24) return;
@@ -922,8 +951,16 @@ export class Wizard {
     while (rem >= 20) { const c = rem >= 36 ? 'F20' : rem >= 28 ? 'F19' : rem >= 24 ? 'F18' : 'F17'; if (getCab(c).w > rem) break; widths.push(c); rem -= getCab(c).w; }
     if (widths.length >= 3) widths[Math.floor(widths.length / 2)] = 'F2';
     const totalW = widths.reduce((t, c) => t + getCab(c).w, 0);
-    const cx = (openX0 + openX1) / 2, cz = (openZ0 + openZ1) / 2;
-    const seat = (maxZ - (cz + getCab(widths[0]).d / 2)) >= WALK + 12;   // stool side still clears the walkway
+    // one walkway off the back run's face (a tall stands 30mm proud), never centred in a deep floor
+    let backFront = openZ0 + 0.25;
+    for (const bit of this.store.state.items) {
+      const bc = getCab(bit.code); if (!bc) continue;
+      const floorStanding = bc.type === 'FLOOR' || bc.type === 'TALL' || (bc.type === 'APPLIANCES' && (bc.mountY || 0) === 0);
+      if (floorStanding && ((bit.rotDeg || 0) % 180) === 0 && bit.z + bc.d / 2 < minZ + 45) backFront = Math.max(backFront, bit.z + bc.d / 2);
+    }
+    const rowD = getCab(widths[0]).d;
+    const cx = (openX0 + openX1) / 2, cz = Math.min(backFront + WALK + rowD / 2, (openZ0 + openZ1) / 2);
+    const seat = (maxZ - (cz + rowD / 2)) >= WALK + 12;   // stool side still clears the walkway
     let x = cx - totalW / 2;
     for (const c of widths) { const w = getCab(c).w; this.store.addItem(c, { x: x + w / 2, z: cz, rotDeg: 180, island: true, backPanel: true, seating: seat }); x += w; }
   }

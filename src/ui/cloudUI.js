@@ -54,7 +54,10 @@ export class CloudUI {
     if (ob) ob.style.display = this.user ? '' : 'none';
   }
   open() { this.modal.classList.add('show'); this.render(); }
-  close() { this.modal.classList.remove('show'); this.view = null; }
+  /** Open the sign-in modal saying WHY (the Photo button: "sign in to save photos"); the pitch
+   *  shows once, on the signed-out card, then the modal reads as usual. */
+  openFor(pitch) { this._pitch = pitch || null; this.open(); }
+  close() { this.modal.classList.remove('show'); this.view = null; this._pitch = null; }
   openReset() {
     if (this.view === 'reset') return;
     this.view = 'reset';
@@ -77,8 +80,9 @@ export class CloudUI {
   _authHTML() {
     // same account either way — but the pitch matches who's reading it
     const trade = this.store.state.mode === 'trade';
-    return `<h3>${trade ? 'Sign in to PL/NTH' : 'Save this layout'}</h3>
-      <p class="cloud-sub">${trade
+    const pitch = this._pitch; this._pitch = null;
+    return `<h3>${pitch?.title ? esc(pitch.title) : trade ? 'Sign in to PL/NTH' : 'Save this layout'}</h3>
+      <p class="cloud-sub">${pitch?.sub ? esc(pitch.sub) : trade
         ? 'Sign in or create an account to save projects, share specs for approval and track quotes and orders.'
         : 'Create an account or sign in to save and reopen layouts.'}</p>
       <div class="cloud-tabs"><button data-tab="in" class="active">Sign in</button><button data-tab="up">Create account</button></div>

@@ -15,12 +15,41 @@
 import { getCab } from './catalogue.js';
 import { mmToIn, COOK_SIDE_IN } from './units.js';
 import { openingCenter, openingWidth, boxingBoxes } from './openings.js';
+import { boxAt } from './placement.js';
 
 const WALL_GAP = 0.25;
 const TALL_PROUD = mmToIn(30);       // interaction/snapping.js TALL_PROUD
 const CORNER_OUT = 24.25;            // a side run starts clear of the back run's depth (hard rule 4)
 const MAX_ITEMS = 80;
 const ROT = { back: 0, left: 90, right: 270 };
+
+/** Take `qty` cabinets of `code` OUT of a unit's drawn layout (her catch 2026-09-25: "can't
+ *  delete cabinets from the project page, only from the 3D page" — the row went, the layout
+ *  kept the cabinet, and Done put the row straight back). The last-placed ones go first. What
+ *  rides on a removed cabinet leaves with it: a wall oven in its housing (hostId), a sink or
+ *  cooktop set in the base (its centre inside the base's footprint), so no appliance is left
+ *  floating in the worktop. Returns { items, removed } — `items` is a new array, `design` untouched. */
+export function removeFromDesign(design, code, qty = Infinity) {
+  const items = (design && design.items) || [];
+  const want = getCab(code);
+  if (!want) return { items: items.slice(), removed: 0 };
+  const gone = new Set();
+  let n = 0;
+  for (let i = items.length - 1; i >= 0 && n < qty; i--) {
+    const it = items[i];
+    if (!it || it.code !== want.code || gone.has(it.id)) continue;
+    gone.add(it.id); n++;
+    const cab = getCab(it.code), b = boxAt(cab, it.x, it.z, it.rotDeg);
+    for (const r of items) {
+      if (r === it || gone.has(r.id)) continue;
+      if (r.hostId === it.id) { gone.add(r.id); continue; }
+      const rc = getCab(r.code);
+      if (rc && (rc.appliance === 'sink' || rc.appliance === 'hob') && r.hostId == null
+        && r.x > b.x0 - 0.5 && r.x < b.x1 + 0.5 && r.z > b.z0 - 0.5 && r.z < b.z1 + 0.5) gone.add(r.id);
+    }
+  }
+  return { items: items.filter((it) => !gone.has(it.id)), removed: n };
+}
 
 /** Rows on a unit's list that its drawn layout does not hold yet (a cabinet
  *  added to the list AFTER the unit was laid out): [{ code, qty }] still to stand. */

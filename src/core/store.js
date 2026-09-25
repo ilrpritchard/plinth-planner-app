@@ -115,11 +115,12 @@ export class Store {
   }
 
   // ----- room openings (windows / doors / doorways) -----
-  addOpening({ type = 'window', wall = 'back', pos = 0.5, width } = {}) {
+  addOpening({ type = 'window', wall = 'back', pos = 0.5, width, wiz } = {}) {
     this._record();
     const r = this.state.room;
     if (!Array.isArray(r.openings)) r.openings = [];
     const o = { id: r.nextOpening = (r.nextOpening || 1) + 0, type, wall, pos, width: width ?? (type === 'window' ? 48 : 34) };
+    if (wiz) o.wiz = true;      // drawn by the wizard's own door picker: the next draft replaces it; the room's own doors it never touches
     o.id = r.nextOpening; r.nextOpening += 1;
     r.openings.push(o);
     this._emit({ type: 'room' });

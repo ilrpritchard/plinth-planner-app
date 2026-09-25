@@ -222,3 +222,25 @@ test('sweep: no worktop slab ever overlaps a range/freestanding-fridge footprint
     }
   }
 });
+
+test('the island stands one 44" walkway off the back run, never centred deep in the floor (her catch 2026-09-25)', () => {
+  let checked = 0;
+  for (const [width, depth] of [[168, 168], [200, 176], [240, 192], [220, 240], [160, 130]]) {
+    for (let seed = 1; seed <= 6; seed++) {
+      const store = buildKitchen('island', width, depth, seed);
+      const isl = store.state.items.filter((it) => it.island);
+      if (!isl.length) continue;
+      const islZ0 = Math.min(...isl.map((it) => rectOf(it).z0)), islZ1 = Math.max(...isl.map((it) => rectOf(it).z1));
+      const gap = islZ0 - backRunFace(store);
+      const clear = store.state.room.depth / 2 - backRunFace(store);
+      if (clear < 2 * WALK + (islZ1 - islZ0)) {          // a shallow room cannot give 44" both sides: it centres what it has
+        assert.ok(Math.abs(gap - (store.state.room.depth / 2 - islZ1)) < 0.5, `island ${width}x${depth} seed=${seed}: shallow room, island not centred`);
+        continue;
+      }
+      assert.ok(gap >= WALK - 0.01, `island ${width}x${depth} seed=${seed}: walkway ${gap.toFixed(1)}" < 44"`);
+      assert.ok(gap <= WALK + 0.5, `island ${width}x${depth} seed=${seed}: island stands ${gap.toFixed(1)}" off the run, not one walkway`);
+      checked++;
+    }
+  }
+  assert.ok(checked >= 20, `only ${checked} islands checked`);
+});

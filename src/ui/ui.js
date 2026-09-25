@@ -670,7 +670,18 @@ export class UI {
         if (res) this._toast(`${getCab(combo.base).desc} ${fmtIn(getCab(combo.base).w)} added with its sink. Click the sink to change its size.`);
         return;
       }
-      this._announcePlaced(this.controls.placeNew(row.dataset.code, this.activeWall, { safe: true }));   // a person tapping: never outside the room
+      const res = this.controls.placeNew(row.dataset.code, this.activeWall, { safe: true });   // a person tapping: never outside the room
+      this._announcePlaced(res);
+      // a plain cabinet or appliance now rides on the pointer until the next click drops it;
+      // anything that SEATED itself (a sink in its base, an oven in its housing, a hood over
+      // the cooker, a cooktop base with its cooktop) stays put
+      const cab = res && getCab(res.code);
+      const seated = !res || res.id == null || res.refused || res.noRoom || res.seated || res.overCooker || res.broughtHousing || res.ovenStack || res.withCooktop
+        || !cab || cab.appliance === 'oven' || cab.form === 'ovenBase' || /cooktop/i.test(cab.desc || '');
+      if (!seated && this.controls.carry?.(res.id) && !this._carryHinted) {
+        this._carryHinted = true;
+        this._toast('It follows your mouse: click where it should go. Esc puts it back.');
+      }
     });
   }
 
@@ -1215,6 +1226,19 @@ export class UI {
         }
       });
     });
+  }
+
+  /** Public: show the left panel on its ROOM tab with the given setup drops open
+   *  (a brand-new project unit starts here: room size, floorplan underlay, doors & windows). */
+  showRoomTab(open = ['dropRoom']) {
+    const tabs = document.getElementById('lpTabs'), body = document.getElementById('leftBody');
+    if (!tabs || !body) return;
+    tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x.dataset.tab === 'room'));
+    body.classList.add('tab-room');
+    document.getElementById('leftPanel')?.classList.remove('collapsed');
+    for (const d of document.querySelectorAll('#tabRoom details.setup-drop')) d.open = open.includes(d.id);
+    document.getElementById('roomW')?.focus?.();
+    body.scrollTop = 0;
   }
 
   /** Public: resync every panel (used after the wizard builds a kitchen). */
