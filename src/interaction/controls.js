@@ -3,7 +3,7 @@
 // cabinet, OrbitControls is suspended so the gestures don't fight.
 
 import * as THREE from 'three';
-import { snapPosition } from './snapping.js';
+import { snapPosition, settleCorners } from './snapping.js';
 import { getCab, sizedShelfCode } from '../core/catalogue.js';
 import { measureRun } from '../core/measure.js';
 import { fmtIn, MOUNT } from '../core/units.js';
@@ -267,9 +267,14 @@ export class PointerControls {
     }
     // commit (non-quiet) so worktop + cost refresh
     else if (it) this.store.updateItem(id, {}, { quiet: false });
+    this._settle();
     this.store.endHistory();
     this.onCommit();
   }
+
+  /** A corner unit pulled out to meet a deeper run dropped on its face (settleCorners), inside the
+   *  same undo step as the drop that caused it. */
+  _settle() { try { settleCorners(this.store, this.room.bounds(), { quiet: false }); } catch { /* never block a drop */ } }
 
   _toastFree(cab, wall) {
     const where = { back: 'the back wall', left: 'the left wall', right: 'the right wall', front: 'the front wall', floor: 'the floor, free-standing' }[wall] || 'a clear stretch';
@@ -339,6 +344,7 @@ export class PointerControls {
       this.store.updateItem(id, { rotDeg: rot }, { quiet: true });
       const s2 = snapPosition(this.store, id, it.x, it.z, this.room.bounds());
       this.store.updateItem(id, { x: s2.x, z: s2.z, rotDeg: rot }, { quiet: false });
+      this._settle();
       this.store.endHistory();
       this.onCommit();
     } else if (e.key === 'Escape') {
@@ -405,6 +411,7 @@ export class PointerControls {
       if (spot.wall !== wall) moved = spot.wall;
     }
     this.store.updateItem(item.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg }, { quiet: false });
+    this._settle();
     this.store.endHistory();
 
     // Islands default to single-depth with a finished (end-panelled) back. To

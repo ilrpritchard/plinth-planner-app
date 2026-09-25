@@ -695,6 +695,83 @@ export function cornerReturnLength(cab, item, room) {
   return (dist != null && dist > 0.5 && dist <= ret + 10) ? dist : ret;
 }
 
+/**
+ * A run dropped against a corner unit's face on the adjoining wall, deeper than the corner sits from
+ * that wall, covers part of the corner's DOOR (her W34 / W18, 2026-09-25: the W34 dropped tip-to-wall,
+ * 10" out, then the 14" W18 landed on its face and hid 4¼" of the door — "the oak corner part should
+ * be the same depth as the wall cabinet"). Dragged in the other order the corner already lands leg to
+ * leg (2a); this makes the result the same whichever comes first: the corner is pulled out along its
+ * own wall until its body edge meets that run's front, the drawn return stretching to the wall behind
+ * the run (cornerReturnLength), and any cabinets butted to its door side come with it. Nothing moves
+ * when the return could not reach the wall from there (a 24" tall beside a 10" wall return), or the
+ * pulled run would leave the room or crash into something. Returns the moves made.
+ */
+export function settleCorners(store, bounds, { quiet = true } = {}) {
+  const items = store.state.items, moves = [];
+  const TOUCH = 1.5;
+  const corners = (it, box) => [[box.x0, box.z0], [box.x1, box.z0], [box.x1, box.z1], [box.x0, box.z1]];
+  for (const it of items) {
+    const cab = getCab(it.code);
+    if (!cab || !cab.corner || !cab.placeable) continue;
+    const rot = it.rotDeg || 0, rad = (rot * Math.PI) / 180, cc = Math.cos(rad), ss = Math.sin(rad);
+    const dir = cab.cornerSide === 'right' ? 1 : -1;
+    const u = [dir * cc, -dir * ss];                                  // along the wall, toward the return
+    const n = [ss, cc];                                               // out from the wall (the front)
+    const along = (px, pz) => (px - it.x) * u[0] + (pz - it.z) * u[1];
+    const out = (px, pz) => (px - it.x) * n[0] + (pz - it.z) * n[1];
+    const w = cab.w, d = cab.d, retLeg = getFootprint(cab).returnLeg;
+    const edgeX = it.x + u[0] * (w / 2), edgeZ = it.z + u[1] * (w / 2);     // body edge, return side
+    const dist = u[0] > 0.5 ? bounds.maxX - edgeX : u[0] < -0.5 ? edgeX - bounds.minX : u[1] > 0.5 ? bounds.maxZ - edgeZ : edgeZ - bounds.minZ;
+    if (!(dist >= -0.5 && dist <= retLeg + 10)) continue;             // not sitting at a corner
+    const me = worldBox(it, cab);
+    const range = (o, oc, f) => { const cs = corners(o, worldBox(o, oc)).map(([px, pz]) => f(px, pz)); return [Math.min(...cs), Math.max(...cs)]; };
+    // the deepest perpendicular run standing on my front, reaching past my body edge over the door
+    let intrusion = 0;
+    for (const o of items) {
+      if (o === it) continue;
+      const oc = getCab(o.code);
+      if (!oc || !oc.placeable || oc.corner || oc.notSupplied || (oc.type === 'WALL') !== (cab.type === 'WALL')) continue;
+      if ((((o.rotDeg || 0) - rot) % 180) === 0) continue;             // perpendicular runs only
+      const [o0] = range(o, oc, out), [a0, a1] = range(o, oc, along);
+      if (o0 < d / 2 - 0.5 || o0 > d / 2 + TOUCH) continue;             // its end stands on my front
+      if (a1 < w / 2 - 0.5 || a0 >= w / 2 - 0.5) continue;               // it reaches my return side and past the body edge
+      intrusion = Math.max(intrusion, w / 2 - a0);
+    }
+    if (intrusion < 0.5) continue;
+    if (dist + intrusion > retLeg + 10 + 0.01) continue;              // the drawn return could not reach the wall from there
+    // the cabinets butted to my door side on this run come with me, one after another
+    const chain = [];
+    let edge = -w / 2;
+    const onRun = items.filter((o) => o !== it && (o.rotDeg || 0) === rot && getCab(o.code) && getCab(o.code).placeable && !getCab(o.code).notSupplied)
+      .map((o) => { const oc = getCab(o.code); const [a0, a1] = range(o, oc, along), [o0, o1] = range(o, oc, out); return { o, oc, a0, a1, o0, o1 }; })
+      .filter((r) => r.a1 <= -w / 2 + 0.5 && Math.min(r.o1, d / 2) - Math.max(r.o0, -d / 2) > 0.5)
+      .sort((p, q) => q.a1 - p.a1);
+    for (const r of onRun) { if (edge - r.a1 > TOUCH) break; chain.push(r.o); edge = r.a0; }
+    // the move: away from the perpendicular wall by the intrusion
+    const sx = -u[0] * intrusion, sz = -u[1] * intrusion;
+    const movers = [it, ...chain];
+    const moved = new Set(movers.map((m) => m.id));
+    let ok = true;
+    for (const m of movers) {
+      const mc = getCab(m.code), nb = worldBox({ ...m, x: m.x + sx, z: m.z + sz }, mc);
+      if (nb.x0 < bounds.minX - 0.1 || nb.x1 > bounds.maxX + 0.1 || nb.z0 < bounds.minZ - 0.1 || nb.z1 > bounds.maxZ + 0.1) { ok = false; break; }
+      for (const o of items) {
+        if (moved.has(o.id)) continue;
+        const oc = getCab(o.code);
+        if (!oc || !oc.placeable) continue;
+        const ob = worldBox(o, oc);
+        const hit = Math.min(nb.x1, ob.x1) - Math.max(nb.x0, ob.x0) > 0.5 && Math.min(nb.z1, ob.z1) - Math.max(nb.z0, ob.z0) > 0.5 && Math.min(nb.y1, ob.y1) - Math.max(nb.y0, ob.y0) > 0.5;
+        if (hit && !(m === it && out(o.x, o.z) > d / 2)) { ok = false; break; }   // (the run on my front stays on my front)
+      }
+      if (!ok) break;
+    }
+    void me;
+    if (!ok) continue;
+    for (const m of movers) { store.updateItem(m.id, { x: m.x + sx, z: m.z + sz }, { quiet }); moves.push({ id: m.id, dx: sx, dz: sz }); }
+  }
+  return moves;
+}
+
 /** World AABB of an item incl. corner return + mount height band. */
 function worldBox(it, cab) {
   const fp = getFootprint(cab);

@@ -140,3 +140,47 @@ test('an open shelf pulled forward reports a new depth: free to the inch, snappe
   const shallow = snapPosition(store, sh.id, -W / 2 + 7, sh.z, b);
   assert.equal(shallow.depth, 14, 'pushed back to the wall it is its own 14"');
 });
+
+// her W34 / W18 (2026-09-25, share gq3cgu2): the corner dropped first, tip to the wall, then the 14" run
+// landed on its face and covered 4¼" of its door. "the oak corner part should be the same depth as the
+// wall cabinet": whichever comes first, the corner ends leg to leg with the run.
+test('settleCorners: a run dropped on a corner unit\'s face pulls the corner out to meet it leg to leg', async () => {
+  const { settleCorners, cornerReturnLength } = await import('../src/interaction/snapping.js');
+  const W = 156, D = 216, bb = { minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2 };
+  const mk = () => { const s = new Store(); s.setRoom({ width: W, depth: D, height: 110.4 }); return s; };
+  // her order: W34 tip-to-wall on the left wall (10" out), then the W18 along the back wall to its face
+  let s = mk();
+  const c = s.addItem('W34', { x: -70.75, z: -80, rotDeg: 90 });
+  const w = s.addItem('W18', { x: -45.75, z: -100.75, rotDeg: 0 });
+  let moves = settleCorners(s, bb);
+  assert.equal(moves.length, 1);
+  assert.ok(Math.abs(s.getItem(c.id).z - (-75.75)) < 0.01, `the W34 comes out to 14.25" from the back wall (${s.getItem(c.id).z})`);
+  assert.equal(s.getItem(w.id).x, -45.75, 'the W18 stays on its face');
+  assert.equal(settleCorners(s, bb).length, 0, 'settled once, it stays');
+  // the other order (the corner dragged in after the run) already lands there: same answer
+  s = mk(); s.addItem('W18', { x: -45.75, z: -100.75, rotDeg: 0 });
+  const c2 = s.addItem('W34', { x: -70.75, z: -60, rotDeg: 90 });
+  const r = snapPosition(s, c2.id, -70.75, -85, bb);
+  assert.ok(Math.abs(r.z - (-75.75)) < 0.01 && r.flag === undefined);
+  // a cabinet butted to the corner's door side comes out with it, keeping the run closed
+  s = mk();
+  const c3 = s.addItem('W34', { x: -70.75, z: -80, rotDeg: 90 });
+  const nb = s.addItem('W1', { x: -70.75, z: -80 + 18 + 10, rotDeg: 90 });         // 20" single butted to the door edge
+  s.addItem('W18', { x: -45.75, z: -100.75, rotDeg: 0 });
+  moves = settleCorners(s, bb);
+  assert.equal(moves.length, 2);
+  assert.ok(Math.abs(s.getItem(c3.id).z - (-75.75)) < 0.01 && Math.abs(s.getItem(nb.id).z - (-52 + 4.25)) < 0.01, 'both move 4.25"');
+  // a tall on the face: 25.43" is further than a 10" wall return can be drawn (20"), so the corner stays and the warning does the talking
+  s = mk();
+  const c4 = s.addItem('W34', { x: -70.75, z: -80, rotDeg: 90 });
+  s.addItem('T1', { x: -45.75, z: bb.minZ + 0.25 + 1.18 + 12, rotDeg: 0 });
+  assert.equal(settleCorners(s, bb).length, 0); assert.equal(s.getItem(c4.id).z, -80);
+  // the floor corner the same way: F15R tip-to-wall (20" out) with a 24" base landing on its face → 24.25" out
+  s = mk();
+  const f = s.addItem('F15R', { x: bb.minX + 12.25, z: bb.minZ + 20 + 10, rotDeg: 90 });
+  s.addItem('F2', { x: bb.minX + 24.25 + 12, z: bb.minZ + 12.25, rotDeg: 0 });
+  moves = settleCorners(s, bb);
+  assert.equal(moves.length, 1);
+  assert.ok(Math.abs((s.getItem(f.id).z - 10) - (bb.minZ + 24.25)) < 0.01, `body edge at 24.25" (${(s.getItem(f.id).z - 10 - bb.minZ).toFixed(2)})`);
+  assert.equal(cornerReturnLength(getCab('F15R'), s.getItem(f.id), s.state.room), 24.25, 'the drawn return stretches to the wall behind the base');
+});

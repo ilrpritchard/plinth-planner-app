@@ -19,6 +19,7 @@ import { FillerLayer } from './models/filler.js';
 import { CorniceLayer } from './models/cornice.js';
 import { DecorLayer } from './models/decor.js';
 import { CabinetLayer } from './interaction/cabinets.js';
+import { settleCorners } from './interaction/snapping.js';
 import { PointerControls } from './interaction/controls.js';
 import { UI } from './ui/ui.js';
 import { buildFloorplanSVG, buildPlanSheetHTML } from './ui/floorplan.js';
@@ -96,6 +97,12 @@ function bringInside() {
   const cleared = planClearBoxings(store.state);
   for (const m of cleared.moves) store.updateItem(m.id, { x: m.x, z: m.z }, { quiet: true });
   if (cleared.moves.length) setTimeout(() => { try { layer.rebuildAll(); rebuildWorktop(); rebuildFillers(); rebuildCornice(); ui.refresh?.(); } catch (e) { /* still starting up */ } }, 0);
+  // a saved corner unit covered by the run on its face is pulled out to meet it leg to leg (2026-09-25).
+  // Bounds from the SAVED room: on a share-link open the 3D room is rebuilt after the store is replaced,
+  // so room.bounds() would still be the old room's
+  let settled = [];
+  try { const rm = store.state.room; settled = settleCorners(store, { minX: -rm.width / 2, maxX: rm.width / 2, minZ: -rm.depth / 2, maxZ: rm.depth / 2 }); } catch { /* a corner that cannot be settled stays */ }
+  if (settled.length) setTimeout(() => { try { layer.rebuildAll(); rebuildWorktop(); rebuildFillers(); rebuildCornice(); ui.refresh?.(); } catch (e) { /* still starting up */ } }, 0);
   if (!anyOutside(store.state)) return;
   const plan = planBringInside(store.state);
   for (const m of plan.moves) store.updateItem(m.id, { x: m.x, z: m.z }, { quiet: true });
