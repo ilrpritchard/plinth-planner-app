@@ -48,12 +48,26 @@ export function spotOk(state, cab, x, z, rotDeg, bounds, ignoreId = null) {
   const room = state.room || {};
   // a boxing (bulkhead) is solid: nothing stands in it or hangs on it
   for (const bb of boxingBoxes(room)) if (hits(b, bb) && (cab.mountY ?? 0) < bb.y1) return false;
-  // a door needs its opening clear of anything standing within 30" of that wall
+  // a door needs its opening clear of anything standing within 30" of that wall; a WINDOW is
+  // solid to anything mounted in its band (hard rule 2: uppers, talls, counters, hoods, a tall
+  // fridge; base units pass under the sill, and a sink or cooktop belongs in front of the glass).
+  // The tap's search used to skip windows, so a wall cabinet could be stood IN one and then
+  // pinged back into it on every drop (her screenshot 2026-09-25: "my cabinet is stuck in the window").
+  const y0 = cab.mountY ?? MOUNT[cab.type] ?? 0, y1 = y0 + (cab.h || 0);
+  const winSolid = cab.appliance !== 'sink' && cab.appliance !== 'hob';
   for (const o of room.openings || []) {
-    if (o.type === 'window') continue;
-    const wl = o.wall || 'back', ctr = openingCenter(room, o), hw = openingWidth(o, room) / 2 + 1;
+    const wl = o.wall || 'back', ctr = openingCenter(room, o), [a0, a1] = wl === 'back' || wl === 'front' ? [b.x0, b.x1] : [b.z0, b.z1];
+    if (o.type === 'window') {
+      if (!winSolid) continue;
+      const sill = o.sill ?? Math.max(36, (room.height || 96) * 0.42), hgt = o.hgt ?? Math.min(46, (room.height || 96) * 0.45);
+      if (y1 <= sill + 0.05 || y0 >= sill + hgt - 0.05) continue;                                   // under the sill or above the head
+      const onWall = wl === 'back' ? b.z0 < bounds.minZ + 5 : wl === 'front' ? b.z1 > bounds.maxZ - 5 : wl === 'left' ? b.x0 < bounds.minX + 5 : b.x1 > bounds.maxX - 5;
+      const hw = openingWidth(o, room) / 2;
+      if (onWall && a0 < ctr + hw - 0.05 && a1 > ctr - hw + 0.05) return false;
+      continue;
+    }
+    const hw = openingWidth(o, room) / 2 + 1;
     const near = wl === 'back' ? b.z0 < bounds.minZ + 30 : wl === 'front' ? b.z1 > bounds.maxZ - 30 : wl === 'left' ? b.x0 < bounds.minX + 30 : b.x1 > bounds.maxX - 30;
-    const [a0, a1] = wl === 'back' || wl === 'front' ? [b.x0, b.x1] : [b.z0, b.z1];
     if (near && a0 < ctr + hw && a1 > ctr - hw) return false;
   }
   return true;

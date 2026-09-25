@@ -65,3 +65,21 @@ test('sweep: whatever is already in the room, a found spot is always inside and 
   const state = { room: { width: W, depth: D, openings: [] }, items: backRun(['F10'], W, D).concat([{ id: 9, code: 'F2', x: 18, z: -D / 2 + 12.25, rotDeg: 0 }]) };
   assert.equal(findFreeSpot(state, getCab('AP3'), b, 'back'), null);
 });
+
+test('a window is solid to the tap\'s search for anything mounted in its band: an upper never lands in the glass, a base passes under the sill (her screenshot 2026-09-25)', () => {
+  const W = 144, D = 120, b = bounds(W, D);
+  const win = { id: 1, type: 'window', wall: 'right', pos: 0.5, width: 60 };            // right wall, 30" to 90" along it
+  const state = { room: { width: W, depth: D, height: 96, openings: [win] }, items: [] };
+  const overGlass = (cab, p) => { const bx = boxAt(cab, p.x, p.z, p.rotDeg); return p.rotDeg === 270 && bx.z0 < 30 && bx.z1 > -30; };
+  for (const code of ['W2', 'W5', 'T1', 'C1', 'AP8']) {
+    const cab = getCab(code); if (!cab) continue;
+    assert.equal(spotOk(state, cab, W / 2 - cab.d / 2 - 0.25, 0, 270, b), false, `${code} in the middle of the window`);
+    const spot = findFreeSpot(state, cab, b, 'right');
+    assert.ok(spot, `${code} finds a place`);
+    assert.ok(!overGlass(cab, spot), `${code} landed over the window at z ${spot.z}`);
+  }
+  const base = getCab('F2');
+  assert.equal(spotOk(state, base, W / 2 - base.d / 2 - 0.25, 0, 270, b), true, 'a base cabinet passes under the sill');
+  const sink = getCab('AP19') || getCab('AP6');
+  if (sink) assert.equal(spotOk(state, sink, W / 2 - sink.d / 2 - 0.25, 0, 270, b), true, 'a sink belongs in front of the glass');
+});

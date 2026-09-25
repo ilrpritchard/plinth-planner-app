@@ -252,13 +252,30 @@ export class PointerControls {
     this._hideRuleFlag();
     this.s.controls.enabled = true;
     this.el.style.cursor = '';
-    // a drop that broke a rule pings back to where the drag started
+    // a drop that broke a rule pings back to where the drag started, unless THAT spot breaks a
+    // rule too (a cabinet stood in a window by an old layout, her screenshot 2026-09-25: every
+    // drop sent it back into the glass). Then it goes to the first clear stretch instead.
     const it = this.store.getItem(id);
-    if (it && flag && start && !flag.startsWith('cornerReturn:')) this.store.updateItem(id, { x: start.x, z: start.z, rotDeg: start.rotDeg }, { quiet: false });   // a held corner unit keeps the joint it was held at
+    if (it && flag && start && !flag.startsWith('cornerReturn:')) {
+      const cab = getCab(it.code), b = this.room.bounds();
+      let back = { x: start.x, z: start.z, rotDeg: start.rotDeg };
+      if (cab && !cab.corner && !spotOk(this.store.state, cab, start.x, start.z, start.rotDeg, b, id)) {
+        const spot = findFreeSpot(this.store.state, cab, b, PointerControls._wallOf({ rotDeg: start.rotDeg }), id);
+        if (spot) { back = { x: spot.x, z: spot.z, rotDeg: spot.rotDeg }; this._toastFree?.(cab, spot.wall); }
+      }
+      this.store.updateItem(id, back, { quiet: false });   // a held corner unit keeps the joint it was held at
+    }
     // commit (non-quiet) so worktop + cost refresh
     else if (it) this.store.updateItem(id, {}, { quiet: false });
     this.store.endHistory();
     this.onCommit();
+  }
+
+  _toastFree(cab, wall) {
+    const where = { back: 'the back wall', left: 'the left wall', right: 'the right wall', front: 'the front wall', floor: 'the floor, free-standing' }[wall] || 'a clear stretch';
+    const t = document.createElement('div'); t.className = 'toast';
+    t.textContent = `The ${cab.code} ${cab.desc} could not stay where it was either (a window or a door), so it is on ${where}. Drag it where it belongs.`;
+    document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
   }
 
   // ----- live dimensions while dragging: width + clear gap to each neighbour/wall
