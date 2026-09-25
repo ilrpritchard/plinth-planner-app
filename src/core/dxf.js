@@ -297,12 +297,32 @@ function shakerDoor(out, dx0, dx1, z0, z1, panels, { glazed = false } = {}) {
     return;
   }
   const iz0 = z0 + F, iz1 = z1 - F;
-  // mitred frame on the front plane — vertex order AND face table copied from
-  // the reference (negative indices = invisible mitre edges in AutoCAD)
-  out.push(...pface([
-    [dx0, 0, z0], [dx1, 0, z0], [px1, 0, iz0], [px0, 0, iz0],
-    [dx1, 0, z1], [px1, 0, iz1], [dx0, 0, z1], [px0, 0, iz1],
-  ], [[1, -2, 3, -4], [2, -5, 6, -3], [5, -7, 8, -6], [7, -1, 4, -8]], 'FRONT'));
+  const twoPanel = panels.length === 2 && panels[1][0] > panels[0][1];
+  if (twoPanel) {
+    // a TWO-PANEL door: the mid rail is PART of the frame face, one polyface, its joins to the
+    // stiles marked invisible like the mitres (her SketchUp screenshot 2026-09-25: a separate
+    // rail block left joint lines across the stiles). Only the rail's top and bottom edges show,
+    // where the face steps down into the recessed panels.
+    const rb = panels[0][1], rt = panels[1][0];
+    out.push(...pface([
+      [dx0, 0, z0], [dx1, 0, z0], [px1, 0, iz0], [px0, 0, iz0],           // 1-4  bottom rail
+      [dx1, 0, z1], [px1, 0, iz1], [dx0, 0, z1], [px0, 0, iz1],           // 5-8  top rail
+      [dx0, 0, rb], [px0, 0, rb], [px1, 0, rb], [dx1, 0, rb],             // 9-12 rail bottom line
+      [dx0, 0, rt], [px0, 0, rt], [px1, 0, rt], [dx1, 0, rt],             // 13-16 rail top line
+    ], [
+      [1, -2, 3, -4], [5, -7, 8, -6],                                     // bottom + top rails (mitres invisible)
+      [-1, 4, -10, 9], [-13, 14, -8, 7],                                  // left stile, below and above the rail
+      [2, -12, 11, -3], [16, -5, 6, -15],                                 // right stile, below and above
+      [-9, -10, -14, 13], [10, -11, 15, -14], [-11, 12, -16, -15],        // the rail: over the stiles (all joins hidden), the middle (steps show)
+    ], 'FRONT'));
+  } else {
+    // mitred frame on the front plane — vertex order AND face table copied from
+    // the reference (negative indices = invisible mitre edges in AutoCAD)
+    out.push(...pface([
+      [dx0, 0, z0], [dx1, 0, z0], [px1, 0, iz0], [px0, 0, iz0],
+      [dx1, 0, z1], [px1, 0, iz1], [dx0, 0, z1], [px0, 0, iz1],
+    ], [[1, -2, 3, -4], [2, -5, 6, -3], [5, -7, 8, -6], [7, -1, 4, -8]], 'FRONT'));
+  }
   // door back plane at y=18, stitched to the front edges (reference face table)
   out.push(...pface([
     [dx0, M.BACK, z0], [dx1, M.BACK, z0], [dx1, M.BACK, z1], [dx0, M.BACK, z1],
@@ -310,7 +330,7 @@ function shakerDoor(out, dx0, dx1, z0, z1, panels, { glazed = false } = {}) {
   ], [[1, 2, 3, 4], [5, 6, 3, 4], [7, 8, 2, 1], [7, 5, 4, 1], [8, 6, 3, 2]], 'FRONT'));
   let prevTop = null;
   for (const [pz0, pz1] of panels) {
-    if (prevTop !== null && pz0 > prevTop) {            // mid rail between panels
+    if (prevTop !== null && pz0 > prevTop && !twoPanel) { // mid rail between panels (3+ zones): a bar in the recess
       out.push(...box(px0, px1, 0, M.RECESS, prevTop, pz0, 'FRONT'));
     }
     prevTop = pz1;
