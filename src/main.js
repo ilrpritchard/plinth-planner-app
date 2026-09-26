@@ -6,7 +6,6 @@ import { wallsInUse } from './core/placement.js';
 import { planBringInside, anyOutside, planClearBoxings } from './core/roomresize.js';
 import { summarizeState } from './core/cost.js';
 import { computeFillers } from './core/fillers.js';
-import { planWallInfill } from './core/templates.js';
 import { parseLength, fmtFeetIn, fmtIn } from './core/units.js';
 import { autosave, loadSaved, loadFromHash, buildShareURL } from './core/persistence.js';
 import { shortShareURL, fetchShortDesign } from './core/sharelink.js';
@@ -126,15 +125,6 @@ const ui = new UI({
 
 // (the click-a-wall popup is gone, her call 2026-09-26: the Room tab's typed doors & windows and Fill this wall cover it)
 
-// Fill the clicked wall: find EVERY free gap along it — between cabinets and
-// at both ends — and pack each one with base units (doors stay clear; gaps
-// under 20" are left for the scribe fillers).
-function fillThisWall(clickWall) {
-  const placements = planWallInfill(store.state, clickWall);
-  for (const id of (placements.remove || [])) store.removeItem(id);   // corner conversion
-  for (const p of placements) store.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg });
-  rebuildWorktop(); rebuildFillers(); rebuildCornice(); ui.refresh();
-}
 
 // click a placed window / door / doorway → ITS card opens in the left panel, lit, with every field
 // (corner, edge, width, sill, height, delete) — no popup (her call 2026-09-25: "i dont think we need
