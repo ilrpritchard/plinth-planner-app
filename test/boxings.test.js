@@ -148,3 +148,24 @@ test('a bulkhead runs to the ceiling and FOLLOWS it when the ceiling changes; a 
   o.setRoom({ height: 110 });
   assert.equal(boxingBoxes(o.state.room)[0].y1, 110);
 });
+
+test('scribes to a bulkhead: a run end short of one, and both sides of one that splits a run, never a filler across it (her ask 2026-09-26)', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const { computeFillers } = await import('../src/core/fillers.js');
+  const s = new Store(); s.setRoom({ width: 200, depth: 150, height: 96 });
+  // a 10" bulkhead centred at x = 0 on the back wall (x -5..5); a base 3" left of it, another 4" right of it
+  s.addBoxing({ wall: 'back', pos: 0.5, w: 10, d: 8 });
+  s.addItem('F2', { x: -5 - 3 - 12, z: -75 + 12.25, rotDeg: 0 });
+  s.addItem('F2', { x: 5 + 4 + 12, z: -75 + 12.25, rotDeg: 0 });
+  const f = computeFillers(s.state).filter((x) => x.band === 'floor').sort((a, b) => a.x - b.x);
+  // the run's outer ends are far from the walls (no filler); the two bulkhead scribes are 3" and 4", 35" tall
+  assert.equal(f.length, 2, `two scribes (${f.map((x) => x.w).join(',')})`);
+  assert.ok(Math.abs(f[0].w - 3) < 0.01 && Math.abs(f[0].x - (-5 - 1.5)) < 0.01 && f[0].h === 35, 'left scribe to the bulkhead face');
+  assert.ok(Math.abs(f[1].w - 4) < 0.01 && Math.abs(f[1].x - (5 + 2)) < 0.01 && f[1].h === 35, 'right scribe to the bulkhead face');
+  // a run END 5" short of a bulkhead on a side wall
+  const t = new Store(); t.setRoom({ width: 200, depth: 150, height: 96 });
+  t.addBoxing({ wall: 'left', pos: 0.5, w: 10, d: 8 });                 // z -5..5
+  t.addItem('F2', { x: -100 + 12.25, z: -5 - 5 - 12, rotDeg: 90 });      // ends 5" before it
+  const g = computeFillers(t.state).filter((x) => x.band === 'floor');
+  assert.ok(g.some((x) => Math.abs(x.w - 5) < 0.01 && Math.abs(x.z - (-5 - 2.5)) < 0.01), `a 5" scribe to the bulkhead (${JSON.stringify(g.map((x) => [x.w, x.z]))})`);
+});

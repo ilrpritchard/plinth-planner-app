@@ -10,6 +10,9 @@ import { findGaps, suggestForGap, placementsFor } from '../core/gaps.js';
 import { planLineUp } from '../core/evenout.js';
 import { planIslandCentre, planIslandSpacing } from '../core/islandcentre.js';
 import { islandFinish, islandIds } from '../core/islands.js';
+import { planSetWidth } from '../core/fitwidth.js';
+import { canFitWidth } from '../core/catalogue.js';
+import { measureRun } from '../core/measure.js';
 import { planRoomResize } from '../core/roomresize.js';
 import { canFileIsland } from '../core/islands.js';
 import { planStackers } from '../core/stackers.js';
@@ -1243,6 +1246,25 @@ export class UI {
       this._toast(`Island moved: ${say(p.clear)}${p.clear.left != null && p.clear.right != null ? ' (centred between the side runs)' : ''}. Undo puts it back.`);
       this.showSelbar(id);
     });
+    // cut to fit: type a width for an open shelf / tray space; the touching edge stays where it is
+    document.getElementById('selWidth')?.addEventListener('change', (e) => {
+      const id = this.controls.layer.selectedId; if (id == null) return;
+      const it = this.store.getItem(id), cab = it && getCab(it.code); if (!cab || !canFitWidth(cab)) return;
+      const v = parseLength(e.target.value.trim());
+      if (!isFinite(v) || v <= 0) { this.showSelbar(id); return; }
+      const m = measureRun(this.store, id, this.controls.room.bounds());
+      const plan = planSetWidth(cab, m, v);
+      if (!plan) { this.showSelbar(id); return; }
+      const horiz = ((it.rotDeg || 0) % 180) === 0, rot = (((it.rotDeg || 0) % 360) + 360) % 360, dir = rot === 0 || rot === 90 ? 1 : -1;
+      this.store.beginHistory();
+      this.store.swapItem(id, plan.code, { quiet: true });
+      this.store.updateItem(id, horiz ? { x: it.x + dir * plan.shift } : { z: it.z + dir * plan.shift }, { quiet: false });
+      this.store.endHistory();
+      this.controls.onCommit();
+      const nc = getCab(plan.code), base = getCab(nc.baseCode || nc.code);
+      this._toast(`${base.code} cut to ${fmtIn(plan.w)}. Priced as the ${fmtIn(nc.usd === base.usd ? base.w : plan.w)} standard size.`);
+      this.showSelbar(id);
+    });
     document.getElementById('selCentreRoom').addEventListener('click', centre('room'));
     document.getElementById('selCentreRange').addEventListener('click', centre('range'));
     document.getElementById('selMirrorRange').addEventListener('click', mirror('range'));
@@ -1370,6 +1392,8 @@ export class UI {
     const sk = document.getElementById('selStacker'), skp = planStackers(this.store.state, null, id);
     sk.style.display = skp.ok ? '' : 'none';
     if (skp.ok) sk.textContent = `Add a stacker (${skp.placements[0].code}, ${skp.size}")`;
+    const ww = document.getElementById('selWidthWrap');
+    if (ww) { const cabW = getCab(it.code); ww.style.display = canFitWidth(cabW) ? '' : 'none'; if (canFitWidth(cabW)) document.getElementById('selWidth').value = fmtIn(cabW.w); }
     const fi = document.getElementById('selFileIsland');
     fi.style.display = canFileIsland(this.store.state, id) ? '' : 'none';
     fi.textContent = it.island ? 'Not part of the island' : 'Part of the island';

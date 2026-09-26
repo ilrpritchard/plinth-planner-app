@@ -396,8 +396,42 @@ export function sizedShelfCode(baseCode, depth) {
 }
 const SIZED_SHELF_RX = /^(W\d+):(\d+(?:\.\d+)?)$/i;
 const sizedShelfCache = new Map();
+// CUT TO FIT (her ask 2026-09-26: "can these auto resize to fit leftover space"): an open shelf
+// (wall, full-height or floor) or the F8 tray space at any width from 6" to 42", as a virtual
+// code '<BASE>:w<inches>'. Priced as the narrowest standard size at or above that width in the
+// same family (or the base when there is none wider): a cut-down 20" shelf is a 20" shelf's work.
+export const FIT_WIDTH_LIMITS = [6, 42];
+const SIZED_WIDTH_RX = /^([WF]\d+):w(\d+(?:\.\d+)?)$/i;
+const sizedWidthCache = new Map();
+export function canFitWidth(cab) {
+  return !!cab && !cab.corner && !cab.stacker && (cab.form === 'open' || cab.form === 'tray') && (cab.type === 'WALL' || cab.type === 'FLOOR');
+}
+export function sizedWidthCode(baseCode, width) {
+  const base = getCab(baseCode); if (!base || !canFitWidth(base)) return baseCode;
+  const root = base.baseCode || base.code;
+  const w = Math.round(clampDim(width, FIT_WIDTH_LIMITS, base.w) * 2) / 2;
+  return Math.abs(w - getCab(root).w) < 0.05 ? root : `${root}:w${w}`;
+}
+function fitPriceFor(base, w) {
+  const family = CATALOGUE.filter((c) => c.type === base.type && c.form === base.form && !c.corner && !!c.halfDepth === !!base.halfDepth && c.h === base.h && c.placeable);
+  const wider = family.filter((c) => c.w >= w - 0.05).sort((p, q) => p.w - q.w)[0];
+  const widest = [...family].sort((p, q) => q.w - p.w)[0];
+  return (wider || widest || base).usd;
+}
 
 export function getCab(code) {
+  const mw = typeof code === 'string' && SIZED_WIDTH_RX.exec(code);
+  if (mw) {
+    let hit = sizedWidthCache.get(code);
+    if (!hit) {
+      const base = CATALOGUE.find((c) => c.code === mw[1].toUpperCase());
+      if (!base || !canFitWidth(base)) return undefined;
+      const w = Math.round(clampDim(mw[2], FIT_WIDTH_LIMITS, base.w) * 2) / 2;
+      hit = { ...base, code, w, usd: fitPriceFor(base, w), baseCode: base.code, cutToFit: true, desc: `${base.desc} · ${w}" wide, cut to fit` };
+      sizedWidthCache.set(code, hit);
+    }
+    return hit;
+  }
   const ms = typeof code === 'string' && SIZED_SHELF_RX.exec(code);
   if (ms) {
     let hit = sizedShelfCache.get(code);

@@ -7,7 +7,7 @@ import { planBringInside, anyOutside, planClearBoxings } from './core/roomresize
 import { summarizeState } from './core/cost.js';
 import { computeFillers } from './core/fillers.js';
 import { planWallInfill } from './core/templates.js';
-import { parseLength, fmtFeetIn } from './core/units.js';
+import { parseLength, fmtFeetIn, fmtIn } from './core/units.js';
 import { autosave, loadSaved, loadFromHash, buildShareURL } from './core/persistence.js';
 import { shortShareURL, fetchShortDesign } from './core/sharelink.js';
 import { createKeepTracker } from './core/keepprompt.js';
@@ -178,6 +178,7 @@ const controls = new PointerControls({
   onSelect: (id) => ui.showSelbar(id),
   onWallClick: (info) => showWallMenu(info),
   onOpeningClick: (info) => { hideWallMenu(); openOpeningCard(info); },
+  onFitted: (plan, cab) => toast(`${cab.baseCode || cab.code} cut to ${fmtIn(plan.w)} to fill the space. Type a width on the bar to change it.`),
 });
 ui.controls = controls; // late-bind so UI buttons can drive the controls
 

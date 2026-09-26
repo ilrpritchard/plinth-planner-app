@@ -658,7 +658,7 @@ export function buildPlanDXF(state, { walls = true } = {}) {
   // own FRONT-<Finish> layer, so the colour it was designed in is the colour it arrives in
   const mainFinish = (state && state.finish) || 'Ghost';
   const finishOf = (it) => (it.finish && getFinish(it.finish) ? it.finish : mainFinish);
-  const blockName = (cab, fin) => cab.code + '_UNIT' + (fin === mainFinish ? '' : '-' + finishLayer(fin, mainFinish).slice(6));
+  const blockName = (cab, fin) => cab.code.replace(/[^A-Za-z0-9]+/g, '_') + '_UNIT' + (fin === mainFinish ? '' : '-' + finishLayer(fin, mainFinish).slice(6));
   const used = new Map(), finishes = new Set([mainFinish]);
   for (const it of (state && state.items) || []) {
     const cab = getCab(it.code);

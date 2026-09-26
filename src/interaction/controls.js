@@ -12,9 +12,11 @@ import { findHoodSeat } from '../core/hoodseat.js';
 import { bestBaseFor } from '../core/sinkspec.js';
 import { spotOk, findFreeSpot } from '../core/placement.js';
 import { boxingBoxes } from '../core/openings.js';
+import { planFitToGap } from '../core/fitwidth.js';
 
 export class PointerControls {
-  constructor({ scene, cabinetLayer, room, store, onCommit, onSelect, onWallClick, onOpeningClick }) {
+  constructor({ scene, cabinetLayer, room, store, onCommit, onSelect, onWallClick, onOpeningClick, onFitted }) {
+    this.onFitted = onFitted || null;
     this.s = scene;
     this.layer = cabinetLayer;
     this.room = room;
@@ -280,8 +282,26 @@ export class PointerControls {
     // commit (non-quiet) so worktop + cost refresh
     else if (it) this.store.updateItem(id, {}, { quiet: false });
     this._settle();
+    // an open shelf or tray space CUT TO FIT the leftover beside it (core/fitwidth.js): dropped
+    // touching one neighbour with a sliver to the next, it grows to close the sliver
+    if (it && !flag) this.fitToGap(id);
     this.store.endHistory();
     this.onCommit();
+  }
+
+  /** Grow (or shrink) an open shelf / tray space into the space it stands in. Returns the plan or null. */
+  fitToGap(id, opts = {}) {
+    const it = this.store.getItem(id); const cab = it && getCab(it.code);
+    if (!cab) return null;
+    const m = measureRun(this.store, id, this.room.bounds());
+    const plan = planFitToGap(cab, m, opts);
+    if (!plan) return null;
+    const horiz = ((it.rotDeg || 0) % 180) === 0;
+    const rot = (((it.rotDeg || 0) % 360) + 360) % 360, dir = rot === 0 || rot === 90 ? 1 : -1;   // +along = +x on the back wall, +z on the left wall
+    this.store.swapItem(id, plan.code, { quiet: true });
+    this.store.updateItem(id, horiz ? { x: it.x + dir * plan.shift } : { z: it.z + dir * plan.shift }, { quiet: false });
+    this.onFitted?.(plan, cab);
+    return plan;
   }
 
   /** A corner unit pulled out to meet a deeper run dropped on its face (settleCorners), inside the

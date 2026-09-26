@@ -14,7 +14,7 @@
 // appliance, and beside a range the first piece offered is drawers. What is left over (9" or
 // less) becomes a scribe filler by itself: computeFillers already draws and prices it.
 
-import { getCab } from './catalogue.js';
+import { getCab, sizedWidthCode } from './catalogue.js';
 import { boxAt } from './placement.js';
 import { openingCenter, openingWidth } from './openings.js';
 
@@ -112,6 +112,11 @@ export function suggestForGap(gap) {
     const left = gap.width - p.used;
     if (left > 9.5 && out.length) continue;                        // a worse fit than one already offered
     out.push({ kind, codes: list, used: p.used, left, filler: left > 0.5 && left <= 9.5, usd: list.reduce((n, c) => n + (getCab(c).usd || 0), 0) });
+  }
+  // a small leftover (6" to 18"): the tray space cut to exactly that width, her way of using a sliver
+  if (gap.width >= 6 && gap.width <= 18 && getCab('F8')) {
+    const code = sizedWidthCode('F8', gap.width), c = getCab(code);
+    if (c) out.unshift({ kind: 'Tray space, cut to fit', codes: [code], used: c.w, left: gap.width - c.w, filler: false, usd: c.usd || 0 });
   }
   return out.slice(0, 3);
 }

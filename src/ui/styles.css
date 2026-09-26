@@ -396,6 +396,8 @@ button.cta:hover { background: var(--cream-hi); filter: none; }
 .fin-target button { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: #fff; color: var(--cream-hi); font-family: inherit; font-size: 11px; cursor: pointer; }
 .fin-target button.on { background: var(--cream); color: #fff; border-color: var(--cream); }
 .fin-target .fin-same { border-style: dashed; font-weight: 400; }
+.sel-width { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--dim); }
+.sel-width input { width: 58px; padding: 5px 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--brown-deep); color: var(--cream); font-size: 12px; }
 #selbar select {
   background: #fff; color: var(--cream-hi); font-weight: 600;
   border: 1px solid var(--line-strong); border-radius: 6px;

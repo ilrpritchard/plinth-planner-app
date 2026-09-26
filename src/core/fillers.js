@@ -12,6 +12,7 @@
 import { getCab } from './catalogue.js';
 import { MOUNT } from './units.js';
 import { boxAt } from './placement.js';
+import { boxingBoxes } from './openings.js';
 
 const MIN_GAP = 0.5;   // ignore hairline gaps
 const MAX_GAP = 9;     // close residual end gaps (a run reaches within ~8" of the
@@ -79,6 +80,13 @@ function bandFillers(state, band, out) {
     }
     return { edge, flankH };
   };
+  // A BULKHEAD on this wall is a run end too (her ask 2026-09-26: "scribes between floor and
+  // bulkheads"): the cabinet beside it scribes to its face, as tall as the cabinet (the bulkhead
+  // is taller), and a run split by one gets a scribe each side of it, never a filler across it.
+  const boxOn = (wall) => boxingBoxes(r).filter((bx) => bx.wall === wall).map((bx) => ({ a0: bx.along0, a1: bx.along1, h: bx.h }));
+  const nearestBoxBefore = (wall, at) => boxOn(wall).filter((bx) => bx.a1 <= at + 0.5).sort((p, q) => q.a1 - p.a1)[0] || null;
+  const nearestBoxAfter = (wall, at) => boxOn(wall).filter((bx) => bx.a0 >= at - 0.5).sort((p, q) => p.a0 - q.a0)[0] || null;
+  const boxBetween = (wall, a1, b0) => boxOn(wall).find((bx) => bx.a0 >= a1 - 0.5 && bx.a1 <= b0 + 0.5) || null;
   // a scribe to a FLANK is only as tall as the shorter of the two cabinets: beside a base the
   // scribe stops under the counter even when the run ends in a tall (her call 2026-09-22:
   // "the scribe is only required under the counter, not above")
@@ -92,13 +100,23 @@ function bandFillers(state, band, out) {
     const sorted = [...run].sort((a, b) => (a.it.x - a.cab.w / 2) - (b.it.x - b.cab.w / 2));
     const L = sorted[0], R = sorted[sorted.length - 1];
     const rot = wall === 'front' ? 180 : 0;
-    const cL = cornerEdge(wall, -1), cR = cornerEdge(wall, +1), eL = cL.edge, eR = cR.edge;
+    let cL = cornerEdge(wall, -1), cR = cornerEdge(wall, +1);
+    const bxL = nearestBoxBefore(wall, L.it.x - L.cab.w / 2), bxR = nearestBoxAfter(wall, R.it.x + R.cab.w / 2);
+    if (bxL && bxL.a1 > cL.edge) cL = { edge: bxL.a1, flankH: bxL.h };
+    if (bxR && bxR.a0 < cR.edge) cR = { edge: bxR.a0, flankH: bxR.h };
+    const eL = cL.edge, eR = cR.edge;
     addEnd(out, (L.it.x - L.cab.w / 2) - eL, (g) => ({ x: eL + g / 2, z: L.it.z, rotDeg: rot, w: g, d: L.cab.d, h: endH(L.cab, cL), y0: band.y0(L.cab), band: band.name }));
     addEnd(out, eR - (R.it.x + R.cab.w / 2), (g) => ({ x: eR - g / 2, z: R.it.z, rotDeg: rot, w: g, d: R.cab.d, h: endH(R.cab, cR), y0: band.y0(R.cab), band: band.name }));
     for (let i = 0; i < sorted.length - 1; i++) {
       const A = sorted[i], B = sorted[i + 1];
       // a corner unit's near edge is its blank RETURN, not its door body (her open shelf beside a W9, 2026-09-22)
       const a1 = boxAt(A.cab, A.it.x, A.it.z, A.it.rotDeg).x1, b0 = boxAt(B.cab, B.it.x, B.it.z, B.it.rotDeg).x0;
+      const bx = boxBetween(wall, a1, b0);
+      if (bx) {                                   // a bulkhead between them: a scribe to each of its faces
+        addEnd(out, bx.a0 - a1, (g) => ({ x: a1 + g / 2, z: A.it.z, rotDeg: rot, w: g, d: A.cab.d, h: Math.min(A.cab.h, bx.h), y0: band.y0(A.cab), band: band.name }));
+        addEnd(out, b0 - bx.a1, (g) => ({ x: bx.a1 + g / 2, z: B.it.z, rotDeg: rot, w: g, d: B.cab.d, h: Math.min(B.cab.h, bx.h), y0: band.y0(B.cab), band: band.name }));
+        continue;
+      }
       const T = A.cab.h <= B.cab.h ? A : B;      // match the shorter (base) neighbour
       addEnd(out, b0 - a1, (g) => ({ x: a1 + g / 2, z: T.it.z, rotDeg: rot, w: g, d: T.cab.d, h: T.cab.h, y0: band.y0(T.cab), band: band.name }));
     }
@@ -112,12 +130,22 @@ function bandFillers(state, band, out) {
     const sorted = [...run].sort((a, b) => (a.it.z - a.cab.w / 2) - (b.it.z - b.cab.w / 2));
     const L = sorted[0], R = sorted[sorted.length - 1];
     const rot = wall === 'right' ? 270 : 90;
-    const cL = cornerEdge(wall, -1), cR = cornerEdge(wall, +1), eL = cL.edge, eR = cR.edge;
+    let cL = cornerEdge(wall, -1), cR = cornerEdge(wall, +1);
+    const bxL = nearestBoxBefore(wall, L.it.z - L.cab.w / 2), bxR = nearestBoxAfter(wall, R.it.z + R.cab.w / 2);
+    if (bxL && bxL.a1 > cL.edge) cL = { edge: bxL.a1, flankH: bxL.h };
+    if (bxR && bxR.a0 < cR.edge) cR = { edge: bxR.a0, flankH: bxR.h };
+    const eL = cL.edge, eR = cR.edge;
     addEnd(out, (L.it.z - L.cab.w / 2) - eL, (g) => ({ x: L.it.x, z: eL + g / 2, rotDeg: rot, w: g, d: L.cab.d, h: endH(L.cab, cL), y0: band.y0(L.cab), band: band.name }));
     addEnd(out, eR - (R.it.z + R.cab.w / 2), (g) => ({ x: R.it.x, z: eR - g / 2, rotDeg: rot, w: g, d: R.cab.d, h: endH(R.cab, cR), y0: band.y0(R.cab), band: band.name }));
     for (let i = 0; i < sorted.length - 1; i++) {
       const A = sorted[i], B = sorted[i + 1];
       const a1 = boxAt(A.cab, A.it.x, A.it.z, A.it.rotDeg).z1, b0 = boxAt(B.cab, B.it.x, B.it.z, B.it.rotDeg).z0;
+      const bx = boxBetween(wall, a1, b0);
+      if (bx) {
+        addEnd(out, bx.a0 - a1, (g) => ({ x: A.it.x, z: a1 + g / 2, rotDeg: rot, w: g, d: A.cab.d, h: Math.min(A.cab.h, bx.h), y0: band.y0(A.cab), band: band.name }));
+        addEnd(out, b0 - bx.a1, (g) => ({ x: B.it.x, z: bx.a1 + g / 2, rotDeg: rot, w: g, d: B.cab.d, h: Math.min(B.cab.h, bx.h), y0: band.y0(B.cab), band: band.name }));
+        continue;
+      }
       const T = A.cab.h <= B.cab.h ? A : B;
       addEnd(out, b0 - a1, (g) => ({ x: T.it.x, z: a1 + g / 2, rotDeg: rot, w: g, d: T.cab.d, h: T.cab.h, y0: band.y0(T.cab), band: band.name }));
     }

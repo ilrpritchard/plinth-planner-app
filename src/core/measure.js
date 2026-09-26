@@ -3,6 +3,7 @@
 // Pure maths so it's unit-testable; the drag overlay renders the result.
 
 import { getCab } from './catalogue.js';
+import { boxingBoxes } from './openings.js';
 import { getMountY } from '../models/cabinet.js';
 
 const aabb = (it, c) => {
@@ -41,6 +42,15 @@ export function measureRun(store, id, bounds) {
     const [olo, ohi] = horiz ? [ob.x0, ob.x1] : [ob.z0, ob.z1];
     if (ohi <= lo + 0.05 && lo - ohi < before.gap) before = { gap: lo - ohi, to: o.code };
     if (olo >= hi - 0.05 && olo - hi < after.gap) after = { gap: olo - hi, to: o.code };
+  }
+  // a BULKHEAD on the run is a neighbour too (a shelf beside one measures to its face, and a
+  // cut-to-fit shelf grows to it — her ask 2026-09-26)
+  for (const bb of boxingBoxes(store.state.room || {})) {
+    const cross = horiz ? overlap1D(me.z0, me.z1, bb.z0, bb.z1) : overlap1D(me.x0, me.x1, bb.x0, bb.x1);
+    if (cross <= 1 || overlap1D(me.y0, me.y1, bb.y0, bb.y1) <= 1) continue;
+    const [olo, ohi] = horiz ? [bb.x0, bb.x1] : [bb.z0, bb.z1];
+    if (ohi <= lo + 0.05 && lo - ohi < before.gap) before = { gap: lo - ohi, to: 'bulkhead' };
+    if (olo >= hi - 0.05 && olo - hi < after.gap) after = { gap: olo - hi, to: 'bulkhead' };
   }
   before.gap = Math.max(0, before.gap);
   after.gap = Math.max(0, after.gap);
