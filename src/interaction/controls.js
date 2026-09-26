@@ -238,7 +238,7 @@ export class PointerControls {
     this.drag.flag = snapped.flag || null;
     const RULE_MSG = {
       window: '✕ Cabinets can’t cover a window',
-      cooker: '✕ Nothing sits over the range',
+      cooker: '✕ Nothing hangs over the range or cooktop: a hood goes here, and shelves or uppers sit either side of it, 50mm clear of the cooker',
       sink: '✕ The sink sits in clear countertop. Keep it off talls & uppers',
       offwall: '✕ Wall, counter & tall cabinets sit against a wall',
       corner: '✕ A corner unit sits against a wall, its blank return toward the corner',
