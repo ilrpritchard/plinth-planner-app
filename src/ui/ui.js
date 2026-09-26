@@ -715,6 +715,7 @@ export class UI {
         const combo = sinkBaseCombo(row.dataset.combo);
         const res = combo && this.controls.placeSinkBase(combo, this.activeWall);
         if (res) this._toast(`${getCab(combo.base).desc} ${fmtIn(getCab(combo.base).w)} added with its sink. Click the sink to change its size.`);
+        if (res && res.base) this.controls.carry?.(res.base.id);     // the base rides the pointer, the sink rides in the base
         return;
       }
       const res = this.controls.placeNew(row.dataset.code, this.activeWall, { safe: true });   // a person tapping: never outside the room

@@ -211,7 +211,15 @@ export class PointerControls {
       const hit = this._wallHit(), cab = getCab(this.store.getItem(this.drag.id)?.code);
       if (hit && cab) ({ x: rawX, z: rawZ } = this._wallRaw(hit, cab, p));
     }
+    this.drag.last = { x: rawX, z: rawZ };
     const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds(), { noDeepen: !!this.drag.carry });   // a carried shelf keeps its depth
+    // a CORNER unit is refused everywhere but a room corner, and the snap then holds it where it
+    // was — so a carried one looked frozen (her report 2026-09-26). Carried, it rides the hand
+    // anyway; the drop seats it in the nearest corner (see _up).
+    if (this.drag.carry && snapped.flag === 'corner') {
+      const b = this.room.bounds(), cab0 = getCab(this.store.getItem(this.drag.id)?.code);
+      if (cab0) { snapped.x = Math.max(b.minX + cab0.w / 2, Math.min(b.maxX - cab0.w / 2, rawX)); snapped.z = Math.max(b.minZ + cab0.d / 2, Math.min(b.maxZ - cab0.d / 2, rawZ)); }
+    }
     // an open shelf pulled forward gets deeper instead (snapping returns `depth`): swap to the sized code
     // and keep its back on the wall
     if (snapped.depth != null) {
@@ -245,7 +253,7 @@ export class PointerControls {
   _up() {
     if (!this.drag) return;
     const id = this.drag.id;
-    const { flag, start } = this.drag;
+    const { flag, start, carry, last } = this.drag;
     this.drag = null;
     this.floor.constant = 0;
     this._hideDims();
@@ -259,7 +267,10 @@ export class PointerControls {
     if (it && flag && start && !flag.startsWith('cornerReturn:')) {
       const cab = getCab(it.code), b = this.room.bounds();
       let back = { x: start.x, z: start.z, rotDeg: start.rotDeg };
-      if (cab && !cab.corner && !spotOk(this.store.state, cab, start.x, start.z, start.rotDeg, b, id)) {
+      if (cab && cab.corner && carry) {                       // a carried corner unit: the nearest corner seat
+        const seat = this._cornerSeatNear(id, cab, last ? last.x : it.x, last ? last.z : it.z, b);
+        if (seat) { back = seat; this._toastFree?.(cab, 'the nearest corner'); }
+      } else if (cab && !cab.corner && !spotOk(this.store.state, cab, start.x, start.z, start.rotDeg, b, id)) {
         const spot = findFreeSpot(this.store.state, cab, b, PointerControls._wallOf({ rotDeg: start.rotDeg }), id);
         if (spot) { back = { x: spot.x, z: spot.z, rotDeg: spot.rotDeg }; this._toastFree?.(cab, spot.wall); }
       }
@@ -276,10 +287,33 @@ export class PointerControls {
    *  same undo step as the drop that caused it. */
   _settle() { try { settleCorners(this.store, this.room.bounds(), { quiet: false }); } catch { /* never block a drop */ } }
 
+  /** Every room corner a corner unit can sit in, tried through the snap itself (both ends of each
+   *  wall, the unit turned to face into the room); the one nearest (px, pz) that the snap accepts. */
+  _cornerSeatNear(id, cab, px, pz, b) {
+    const it = this.store.getItem(id); if (!it) return null;
+    const keep = { x: it.x, z: it.z, rotDeg: it.rotDeg || 0 };
+    const ret = cab.type === 'FLOOR' ? 20 : 10, tries = [];
+    for (const rot of [0, 90, 180, 270]) {
+      const ends = rot % 180 === 0 ? [b.minX + cab.w / 2 + ret + 1, b.maxX - cab.w / 2 - ret - 1] : [b.minZ + cab.w / 2 + ret + 1, b.maxZ - cab.w / 2 - ret - 1];
+      for (const a of ends) {
+        const raw = rot === 0 ? { x: a, z: b.minZ + cab.d / 2 + 0.25 } : rot === 180 ? { x: a, z: b.maxZ - cab.d / 2 - 0.25 }
+          : rot === 90 ? { x: b.minX + cab.d / 2 + 0.25, z: a } : { x: b.maxX - cab.d / 2 - 0.25, z: a };
+        this.store.updateItem(id, { x: raw.x, z: raw.z, rotDeg: rot }, { quiet: true });
+        const sn = snapPosition(this.store, id, raw.x, raw.z, b, { noFeature: true });
+        if (!sn.flag && spotOk(this.store.state, cab, sn.x, sn.z, sn.rotDeg, b, id)) tries.push({ x: sn.x, z: sn.z, rotDeg: sn.rotDeg, d: Math.hypot(sn.x - px, sn.z - pz) });
+      }
+    }
+    this.store.updateItem(id, keep, { quiet: true });
+    tries.sort((p, q) => p.d - q.d);
+    return tries[0] ? { x: tries[0].x, z: tries[0].z, rotDeg: tries[0].rotDeg } : null;
+  }
+
   _toastFree(cab, wall) {
-    const where = { back: 'the back wall', left: 'the left wall', right: 'the right wall', front: 'the front wall', floor: 'the floor, free-standing' }[wall] || 'a clear stretch';
+    const where = { back: 'the back wall', left: 'the left wall', right: 'the right wall', front: 'the front wall', floor: 'the floor, free-standing' }[wall] || wall || 'a clear stretch';
     const t = document.createElement('div'); t.className = 'toast';
-    t.textContent = `The ${cab.code} ${cab.desc} could not stay where it was either (a window or a door), so it is on ${where}. Drag it where it belongs.`;
+    t.textContent = cab.corner
+      ? `A corner unit lives in a room corner: the ${cab.code} went to ${where}. Drag it to another corner if that is the wrong one.`
+      : `The ${cab.code} ${cab.desc} could not stay where it was either (a window or a door), so it is on ${where}. Drag it where it belongs.`;
     document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
   }
 
