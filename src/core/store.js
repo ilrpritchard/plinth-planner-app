@@ -327,7 +327,7 @@ export class Store {
 
   getItem(id) { return this.state.items.find((i) => i.id === id); }
 
-  clear() {
+  clear(opts = {}) {
     this._record();
     // "Clear" means "take the cabinets off THIS plan" — it must never destroy
     // the trade project (units/designs) or kick the user out of their mode.
@@ -338,7 +338,10 @@ export class Store {
     this.state.room = room;
     this.state.trade = trade;
     this.state.mode = mode;
-    this._emit({ type: 'reset' });
+    // keep: a REDRAFT of the same design (the wizard clears the plan before it lays out again),
+    // not a fresh file — the open design stays open (her catch 2026-09-26: a draft after saving
+    // "Naftali Example" sent the next autosave to "Autosave")
+    this._emit({ type: 'reset', keep: !!opts.keep });
   }
 
   // ----- serialise -----

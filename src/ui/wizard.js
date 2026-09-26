@@ -553,7 +553,7 @@ export class Wizard {
   }
 
   _generateInner(roomPatch) {
-    this.store.clear();                                   // fresh start (keeps room)
+    this.store.clear({ keep: true });                     // fresh start (keeps room; the same design stays open)
     if (roomPatch && Object.keys(roomPatch).length) this.store.setRoom(roomPatch);
     // doors: THE ROOM'S DOORS ARE THE ROOM'S, like its windows (her catch 2026-09-25: "if I add
     // doors and windows then click auto layout it deletes all my doors"). Only the doorway the

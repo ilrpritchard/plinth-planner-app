@@ -25,7 +25,7 @@ export class CloudUI {
     // more. An UNDO or REDO is not that: it replays the same kitchen and fires the same 'load'
     // (hist: true), and used to drop the open design, so the next autosave and the next Save went
     // to "Autosave" instead of her file (her catch 2026-09-26: "it just saves autosave").
-    store.subscribe((s, c) => { if ((c.type === 'load' && !c.hist && !this._opening) || c.type === 'reset') this._setCurrent(null, null); });
+    store.subscribe((s, c) => { if ((c.type === 'load' && !c.hist && !this._opening) || (c.type === 'reset' && !c.keep)) this._setCurrent(null, null); });
     this._startAutosave();
     this.onLoaded = onLoaded || (() => {});
     this.user = null;
