@@ -38,3 +38,20 @@ test('a typed width keeps the touching edge; the rows, the price and the DXF all
   const dxf = buildPlanDXF(state, { walls: false });
   assert.ok(dxf.includes('\n2\nW22_w14_UNIT\n') && !dxf.includes('W22:w14_UNIT'), 'a block name a DXF reader accepts');
 });
+
+test('her share link: a 20" shelf dropped between an upper and a corner bulkhead is cut down to the 15.5" slot', async () => {
+  const { planShrinkToSlot, wallNear } = await import('../src/core/fitwidth.js');
+  const W = 216, D = 240, b = { minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2 };
+  const state = { room: { width: W, depth: D, height: 110, boxings: [{ id: 1, wall: 'back', pos: 1, w: 25.5, d: 28 }] }, items: [
+    { id: 30, code: 'W19', x: 46, z: -D / 2 + 7.25, rotDeg: 0 },            // 25..67 on the back wall
+    { id: 7, code: 'F20', x: 42, z: -D / 2 + 12.25, rotDeg: 0 },            // a base below: not in the shelf's height band
+    { id: 31, code: 'W22:36', x: -89.75, z: 24.25, rotDeg: 0 } ] };
+  const wn = wallNear(b, 87, -110);
+  assert.deepEqual([wn.wall, wn.along], ['back', 87]);
+  const plan = planShrinkToSlot(state, getCab('W22:36'), wn.wall, wn.along, b, 31);
+  assert.ok(plan, 'a slot was found');
+  assert.equal(plan.w, 15.5); assert.equal(plan.code, 'W22:w15.5');
+  assert.ok(Math.abs(plan.x - (67 + 82.5) / 2) < 0.01 && plan.rotDeg === 0 && Math.abs(plan.z - (-D / 2 + 14 / 2 + 0.25)) < 0.01, 'centred in the slot, on the wall, back at 14" deep');
+  assert.equal(planShrinkToSlot(state, getCab('W22'), 'back', -10, b, 31), null, 'inside the bulkhead-free run where it fits: nothing to shrink');
+  assert.equal(planShrinkToSlot(state, getCab('W2'), 'back', 75, b, 31), null, 'a door cabinet is never cut');
+});

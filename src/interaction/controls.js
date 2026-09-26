@@ -12,7 +12,8 @@ import { findHoodSeat } from '../core/hoodseat.js';
 import { bestBaseFor } from '../core/sinkspec.js';
 import { spotOk, findFreeSpot } from '../core/placement.js';
 import { boxingBoxes } from '../core/openings.js';
-import { planFitToGap } from '../core/fitwidth.js';
+import { planFitToGap, planShrinkToSlot, wallNear } from '../core/fitwidth.js';
+import { canFitWidth } from '../core/catalogue.js';
 
 export class PointerControls {
   constructor({ scene, cabinetLayer, room, store, onCommit, onSelect, onWallClick, onOpeningClick, onFitted }) {
@@ -267,6 +268,20 @@ export class PointerControls {
     // rule too (a cabinet stood in a window by an old layout, her screenshot 2026-09-25: every
     // drop sent it back into the glass). Then it goes to the first clear stretch instead.
     const it = this.store.getItem(id);
+    // a shelf or tray space dropped into a slot NARROWER than itself is cut to the slot (core/fitwidth.js)
+    if (it && flag === 'blocked' && last && canFitWidth(getCab(it.code))) {
+      const b = this.room.bounds(), wn = wallNear(b, last.x, last.z);
+      const plan = planShrinkToSlot(this.store.state, getCab(it.code), wn.wall, wn.along, b, id);
+      if (plan) {
+        this.store.swapItem(id, plan.code, { quiet: true });
+        this.store.updateItem(id, { x: plan.x, z: plan.z, rotDeg: plan.rotDeg }, { quiet: false });
+        this.onFitted?.({ ...plan, shrunk: true }, getCab(it.code));
+        this._settle();
+        this.store.endHistory();
+        this.onCommit();
+        return;
+      }
+    }
     if (it && flag && start && !flag.startsWith('cornerReturn:')) {
       const cab = getCab(it.code), b = this.room.bounds();
       let back = { x: start.x, z: start.z, rotDeg: start.rotDeg };

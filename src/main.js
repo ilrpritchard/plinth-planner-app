@@ -145,7 +145,9 @@ const controls = new PointerControls({
   onCommit: () => { store.syncIslands(); rebuildWorktop(); },
   onSelect: (id) => ui.showSelbar(id),
   onOpeningClick: (info) => openOpeningCard(info),
-  onFitted: (plan, cab) => toast(`${cab.baseCode || cab.code} cut to ${fmtIn(plan.w)} to fill the space. Type a width on the bar to change it.`),
+  onFitted: (plan, cab) => toast(plan.shrunk
+    ? `${cab.baseCode || cab.code} cut down to ${fmtIn(plan.w)} to fit that slot. Type a width on the bar to change it.`
+    : `${cab.baseCode || cab.code} cut to ${fmtIn(plan.w)} to fill the space. Type a width on the bar to change it.`),
 });
 ui.controls = controls; // late-bind so UI buttons can drive the controls
 
