@@ -229,10 +229,11 @@ export function buildUnitIFC(units, opts = {}) {
       const lp = add(`IFCLOCALPLACEMENT(#${sLP},#${ax})`);
       const prof = add(`IFCRECTANGLEPROFILEDEF(.AREA.,$,#${axis2d},${real(w)},${real(d)})`);
       const solid = add(`IFCEXTRUDEDAREASOLID(#${prof},#${wcs},#${dirZ},${real(WORKTOP_SLAB)})`);
-      add(`IFCSTYLEDITEM(#${solid},(#${styleFor(WORKTOP_OPTIONS[wtKey].label, WORKTOP_OPTIONS[wtKey].hex)}),$)`);
+      const mk = sl.mat && WORKTOP_OPTIONS[sl.mat] ? sl.mat : wtKey;                       // the slab's own material (the island's, say)
+      add(`IFCSTYLEDITEM(#${solid},(#${styleFor(WORKTOP_OPTIONS[mk].label, WORKTOP_OPTIONS[mk].hex)}),$)`);
       const rep = add(`IFCSHAPEREPRESENTATION(#${ctx},'Body','SweptSolid',(#${solid}))`);
       const pds = add(`IFCPRODUCTDEFINITIONSHAPE($,$,(#${rep}))`);
-      elementIds.push(add(`IFCFURNISHINGELEMENT('${gid()}',$,'Worktop ${k + 1} - ${str(WORKTOP_OPTIONS[wtKey].label)} (by others)',$,$,#${lp},#${pds},'WORKTOP')`));
+      elementIds.push(add(`IFCFURNISHINGELEMENT('${gid()}',$,'Worktop ${k + 1} - ${str(WORKTOP_OPTIONS[mk].label)} (by others)',$,$,#${lp},#${pds},'WORKTOP')`));
     });
     if (elementIds.length) {
       add(`IFCRELCONTAINEDINSPATIALSTRUCTURE('${gid()}',$,$,$,` +

@@ -713,9 +713,14 @@ export function buildPlanDXF(state, { walls = true } = {}) {
   const layerExtra = [];
   const worktopKey = (r.worktop && WORKTOP_OPTIONS[r.worktop]) ? r.worktop : 'marble';
   const slabs = [];
+  const wtMats = new Set();
   for (const sl of planWorktopSlabs(items, getCab, worktopKey, { width: W, depth: D })) {
-    slabs.push(...box(sl.x0 * IN, sl.x1 * IN, -sl.z1 * IN, -sl.z0 * IN, (SURFACE_Y - WORKTOP_SLAB) * IN, SURFACE_Y * IN, 'WORKTOP'));
+    // a slab in another material (the island's own) goes on its own WORKTOP-<material> layer, in that colour
+    const mat = sl.mat && WORKTOP_OPTIONS[sl.mat] && sl.mat !== worktopKey ? sl.mat : null;
+    if (mat) wtMats.add(mat);
+    slabs.push(...box(sl.x0 * IN, sl.x1 * IN, -sl.z1 * IN, -sl.z0 * IN, (SURFACE_Y - WORKTOP_SLAB) * IN, SURFACE_Y * IN, mat ? `WORKTOP-${mat.toUpperCase()}` : 'WORKTOP'));
   }
+  for (const m of wtMats) layerExtra.push(coloured(`WORKTOP-${m.toUpperCase()}`, WORKTOP_OPTIONS[m].hex));
   if (slabs.length) { blocks.push({ name: 'WORKTOPS', lines: slabs }); ents.push(...insert('WORKTOPS', 0, 0)); }
   const scribes = [];
   for (const f of computeFillers(state || {})) {

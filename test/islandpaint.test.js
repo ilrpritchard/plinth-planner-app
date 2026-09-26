@@ -32,3 +32,18 @@ test('the island colour survives a share link round trip', () => {
   const back = decodeDesign(encodeDesign(s.state));
   assert.equal(islandFinish(back), 'Hudson');
 });
+
+test('the island worktop can differ: its slab is soapstone in the plan, the DXF (own layer) and the IFC while the run stays marble', async () => {
+  const { planWorktopSlabs } = await import('../src/core/worktop-plan.js');
+  const { buildPlanDXF } = await import('../src/core/dxf.js');
+  const { buildUnitIFC } = await import('../src/core/ifc.js');
+  const { getCab } = await import('../src/core/catalogue.js');
+  const s = mk(); s.setRoom({ worktop: 'marble' });
+  for (const id of islandIds(s.state)) s.updateItem(id, { worktop: 'soapstone' });
+  const slabs = planWorktopSlabs(s.state.items, getCab, 'marble', s.state.room);
+  assert.deepEqual([...new Set(slabs.map((x) => x.mat))].sort(), ['marble', 'soapstone']);
+  const dxf = buildPlanDXF(s.serialize(), { walls: false });
+  assert.ok(dxf.includes('\n2\nWORKTOP-SOAPSTONE\n') && dxf.includes('\n8\nWORKTOP-SOAPSTONE\n') && dxf.includes('\n8\nWORKTOP\n'), 'a WORKTOP-SOAPSTONE layer beside WORKTOP');
+  const ifc = buildUnitIFC([{ name: 'T', state: s.serialize() }]);
+  assert.ok(ifc.includes("- Soapstone (by others)") && ifc.includes("- Carrara marble (by others)"), 'both materials in the IFC');
+});

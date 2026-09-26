@@ -242,7 +242,10 @@
 
         <details class="setup-drop" id="dropWorktop">
           <summary>Countertop <span class="sd-val" id="sumWorktop"></span></summary>
-          <div class="hint" style="margin:2px 0 10px">Pick a countertop look. Select a cabinet run first to set just that run, or set the default for the whole kitchen. Countertops aren't supplied by Plinth.</div>
+          <div class="hint" style="margin:2px 0 10px">Pick a countertop look for the whole kitchen, the island on its own, or just the selected run. Countertops aren't supplied by Plinth.</div>
+          <div class="fin-target" id="wtTarget" style="display:none"><span class="fin-target-lab">Countertop for</span>
+            <button type="button" data-wt="room" class="on">The kitchen</button><button type="button" data-wt="island">The island</button><button type="button" data-wt="run" title="Just the run of the selected cabinet">This run</button>
+            <button type="button" class="fin-same" data-wt="island-same" style="display:none" title="The island back on the kitchen's countertop">Same as the kitchen</button></div>
           <div class="rs-swatches" id="worktopSwatches"></div>
         </details>
 

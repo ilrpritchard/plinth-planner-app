@@ -399,6 +399,14 @@ export class UI {
       const b = e.target.closest('[data-worktop]'); if (!b) return;
       this._setWorktop(b.dataset.worktop);
     });
+    document.getElementById('wtTarget')?.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-wt]'); if (!b) return;
+      if (b.dataset.wt === 'island-same') {                       // the island back on the kitchen's countertop
+        islandIds(this.store.state).forEach((oid, i) => this.store.updateItem(oid, { worktop: null }, { quiet: i > 0 }));
+        this._wtTarget = 'room'; this._refreshRoomStyle(); return;
+      }
+      this._wtTarget = b.dataset.wt; this._refreshRoomStyle();
+    });
     // ---- doors & windows manager ----
     document.querySelector('#dropOpenings .op-btns')?.addEventListener('click', (e) => {
       const b = e.target.closest('[data-add]'); if (!b) return;
@@ -535,6 +543,22 @@ export class UI {
     const id = this.controls?.layer?.selectedId;
     const sel = id != null ? this.store.getItem(id) : null;
     const selCab = sel ? getCab(sel.code) : null;
+    const target = this._wtTarget || 'room';
+    // THE ISLAND as a whole (both rows), whatever is selected (her ask 2026-09-26: "can the
+    // island worktop be a different color too")
+    if (target === 'island') {
+      const ids = islandIds(this.store.state);
+      if (!ids.length) { this._toast('There is no island yet.'); return; }
+      ids.forEach((oid, i) => this.store.updateItem(oid, { worktop: material }, { quiet: i > 0 }));
+      this._toast(`Island countertop set to ${WORKTOP_OPTIONS[material].label}. The rest of the kitchen keeps ${WORKTOP_OPTIONS[this.store.state.room.worktop || 'marble'].label}.`);
+      this._refreshRoomStyle();
+      return;
+    }
+    if (target === 'room') {
+      this.store.setRoom({ worktop: material });
+      // a run set on its own keeps its own; the island keeps its own too
+      return;
+    }
     if (sel && selCab && selCab.type === 'FLOOR') {
       const horiz = ((sel.rotDeg || 0) % 180) === 0;
       const run = [];
@@ -564,7 +588,20 @@ export class UI {
     const r = this.store.state.room;
     document.querySelectorAll('#floorSwatches .rs-sw').forEach((b) => b.classList.toggle('active', b.dataset.floor === r.floor));
     document.querySelectorAll('#wallSwatches .rs-sw').forEach((b) => b.classList.toggle('active', b.dataset.wall === r.wall));
-    document.querySelectorAll('#worktopSwatches .rs-sw').forEach((b) => b.classList.toggle('active', b.dataset.worktop === r.worktop));
+    const wt = document.getElementById('wtTarget');
+    const islIds = islandIds(this.store.state), hasIsland = islIds.length > 0;
+    if (!hasIsland && this._wtTarget === 'island') this._wtTarget = 'room';
+    const wtTarget = this._wtTarget || 'room';
+    const islMats = new Set(islIds.map((oid) => this.store.getItem(oid)?.worktop || r.worktop || 'marble'));
+    const islMat = islMats.size === 1 ? [...islMats][0] : null;
+    if (wt) {
+      wt.style.display = hasIsland ? '' : 'none';
+      wt.querySelectorAll('[data-wt]').forEach((b) => b.classList.toggle('on', b.dataset.wt === wtTarget));
+      const same = wt.querySelector('[data-wt="island-same"]'); if (same) same.style.display = islMat && islMat !== (r.worktop || 'marble') ? '' : 'none';
+    }
+    const shown = wtTarget === 'island' ? (islMat || r.worktop) : r.worktop;
+    document.querySelectorAll('#worktopSwatches .rs-sw').forEach((b) => b.classList.toggle('active', b.dataset.worktop === shown));
+    this._refreshRoomInputs?.();                                  // the Countertop summary reads the island too
     this._renderOpenings();
     this._renderBoxings();
     this._renderRoomPlan();
@@ -830,7 +867,11 @@ export class UI {
     set('sumRoomSize', `${ftShort(r.width)} × ${ftShort(r.depth)} · ${ftShort(r.height)} ceiling`);
     const floor = FLOORS[r.floor]?.label, wall = WALLS[r.wall]?.label;
     set('sumStyle', [floor, wall].filter(Boolean).join(' · '));
-    set('sumWorktop', WORKTOP_OPTIONS[r.worktop]?.label || 'None');
+    {
+      const islMats = new Set(islandIds(this.store.state).map((oid) => this.store.getItem(oid)?.worktop || r.worktop || 'marble'));
+      const islMat = islMats.size === 1 ? [...islMats][0] : null;
+      set('sumWorktop', (WORKTOP_OPTIONS[r.worktop]?.label || 'None') + (islMat && islMat !== (r.worktop || 'marble') ? ` · island ${WORKTOP_OPTIONS[islMat]?.label || ''}` : ''));
+    }
     set('sumCornice', corniceOption(r.cornice || 'none')?.label || 'None');
     const ops = r.openings || [];
     const opCount = (t) => ops.filter((o) => o.type === t).length;
