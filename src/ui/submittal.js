@@ -12,6 +12,7 @@
 // file only turns those numbers into SVG + HTML, reusing the floorplan.js
 // drawing style so every sheet in the set matches.
 
+import { islandFinish } from '../core/islands.js';
 import { withIslandFlags } from '../core/islands.js';
 import { getFinish, corniceOption, FAMILY_LABEL, familyOf, fmtUSD } from '../core/catalogue.js';
 import { fmtIn, fmtFeetIn } from '../core/units.js';
@@ -323,7 +324,7 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
       <h1>${esc(coverTitle(project, pm))}</h1>
       <h2>${esc(uname)} · ${qty} unit${qty === 1 ? '' : 's'}</h2>
       <div class="cover-sub">Revision ${esc(rev)} · ${esc(date)}</div>
-      ${colorTile(finish, finishBit)}
+      ${colorTile(finish, finishBit)}${islandFinish(design) ? colorTile(getFinish(islandFinish(design)), `Island: ${esc(islandFinish(design))}`) : ''}
       <div class="cover-cols">
         <div>
           ${directoryHTML(pm)}

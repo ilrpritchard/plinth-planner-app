@@ -71,3 +71,15 @@ export function canFileIsland(state, id) {
   const box = boxAt(cab, it.x, it.z, it.rotDeg);
   return state.items.some((o) => { const c = getCab(o.code); return o.id !== id && o.island && floorLine(c) && touch(box, boxAt(c, o.x, o.z, o.rotDeg)); });
 }
+
+/** The island's own paint: the finish every island cabinet carries when it differs from the
+ *  kitchen's (her ask 2026-09-26: "island cabinets a different color to the rest of the room"),
+ *  or null when the island is painted with the kitchen (or there is no island). */
+export function islandFinish(state) {
+  const isl = ((state && state.items) || []).filter((it) => it && it.island && getCab(it.code) && getCab(it.code).type !== 'APPLIANCES');
+  if (!isl.length) return null;
+  const names = new Set(isl.map((it) => it.finish || state.finish));
+  const one = names.size === 1 ? [...names][0] : null;
+  return one && one !== state.finish ? one : null;
+}
+export const islandIds = (state) => ((state && state.items) || []).filter((it) => it && it.island && getCab(it.code) && getCab(it.code).type !== 'APPLIANCES').map((it) => it.id);

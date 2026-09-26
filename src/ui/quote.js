@@ -4,6 +4,7 @@
 // price and lead-time. Rendered into an overlay on screen; the browser's
 // "Save as PDF" (window.print) turns it into a shareable PDF. Fully offline.
 
+import { islandFinish } from '../core/islands.js';
 import { summarizeState, deliveryEstimate } from '../core/cost.js';
 import { fmtUSD, getFinish } from '../core/catalogue.js';
 import { fmtFeetIn } from '../core/units.js';
@@ -73,7 +74,7 @@ export function buildQuoteHTML(state, heroDataURL = null) {
     </section>
 
     <section class="q-totals">
-      <div class="q-tline"><span>${totalCabs} cabinet${totalCabs === 1 ? '' : 's'}, finished in ${esc(fin.name)}</span><span>${fmtUSD(subtotal)}</span></div>
+      <div class="q-tline"><span>${totalCabs} cabinet${totalCabs === 1 ? '' : 's'}, finished in ${esc(fin.name)}${islandFinish(state) ? `, the island in ${esc(islandFinish(state))}` : ''}</span><span>${fmtUSD(subtotal)}</span></div>
       <div class="q-tline q-grand"><span>Estimate, cabinets only</span><span>${fmtUSD(subtotal)}</span></div>
       <div class="q-delivery">Estimated delivery <strong>${del.weeksLo}–${del.weeksHi} weeks</strong>, around ${esc(del.from)} – ${esc(del.to)}</div>
     </section>

@@ -176,6 +176,17 @@ export class Store {
     this.state.finish = name;
     this._emit({ type: 'finish' });
   }
+  /** Paint these cabinets their own colour (`name`), or back to the kitchen's (null). One undo step;
+   *  emits 'finish' so every front is rebuilt (the island in a second colour, her ask 2026-09-26). */
+  paintItems(ids, name) {
+    this._record();
+    const want = new Set(ids || []);
+    for (const it of this.state.items) {
+      if (!want.has(it.id)) continue;
+      if (name && name !== this.state.finish) it.finish = name; else delete it.finish;
+    }
+    this._emit({ type: 'finish' });
+  }
 
   setCustomer(patch) {
     Object.assign(this.state.customer, patch);

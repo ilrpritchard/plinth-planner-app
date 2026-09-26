@@ -389,6 +389,13 @@ button.cta:hover { background: var(--cream-hi); filter: none; }
 #selbar button:hover { background: var(--cream); color: #fff; border-color: var(--cream); filter: none; }
 #selbar #selDelete { color: var(--red); border-color: rgba(177,73,61,0.45); }
 #selbar #selDelete:hover { background: var(--red); color: #fff; border-color: var(--red); }
+.sel-space { display: inline-flex; align-items: center; gap: 4px; }
+.sel-space select { padding: 5px 6px; font-size: 12px; }
+.fin-target { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; font-size: 11px; }
+.fin-target-lab { color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
+.fin-target button { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: #fff; color: var(--cream-hi); font-family: inherit; font-size: 11px; cursor: pointer; }
+.fin-target button.on { background: var(--cream); color: #fff; border-color: var(--cream); }
+.fin-target .fin-same { border-style: dashed; font-weight: 400; }
 #selbar select {
   background: #fff; color: var(--cream-hi); font-weight: 600;
   border: 1px solid var(--line-strong); border-radius: 6px;

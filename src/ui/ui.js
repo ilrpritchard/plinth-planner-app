@@ -8,7 +8,8 @@ import { planCornice } from '../core/cornice.js';
 import { fmtIn, fmtFeetIn, parseLength, parseRoomLength } from '../core/units.js';
 import { findGaps, suggestForGap, placementsFor } from '../core/gaps.js';
 import { planLineUp } from '../core/evenout.js';
-import { planIslandCentre } from '../core/islandcentre.js';
+import { planIslandCentre, planIslandSpacing } from '../core/islandcentre.js';
+import { islandFinish, islandIds } from '../core/islands.js';
 import { planRoomResize } from '../core/roomresize.js';
 import { canFileIsland } from '../core/islands.js';
 import { planStackers } from '../core/stackers.js';
@@ -846,7 +847,10 @@ export class UI {
   // ---------- finishes ----------
   _finishesHTML() {
     const groups = [...new Set(FINISHES.map((f) => f.group))];
-    let html = '';
+    // paint the KITCHEN or just the ISLAND (her ask 2026-09-26); the island row only shows when there is one
+    let html = `<div class="fin-target" id="finTarget" style="display:none"><span class="fin-target-lab">Painting</span>
+      <button type="button" data-target="room" class="on">The kitchen</button><button type="button" data-target="island">The island</button>
+      <button type="button" class="fin-same" id="finIslandSame" title="Paint the island the same as the rest of the kitchen">Same as the kitchen</button></div>`;
     for (const g of groups) {
       html += `<div class="fin-group-label">${g}</div><div class="swatches">`;
       for (const f of FINISHES.filter((x) => x.group === g)) {
@@ -861,20 +865,38 @@ export class UI {
   }
 
   _wireFinishes() {
+    this._finTarget = 'room';
     document.getElementById('finishes').addEventListener('click', (e) => {
+      const tb = e.target.closest('[data-target]');
+      if (tb) { this._finTarget = tb.dataset.target; this._refreshFinish(); return; }
+      if (e.target.closest('#finIslandSame')) { this.store.paintItems(islandIds(this.store.state), null); this._finTarget = 'room'; this._refreshFinish(); this._toast('The island is painted with the kitchen again.'); return; }
       const sw = e.target.closest('.swatch');
       if (!sw) return;
-      this.store.setFinish(sw.dataset.finish);
+      if (this._finTarget === 'island') {
+        const ids = islandIds(this.store.state);
+        if (!ids.length) { this._toast('There is no island to paint yet.'); return; }
+        this.store.paintItems(ids, sw.dataset.finish);
+        this._toast(`Island painted ${sw.dataset.finish}. The rest of the kitchen stays ${this.store.state.finish}.`);
+      } else this.store.setFinish(sw.dataset.finish);
     });
   }
 
   _refreshFinish() {
-    const cur = this.store.state.finish;
+    const st = this.store.state, hasIsland = islandIds(st).length > 0;
+    const isl = islandFinish(st);
+    const target = hasIsland ? (this._finTarget || 'room') : 'room';
+    const cur = target === 'island' ? (isl || st.finish) : st.finish;
     document.querySelectorAll('#finishes .swatch').forEach((sw) => {
       sw.classList.toggle('active', sw.dataset.finish === cur);
     });
-    const f = getFinish(cur);
-    document.getElementById('finishName').textContent = `${f.name}: ${f.desc}`;
+    const tgt = document.getElementById('finTarget');
+    if (tgt) {
+      tgt.style.display = hasIsland ? '' : 'none';
+      tgt.querySelectorAll('[data-target]').forEach((b) => b.classList.toggle('on', b.dataset.target === target));
+      const same = document.getElementById('finIslandSame'); if (same) same.style.display = isl ? '' : 'none';
+    }
+    const f = getFinish(st.finish);
+    document.getElementById('finishName').textContent = isl ? `${f.name}, island in ${isl}` : `${f.name}: ${f.desc}`;
   }
 
   /** A click on a line in "This kitchen" selects that cabinet in 3D; clicked again it steps to the
@@ -1159,6 +1181,20 @@ export class UI {
       this.showSelbar(id);
     });
     document.getElementById('selStacker').addEventListener('click', () => { const id = this.controls.layer.selectedId; if (id != null) this._stackWall(id); });
+    // the whole island stands a chosen walkway off the counters (her ask 2026-09-26)
+    document.getElementById('selSpace').addEventListener('click', () => {
+      const id = this.controls.layer.selectedId; if (id == null) return;
+      const mm = Number(document.getElementById('selSpaceMm').value) || 1000, clearIn = mm / 25.4;
+      const p = planIslandSpacing(this.store.state, id, clearIn);
+      const say = (c) => [c.back != null ? `${fmtIn(c.back)} from the back run` : null, c.left != null ? `${fmtIn(c.left)} from the left run` : null, c.right != null ? `${fmtIn(c.right)} from the right run` : null].filter(Boolean).join(', ');
+      if (!p.ok) {
+        this._toast({ already: `It already stands ${say(p.clear || {})}.`, blocked: 'Something is in the way of that spot.', 'no run': 'There is no counter run on a wall to measure from.', 'too tight': `The floor is too tight for ${mm}mm all round${p.clear ? `: it can give ${say(p.clear)}` : ''}.` }[p.reason] || 'Select an island cabinet first.');
+        return;
+      }
+      this.controls.applyMoves(p.moves);
+      this._toast(`Island moved: ${say(p.clear)}${p.clear.left != null && p.clear.right != null ? ' (centred between the side runs)' : ''}. Undo puts it back.`);
+      this.showSelbar(id);
+    });
     document.getElementById('selCentreRoom').addEventListener('click', centre('room'));
     document.getElementById('selCentreRange').addEventListener('click', centre('range'));
     document.getElementById('selMirrorRange').addEventListener('click', mirror('range'));
@@ -1281,6 +1317,7 @@ export class UI {
     document.getElementById('selDouble').style.display = (dbl.ok || ['no room', 'no fit'].includes(dbl.reason)) ? '' : 'none';
     const cRoom = planIslandCentre(this.store.state, id, 'room'), cRange = planIslandCentre(this.store.state, id, 'range');
     document.getElementById('selCentreRoom').style.display = cRoom.reason === 'not island' ? 'none' : '';
+    document.getElementById('selSpaceWrap').style.display = cRoom.reason === 'not island' ? 'none' : '';
     document.getElementById('selCentreRange').style.display = (cRange.ok && !(cRoom.ok && Math.abs(cRoom.dx - cRange.dx) < 0.25)) || (cRange.reason === 'blocked') ? '' : 'none';
     const sk = document.getElementById('selStacker'), skp = planStackers(this.store.state, null, id);
     sk.style.display = skp.ok ? '' : 'none';
@@ -1364,7 +1401,7 @@ export class UI {
       this._refreshCornice();
       if (!change.quiet) { this._renderWallFit(); this._refreshCatalogue(); }
     }
-    if (change.type === 'finish') { this._refreshFinish(); }
+    if (change.type === 'finish' || change.type === 'add' || change.type === 'remove' || change.type === 'update' || change.type === 'swap') { this._refreshFinish(); }
     if (change.type === 'load' || change.type === 'reset') { this._syncCustomer(); this._refreshRoomInputs(); this._refreshRoomStyle(); this._refreshCornice(); this._refreshAccessories(); }
   }
 

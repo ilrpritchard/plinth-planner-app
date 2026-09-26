@@ -42,3 +42,29 @@ test('centre on the range; refused when there is none, when something is in the 
   assert.equal(planIslandCentre({ room, items: [...island(-40), post] }, 1, 'room').reason, 'blocked');
   assert.equal(planIslandCentre({ room, items: [range] }, 20, 'room').reason, 'not island');
 });
+
+test('Space from the counters: 1000mm off the back run, centred between two side runs; one side run -> 1000mm from it; too tight says so', async () => {
+  const { planIslandSpacing } = await import('../src/core/islandcentre.js');
+  const mm = 1000 / 25.4;
+  // a U: back run 24" deep, side runs on both walls, a 72" island somewhere in the middle
+  const U = { room: { width: 220, depth: 200, height: 96 }, items: [
+    { id: 1, code: 'F10', x: -20, z: -100 + 12.25, rotDeg: 0 }, { id: 2, code: 'F10', x: 16, z: -100 + 12.25, rotDeg: 0 },
+    { id: 3, code: 'F10', x: -110 + 12.25, z: -40, rotDeg: 90 }, { id: 4, code: 'F10', x: 110 - 12.25, z: -40, rotDeg: 270 },
+    { id: 5, code: 'F20', x: -18 + 5, z: 10, rotDeg: 180, island: true }, { id: 6, code: 'F20', x: 18 + 5, z: 10, rotDeg: 180, island: true } ] };
+  const p = planIslandSpacing(U, 5, mm);
+  assert.ok(p.ok, p.reason);
+  const z0 = Math.min(...p.moves.filter((m) => m.id >= 5).map((m) => m.z)) - 12;          // island back edge after the move
+  assert.ok(Math.abs(z0 - (-100 + 24.25 + mm)) < 0.05, `1000mm off the back run (${z0.toFixed(2)})`);
+  const cx = p.moves.filter((m) => m.id >= 5).reduce((t, m) => t + m.x, 0) / 2;
+  assert.ok(Math.abs(cx) < 0.05, `centred between the side runs (${cx.toFixed(2)})`);
+  assert.ok(Math.abs(p.clear.back - mm) < 0.01 && Math.abs(p.clear.left - p.clear.right) < 0.05 && p.clear.left > mm, 'reports the clearances');
+  // one side run only: 1000mm from it
+  const L = { ...U, items: U.items.filter((i) => i.id !== 4) };
+  const q = planIslandSpacing(L, 5, mm);
+  assert.ok(q.ok && Math.abs(q.clear.left - mm) < 0.01 && q.clear.right === null, 'one side run: 1000mm from it');
+  // too tight: a narrow U cannot give 1000mm both sides
+  const T = { ...U, room: { width: 160, depth: 200, height: 96 }, items: U.items.map((i) => i.id === 3 ? { ...i, x: -80 + 12.25 } : i.id === 4 ? { ...i, x: 80 - 12.25 } : i) };
+  const t = planIslandSpacing(T, 5, mm);
+  assert.equal(t.ok, false); assert.equal(t.reason, 'too tight');
+  assert.equal(planIslandSpacing(U, 1, mm).reason, 'not island');
+});
