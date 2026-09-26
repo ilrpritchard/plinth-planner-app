@@ -21,7 +21,11 @@ export class CloudUI {
     // the open design survives a reload (her catch 2026-09-22: Save asked her to name Evie's
     // Kitchen again, because the link to it was lost when the page reloaded)
     try { const j = JSON.parse(localStorage.getItem('plnr-current-design') || 'null'); if (j && j.id) { this.currentId = j.id; this.currentName = j.name || null; } } catch { /* private mode */ }
-    store.subscribe((s, c) => { if ((c.type === 'load' && !this._opening) || c.type === 'reset') this._setCurrent(null, null); });
+    // a NEW state on screen (a shared link, a project unit, Clear) means no design is open any
+    // more. An UNDO or REDO is not that: it replays the same kitchen and fires the same 'load'
+    // (hist: true), and used to drop the open design, so the next autosave and the next Save went
+    // to "Autosave" instead of her file (her catch 2026-09-26: "it just saves autosave").
+    store.subscribe((s, c) => { if ((c.type === 'load' && !c.hist && !this._opening) || c.type === 'reset') this._setCurrent(null, null); });
     this._startAutosave();
     this.onLoaded = onLoaded || (() => {});
     this.user = null;
