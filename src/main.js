@@ -124,28 +124,7 @@ const ui = new UI({
   onRoomChange: (reframe = false) => { buildRoom(reframe); rebuildWorktop(); rebuildFillers(); rebuildCornice(); },
 });
 
-// click-a-wall popup → add a window / door / doorway right where you clicked
-const wallMenu = document.getElementById('wallMenu');
-let wallTarget = null;
-function hideWallMenu() { if (wallMenu) wallMenu.style.display = 'none'; wallTarget = null; }
-function showWallMenu(info) {
-  if (!wallMenu) return;
-  if (!info) { hideWallMenu(); return; }
-  const { wall, pos, clientX, clientY } = info;
-  wallTarget = { wall, pos };
-  wallMenu.style.display = 'block';
-  const pad = 8, mw = wallMenu.offsetWidth || 150, mh = wallMenu.offsetHeight || 120;
-  wallMenu.style.left = Math.min(clientX + 6, window.innerWidth - mw - pad) + 'px';
-  wallMenu.style.top = Math.min(clientY + 6, window.innerHeight - mh - pad) + 'px';
-}
-wallMenu?.addEventListener('click', (e) => {
-  if (!wallTarget) return;
-  const fillBtn = e.target.closest('[data-fill]');
-  if (fillBtn) { fillThisWall(wallTarget.wall); hideWallMenu(); return; }
-  const b = e.target.closest('[data-op]'); if (!b) return;
-  store.addOpening({ type: b.dataset.op, wall: wallTarget.wall, pos: wallTarget.pos });
-  buildRoom(false); hideWallMenu();
-});
+// (the click-a-wall popup is gone, her call 2026-09-26: the Room tab's typed doors & windows and Fill this wall cover it)
 
 // Fill the clicked wall: find EVERY free gap along it — between cabinets and
 // at both ends — and pack each one with base units (doors stay clear; gaps
@@ -156,7 +135,6 @@ function fillThisWall(clickWall) {
   for (const p of placements) store.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg });
   rebuildWorktop(); rebuildFillers(); rebuildCornice(); ui.refresh();
 }
-window.addEventListener('pointerdown', (e) => { if (wallMenu && !wallMenu.contains(e.target) && !e.target.closest('canvas')) hideWallMenu(); });
 
 // click a placed window / door / doorway → ITS card opens in the left panel, lit, with every field
 // (corner, edge, width, sill, height, delete) — no popup (her call 2026-09-25: "i dont think we need
@@ -176,8 +154,7 @@ const controls = new PointerControls({
   store,
   onCommit: () => { store.syncIslands(); rebuildWorktop(); },
   onSelect: (id) => ui.showSelbar(id),
-  onWallClick: (info) => showWallMenu(info),
-  onOpeningClick: (info) => { hideWallMenu(); openOpeningCard(info); },
+  onOpeningClick: (info) => openOpeningCard(info),
   onFitted: (plan, cab) => toast(`${cab.baseCode || cab.code} cut to ${fmtIn(plan.w)} to fill the space. Type a width on the bar to change it.`),
 });
 ui.controls = controls; // late-bind so UI buttons can drive the controls
