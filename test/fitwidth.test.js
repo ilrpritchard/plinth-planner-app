@@ -6,18 +6,20 @@ import { planFitToGap, planSetWidth } from '../src/core/fitwidth.js';
 import { rowsFromDesign } from '../src/core/cost.js';
 import { buildPlanDXF } from '../src/core/dxf.js';
 
-test('a sized-width code is a real cabinet: its width, priced as the next standard size up, labelled cut to fit', () => {
+test('a sized-width code is a real cabinet: its width, priced as the next standard size up PLUS 10%, marked resized in the list', () => {
   const c = getCab('W22:w14');
-  assert.ok(c && c.w === 14 && c.baseCode === 'W22' && c.cutToFit && /cut to fit/.test(c.desc));
-  assert.equal(c.usd, getCab('W22').usd, 'a 14" full-height shelf is priced as the 20"');
-  assert.equal(getCab('W22:w26').usd, getCab('W24').usd, 'a 26" is priced as the 28" (W24)');
-  assert.equal(getCab('W22:w40').usd, getCab('W24').usd, 'wider than any standard: the widest');
-  assert.equal(getCab('F8:w6').w, 6); assert.equal(getCab('F8:w6').usd, getCab('F8').usd);
+  assert.ok(c && c.w === 14 && c.baseCode === 'W22' && c.cutToFit && /resized to 14" \(\+10%\)/.test(c.desc), c.desc);
+  assert.equal(c.usd, Math.round(getCab('W22').usd * 1.1), 'a 14" full-height shelf is the 20" price + 10%');
+  assert.equal(getCab('W22:w26').usd, Math.round(getCab('W24').usd * 1.1), 'a 26" is the 28" (W24) + 10%');
+  assert.equal(getCab('W22:w40').usd, Math.round(getCab('W24').usd * 1.1), 'wider than any standard: the widest + 10%');
+  assert.equal(getCab('F8:w6').w, 6); assert.equal(getCab('F8:w6').usd, Math.round(getCab('F8').usd * 1.1));
   assert.equal(sizedWidthCode('W22', 20), 'W22', 'the standard width is the plain code');
   assert.equal(sizedWidthCode('W22', 14.3), 'W22:w14.5', 'half inches');
   assert.equal(getCab('W22:w60').w, FIT_WIDTH_LIMITS[1], 'clamped');
   assert.equal(getCab('F2:w14'), undefined, 'a door cabinet is never cut');
-  assert.ok(canFitWidth(getCab('W11')) && canFitWidth(getCab('F8')) && canFitWidth(getCab('F23')) && !canFitWidth(getCab('W2')) && !canFitWidth(getCab('W9')));
+  assert.equal(getCab('F23:w14'), undefined, 'a FLOOR open shelf is never cut (her rule: wall open shelves, full-height wall open shelves and the tray space only)');
+  assert.ok(canFitWidth(getCab('W11')) && canFitWidth(getCab('W25')) && canFitWidth(getCab('W22')) && canFitWidth(getCab('F8')));
+  assert.ok(!canFitWidth(getCab('F23')) && !canFitWidth(getCab('W2')) && !canFitWidth(getCab('W9')) && !canFitWidth(getCab('C7')));
 });
 
 test('dropped touching a tall with a 14" sliver to the wall, a 20" shelf becomes 34" and shifts half the sliver toward the wall', () => {

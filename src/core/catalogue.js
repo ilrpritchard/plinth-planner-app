@@ -401,10 +401,13 @@ const sizedShelfCache = new Map();
 // code '<BASE>:w<inches>'. Priced as the narrowest standard size at or above that width in the
 // same family (or the base when there is none wider): a cut-down 20" shelf is a 20" shelf's work.
 export const FIT_WIDTH_LIMITS = [6, 42];
+export const RESIZE_UPCHARGE = 0.10;      // a resized shelf or tray space: the standard size's price + 10% (her call 2026-09-26)
 const SIZED_WIDTH_RX = /^([WF]\d+):w(\d+(?:\.\d+)?)$/i;
 const sizedWidthCache = new Map();
 export function canFitWidth(cab) {
-  return !!cab && !cab.corner && !cab.stacker && (cab.form === 'open' || cab.form === 'tray') && (cab.type === 'WALL' || cab.type === 'FLOOR');
+  // her rule 2026-09-26: ONLY wall open shelves (W11-13, W25), full-height wall open shelves
+  // (W22-24) and the F8 tray space. Nothing else, no floor open shelves.
+  return !!cab && !cab.corner && !cab.stacker && ((cab.type === 'WALL' && cab.form === 'open') || (cab.type === 'FLOOR' && cab.form === 'tray'));
 }
 export function sizedWidthCode(baseCode, width) {
   const base = getCab(baseCode); if (!base || !canFitWidth(base)) return baseCode;
@@ -416,7 +419,7 @@ function fitPriceFor(base, w) {
   const family = CATALOGUE.filter((c) => c.type === base.type && c.form === base.form && !c.corner && !!c.halfDepth === !!base.halfDepth && c.h === base.h && c.placeable);
   const wider = family.filter((c) => c.w >= w - 0.05).sort((p, q) => p.w - q.w)[0];
   const widest = [...family].sort((p, q) => q.w - p.w)[0];
-  return (wider || widest || base).usd;
+  return Math.round((wider || widest || base).usd * (1 + RESIZE_UPCHARGE));   // +10% for the resize (her call 2026-09-26)
 }
 
 export function getCab(code) {
@@ -427,7 +430,7 @@ export function getCab(code) {
       const base = CATALOGUE.find((c) => c.code === mw[1].toUpperCase());
       if (!base || !canFitWidth(base)) return undefined;
       const w = Math.round(clampDim(mw[2], FIT_WIDTH_LIMITS, base.w) * 2) / 2;
-      hit = { ...base, code, w, usd: fitPriceFor(base, w), baseCode: base.code, cutToFit: true, desc: `${base.desc} · ${w}" wide, cut to fit` };
+      hit = { ...base, code, w, usd: fitPriceFor(base, w), baseCode: base.code, cutToFit: true, desc: `${base.desc} · resized to ${w}" (+10%)`, notes: `${base.notes ? base.notes + ' ' : ''}Resized to ${w}" wide to fit: the ${base.code} made ${w}", priced at the standard size plus 10%.` };
       sizedWidthCache.set(code, hit);
     }
     return hit;
