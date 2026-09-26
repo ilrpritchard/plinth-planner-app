@@ -15,6 +15,7 @@ import { ensureDxfEmail, ensureEmailGate } from './dxfgate.js';
 const DOC_GATE = { title: 'Where should we send updates?', sub: 'Leave your email to download the submittal. One email unlocks every document.', cta: 'Download' };
 import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
+import { loadPreviews, whenAgo } from './preview.js';
 import { bumpRev, unitRev, wallsWithItems, computeElevation, islandFaces, computeIslandElevation } from '../core/submittal.js';
 import { saveNow } from '../core/persistence.js';
 import { uiConfirm, uiChoice, uiAlert, uiPrompt, mailFallback } from './dialog.js';
@@ -1068,7 +1069,8 @@ export class TradeUI {
       <p class="cloud-sub">Open a saved project. It replaces what's on screen.</p>
       <div class="cloud-list">${rows.length ? rows.map((r) => `
         <div class="design-row" data-id="${r.id}">
-          <span>${esc(r.name || 'Untitled project')} <em>${r.share_token ? '· shared' : ''}</em></span>
+          <span class="pv-thumb" data-pv="${r.id}"></span>
+          <span class="pv-text"><span class="pv-name">${esc(r.name || 'Untitled project')}</span> <em>${r.share_token ? '· shared' : ''}</em><br><em>${esc(whenAgo(r.updated_at))}</em> <em class="pv-cap" data-pvcap="${r.id}"></em></span>
           <span><button class="linkbtn" data-open="${r.id}">Open</button></span>
         </div>`).join('') : '<div class="cloud-msg">No saved trade projects yet. Hit Save project.</div>'}</div>
       <div class="dlg-btns"><button class="cta" id="tcloudNew" title="Start another project: name it, then enter its first unit's room">+ New project</button></div>
@@ -1077,6 +1079,14 @@ export class TradeUI {
     m.addEventListener('click', (e) => { if (e.target === m) m.remove(); });
     m.querySelector('#tcloudClose').addEventListener('click', () => m.remove());
     m.querySelector('#tcloudNew').addEventListener('click', () => { m.remove(); this.newProject(); });
+    // a project's preview: the first laid-out unit type's plan, with the unit mix under it
+    loadPreviews(m, rows.map((r) => r.id), async (id) => {
+      const row = await loadTradeProject(id); const t = (row && row.data) || {};
+      const units = t.units || [], designed = units.find((u) => u && u.design);
+      const st = designed ? designed.design : null;
+      if (st) st._mix = units;                                 // carried to the caption
+      return st || { room: null, items: [], _mix: units };
+    }, (st) => { const units = (st && st._mix) || []; const n = units.reduce((a, u) => a + (unitQty(u) || 0), 0); return units.length ? `· ${units.length} type${units.length === 1 ? '' : 's'}, ${n} unit${n === 1 ? '' : 's'}` : ''; });
     m.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', async () => {
       try {
         const row = await loadTradeProject(b.dataset.open);

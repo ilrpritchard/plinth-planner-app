@@ -278,8 +278,8 @@ function startPhotoMode() {
   bar.innerHTML = `<button type="button" class="pb-ghost" id="pbPrev" title="Previous angle (←)">‹</button>
     <span id="pbCap"></span>
     <button type="button" class="pb-ghost" id="pbNext" title="Next angle (→)">›</button>
-    <button type="button" id="pbSave" title="Render what is on screen at ${PHOTO.width} × ${PHOTO.height} and save it">Save this photo</button>
-    <button type="button" class="pb-ghost" id="pbAll" title="Your view and the five suggested standpoints, rendered at ${PHOTO.width} × ${PHOTO.height}, in one zip">Save all (zip)</button>
+    <button type="button" id="pbSave" title="Render what is on screen at ${PHOTO.width} × ${PHOTO.height} and save it">Save</button>
+    <button type="button" class="pb-ghost" id="pbAll" title="Your view and the five suggested standpoints, rendered at ${PHOTO.width} × ${PHOTO.height}, in one zip">Save all</button>
     <button type="button" class="pb-ghost" id="pbDone">Done</button>`;
   bar.querySelector('#pbPrev').addEventListener('click', () => photoAngle(photoMode.i - 1));
   bar.querySelector('#pbNext').addEventListener('click', () => photoAngle(photoMode.i + 1));

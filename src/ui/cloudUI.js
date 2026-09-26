@@ -7,6 +7,7 @@ import {
   saveDesign, listDesigns, loadDesign, deleteDesign,
 } from '../core/cloud.js';
 import { uiConfirm } from './dialog.js';
+import { loadPreviews, whenAgo, forgetPreview } from './preview.js';
 
 export class CloudUI {
   constructor({ store, onLoaded, onSaved }) {
@@ -196,7 +197,7 @@ export class CloudUI {
         // Naming the Autosave RENAMES it in place, so no stale 'Autosave' is left behind.
         const inPlace = this.currentId && (name === this.currentName || this.currentName === 'Autosave');
         const row = await saveDesign(name, this.store.serialize(), inPlace ? this.currentId : null);
-        this._setCurrent(row.id, row.name); this._lastSaved = JSON.stringify(this.store.serialize());
+        this._setCurrent(row.id, row.name); this._lastSaved = JSON.stringify(this.store.serialize()); forgetPreview(row.id);
         this._note2(`Saved ${this._clock()}`);
         this._refreshList(inPlace ? 'Saved ✓ (updated in place)' : 'Saved ✓');
       } catch (err) { this._refreshList(err.message, true); }
@@ -268,9 +269,12 @@ export class CloudUI {
       const rows = await listDesigns();
       el.innerHTML = (note ? `<div class="cloud-msg ${isErr ? 'err' : 'ok'}">${esc(note)}</div>` : '') +
         (rows.length ? rows.map((r) => `<div class="design-row" data-id="${r.id}">
-          <span>${esc(r.name || 'Untitled')} <em>${r.mode === 'trade' ? '· trade' : ''}${r.id === this.currentId ? ' · open now' : ''}</em></span>
+          <span class="pv-thumb" data-pv="${r.id}"></span>
+          <span class="pv-text"><span class="pv-name">${esc(r.name || 'Untitled')}</span> <em>${r.mode === 'trade' ? '· trade' : ''}${r.id === this.currentId ? ' · open now' : ''}</em><br><em>${esc(whenAgo(r.updated_at))}</em> <em class="pv-cap" data-pvcap="${r.id}"></em></span>
           <span><button class="linkbtn" data-act="open">Open</button> <button class="linkbtn danger" data-act="del">Delete</button></span>
         </div>`).join('') : '<div class="cloud-msg">No saved designs yet.</div>');
+      // the thumbnails arrive one by one behind the list, so the names show at once
+      loadPreviews(el, rows.map((r) => r.id), loadDesign, (st) => { const n = ((st && st.items) || []).length; return n ? `· ${n} item${n === 1 ? '' : 's'}` : ''; });
       el.querySelectorAll('.design-row').forEach((row) => {
         const id = row.dataset.id;
         row.querySelector('[data-act="open"]').addEventListener('click', async () => {
@@ -280,10 +284,10 @@ export class CloudUI {
           finally { this._opening = false; }
         });
         row.querySelector('[data-act="del"]').addEventListener('click', async () => {
-          const name = row.querySelector('span')?.textContent?.trim() || 'this design';
+          const name = row.querySelector('.pv-name')?.textContent?.trim() || 'this design';
           if (await uiConfirm(`"${name}" will be gone for good.`, {
             title: 'Delete this design?', confirmLabel: 'Delete', danger: true,
-          })) { await deleteDesign(id); if (id === this.currentId) { this._setCurrent(null, null); this._lastSaved = null; this._note2(''); } this._refreshList('Deleted'); }
+          })) { await deleteDesign(id); forgetPreview(id); if (id === this.currentId) { this._setCurrent(null, null); this._lastSaved = null; this._note2(''); } this._refreshList('Deleted'); }
         });
       });
     } catch (err) { el.innerHTML = `<div class="cloud-msg err">${esc(err.message)}</div>`; }

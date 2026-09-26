@@ -991,6 +991,13 @@ body.wz-reviewing #viewControls, body.wz-reviewing #selbar {
 .cloud-list { max-height: 260px; overflow-y: auto; }
 .design-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .design-row em { color: var(--muted); font-style: normal; font-size: 11px; }
+.design-row .pv-text { flex: 1 1 auto; min-width: 0; padding: 0 10px; line-height: 1.35; }
+.design-row .pv-name { font-weight: 600; }
+.pv-thumb { flex: 0 0 auto; width: 84px; height: 62px; background: #fff; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.pv-thumb svg { display: block; width: 100%; height: 100%; object-fit: contain; }
+.pv-thumb.pv-blank, .pv-thumb:empty { background: rgba(100,91,61,0.06); }
+.pv-thumb .pv-empty { font-size: 9px; color: var(--dim); letter-spacing: 0.04em; text-transform: uppercase; }
+.cloud-list { max-height: 360px; }
 .linkbtn { background: none; border: none; color: var(--green); cursor: pointer; font-size: 12px; padding: 2px 4px; }
 .linkbtn.danger { color: var(--red); }
 
@@ -1225,9 +1232,19 @@ a.tlink:hover { background: var(--cream); color: var(--brown-deep); border-color
    selected-cabinet bar used to sit underneath it (Delete unreachable, 2026-09-18).
    The banner is removed from the DOM on Done/Cancel, so :has() is enough. */
 body:has(#designBanner) #selbar { top: 124px; }
+/* THE TOP-CENTRE LANE STACKS (her screenshot 2026-09-26, a narrower window: the design banner,
+   the photo bar and the selected-cabinet bar all landed on the same spot). Order, top down:
+   design banner, photo bar, selection bar. Each one present pushes the next down. */
+body:has(#designBanner) #photoBar { top: 124px; }
+body:has(#photoBar) #selbar { top: 128px; }
+body:has(#designBanner):has(#photoBar) #selbar { top: 186px; }
 @media (max-width: 820px) {
   #designBanner { top: 58px; left: 8px; right: 8px; transform: none; justify-content: center; gap: 8px; padding: 8px 10px; }
   body:has(#designBanner) #selbar { top: 118px; }
+  #photoBar { left: 8px; right: 8px; transform: none; max-width: none; }
+  body:has(#designBanner) #photoBar { top: 118px; }
+  body:has(#photoBar) #selbar { top: 130px; }
+  body:has(#designBanner):has(#photoBar) #selbar { top: 190px; }
 }
 
 /* ---- Trade visual cabinet picker ---- */
