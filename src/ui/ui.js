@@ -1178,9 +1178,17 @@ export class UI {
       const id = this.controls.layer.selectedId; if (id == null) return;
       const it = this.store.getItem(id);
       if (getCab(it.code)?.appliance === 'oven') { this._announcePlaced(this.controls.placeNew(it.code, this.activeWall)); return; }
-      const copy = this.store.addItem(it.code, { x: it.x + 4, z: it.z, rotDeg: it.rotDeg });
+      // the copy stands in the first FREE space on its wall (never 4" over the original, which
+      // used to leave two cabinets through each other until one was dragged clear, her screenshot
+      // 2026-09-26), then rides the pointer like a tapped-in cabinet
+      const cab = getCab(it.code), b = this.controls.room.bounds();
+      const wallOf = { 0: 'back', 90: 'left', 180: 'front', 270: 'right' }[(((it.rotDeg || 0) % 360) + 360) % 360] || 'back';
+      const spot = cab ? findFreeSpot(this.store.state, cab, b, wallOf) : null;
+      if (!spot) { this._toast(`There is no space left for another ${cab?.desc || 'one'}. Make room, or make the room bigger.`); return; }
+      const copy = this.store.addItem(it.code, { x: spot.x, z: spot.z, rotDeg: spot.rotDeg, ...(it.island ? { island: true } : {}), ...(it.finish ? { finish: it.finish } : {}) });
       this.controls.layer.select(copy.id);
       this.showSelbar(copy.id);
+      this.controls.carry?.(copy.id);
     });
     document.getElementById('selDelete').addEventListener('click', () => {
       const id = this.controls.layer.selectedId; if (id == null) return;

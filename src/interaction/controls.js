@@ -243,6 +243,7 @@ export class PointerControls {
       oven: '✕ A wall oven lives in an oven housing of its size',
       hood: '✕ A range hood sits over the range or cooktop. Add one first',
       dishwasher: '✕ Nothing sits over the dishwasher: a sink needs a door or double base',
+      blocked: '✕ No room here: it would overlap what is already there',
     };
     if (snapped.flag && snapped.flag.startsWith('cornerReturn:')) this._showRuleFlag(`✕ The blank return would run into the ${snapped.flag.slice(13)} on the other wall`, e);
     else if (snapped.flag) this._showRuleFlag(RULE_MSG[snapped.flag] || '✕ Not allowed there', e);

@@ -445,6 +445,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // run axis instead; if there's no clear spot, it stays where it was.
   let windowFlag = false;
   let cookerFlag = false;
+  let blockedFlag = false;                                 // nothing clear within reach: the drop must not stand
   {
     const TOL = 0.75;                                    // touching ≠ overlapping
     // WINDOWS are solid to anything mounted in their band — a cabinet NEVER
@@ -530,14 +531,15 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       [x, z] = inRoom(x, z);
       hit = hitAt(x, z);
     }
-    if (hit) {                                            // no clear spot → stay put
+    if (hit) {                                            // no clear spot → stay put, AND SAY SO
       if (hit.win) windowFlag = true;
       if (hit.cooker) cookerFlag = true;
+      blockedFlag = true;                                 // hard rule 1: never a silent overlap (her screenshot 2026-09-26)
       x = item.x; z = item.z; rotDeg = item.rotDeg || 0;
     }
   }
 
-  let flag = windowFlag ? 'window' : (cookerFlag ? 'cooker' : undefined);
+  let flag = windowFlag ? 'window' : (cookerFlag ? 'cooker' : (blockedFlag ? 'blocked' : undefined));
 
   // A sink or cooktop near a base cabinet CENTRES on it, both ways (her rule
   // 2026-09-18: "the sink when dropped in always automatically centres on the
