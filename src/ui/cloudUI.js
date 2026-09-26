@@ -4,9 +4,9 @@
 import {
   isCloud, signUp, signIn, signOut, currentUser, onAuthChange, onPasswordRecovery,
   resetPassword, updatePassword,
-  saveDesign, listDesigns, loadDesign, deleteDesign,
+  saveDesign, listDesigns, loadDesign, deleteDesign, renameDesign,
 } from '../core/cloud.js';
-import { uiConfirm } from './dialog.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 import { loadPreviews, whenAgo, forgetPreview } from './preview.js';
 
 export class CloudUI {
@@ -275,7 +275,7 @@ export class CloudUI {
         (rows.length ? rows.map((r) => `<div class="design-row" data-id="${r.id}">
           <span class="pv-thumb" data-pv="${r.id}"></span>
           <span class="pv-text"><span class="pv-name">${esc(r.name || 'Untitled')}</span> <em>${r.mode === 'trade' ? '· trade' : ''}${r.id === this.currentId ? ' · open now' : ''}</em><br><em>${esc(whenAgo(r.updated_at))}</em> <em class="pv-cap" data-pvcap="${r.id}"></em></span>
-          <span><button class="linkbtn" data-act="open">Open</button> <button class="linkbtn danger" data-act="del">Delete</button></span>
+          <span class="pv-acts"><button class="linkbtn" data-act="open">Open</button> <button class="linkbtn" data-act="rename" title="Give this design a new name (the Autosave too)">Rename</button> <button class="linkbtn danger" data-act="del">Delete</button></span>
         </div>`).join('') : '<div class="cloud-msg">No saved designs yet.</div>');
       // the thumbnails arrive one by one behind the list, so the names show at once
       loadPreviews(el, rows.map((r) => r.id), loadDesign, (st) => { const n = ((st && st.items) || []).length; return n ? `· ${n} item${n === 1 ? '' : 's'}` : ''; });
@@ -286,6 +286,18 @@ export class CloudUI {
           this._opening = true;
           try { if (data && this.store.replace(data)) { this._setCurrent(id, (rows.find((r) => r.id === id) || {}).name || null); this._lastSaved = JSON.stringify(this.store.serialize()); this._note2(''); this.onLoaded(); this.close(); } }
           finally { this._opening = false; }
+        });
+        // RENAME in place (her ask 2026-09-26: "so I can rename the Autosave"): the kitchen and
+        // its previews stay; if it is the open design, Save keeps writing to it under the new name
+        row.querySelector('[data-act="rename"]').addEventListener('click', async () => {
+          const oldName = row.querySelector('.pv-name')?.textContent?.trim() || '';
+          const name = await uiPrompt('A new name for this design.', { title: 'Rename', value: oldName === 'Autosave' ? '' : oldName, placeholder: 'e.g. Smith kitchen', confirmLabel: 'Rename', required: true });
+          if (name == null || name === oldName) return;
+          try {
+            await renameDesign(id, name);
+            if (id === this.currentId) this._setCurrent(id, name);
+            this._refreshList(`Renamed to “${name}”`);
+          } catch (err) { this._refreshList(err.message, true); }
         });
         row.querySelector('[data-act="del"]').addEventListener('click', async () => {
           const name = row.querySelector('.pv-name')?.textContent?.trim() || 'this design';

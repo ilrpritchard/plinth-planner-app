@@ -82,6 +82,12 @@ export async function saveDesign(name, payload, id = null) {
   const { data, error } = await c.from('designs').insert({ ...row, user_id: user.id }).select().single();
   if (error) throw error; return data;
 }
+/** Rename a saved design in place (name only; the kitchen and its timestamp are left alone). */
+export async function renameDesign(id, name) {
+  const c = await client(); if (!c) throw new Error('Cloud not configured');
+  const { data, error } = await c.from('designs').update({ name }).eq('id', id).select('id,name').single();
+  if (error) throw error; return data;
+}
 export async function listDesigns() {
   const c = await client(); if (!c) return [];
   const { data, error } = await c.from('designs').select('id,name,mode,updated_at').order('updated_at', { ascending: false });

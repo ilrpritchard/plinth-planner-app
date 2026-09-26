@@ -993,6 +993,7 @@ body.wz-reviewing #viewControls, body.wz-reviewing #selbar {
 .design-row em { color: var(--muted); font-style: normal; font-size: 11px; }
 .design-row .pv-text { flex: 1 1 auto; min-width: 0; padding: 0 10px; line-height: 1.35; }
 .design-row .pv-name { font-weight: 600; }
+.design-row .pv-acts { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .pv-thumb { flex: 0 0 auto; width: 84px; height: 62px; background: #fff; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .pv-thumb svg { display: block; width: 100%; height: 100%; object-fit: contain; }
 .pv-thumb.pv-blank, .pv-thumb:empty { background: rgba(100,91,61,0.06); }
