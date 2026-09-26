@@ -120,7 +120,13 @@ export class Store {
   // ----- mutations -----
   setRoom(patch) {
     this._record();
+    const was = this.state.room.height;
     Object.assign(this.state.room, patch);
+    // a bulkhead that stood exactly to the OLD ceiling (older designs froze the height at creation)
+    // goes on standing to the ceiling
+    if ('height' in patch && Number.isFinite(was) && patch.height !== was) {
+      for (const b of this.state.room.boxings || []) if (b.h != null && Math.abs(b.h - was) < 0.05) delete b.h;
+    }
     this._emit({ type: 'room' });
   }
 
@@ -153,7 +159,10 @@ export class Store {
     this._record();
     const r = this.state.room;
     if (!Array.isArray(r.boxings)) r.boxings = [];
-    const b = { id: r.nextBoxing || 1, wall, pos, w, d, h: h ?? r.height };
+    // h stays UNSET for a bulkhead that runs to the ceiling, so it follows the ceiling when that
+    // changes (her catch 2026-09-26: raising the ceiling left the bulkhead at the old height);
+    // a typed height is kept
+    const b = { id: r.nextBoxing || 1, wall, pos, w, d, ...(h != null ? { h } : {}) };
     r.nextBoxing = (r.nextBoxing || 1) + 1;
     r.boxings.push(b);
     this._emit({ type: 'room' });

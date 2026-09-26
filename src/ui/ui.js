@@ -444,6 +444,7 @@ export class UI {
         <div class="op-controls" style="margin-top:6px">
           <label style="font-size:10px;color:var(--dim)">Width <input type="text" class="bx-w" value="${fmtIn(b.w || 8)}" style="width:46px"/></label>
           <label style="font-size:10px;color:var(--dim)">Projection <input type="text" class="bx-d" value="${fmtIn(b.d || 8)}" style="width:46px"/></label>
+          <label style="font-size:10px;color:var(--dim)" title="Blank = to the ceiling, and it follows the ceiling height">Height <input type="text" class="bx-h" value="${b.h != null ? fmtIn(b.h) : ''}" placeholder="ceiling" style="width:52px"/></label>
         </div>
       </div>`;
     }).join('');
@@ -455,6 +456,12 @@ export class UI {
         row.querySelector('.op-dist').textContent = fmtIn(b.pos * len); });
       const num = (sel, key) => row.querySelector(sel).addEventListener('change', (e) => { const v = parseLength(e.target.value); if (isFinite(v) && v > 1) { this.store.updateBoxing(id, { [key]: v }); this.onRoomChange(false); } this._renderBoxings(); });
       num('.bx-w', 'w'); num('.bx-d', 'd');
+      // height: a number keeps it; blank (or the ceiling's own height) means to the ceiling
+      row.querySelector('.bx-h').addEventListener('change', (e) => {
+        const raw = e.target.value.trim(), v = parseLength(raw), H = this.store.state.room.height || 96;
+        this.store.updateBoxing(id, { h: raw && isFinite(v) && v >= 4 && v < H - 0.05 ? Math.min(v, H) : null });
+        this.onRoomChange(false); this._renderBoxings();
+      });
     });
   }
 

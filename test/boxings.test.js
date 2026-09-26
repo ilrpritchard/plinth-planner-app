@@ -130,3 +130,21 @@ test('a corner unit may be cut in round a bulkhead: allowed on either wall, note
   w = computeWarnings(store.state).map((x) => x.msg);
   assert.ok(w.some((m) => /F15R is cut in round the boxing/.test(m)), `noted: ${w.join(' | ')}`);
 });
+
+test('a bulkhead runs to the ceiling and FOLLOWS it when the ceiling changes; a typed height is kept (her catch 2026-09-26)', async () => {
+  const { Store } = await import('../src/core/store.js');
+  const { boxingBoxes } = await import('../src/core/openings.js');
+  const s = new Store(); s.setRoom({ width: 200, depth: 150, height: 96 });
+  const b = s.addBoxing({ wall: 'back', pos: 0.3, w: 10, d: 8 });
+  assert.equal(b.h, undefined, 'no frozen height');
+  assert.equal(boxingBoxes(s.state.room)[0].y1, 96);
+  s.setRoom({ height: 120 });
+  assert.equal(boxingBoxes(s.state.room)[0].y1, 120, 'follows the raised ceiling');
+  s.updateBoxing(b.id, { h: 90 });
+  s.setRoom({ height: 108 });
+  assert.equal(boxingBoxes(s.state.room)[0].y1, 90, 'a typed height stays');
+  // an older design whose bulkhead was frozen at the old ceiling comes along too
+  const o = new Store(); o.setRoom({ width: 200, depth: 150, height: 96 }); o.addBoxing({ wall: 'left', pos: 0.5, w: 8, d: 8, h: 96 });
+  o.setRoom({ height: 110 });
+  assert.equal(boxingBoxes(o.state.room)[0].y1, 110);
+});
