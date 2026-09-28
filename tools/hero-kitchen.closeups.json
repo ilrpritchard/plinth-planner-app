@@ -1,0 +1,7 @@
+{
+  "note": "Close-ups for render comparisons (tools/render-capture.mjs). World inches; the run's fronts are at z -41.75, F10|F18 join at x 32.",
+  "views": [
+    { "key": "join-base", "name": "The join between two base cabinets (F10 | F18)", "pos": [40, 24, 8], "target": [32, 17, -41.75], "fov": 44 },
+    { "key": "plinth-run", "name": "Straight on to the plinth of the run", "pos": [32, 9, -8], "target": [32, 7, -41.75], "fov": 36 }
+  ]
+}

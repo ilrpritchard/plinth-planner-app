@@ -2,6 +2,7 @@
 //
 //   node tools/render-swatches.mjs                    → render-baseline/2026-09-28_swatches.png + .json
 //   node tools/render-swatches.mjs render-step2       → render-step2/…
+//   node tools/render-swatches.mjs render-step3 --photo       (in photo mode: its shadow + contact shading)
 //   node tools/render-swatches.mjs render-step2 --sweep '[{"toneMapping":"AgX","exposure":1.1}, …]'
 //
 // Fifteen F2 single doors in a row on one wall, one per catalogue finish (Custom RAL left out),
@@ -22,7 +23,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const sweepAt = args.indexOf('--sweep');
 const sweep = sweepAt >= 0 ? JSON.parse(args[sweepAt + 1]) : null;
-const OUT = path.resolve(ROOT, (sweepAt === 0 ? null : args[0]) || 'render-baseline');
+const OUT = path.resolve(ROOT, (sweepAt === 0 || (args[0] || '').startsWith('--') ? null : args[0]) || 'render-baseline');
 const SIZE = { width: 3600, height: 900 };
 const PORT = 8096;
 const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -50,7 +51,7 @@ try {
   await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0' });
   await page.waitForFunction('window.PlinthPlanner && window.PlinthPlanner.scene', { timeout: 30000 });
 
-  const shots = await page.evaluate(async (state, probes, size, looks) => {
+  const shots = await page.evaluate(async (state, probes, size, looks, photo) => {
     const THREE = await import('three');
     const P = window.PlinthPlanner, S = P.scene;
     const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -63,6 +64,7 @@ try {
     await (S.envReady || Promise.resolve());
     await new Promise((r) => setTimeout(r, 700));
     P.room.setGridVisible(false);
+    if (photo) { P.photoMode.start(); await (S.photoReady || Promise.resolve()); }   // --photo: photo mode's shadow + contact shading
     await frame();
 
     // straight on, level, far enough back that the strip reads almost as an elevation
@@ -96,7 +98,7 @@ try {
       out.push({ look, url, samples: await read(url), toneMapping: S.renderer.toneMapping, exposure: S.renderer.toneMappingExposure });
     }
     return out;
-  }, state, probes, SIZE, sweep || [null]);
+  }, state, probes, SIZE, sweep || [null], args.includes('--photo'));
 
   const TM = { 0: 'None', 1: 'Linear', 2: 'Reinhard', 3: 'Cineon', 4: 'ACESFilmic', 5: 'Neutral', 6: 'AgX' };
   for (const s of shots) {

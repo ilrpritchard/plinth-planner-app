@@ -38,6 +38,9 @@ THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars
 //   fill = soft, shadowless, from the camera side opposite the key
 //   hemi = a faint sky/ground tint, so undersides read a shade darker
 export const LOOK = { toneMapping: THREE.CustomToneMapping, exposure: 1.35, env: 0.35, key: 2.0, fill: 0.5, hemi: 0.3 };   // Custom = PBR Neutral, above
+// Photo mode's key shadow (render step 3): fitted to the room, so 6144 texels over a ~230" room is
+// ~0.04" (1mm) a texel, fine enough for the 8mm shaker relief, the 35mm top rail and the legs.
+export const PHOTO_SHADOW = { size: 6144, bias: -0.0001, normalBias: 0.04, radius: 4 };
 // A white daylight apartment, one big window, almost no colour cast (CC0, Poly Haven; site-assets/hdri/LICENCE.md)
 const HDRI_URL = new URL('../../site-assets/hdri/brown_photostudio_04_1k.hdr', import.meta.url).href;
 
@@ -142,7 +145,9 @@ export class Scene {
   /** Aim the key (and turn the environment) for this room: core/keylight.js decides the direction. */
   setKeyFrom(room) {
     const k = keyLight(room), R = 320;
+    this._room = room; this._keyFrom = k.from;
     this.key.position.set(k.from[0] * R, k.from[1] * R, k.from[2] * R);
+    if (this._photo) this._fitPhotoShadow();
     // fill: the key mirrored to the other side and lower, like a bounce card. It opens the shadow
     // side (the wall facing away from the key went a heavy taupe without it) and casts none.
     const h = Math.hypot(k.from[0], k.from[2]) || 1;
@@ -220,7 +225,7 @@ export class Scene {
     this.renderer.setSize(w, h, false);
     if (this.camera.isPerspectiveCamera) { this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); }
     this._beforeRender?.();                 // grounding + wall auto-hide for THIS camera position
-    this.renderer.render(this.scene, this.camera);
+    this._render(true);
     const url = this.renderer.domElement.toDataURL(o.type || 'image/png', o.quality);
     this.renderer.setPixelRatio(prevRatio);
     this._onResize();
@@ -281,7 +286,68 @@ export class Scene {
     requestAnimationFrame(this._tick);
     if (this._beforeRender) this._beforeRender();
     this.controls.update();
+    this._render();
+  }
+
+  /** One frame. In photo mode the contact shading (scene/photoFx.js) is laid over it. */
+  _render(capture = false) {
+    // photo mode: the 6144 shadow map is redrawn every 8th preview frame and before every saved photo,
+    // not every frame; nothing that casts a shadow moves while a shot is being framed
+    if (this._photo) this.renderer.shadowMap.needsUpdate = capture || (this._shadowTick = (this._shadowTick || 0) + 1) % 8 === 1;
     this.renderer.render(this.scene, this.camera);
+    if (this._photoFx && this.camera.isPerspectiveCamera) this._photoFx.render(this.camera);
+  }
+
+  /** PHOTO MODE ONLY (render step 3): a finer, room-fitted key shadow and the contact shading.
+   *  The live planner keeps its 3072 shadow and never loads photoFx.js. `photoReady` resolves when
+   *  the effects are in, so a capture can wait for them. Off puts everything back as it was. */
+  setPhotoQuality(on) {
+    const key = this.key, sh = key.shadow;
+    if (on && !this._photo) {
+      this._photo = true;
+      this._liveShadow = { size: sh.mapSize.x, bias: sh.bias, normalBias: sh.normalBias, radius: sh.radius, cam: [sh.camera.left, sh.camera.right, sh.camera.top, sh.camera.bottom, sh.camera.near, sh.camera.far] };
+      const max = this.renderer.capabilities.maxTextureSize || 4096;
+      this._setShadowMap(Math.min(PHOTO_SHADOW.size, max));
+      this.renderer.shadowMap.autoUpdate = false; this._shadowTick = 0;
+      sh.bias = PHOTO_SHADOW.bias; sh.normalBias = PHOTO_SHADOW.normalBias; sh.radius = PHOTO_SHADOW.radius;
+      this._fitPhotoShadow();
+      this.photoReady = import('./photoFx.js').then(({ PhotoAO }) => {
+        if (this._photo && !this._photoFx) this._photoFx = new PhotoAO(this.renderer, this.scene, this.persp);
+      }).catch((e) => console.warn('PL/NNER: photo contact shading did not load', e));
+    } else if (!on && this._photo) {
+      this._photo = false;
+      this._photoFx?.dispose(); this._photoFx = null;
+      const L = this._liveShadow;
+      this._setShadowMap(L.size);
+      this.renderer.shadowMap.autoUpdate = true;
+      sh.bias = L.bias; sh.normalBias = L.normalBias; sh.radius = L.radius;
+      [sh.camera.left, sh.camera.right, sh.camera.top, sh.camera.bottom, sh.camera.near, sh.camera.far] = L.cam;
+      sh.camera.updateProjectionMatrix();
+      key.target.position.set(0, 0, 0); key.target.updateMatrixWorld();
+      this.setKeyFrom(this._room || {});
+      this.photoReady = Promise.resolve();
+    }
+    return this.photoReady || Promise.resolve();
+  }
+
+  _setShadowMap(size) {
+    const sh = this.key.shadow;
+    if (sh.mapSize.x === size) return;
+    sh.mapSize.set(size, size);
+    sh.map?.dispose(); sh.map = null;          // re-allocated at the new size on the next frame
+  }
+
+  /** Photo mode: the key's shadow camera wraps the room's bounding sphere, no more, so every texel
+   *  lands on the kitchen (the live frustum is a fixed 480" square whatever the room). */
+  _fitPhotoShadow() {
+    const r0 = this._room || {}, W = r0.width || 144, D = r0.depth || 120, H = r0.height || 96;
+    const f = this._keyFrom || [0, 1, 0], rad = 0.5 * Math.hypot(W, D, H) + 6, R = Math.max(320, rad + 60);
+    const key = this.key, cam = key.shadow.camera;
+    key.target.position.set(0, H / 2, 0); key.target.updateMatrixWorld();
+    key.position.set(f[0] * R, H / 2 + f[1] * R, f[2] * R);
+    cam.left = -rad; cam.right = rad; cam.top = rad; cam.bottom = -rad;
+    cam.near = R - rad - 10; cam.far = R + rad + 10;
+    cam.updateProjectionMatrix();
   }
 
   /**

@@ -1,0 +1,122 @@
+{
+  "schema": "plinth-planner",
+  "version": 1,
+  "room": {
+    "width": 160,
+    "depth": 168,
+    "height": 96,
+    "floor": "oak",
+    "wall": "chalk",
+    "worktop": "marble",
+    "cornice": "none",
+    "openings": [
+      {
+        "id": 1,
+        "type": "window",
+        "wall": "back",
+        "pos": 0.5875,
+        "width": 40
+      }
+    ],
+    "nextOpening": 2,
+    "boxings": [],
+    "nextBoxing": 1
+  },
+  "finish": "Nettle",
+  "handle": "knob",
+  "items": [
+    {
+      "id": 1,
+      "code": "T2",
+      "x": -66,
+      "z": -71.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 2,
+      "code": "T1",
+      "x": -40,
+      "z": -71.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 3,
+      "code": "F18",
+      "x": -16,
+      "z": -71.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 4,
+      "code": "F10",
+      "x": 14,
+      "z": -71.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 5,
+      "code": "F18",
+      "x": 44,
+      "z": -71.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 6,
+      "code": "F2",
+      "x": 68,
+      "z": -71.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 7,
+      "code": "W1",
+      "x": -22,
+      "z": -76.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 8,
+      "code": "W5",
+      "x": 54,
+      "z": -76.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 9,
+      "code": "F18",
+      "x": -24,
+      "z": 18,
+      "rotDeg": 0
+    },
+    {
+      "id": 10,
+      "code": "F18",
+      "x": 0,
+      "z": 18,
+      "rotDeg": 0
+    },
+    {
+      "id": 11,
+      "code": "F18",
+      "x": 24,
+      "z": 18,
+      "rotDeg": 0
+    }
+  ],
+  "accessories": {},
+  "customer": {
+    "name": "",
+    "email": "",
+    "zip": "",
+    "notes": ""
+  },
+  "nextId": 12,
+  "mode": "home",
+  "trade": {
+    "project": "",
+    "units": [],
+    "finish": "Nettle",
+    "nextUnitId": 1,
+    "nextRowId": 1
+  }
+}

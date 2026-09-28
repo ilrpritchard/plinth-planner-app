@@ -38,7 +38,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-223 · photographic light: PBR Neutral tone mapping, daylight HDRI, one key from the window';
+const BUILD = 'W2W-224 · photo mode: fine room-fitted key shadow and contact shading (GTAO)';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -242,6 +242,7 @@ function startPhotoMode() {
   photoMode = { views: [mine, ...photoViews(store.state.room, store.state.items)], i: 0, was };
   layer.select(null); ui.showSelbar(null); layer.setHover?.(null);
   room.setGridVisible(false);
+  scene.setPhotoQuality(true);                        // finer shadow + contact shading, photo mode only
   document.getElementById('emptyState')?.classList.add('hidden');
   document.getElementById('btnPhoto')?.classList.add('active');
   let bar = document.getElementById('photoBar');
@@ -254,12 +255,16 @@ function startPhotoMode() {
     <button type="button" class="pb-ghost" id="pbDone">Done</button>`;
   bar.querySelector('#pbPrev').addEventListener('click', () => photoAngle(photoMode.i - 1));
   bar.querySelector('#pbNext').addEventListener('click', () => photoAngle(photoMode.i + 1));
-  bar.querySelector('#pbSave').addEventListener('click', () => {
+  bar.querySelector('#pbSave').addEventListener('click', async () => {
+    await scene.photoReady;                           // the contact shading, if it is still loading
+    if (!photoMode) return;
     const v = photoMode.views[photoMode.i];
     saveBlob(photoFile(v, photoMode.i), new Blob([bytesOf(scene.captureImage(PHOTO))], { type: 'image/jpeg' }));
     toast(`Saved ${photoFile(v, photoMode.i)} at ${PHOTO.width} × ${PHOTO.height}.`);
   });
-  bar.querySelector('#pbAll').addEventListener('click', () => {
+  bar.querySelector('#pbAll').addEventListener('click', async () => {
+    await scene.photoReady;
+    if (!photoMode) return;
     const shots = scene.captureViews(photoMode.views, PHOTO);
     saveBlob('PLINTH_kitchen_photos.zip', new Blob([buildZip(shots.map((sh, i) => ({ name: photoFile(sh, i), data: bytesOf(sh.url) })))], { type: 'application/zip' }));
     toast(`${shots.length} photos saved in one zip.`);
@@ -292,6 +297,7 @@ function endPhotoMode() {
   document.getElementById('photoBar')?.remove();
   document.getElementById('btnPhoto')?.classList.remove('active');
   room.setGridVisible(true);
+  scene.setPhotoQuality(false);
   scene.lookFrom({ pos: was.pos.toArray(), target: was.target.toArray(), fov: was.fov });
 }
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

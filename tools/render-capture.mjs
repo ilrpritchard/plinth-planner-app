@@ -3,7 +3,8 @@
 //
 //   node tools/render-capture.mjs                  → render-baseline/2026-09-28_1_your-view.png …
 //   node tools/render-capture.mjs render-step2     → render-step2/2026-09-28_1_your-view.png …
-//   node tools/render-capture.mjs render-step2 other-state.json
+//   node tools/render-capture.mjs render-step2 other-state.json [--closeups-only]
+//   (close-ups come along when <state>.closeups.json exists: _c1_<key>.png, …)
 //
 // The kitchen is tools/hero-kitchen.json: the website hero (imagegen/layout.mjs wideRun, Nettle,
 // oak floor, Carrara worktop, chalk walls), frozen here so the baseline cannot drift. The six views
@@ -23,6 +24,9 @@ import puppeteer from 'puppeteer';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.resolve(ROOT, process.argv[2] || 'render-baseline');
 const STATE = path.resolve(ROOT, process.argv[3] || 'tools/hero-kitchen.json');
+const CLOSEUPS_ONLY = process.argv.includes('--closeups-only');
+// close-ups ride along when the state has a <name>.closeups.json beside it (saved as _c1_<key>.png, …)
+const closeups = await readFile(STATE.replace(/\.json$/, '.closeups.json'), 'utf8').then((t) => JSON.parse(t).views, () => []);
 const SIZE = { width: 2400, height: 1600 };
 const PORT = 8097;
 const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -49,7 +53,7 @@ try {
   await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0' });
   await page.waitForFunction('window.PlinthPlanner && window.PlinthPlanner.scene', { timeout: 30000 });
 
-  const shots = await page.evaluate(async (state, size) => {
+  const shots = await page.evaluate(async (state, size, extra, only) => {
     const P = window.PlinthPlanner, S = P.scene;
     const { photoViews } = await import('/src/core/photoviews.js');
     const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -69,24 +73,27 @@ try {
 
     // photo mode itself (grid off, nothing selected), then its six views
     P.photoMode.start();
+    await (S.photoReady || Promise.resolve());   // photo mode's shadow + contact shading
     await frame();
     const cam = S.persp, c = S.controls;
     const mine = { key: 'your-view', name: 'Your view, as it is', pos: cam.position.toArray(), target: c.target.toArray(), fov: cam.fov };
-    const views = [mine, ...photoViews(P.store.state.room, P.store.state.items)];
-    const out = S.captureViews(views, { width: size.width, height: size.height, type: 'image/png' });
+    const views = only ? [] : [mine, ...photoViews(P.store.state.room, P.store.state.items)];
+    const all = [...views, ...extra.map((v) => ({ ...v, closeup: true }))];
+    const out = S.captureViews(all, { width: size.width, height: size.height, type: 'image/png' });
     P.photoMode.end();
-    return out.map((o, i) => ({ ...o, view: views[i] }));
-  }, state, SIZE);
+    return out.map((o, i) => ({ ...o, view: all[i] }));
+  }, state, SIZE, closeups, CLOSEUPS_ONLY);
 
   await mkdir(OUT, { recursive: true });
   const rel = path.relative(ROOT, OUT);
-  for (const [i, s] of shots.entries()) {
-    const file = `${DATE}_${i + 1}_${s.key}.png`;
+  let n = 0, c = 0;
+  for (const s of shots) {
+    const file = s.view.closeup ? `${DATE}_c${++c}_${s.key}.png` : `${DATE}_${++n}_${s.key}.png`;
     await writeFile(path.join(OUT, file), Buffer.from(s.url.slice(s.url.indexOf(',') + 1), 'base64'));
     console.log(`  ${rel}/${file}  ${s.name}`);
   }
   // the exact cameras, so a later step can be checked against the same standpoints
-  await writeFile(path.join(OUT, `${DATE}_views.json`), JSON.stringify({ state: path.relative(ROOT, STATE), size: SIZE, views: shots.map((s) => s.view) }, null, 2) + '\n');
+  if (!CLOSEUPS_ONLY) await writeFile(path.join(OUT, `${DATE}_views.json`), JSON.stringify({ state: path.relative(ROOT, STATE), size: SIZE, views: shots.map((s) => s.view) }, null, 2) + '\n');
 } finally {
   await browser.close();
   bye();

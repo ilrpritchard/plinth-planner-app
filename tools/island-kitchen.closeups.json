@@ -1,0 +1,7 @@
+{
+  "note": "Close-ups for render comparisons (tools/render-capture.mjs). The island's fronts face +z at z 30, joins at x -12 and 12.",
+  "views": [
+    { "key": "plinth-island", "name": "Straight on to the plinth of the island", "pos": [12, 9, 64], "target": [12, 7, 30], "fov": 36 },
+    { "key": "join-island", "name": "The join between two island cabinets", "pos": [18, 24, 80], "target": [12, 17, 30], "fov": 44 }
+  ]
+}
