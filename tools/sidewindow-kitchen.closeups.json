@@ -1,0 +1,20 @@
+{
+  "note": "Render step 4 demo: the hero kitchen with a 48\" window on the LEFT wall, so the sun rakes across the fronts. World inches; fronts at z -41.75.",
+  "views": [
+    {
+      "key": "sun-fronts",
+      "name": "Sun across the run from the left-wall window",
+      "pos": [
+        60,
+        52,
+        40
+      ],
+      "target": [
+        -10,
+        30,
+        -45
+      ],
+      "fov": 56
+    }
+  ]
+}

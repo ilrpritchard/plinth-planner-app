@@ -26,5 +26,7 @@ export const WALLS = {
 // (the plaster hood, models/appliances.js) share these, so the hood reads as the same paint on the
 // same wall and not a cream box in front of it (her catch 2026-09-28: "it drops in as a chalk color").
 export const WALL_PAINT = { roughness: 1, metalness: 0, envMapIntensity: 1 };
+// The ceiling in photo mode's closed room (render step 4): a flat, warm ceiling white, whatever the walls are.
+export const CEILING = 0xf3efe6;
 
 export const hexOf =(table, key, fallback) => '#' + ((table[key] || {}).color ?? fallback).toString(16).padStart(6, '0');

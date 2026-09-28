@@ -7,7 +7,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { BRAND } from '../core/catalogue.js';
-import { keyLight } from '../core/keylight.js';
+import { keyLight, sunLight } from '../core/keylight.js';
 
 // Khronos PBR Neutral (github.com/KhronosGroup/ToneMapping), the curve three.js ships as
 // NeutralToneMapping from r162; this vendored r160 lacks it, so it goes in through three's own
@@ -41,6 +41,16 @@ export const LOOK = { toneMapping: THREE.CustomToneMapping, exposure: 1.35, env:
 // Photo mode's key shadow (render step 3): fitted to the room, so 6144 texels over a ~230" room is
 // ~0.04" (1mm) a texel, fine enough for the 8mm shaker relief, the 35mm top rail and the legs.
 export const PHOTO_SHADOW = { size: 6144, bias: -0.0001, normalBias: 0.04, radius: 4 };
+// Photo mode's CLOSED ROOM with a window (render step 4): the key becomes the sun through the window
+// and the walls and ceiling block it everywhere else, so the ambient side carries the room; these are
+// its levels (tuned on the hero kitchen's fronts against their hex). SUN_SOFT / SUN_SAMPLES: a saved
+// photo averages that many sun directions inside a cone of that half-angle, which softens the glazing-
+// bar shadows the way a real window's are; the live preview uses one (hard edges while framing).
+export const PHOTO_SUN = { sun: 5.0, env: 1.0, fill: 0.72, hemi: 0.6, exposure: 1.6 };
+// where the HDRI's bright side sits in every sunlit room: behind the back run, turned 32 degrees, as
+// the hero kitchen's back-wall window put it when PHOTO_SUN was calibrated (see _setSun)
+const PHOTO_SUN_ENV_AZ = Math.atan2(-Math.cos(32 * Math.PI / 180), Math.sin(32 * Math.PI / 180));
+const SUN_SOFT = 0.4 * Math.PI / 180, SUN_SAMPLES = 12;   // the real sun is ~0.27 deg in radius
 // A white daylight apartment, one big window, almost no colour cast (CC0, Poly Haven; site-assets/hdri/LICENCE.md)
 const HDRI_URL = new URL('../../site-assets/hdri/brown_photostudio_04_1k.hdr', import.meta.url).href;
 
@@ -147,7 +157,7 @@ export class Scene {
     const k = keyLight(room), R = 320;
     this._room = room; this._keyFrom = k.from;
     this.key.position.set(k.from[0] * R, k.from[1] * R, k.from[2] * R);
-    if (this._photo) this._fitPhotoShadow();
+    if (this._photo) { this._sun = sunLight(room); this._photoRoomKey = null; this._sunOn = false; this._fitPhotoShadow(); }
     // fill: the key mirrored to the other side and lower, like a bounce card. It opens the shadow
     // side (the wall facing away from the key went a heavy taupe without it) and casts none.
     const h = Math.hypot(k.from[0], k.from[2]) || 1;
@@ -224,9 +234,11 @@ export class Scene {
     this.renderer.setPixelRatio(o.width ? 1 : (o.scale || 3));
     this.renderer.setSize(w, h, false);
     if (this.camera.isPerspectiveCamera) { this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); }
+    if (this._photo) this._applyPhotoRoom();   // closed or open for THIS camera, before the wall auto-hide
     this._beforeRender?.();                 // grounding + wall auto-hide for THIS camera position
     this._render(true);
-    const url = this.renderer.domElement.toDataURL(o.type || 'image/png', o.quality);
+    const W = this.renderer.domElement.width, H = this.renderer.domElement.height;
+    const url = (this._sunOn && o.softSun !== false ? this._softSunFrame(W, H) : this.renderer.domElement).toDataURL(o.type || 'image/png', o.quality);
     this.renderer.setPixelRatio(prevRatio);
     this._onResize();
     return url;
@@ -284,12 +296,73 @@ export class Scene {
 
   _tick() {
     requestAnimationFrame(this._tick);
+    if (this._photo) this._applyPhotoRoom();
     if (this._beforeRender) this._beforeRender();
     this.controls.update();
     this._render();
   }
 
   /** One frame. In photo mode the contact shading (scene/photoFx.js) is laid over it. */
+  /** Photo mode, every frame: can this camera see a CLOSED room? Inside it, or standing just outside a
+   *  wall (the straight-on shot steps back through the front wall): yes, and the near plane is pushed
+   *  past that wall so it is cut by the picture's edge, never seen from behind. Above the ceiling (a
+   *  doll's-house view) or far outside: no, the live cut-away stays. With a window, closed = sun. */
+  _photoRoomFor(cam) {
+    const r = this._room || {}, W = r.width || 144, D = r.depth || 120, H = r.height || 96, T = 4, REACH = 120;
+    const p = cam.position;
+    const out = { back: -D / 2 - p.z, front: p.z - D / 2, left: -W / 2 - p.x, right: p.x - W / 2 };
+    if (p.y >= H - 1 || Object.values(out).some((v) => v > REACH)) return { closed: false, near: 1 };
+    // the inside face of every wall the camera stands behind: its farthest corner in view depth
+    cam.updateMatrixWorld();
+    const inv = cam.matrixWorldInverse.copy(cam.matrixWorld).invert(), v = new THREE.Vector3();
+    let near = 1;
+    const face = { back: [[-W / 2, -D / 2], [W / 2, -D / 2]], front: [[-W / 2, D / 2], [W / 2, D / 2]], left: [[-W / 2, -D / 2], [-W / 2, D / 2]], right: [[W / 2, -D / 2], [W / 2, D / 2]] };
+    for (const [name, o] of Object.entries(out)) {
+      if (o <= -T) continue;                   // well inside this wall: nothing to clip
+      for (const [x, z] of face[name]) for (const y of [0, H]) near = Math.max(near, -v.set(x, y, z).applyMatrix4(inv).z + 0.5);
+    }
+    return { closed: true, near: Math.min(near, 160) };
+  }
+
+  _applyPhotoRoom() {
+    const cam = this.camera;
+    if (!cam.isPerspectiveCamera) return;
+    const pr = this._photoRoomFor(cam), sun = pr.closed && !!this._sun;
+    if (Math.abs(cam.near - pr.near) > 1e-3) { cam.near = pr.near; cam.updateProjectionMatrix(); }
+    const key = pr.closed ? (sun ? 'sun' : 'closed') : 'open';
+    if (key === this._photoRoomKey) return;
+    this._photoRoomKey = key;
+    this.onPhotoClosed?.(pr.closed ? { sun } : false);
+    this._setSun(sun);
+  }
+
+  /** Swap the key for the sun through the window (and the ambient levels with it), or back.
+   *  In the sun, the fronts of the run are lit by the room's bounce alone, and they must still read as
+   *  their hex whatever wall the window is on. Metering them against a turned HDRI did not hold (a
+   *  side window put the HDRI's bright side in the paint's reflections: fronts ~18 levels light), so
+   *  the bounce is the SAME in every sunlit room: the HDRI's bright side behind the run (as for the
+   *  hero kitchen's back-wall window, where PHOTO_SUN was calibrated: F10 renders 180,175,143 against
+   *  Nettle 180,178,150) and a fill from the camera side, a bounce card. The sun itself still comes
+   *  in through whichever window there is; the environment is only soft ambient, so its angle barely
+   *  shows. */
+  _setSun(on) {
+    if (on === !!this._sunOn) return;
+    this._sunOn = on;
+    const L = on ? { ...LOOK, ...PHOTO_SUN } : LOOK;
+    this.key.intensity = on ? PHOTO_SUN.sun : LOOK.key;
+    this.hemi.intensity = L.hemi; this.fill.intensity = L.fill;
+    this.renderer.toneMappingExposure = L.exposure;
+    if (this._hdri) { this._hdri.scale = L.env / this._hdri.mean; this._envAz = null; }
+    if (on) {
+      this._aimEnv(PHOTO_SUN_ENV_AZ);
+      this.fill.position.set(0, 0.45, 1).normalize().multiplyScalar(320);      // from the camera side
+    } else {
+      this.setKeyFrom(this._room || {});      // key, fill and environment back to the room's key light
+    }
+    this._fitPhotoShadow(on ? this._sun.from : this._keyFrom);
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
   _render(capture = false) {
     // photo mode: the 6144 shadow map is redrawn every 8th preview frame and before every saved photo,
     // not every frame; nothing that casts a shadow moves while a shot is being framed
@@ -310,12 +383,20 @@ export class Scene {
       this._setShadowMap(Math.min(PHOTO_SHADOW.size, max));
       this.renderer.shadowMap.autoUpdate = false; this._shadowTick = 0;
       sh.bias = PHOTO_SHADOW.bias; sh.normalBias = PHOTO_SHADOW.normalBias; sh.radius = PHOTO_SHADOW.radius;
+      this._sun = sunLight(this._room || {});
+      this._photoRoomKey = null;
       this._fitPhotoShadow();
+      this._photoPaint(true);
       this.photoReady = import('./photoFx.js').then(({ PhotoAO }) => {
         if (this._photo && !this._photoFx) this._photoFx = new PhotoAO(this.renderer, this.scene, this.persp);
       }).catch((e) => console.warn('PL/NNER: photo contact shading did not load', e));
     } else if (!on && this._photo) {
       this._photo = false;
+      this._setSun(false);
+      this._photoRoomKey = null;
+      this.onPhotoClosed?.(false);
+      this._photoPaint(false);
+      this.persp.near = 1; this.persp.updateProjectionMatrix();
       this._photoFx?.dispose(); this._photoFx = null;
       const L = this._liveShadow;
       this._setShadowMap(L.size);
@@ -330,6 +411,44 @@ export class Scene {
     return this.photoReady || Promise.resolve();
   }
 
+  /** Photo mode: every wall-paint material (walls, ceiling, the plaster hood) gets a faint roughness
+   *  variation, so big painted planes stop reading as flat CG; off restores them. */
+  _photoPaint(on) {
+    const tex = on ? paintRoughness() : null;
+    this.scene.traverse((o) => {
+      const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+      for (const m of mats) {
+        if (!m.userData?.wallPaint) continue;
+        if (on && !m.userData.livePaint) { m.userData.livePaint = { roughness: m.roughness, map: m.roughnessMap }; m.roughnessMap = tex; m.roughness = 1; m.needsUpdate = true; }
+        else if (!on && m.userData.livePaint) { m.roughness = m.userData.livePaint.roughness; m.roughnessMap = m.userData.livePaint.map; delete m.userData.livePaint; m.needsUpdate = true; }
+      }
+    });
+  }
+
+  /** A saved photo in the sun: the frame rendered SUN_SAMPLES times with the sun moved about inside a
+   *  small cone and averaged, so its shadows (the glazing bars on the floor) have soft edges. */
+  _softSunFrame(w, h) {
+    const key = this.key, base = key.position.clone(), t = key.target.position, dir = base.clone().sub(t), R = dir.length();
+    dir.normalize();
+    const u = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), v = dir.clone().cross(u);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const g = cv.getContext('2d', { willReadFrequently: true }), acc = new Float32Array(w * h * 4);
+    for (let i = 0; i < SUN_SAMPLES; i++) {
+      const r = SUN_SOFT * Math.sqrt((i + 0.5) / SUN_SAMPLES), a = i * 2.39996323;      // a Vogel disc: even, deterministic
+      key.position.copy(t).addScaledVector(dir.clone().addScaledVector(u, Math.cos(a) * Math.tan(r)).addScaledVector(v, Math.sin(a) * Math.tan(r)).normalize(), R);
+      this.renderer.shadowMap.needsUpdate = true;
+      this._render(true);
+      g.drawImage(this.renderer.domElement, 0, 0);
+      const d = g.getImageData(0, 0, w, h).data;
+      for (let k = 0; k < d.length; k++) acc[k] += d[k];
+    }
+    key.position.copy(base); this.renderer.shadowMap.needsUpdate = true;
+    const img = g.createImageData(w, h);
+    for (let k = 0; k < acc.length; k++) img.data[k] = Math.round(acc[k] / SUN_SAMPLES);
+    g.putImageData(img, 0, 0);
+    return cv;
+  }
+
   _setShadowMap(size) {
     const sh = this.key.shadow;
     if (sh.mapSize.x === size) return;
@@ -339,9 +458,9 @@ export class Scene {
 
   /** Photo mode: the key's shadow camera wraps the room's bounding sphere, no more, so every texel
    *  lands on the kitchen (the live frustum is a fixed 480" square whatever the room). */
-  _fitPhotoShadow() {
+  _fitPhotoShadow(from) {
     const r0 = this._room || {}, W = r0.width || 144, D = r0.depth || 120, H = r0.height || 96;
-    const f = this._keyFrom || [0, 1, 0], rad = 0.5 * Math.hypot(W, D, H) + 6, R = Math.max(320, rad + 60);
+    const f = from || (this._sunOn && this._sun ? this._sun.from : this._keyFrom) || [0, 1, 0], rad = 0.5 * Math.hypot(W, D, H) + 6, R = Math.max(320, rad + 60);
     const key = this.key, cam = key.shadow.camera;
     key.target.position.set(0, H / 2, 0); key.target.updateMatrixWorld();
     key.position.set(f[0] * R, H / 2 + f[1] * R, f[2] * R);
@@ -500,4 +619,25 @@ export class Scene {
       this.controls.mouseButtons.LEFT = mode === 'pan' ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
     }
   }
+}
+
+// Photo mode's matte paint: a soft, low-contrast roughness variation (0.8 - 1.0), seeded, 512px.
+let _paintRough = null;
+function paintRoughness() {
+  if (_paintRough || typeof document === 'undefined') return _paintRough;
+  const N = 512, cv = document.createElement('canvas'); cv.width = cv.height = N;
+  const g = cv.getContext('2d'), img = g.createImageData(N, N);
+  let a = 0x2545f491; const rnd = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const octave = (cells) => { const grid = Array.from({ length: (cells + 1) * (cells + 1) }, rnd); for (let c = 0; c < cells; c++) grid[cells * (cells + 1) + c] = grid[c]; for (let r = 0; r <= cells; r++) grid[r * (cells + 1) + cells] = grid[r * (cells + 1)];
+    return (x, y) => { const fx = x / N * cells, fy = y / N * cells, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy, s = (q) => q * q * (3 - 2 * q);
+      const at = (i, j) => grid[(j % (cells + 1)) * (cells + 1) + (i % (cells + 1))];
+      const top = at(ix, iy) + (at(ix + 1, iy) - at(ix, iy)) * s(tx), bot = at(ix, iy + 1) + (at(ix + 1, iy + 1) - at(ix, iy + 1)) * s(tx); return top + (bot - top) * s(ty); }; };
+  const o1 = octave(4), o2 = octave(11), o3 = octave(29);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const n = 0.55 * o1(x, y) + 0.3 * o2(x, y) + 0.15 * o3(x, y), v = Math.round(255 * (0.8 + 0.2 * n)), k = (y * N + x) * 4;
+    img.data[k] = img.data[k + 1] = img.data[k + 2] = v; img.data[k + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  _paintRough = new THREE.CanvasTexture(cv); _paintRough.wrapS = _paintRough.wrapT = THREE.RepeatWrapping;
+  return _paintRough;
 }

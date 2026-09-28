@@ -24,27 +24,45 @@ export const AO = { radius: 3.0, distanceExponent: 1.6, thickness: 0.6, distance
 // the denoiser: 16 samples over 8px left GTAO's grain along the tall/wall corner and the window casing
 export const DENOISE = { samples: 48, radius: 8, rings: 4, depthPhi: 8, normalPhi: 8 };
 
-// The lay-on. The frame on the canvas is ANTIALIASED, the AO's normal/depth buffer is not, so along a
-// silhouette each soft edge pixel got the AO of one side or the other at random: a sparkly fringe on
-// the tall's edge and round the window casing. This blend smooths the AO over depth-similar
-// neighbours (5x5) and fades it out on the 1-2px of a real depth edge, then multiplies it on.
+// The lay-on. The frame on the canvas is ANTIALIASED, the AO's normal/depth buffer is not:
+//  - along a silhouette each soft edge pixel got the AO of one side or the other at random (a sparkly
+//    fringe on the tall's edge and round the window casing);
+//  - a face seen EDGE-ON (the side of a leg at the joint between two cabinets, from across the room)
+//    lands in the buffer as a one-pixel sliver here and there, deeply occluded, which came out as a
+//    DASHED line on the fronts.
+// So only pixels that are part of a real, flat surface carry AO: a pixel whose normal differs from
+// its neighbours on both sides is a sliver, and a pixel where 1/distance is not locally linear is an
+// edge; both get no AO and are left out of their neighbours' 5x5 average (which is also what makes
+// GTAO's 5x5 magic-square noise vanish). Then the result is multiplied onto the canvas.
 const BLEND = {
-  uniforms: { tAO: { value: null }, tDepth: { value: null }, texel: { value: new THREE.Vector2() }, uLogFar: { value: 1 }, intensity: { value: 1 } },
+  uniforms: { tAO: { value: null }, tDepth: { value: null }, tNormal: { value: null }, texel: { value: new THREE.Vector2() }, uLogFar: { value: 1 }, intensity: { value: 1 } },
   vertexShader: /* glsl */`varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */`
-    uniform sampler2D tAO; uniform sampler2D tDepth; uniform vec2 texel; uniform float uLogFar; uniform float intensity;
+    uniform sampler2D tAO; uniform sampler2D tDepth; uniform sampler2D tNormal; uniform vec2 texel; uniform float uLogFar; uniform float intensity;
     varying vec2 vUv;
     float dist(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 1e6 : exp2(d * uLogFar) - 1.0; }
+    vec3 nrm(vec2 uv) { return texture2D(tNormal, uv).rgb * 2.0 - 1.0; }
+    bool sliver(vec2 uv, vec3 n) {
+      vec2 dx = vec2(texel.x, 0.0), dy = vec2(0.0, texel.y);
+      return (dot(n, nrm(uv - dx)) < 0.9 && dot(n, nrm(uv + dx)) < 0.9) || (dot(n, nrm(uv - dy)) < 0.9 && dot(n, nrm(uv + dy)) < 0.9);
+    }
+    float bend(vec2 uv) {
+      float c = 1.0 / dist(uv);
+      float h = abs(1.0 / dist(uv - vec2(texel.x, 0.0)) + 1.0 / dist(uv + vec2(texel.x, 0.0)) - 2.0 * c);
+      float v = abs(1.0 / dist(uv - vec2(0.0, texel.y)) + 1.0 / dist(uv + vec2(0.0, texel.y)) - 2.0 * c);
+      return max(h, v) / c;
+    }
     void main() {
-      float w0 = dist(vUv), acc = 0.0, n = 0.0, edge = 0.0;
+      float w0 = dist(vUv), acc = 0.0, n = 0.0;
+      vec3 n0 = nrm(vUv);
       for (int i = -2; i <= 2; i++) for (int j = -2; j <= 2; j++) {
         vec2 uv = vUv + vec2(float(i), float(j)) * texel;
-        float rel = abs(dist(uv) - w0) / w0;
-        if (abs(i) <= 1 && abs(j) <= 1) edge = max(edge, rel);
-        if (rel < 0.015) { acc += texture2D(tAO, uv).r; n += 1.0; }
+        vec3 ni = nrm(uv);
+        if (abs(dist(uv) - w0) / w0 < 0.015 && dot(ni, n0) > 0.9 && !sliver(uv, ni)) { acc += texture2D(tAO, uv).r; n += 1.0; }
       }
       float ao = n > 0.0 ? acc / n : 1.0;
-      ao = mix(ao, 1.0, smoothstep(0.01, 0.04, edge));
+      float off = sliver(vUv, n0) ? 1.0 : smoothstep(0.0015, 0.006, bend(vUv));
+      ao = mix(ao, 1.0, off);
       gl_FragColor = vec4(vec3(mix(1.0, ao, intensity)), 1.0);
     }`,
 };
@@ -114,10 +132,13 @@ export class PhotoAO {
     g.cameraProjectionMatrixInverse.value.copy(camera.projectionMatrixInverse);
     g.cameraWorldMatrix.value.copy(camera.matrixWorld);
     p.renderPass(r, p.gtaoMaterial, p.gtaoRenderTarget, 0xffffff, 1.0);
-    p.renderPass(r, p.pdMaterial, p.pdRenderTarget, 0xffffff, 1.0);
+    // (the pass's Poisson denoiser is NOT run: it blended the dark AO of a sub-pixel slit, the joint
+    //  between two cabinets' legs seen from across the room, onto the fronts beside it as a dashed
+    //  line. GTAO's noise is a 5x5 magic square, made to vanish under a 5x5 average: the blend below
+    //  does exactly that, over flat, depth-similar pixels only.)
     // 4. smooth, fade at silhouettes, multiply onto the canvas (no clear)
     const b = this.blend.uniforms;
-    b.tAO.value = p.pdRenderTarget.texture; b.tDepth.value = p.normalRenderTarget.depthTexture;
+    b.tAO.value = p.gtaoRenderTarget.texture; b.tDepth.value = p.normalRenderTarget.depthTexture; b.tNormal.value = p.normalRenderTarget.texture;
     b.texel.value.set(1 / w, 1 / h); b.uLogFar.value = logFar; b.intensity.value = p.blendIntensity;
     p.renderPass(r, this.blend, null);
     // 5. light sources are never shaded: the unlit, un-tone-mapped daylight behind each window is drawn

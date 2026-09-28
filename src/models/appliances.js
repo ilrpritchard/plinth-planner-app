@@ -263,6 +263,7 @@ export function buildAppliance(cab, finishHex = '#efece3', opts = {}) {
         // (WALL_PAINT). A rougher, dimmer material in a near colour read as a cream box on a white
         // wall (her catch 2026-09-28); the fallback is the room's default wall, never a colour of its own.
         const plaster = new THREE.MeshStandardMaterial({ color: new THREE.Color(opts.wallHex ?? WALLS.white.color), ...WALL_PAINT });
+        plaster.userData.wallPaint = true;   // photo mode's matte variation reaches it too (painted with the walls)
         const hh = opts.ceiling > 0 && cab.mountY != null ? Math.max(h, opts.ceiling - cab.mountY - 0.05) : h;
         const body = box(w, hh, d, plaster); body.position.set(0, hh / 2, 0); body.name = 'plaster'; g.add(body);
         const lw = Math.min(w - 5, 30), ld = d - 4;

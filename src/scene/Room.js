@@ -10,12 +10,13 @@ import * as THREE from 'three';
 import { BRAND } from '../core/catalogue.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
 import { makeFloorTexture, floorSurface } from './floorTexture.js';
+import { cityCanvas } from './cityView.js';
 
 const WALL_T = 4;
 const KERB_H = 3;   // the footprint left behind by a wall that is hidden to let you see in
 
 // key -> label + base colour; scene/floorTexture.js PAINT says how each is drawn.
-import { FLOORS, WALLS, WALL_PAINT } from '../core/roomstyle.js';
+import { FLOORS, WALLS, WALL_PAINT, CEILING } from '../core/roomstyle.js';
 export { FLOORS, WALLS };   // the tables live in core/roomstyle.js (shared with the DXF export)
 
 export class Room {
@@ -46,6 +47,7 @@ export class Room {
     this.dims = { width, depth, height };
     const floorColor = (FLOORS[opts.floor] || FLOORS.oak).color;
     const wallColor = (WALLS[opts.wall] || WALLS.white).color;
+    this._wallColor = wallColor;
 
     for (const c of [...this.group.children]) { this.group.remove(c); disposeDeep(c); }
 
@@ -62,7 +64,8 @@ export class Room {
     const floorMat = new THREE.MeshStandardMaterial({
       map: this._floorTex, color: 0xffffff, roughness: surf.roughness, metalness: 0, envMapIntensity: surf.env,
     });
-    const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, ...WALL_PAINT, side: THREE.DoubleSide });   // WALL_PAINT: the plaster hood is lit the same
+    const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, ...WALL_PAINT, side: THREE.DoubleSide });
+    wallMat.userData.wallPaint = true;        // photo mode gives every wall-paint material its matte variation   // WALL_PAINT: the plaster hood is lit the same
 
     // floor
     const floor = mesh(new THREE.BoxGeometry(width, 1, depth), floorMat);
@@ -88,11 +91,33 @@ export class Room {
       const c = openingCenter(rdim, o), w = openingWidth(o, rdim);
       return { c0: c - w / 2, c1: c + w / 2, top: Math.min(82, height * 0.86) };
     });
+    // the wall itself is also OPEN behind every window (sill to head), so photo mode's sun comes in
+    // through it and the view goes out through it; in the live planner the window's daylight panel
+    // covers the hole exactly, so it looks as it always did (render step 4, 2026-09-28)
+    const wallGapsFor = (name) => [
+      ...gapsFor(name).map((g) => ({ ...g, y0: 0, y1: g.top })),
+      ...ops.filter((o) => o.type === 'window' && (o.wall || 'back') === name).map((o) => {
+        const c = openingCenter(rdim, o), w = openingWidth(o, rdim), { sill, h } = windowSpan(o, height);
+        return { c0: c - w / 2, c1: c + w / 2, y0: sill, y1: sill + h };
+      }),
+    ];
     const ext = WALL_T; // corner extension for the back/front walls
-    this._buildWall('back', 'x', -depth / 2 - WALL_T / 2, -(width / 2 + ext), width / 2 + ext, height, gapsFor('back'), wallMat);
-    this._buildWall('front', 'x', depth / 2 + WALL_T / 2, -(width / 2 + ext), width / 2 + ext, height, gapsFor('front'), wallMat);
-    this._buildWall('left', 'z', -width / 2 - WALL_T / 2, -depth / 2, depth / 2, height, gapsFor('left'), wallMat);
-    this._buildWall('right', 'z', width / 2 + WALL_T / 2, -depth / 2, depth / 2, height, gapsFor('right'), wallMat);
+    this._buildWall('back', 'x', -depth / 2 - WALL_T / 2, -(width / 2 + ext), width / 2 + ext, height, wallGapsFor('back'), wallMat);
+    this._buildWall('front', 'x', depth / 2 + WALL_T / 2, -(width / 2 + ext), width / 2 + ext, height, wallGapsFor('front'), wallMat);
+    this._buildWall('left', 'z', -width / 2 - WALL_T / 2, -depth / 2, depth / 2, height, wallGapsFor('left'), wallMat);
+    this._buildWall('right', 'z', width / 2 + WALL_T / 2, -depth / 2, depth / 2, height, wallGapsFor('right'), wallMat);
+
+    // PHOTO MODE ONLY: the ceiling (a closed room for the photographs); hidden in the live planner
+    // inside the walls, not over them: over them its underside shared a plane with the (double-sided)
+    // wall tops and they z-fought along every wall-ceiling line
+    this.ceiling = mesh(new THREE.BoxGeometry(width, WALL_T, depth), ceilingMat());
+    this.ceiling.position.set(0, height + WALL_T / 2, 0);
+    this.ceiling.castShadow = false; this.ceiling.visible = false; this.ceiling.name = 'ceiling';
+    this.group.add(this.ceiling);
+    this._height = height;
+    this._openings = ops;
+    this._cityPlanes = null;
+    if (this._closed) this.setPhotoClosed(this._closed);   // a rebuild in photo mode stays closed
 
     // ---- the FOOTPRINT of each wall: a low kerb that shows only while its wall is auto-hidden.
     // Without it a cabinet standing hard against a hidden wall looks like it is hanging off
@@ -123,29 +148,99 @@ export class Room {
     }
   }
 
-  // Build one wall as solid segments with full-height gaps where doorways are,
-  // plus a header lintel over each gap — a real walk-through opening.
+  // Build one wall as ONE solid: its elevation as a shape (doorways notched out of the bottom, windows
+  // as holes), extruded to the wall's thickness. It used to be butted boxes, and the pieces over and
+  // under an opening met the full-height wall in T-junctions that rasterise with hairline cracks (a
+  // dashed light line down the wall); a single triangulated shape has no joins to crack.
   _buildWall(name, axis, perp, start, end, height, gaps, wallMat) {
-    const sorted = [...gaps].sort((a, b) => a.c0 - b.c0);
+    const sorted = [...gaps].sort((a, b) => a.c0 - b.c0), keep = [];
     let cursor = start;
     for (const g of sorted) {
-      const c0 = Math.max(start, g.c0), c1 = Math.min(end, g.c1);
-      if (c0 - cursor > 0.5) this._wallBox(name, axis, perp, (cursor + c0) / 2, c0 - cursor, height, height / 2, wallMat);
-      cursor = Math.max(cursor, c1);
-      if (height - g.top > 0.5) this._wallBox(name, axis, perp, (c0 + c1) / 2, c1 - c0, height - g.top, (g.top + height) / 2, wallMat); // lintel
+      const c0 = Math.max(start + 0.5, g.c0), c1 = Math.min(end - 0.5, g.c1);
+      if (c0 < cursor - 0.01 || c1 - c0 <= 0.5) continue;            // overlapping openings: the first one wins
+      keep.push({ c0, c1, y0: g.y0 > 0.5 ? g.y0 : 0, y1: Math.min(g.y1, height - 0.5) });
+      cursor = c1;
     }
-    if (end - cursor > 0.5) this._wallBox(name, axis, perp, (cursor + end) / 2, end - cursor, height, height / 2, wallMat);
-  }
-  _wallBox(name, axis, perp, mid, len, h, yc, wallMat) {
-    if (len <= 0.01 || h <= 0.01) return;
-    const geo = axis === 'x' ? new THREE.BoxGeometry(len, h, WALL_T) : new THREE.BoxGeometry(WALL_T, h, len);
+    // the outline, counter-clockwise from the bottom-left, with a notch for every doorway
+    const shape = new THREE.Shape();
+    shape.moveTo(start, 0);
+    for (const g of keep) if (g.y0 === 0) { shape.lineTo(g.c0, 0); shape.lineTo(g.c0, g.y1); shape.lineTo(g.c1, g.y1); shape.lineTo(g.c1, 0); }
+    shape.lineTo(end, 0); shape.lineTo(end, height); shape.lineTo(start, height); shape.lineTo(start, 0);
+    for (const g of keep) if (g.y0 > 0) {
+      const h = new THREE.Path(); h.moveTo(g.c0, g.y0); h.lineTo(g.c1, g.y0); h.lineTo(g.c1, g.y1); h.lineTo(g.c0, g.y1); h.lineTo(g.c0, g.y0);
+      shape.holes.push(h);
+    }
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: WALL_T, bevelEnabled: false, curveSegments: 1 });
+    const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 96, uv.getY(i) / 96);   // a paint texture tile = 8'
     const m = mesh(geo, wallMat);
-    m.position.set(axis === 'x' ? mid : perp, yc, axis === 'x' ? perp : mid);
-    // walls RECEIVE shadows but cast none: the room has no ceiling, so a wall's shadow is a hard
-    // wedge of "sun through the missing roof" across the run (render step 2, 2026-09-28)
+    // the shape lies in local x (along the wall) / y, extruded along local +z
+    if (axis === 'x') m.position.set(0, 0, perp - WALL_T / 2);
+    else { m.rotation.y = -Math.PI / 2; m.position.set(perp + WALL_T / 2, 0, 0); }   // local x -> world +z, extrusion -> world -x
     m.castShadow = false; m.receiveShadow = true; m.name = 'wall-' + name; m.userData.wall = name;
     this.group.add(m);
     (this.walls[name] = this.walls[name] || []).push(m);
+  }
+
+  // ---- PHOTO MODE: the closed room (render step 4, 2026-09-28) ----
+  /** closed = false | { sun: bool }. Closed: the ceiling and all four walls (with what hangs on them)
+   *  show, the kerbs hide, each window's daylight panel gives way to the view outside (cityView.js,
+   *  on a plane beyond the wall) and, with sun, the walls, ceiling and glazing bars cast shadows so
+   *  the only direct light is what comes in through the window. Open again puts the live cut-away
+   *  back exactly (the next updateWallVisibility call re-hides whatever the camera is behind). */
+  setPhotoClosed(closed) {
+    this._closed = closed || null;
+    const on = !!closed, sun = !!(closed && closed.sun);
+    if (this.ceiling) { this.ceiling.visible = on; this.ceiling.castShadow = sun; }
+    for (const name of ['back', 'front', 'left', 'right']) {
+      for (const m of this.walls[name] || []) { if (on) m.visible = true; m.castShadow = sun; }
+      for (const g of this.wallAttached?.[name] || []) {
+        if (on) g.visible = true;
+        g.traverse((m) => {
+          if (m.userData.daylight) m.visible = !on;
+          if (m.userData.photoShadow) m.castShadow = sun;
+        });
+      }
+      for (const m of this.kerbs?.[name] || []) if (on) m.visible = false;
+    }
+    if (on && !this._cityPlanes) this._buildCityPlanes();
+    for (const p of this._cityPlanes || []) p.visible = on;
+  }
+
+  /** One plane per wall that has a window, 20' beyond it, big enough to fill any view out; and a
+   *  short hall behind every doorway. */
+  _buildCityPlanes() {
+    this._cityPlanes = [];
+    const cv = cityCanvas(); if (!cv) return;
+    if (!_cityMat) { const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; _cityMat = new THREE.MeshBasicMaterial({ map: t, toneMapped: false }); }
+    const { width, depth } = this._dims, DIST = 240, PW = 1400, PH = PW / 2;
+    const walls = new Set((this._openings || []).filter((o) => o.type === 'window').map((o) => o.wall || 'back'));
+    for (const wall of walls) {
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), _cityMat);
+      p.castShadow = false; p.receiveShadow = false; p.name = 'city-view'; p.visible = false;
+      // the horizon of the painting (45% down) at about eye height
+      const y = 60 + PH * (0.5 - 0.45);
+      if (wall === 'back') { p.position.set(0, y, -depth / 2 - DIST); }
+      else if (wall === 'front') { p.rotation.y = Math.PI; p.position.set(0, y, depth / 2 + DIST); }
+      else if (wall === 'left') { p.rotation.y = Math.PI / 2; p.position.set(-width / 2 - DIST, y, 0); }
+      else { p.rotation.y = -Math.PI / 2; p.position.set(width / 2 + DIST, y, 0); }
+      this.group.add(p); this._cityPlanes.push(p);
+    }
+    // a doorway leads into the next room, not onto the street: a short hall behind it (an open box in
+    // the wall paint, seen from inside), so the view through it stops at a wall a few feet away
+    const hallMat = new THREE.MeshStandardMaterial({ color: this._wallColor ?? 0xf3efe6, ...WALL_PAINT, side: THREE.BackSide });
+    hallMat.userData.wallPaint = true;
+    for (const o of (this._openings || []).filter((q) => q.type === 'doorway')) {
+      const wall = o.wall || 'back', rd = { width, depth }, c = openingCenter(rd, o), w = openingWidth(o, rd), HD = 42, H = this._height || 96;
+      // from the wall's inside face outward, so its floor also covers the threshold (the wall's 4")
+      const box = new THREE.Mesh(new THREE.BoxGeometry(w + 36, H, HD + WALL_T), hallMat);
+      box.castShadow = false; box.receiveShadow = true; box.name = 'photo-hall'; box.visible = false;
+      const off = (HD + WALL_T) / 2;
+      if (wall === 'back') box.position.set(c, H / 2, -depth / 2 - off);
+      else if (wall === 'front') box.position.set(c, H / 2, depth / 2 + off);
+      else if (wall === 'left') { box.rotation.y = Math.PI / 2; box.position.set(-width / 2 - off, H / 2, c); }
+      else { box.rotation.y = Math.PI / 2; box.position.set(width / 2 + off, H / 2, c); }
+      this.group.add(box); this._cityPlanes.push(box);
+    }
   }
 
   // ---- wall visibility ----
@@ -187,6 +282,7 @@ export class Room {
    */
   updateWallVisibility(camPos, view, inUse = null) {
     const d = this._dims; if (!d) return;
+    if (this._closed) return;                 // photo mode's closed room: every wall stays up (setPhotoClosed)
     const drawing = view && view !== '3d';
     const auto = {
       back: drawing || camPos.z >= -d.depth / 2,   // hide when camera is behind it
@@ -237,11 +333,7 @@ export class Room {
     const rdim = { width, depth };
     const w = openingWidth(o, rdim);
     const along = openingCenter(rdim, o);   // SAME maths the UI read-out uses
-    let h = isWindow ? (o.hgt || Math.min(46, height * 0.45)) : Math.min(82, height * 0.86);
-    let sill = isWindow ? (o.sill ?? Math.max(36, height * 0.42)) : 0;
-    // keep the opening inside the wall (sill ≥ 0, head ≤ ceiling)
-    sill = THREE.MathUtils.clamp(sill, 0, height - 6);
-    h = THREE.MathUtils.clamp(h, 6, height - sill);
+    const { sill, h } = isWindow ? windowSpan(o, height) : { sill: 0, h: Math.min(82, height * 0.86) };
     const centerY = sill + h / 2;
 
     const g = this._buildOpening(o.type, w, h, { stool: isWindow && sill - 3.4 >= 40 });
@@ -269,7 +361,7 @@ export class Room {
       // is a wall behind it, so transparency only bought sorting trouble.
       const paint = cream();
       const CAS = 3.4, SASH = 1.7;
-      const bar = (bw, bh, bd, x, y, z, shadow = true) => { const m = mesh(new THREE.BoxGeometry(bw, bh, bd), paint); m.position.set(x, y, z); m.castShadow = shadow; g.add(m); return m; };
+      const bar = (bw, bh, bd, x, y, z, shadow = true) => { const m = mesh(new THREE.BoxGeometry(bw, bh, bd), paint); m.position.set(x, y, z); m.castShadow = shadow; if (!shadow) m.userData.photoShadow = true; g.add(m); return m; };
       // casing (proud of the wall, front face z = 0.45)
       bar(CAS, h + 2 * CAS, 1.4, -(w / 2 + CAS / 2), 0, -0.25);
       bar(CAS, h + 2 * CAS, 1.4, w / 2 + CAS / 2, 0, -0.25);
@@ -277,7 +369,7 @@ export class Room {
       bar(w, CAS, 1.4, 0, -(h / 2 + CAS / 2), -0.25);
       // daylight, recessed to the back of the reveal (z = -0.7)
       const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, h), daylightMat());
-      glass.position.z = -0.7; g.add(glass);
+      glass.position.z = -0.7; glass.userData.daylight = true; g.add(glass);
       // sash frame, set back from the casing face (front face z = 0.05)
       const IN = 0.02;                                   // hairline inside the casing: no shared side planes
       bar(SASH, h - 2 * IN, 0.7, -(w / 2 - SASH / 2 - IN), 0, -0.3, false);
@@ -335,6 +427,23 @@ function daylightMat() {
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   _daylight = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
   return _daylight;
+}
+
+/** A window's sill and height, kept inside the wall (sill >= 0, head <= ceiling). The ONE place: the
+ *  window drawn on the wall and the hole cut behind it read the same numbers. */
+function windowSpan(o, height) {
+  const sill = THREE.MathUtils.clamp(o.sill ?? Math.max(36, height * 0.42), 0, height - 6);
+  const h = THREE.MathUtils.clamp(o.hgt || Math.min(46, height * 0.45), 6, height - sill);
+  return { sill, h };
+}
+
+// The ceiling (photo mode only): flat matte paint in a warm white, the walls' own lighting numbers.
+let _ceiling = null, _cityMat = null;
+function ceilingMat() {
+  if (_ceiling) return _ceiling;
+  _ceiling = new THREE.MeshStandardMaterial({ color: CEILING, ...WALL_PAINT });
+  _ceiling.userData.wallPaint = true;
+  return _ceiling;
 }
 
 function mesh(geo, mat) { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; return m; }

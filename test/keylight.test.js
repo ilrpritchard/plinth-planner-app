@@ -41,3 +41,27 @@ test('the biggest window wins, and doors are not windows', () => {
   const k = keyLight(room([win('back', 0.5, 24), { type: 'door', wall: 'right', pos: 0.5, width: 34 }, { ...win('left', 0.5, 60), hgt: 50 }]));
   assert.equal(k.source, 'window-left');
 });
+
+import { sunLight } from '../src/core/keylight.js';
+
+test('the sun: none without a window; from outside, through the window wall', () => {
+  assert.equal(sunLight(room()), null);
+  const out = { back: [0, -1], front: [0, 1], left: [-1, 0], right: [1, 0] };
+  for (const [wall, pos] of [['back', 0.5875], ['back', 0.2], ['left', 0.6], ['right', 0.4], ['front', 0.5]]) {
+    const s = sunLight(room([win(wall, pos)]));
+    assert.equal(s.wall, wall);
+    assert.ok(Math.abs(unit(s.from) - 1) < 1e-9);
+    const h = Math.hypot(s.from[0], s.from[2]);
+    assert.ok((s.from[0] * out[wall][0] + s.from[2] * out[wall][1]) / h > 0.8, `${wall}: comes from outside that wall`);
+    assert.ok(s.from[1] > 0.5 && s.from[1] < 0.7, `${wall}: a late-morning sun, not overhead`);
+  }
+});
+
+test('a side window rakes toward the back run; a back window toward the middle of the room', () => {
+  assert.ok(sunLight(room([win('left', 0.6)])).from[2] > 0, 'rays run toward the back wall');
+  assert.ok(sunLight(room([win('right', 0.6)])).from[2] > 0);
+  assert.ok(sunLight(room([win('back', 0.8)])).from[0] > 0, 'a window right of centre: the rays run left');
+  assert.ok(sunLight(room([win('back', 0.2)])).from[0] < 0);
+  const s = sunLight(room([win('back', 0.5875)]));
+  assert.ok(s.center[2] === -66 && s.center[1] > 36 && s.center[1] < 96, 'the window centre on the back wall');
+});
