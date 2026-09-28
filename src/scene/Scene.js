@@ -235,7 +235,7 @@ export class Scene {
     const prevRatio = this.renderer.getPixelRatio();
     this.renderer.setPixelRatio(o.width ? 1 : (o.scale || 3));
     this.renderer.setSize(w, h, false);
-    if (this.camera.isPerspectiveCamera) { this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); }
+    if (this.camera.isPerspectiveCamera) { this.camera.aspect = w / h; if (this.camera === this.persp) this._applyShift(w, h); this.camera.updateProjectionMatrix(); }
     if (this._photo) this._applyPhotoRoom();   // closed or open for THIS camera, before the wall auto-hide
     this._beforeRender?.();                 // grounding + wall auto-hide for THIS camera position
     this._render(true);
@@ -255,9 +255,19 @@ export class Scene {
     if (v.fov) cam.fov = v.fov;
     cam.near = 1; cam.far = 6000;
     cam.lookAt(c.target);
+    this._shift = v.shift || 0;               // a lens shift (magazine presets): the frame moves, the camera stays level
+    this._applyShift();
     cam.updateProjectionMatrix();
     c.minDistance = 12;                    // room-scale: stand close to the run if the shot wants it
     c.update();
+  }
+
+  /** The lens shift as a view offset on the perspective camera, for a frame of w x h (default: the
+   *  stage). shift = the fraction of the frame height the picture moves down. */
+  _applyShift(w, h) {
+    const cam = this.persp;
+    w = w || this.container.clientWidth || window.innerWidth; h = h || this.container.clientHeight || window.innerHeight;
+    if (this._shift) cam.setViewOffset(w, h, 0, this._shift * h, w, h); else if (cam.view) cam.clearViewOffset();
   }
 
   /** Photograph the kitchen from several standpoints (core/photoviews.js) and come back to
@@ -265,7 +275,7 @@ export class Scene {
    *  Returns [{ key, name, url }] — data URLs of the size/type in `opts` (see captureImage). */
   captureViews(views, opts = {}) {
     const cam = this.persp, c = this.controls;
-    const was = { view: this.view, cam: this.camera, pos: cam.position.clone(), target: c.target.clone(), fov: cam.fov, near: cam.near, far: cam.far, enabled: c.enabled };
+    const was = { view: this.view, cam: this.camera, pos: cam.position.clone(), target: c.target.clone(), fov: cam.fov, near: cam.near, far: cam.far, enabled: c.enabled, shift: this._shift || 0 };
     if (this.view !== '3d') this._activate(cam);
     c.enabled = false;
     const out = [];
@@ -276,7 +286,7 @@ export class Scene {
       }
     } finally {
       cam.position.copy(was.pos); c.target.copy(was.target);
-      cam.fov = was.fov; cam.near = was.near; cam.far = was.far; cam.updateProjectionMatrix();
+      cam.fov = was.fov; cam.near = was.near; cam.far = was.far; this._shift = was.shift; this._applyShift(); cam.updateProjectionMatrix();
       if (was.view !== '3d') { this._activate(was.cam); this.setView(was.view); }
       c.enabled = was.enabled; c.update();
     }
@@ -292,6 +302,7 @@ export class Scene {
     this.renderer.setSize(w, h, false);
     this.aspect = w / h;
     this.persp.aspect = this.aspect;
+    if (this._shift) this._applyShift(w, h);
     this.persp.updateProjectionMatrix();
     if (this.view !== '3d') this.setView(this.view); // re-fit ortho frustum
   }

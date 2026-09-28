@@ -58,3 +58,64 @@ export function photoViews(room = {}, items = []) {
   }
   return views;
 }
+
+// ---- MAGAZINE PRESETS (render step 6, 2026-09-28: "three camera presets that match how kitchens are
+// photographed for magazines ... keep verticals vertical") -----------------------------------------
+// Lenses are 35mm full-frame equivalents on a 3:2 landscape frame (24mm tall), so the vertical field
+// of view is 2 atan(12 / f). Every camera is LEVEL (target at the camera's own height: verticals stay
+// vertical, as with a view camera) and the frame is moved up or down by a LENS SHIFT instead of by
+// tilting: `shift` is the fraction of the frame height the picture moves down (Scene.lookFrom applies
+// it as a view offset). 1.2 m = 47.2", 1.3 m = 51.2", 1.0 m = 39.4".
+//   magazineViews(room, items) -> [straight-on 85mm, three-quarter 50mm, detail 100mm]
+const IN_PER_M = 39.3701;
+export const vfovFor = (mm) => 2 * Math.atan(12 / mm) * 180 / Math.PI;
+
+/** Where two floor cabinets meet, nearest the middle of the island (if any) or of the back run. */
+export function junctionFor(room = {}, items = []) {
+  const D = room.depth || 120;
+  const floor = (it) => { const c = getCab(it && it.code); return c && c.placeable && c.type === 'FLOOR' && ((it.rotDeg || 0) % 180) === 0 ? c : null; };
+  const pick = (list, faceSign) => {
+    const s = list.map((it) => ({ it, c: floor(it) })).filter((q) => q.c).sort((a, b) => a.it.x - b.it.x);
+    const js = [];
+    for (let i = 1; i < s.length; i++) {
+      const a = s[i - 1], b = s[i], ea = a.it.x + a.c.w / 2, sb = b.it.x - b.c.w / 2;
+      if (Math.abs(ea - sb) < 0.6 && Math.abs(a.it.z - b.it.z) < 2) js.push({ x: (ea + sb) / 2, z: a.it.z + faceSign * a.c.d / 2, island: !!a.it.island });
+    }
+    if (!js.length) return null;
+    const mid = (s[0].it.x - s[0].c.w / 2 + s[s.length - 1].it.x + s[s.length - 1].c.w / 2) / 2;
+    return js.sort((p, q) => Math.abs(p.x - mid) - Math.abs(q.x - mid))[0];
+  };
+  // the island: flagged, or (a saved file before the planner flags it) standing well off the back wall
+  const onIsland = (it) => it.island || it.z > -D / 2 + 40;
+  const isl = pick((items || []).filter((it) => onIsland(it) && ((it.rotDeg || 0) % 360) === 0), 1);
+  if (isl) return { ...isl, island: true };
+  return pick((items || []).filter((it) => !onIsland(it)), 1);
+}
+
+export function magazineViews(room = {}, items = []) {
+  const W = room.width || 144, D = room.depth || 120, H = room.height || 96;
+  const back = -D / 2, front = D / 2, M = 6;
+  const { runX } = focus(room, items);
+  const face = back + 24.5;                               // the fronts of the back run
+  const view = (key, name, mm, pos, aimXZ, centreY) => {
+    const fov = vfovFor(mm), dist = Math.hypot(aimXZ[0] - pos[0], aimXZ[1] - pos[2]);
+    const frameH = 2 * dist * Math.tan(fov * Math.PI / 360);
+    // a shift over ~a third of the frame is more than a real shift lens gives: frame nearer level instead
+    const shift = clamp((pos[1] - centreY) / frameH, -0.35, 0.35);
+    return { key, name, pos, target: [aimXZ[0], pos[1], aimXZ[1]], fov, lens: mm, shift: +shift.toFixed(4) };
+  };
+  const h12 = Math.min(1.2 * IN_PER_M, H - 10), h13 = Math.min(1.3 * IN_PER_M, H - 10), h10 = Math.min(1.0 * IN_PER_M, H - 10);
+  // 1. straight on, one-point perspective: as far back as the room allows, square to the run, on the
+  //    working bay (the window over the sink when there is one, else the middle of the run)
+  const win = (room.openings || []).find((o) => o.type === 'window' && (o.wall || 'back') === 'back');
+  const bayX = win ? clamp(-W / 2 + (win.pos ?? 0.5) * W, -W / 2 + 20, W / 2 - 20) : runX;
+  const a = view('mag-straight', 'Magazine: straight on, 85mm at 1.2 m', 85, [bayX, h12, front - M], [bayX, face], 32);   // the fronts, the worktop, the splash
+  // 2. three-quarter from the far front corner, 50mm, across the run
+  const cx = runX >= 0 ? -1 : 1;                           // the corner across from where the run sits
+  const b = view('mag-three-quarter', 'Magazine: three-quarter, 50mm at 1.3 m', 50, [cx * (W / 2 - M - 2), h13, front - M - 2], [runX - cx * W * 0.08, back + 14], 38);   // down to the plinth line
+  // 3. a tight detail of a junction (an island's, else the back run's), 100mm at 1.0 m
+  const j = junctionFor(room, items) || { x: runX, z: face };
+  const dz = Math.min(100, (j.island ? front - M : front - M) - j.z);
+  const c = view('mag-detail', j.island ? 'Magazine: island junction, 100mm at 1.0 m' : 'Magazine: cabinet junction, 100mm at 1.0 m', 100, [j.x + 4, h10, j.z + dz], [j.x, j.z], 30);
+  return [a, b, c];
+}

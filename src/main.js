@@ -31,14 +31,14 @@ import { TradeUI } from './ui/trade.js';
 import { CloudUI } from './ui/cloudUI.js';
 import { Wizard } from './ui/wizard.js';
 import { isCloud, requestOrderCheck, currentUser } from './core/cloud.js';
-import { photoViews } from './core/photoviews.js';
+import { photoViews, magazineViews } from './core/photoviews.js';
 import { buildZip } from './core/xlsxmini.js';
 import { fetchSharedProject } from './core/tradecloud.js';
 
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-226 · materials: brushed eggshell paint, honed stone with veins along the run, per-board oak, brushed stainless';
+const BUILD = 'W2W-227 · photo mode: three magazine presets (85 / 50 / 100mm, level, lens shift)';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -219,7 +219,7 @@ const PHOTO = { width: 3840, height: 2560, type: 'image/jpeg', quality: 0.94 };
 let photoMode = null;                                 // { views, i, was: { pos, target, fov } }
 const bytesOf = (url) => { const b64 = url.slice(url.indexOf(',') + 1), bin = atob(b64), data = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) data[k] = bin.charCodeAt(k); return data; };
 const saveBlob = (name, blob) => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); };
-const photoFile = (v, i) => `PLINTH_kitchen_${i + 1}_${v.key}.jpg`;   // 1 = your view, 2-6 the suggested angles
+const photoFile = (v, i) => `PLINTH_kitchen_${i + 1}_${v.key}.jpg`;   // 1 = your view, 2-6 the suggested angles, 7-9 the magazine presets
 document.getElementById('btnPhoto')?.addEventListener('click', async () => {
   if (photoMode) { photoAngle(photoMode.i + 1); return; }          // pressed again: next angle
   if (isCloud()) {
@@ -241,7 +241,8 @@ function startPhotoMode() {
   // photo 1 is HER OWN VIEW, exactly as she left it (her catch 2026-09-25: "when I angle the camera
   // and click photo it removes my view"); the five suggested standpoints are one arrow away
   const mine = { key: 'your-view', name: 'Your view, as it is', pos: was.pos.toArray(), target: was.target.toArray(), fov: was.fov };
-  photoMode = { views: [mine, ...photoViews(store.state.room, store.state.items)], i: 0, was };
+  // then the three magazine presets: level cameras, real lenses (85 / 50 / 100mm), a lens shift
+  photoMode = { views: [mine, ...photoViews(store.state.room, store.state.items), ...magazineViews(store.state.room, store.state.items)], i: 0, was };
   layer.select(null); ui.showSelbar(null); layer.setHover?.(null);
   room.setGridVisible(false);
   scene.setPhotoQuality(true);                        // finer shadow + contact shading, photo mode only
@@ -253,7 +254,7 @@ function startPhotoMode() {
     <span id="pbCap"></span>
     <button type="button" class="pb-ghost" id="pbNext" title="Next angle (→)">›</button>
     <button type="button" id="pbSave" title="Render what is on screen at ${PHOTO.width} × ${PHOTO.height} and save it">Save</button>
-    <button type="button" class="pb-ghost" id="pbAll" title="Your view and the five suggested standpoints, rendered at ${PHOTO.width} × ${PHOTO.height}, in one zip">Save all</button>
+    <button type="button" class="pb-ghost" id="pbAll" title="Your view, the five suggested standpoints and the three magazine presets, rendered at ${PHOTO.width} × ${PHOTO.height}, in one zip">Save all</button>
     <button type="button" class="pb-ghost" id="pbDone">Done</button>`;
   bar.querySelector('#pbPrev').addEventListener('click', () => photoAngle(photoMode.i - 1));
   bar.querySelector('#pbNext').addEventListener('click', () => photoAngle(photoMode.i + 1));
@@ -300,7 +301,7 @@ function endPhotoMode() {
   document.getElementById('btnPhoto')?.classList.remove('active');
   room.setGridVisible(true);
   scene.setPhotoQuality(false);
-  scene.lookFrom({ pos: was.pos.toArray(), target: was.target.toArray(), fov: was.fov });
+  scene.lookFrom({ pos: was.pos.toArray(), target: was.target.toArray(), fov: was.fov, shift: 0 });
 }
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
