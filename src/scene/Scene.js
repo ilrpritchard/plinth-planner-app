@@ -5,7 +5,41 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { BRAND } from '../core/catalogue.js';
+import { keyLight } from '../core/keylight.js';
+
+// Khronos PBR Neutral (github.com/KhronosGroup/ToneMapping), the curve three.js ships as
+// NeutralToneMapping from r162; this vendored r160 lacks it, so it goes in through three's own
+// CustomToneMapping hook. It leaves a colour's hue and saturation alone up to ~80% brightness and
+// rolls only highlights off, which is what paint swatches need (AgX and ACES both shift them).
+THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars_fragment.replace(
+  'vec3 CustomToneMapping( vec3 color ) { return color; }',
+  `vec3 CustomToneMapping( vec3 color ) {
+	const float StartCompression = 0.8 - 0.04;
+	const float Desaturation = 0.15;
+	color *= toneMappingExposure;
+	float x = min( color.r, min( color.g, color.b ) );
+	float offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
+	color -= offset;
+	float peak = max( color.r, max( color.g, color.b ) );
+	if ( peak < StartCompression ) return color;
+	float d = 1. - StartCompression;
+	float newPeak = 1. - d * d / ( peak + d - StartCompression );
+	color *= newPeak / peak;
+	float g = 1. - 1. / ( Desaturation * ( peak - newPeak ) + 1. );
+	return mix( color, vec3( newPeak ), g );
+}`);
+
+// The camera response and the light budget, in ONE place (render step 2, 2026-09-28). Chosen by
+// tools/render-swatches.mjs: the tone mapper + exposure that keep the 15 paints nearest their hexes.
+//   env  = the HDRI's mean luminance after normalising (it lights through each material's envMapIntensity)
+//   key  = the one shadow-casting light, aimed by core/keylight.js (from the window if there is one)
+//   fill = soft, shadowless, from the camera side opposite the key
+//   hemi = a faint sky/ground tint, so undersides read a shade darker
+export const LOOK = { toneMapping: THREE.CustomToneMapping, exposure: 1.35, env: 0.35, key: 2.0, fill: 0.5, hemi: 0.3 };   // Custom = PBR Neutral, above
+// A white daylight apartment, one big window, almost no colour cast (CC0, Poly Haven; site-assets/hdri/LICENCE.md)
+const HDRI_URL = new URL('../../site-assets/hdri/brown_photostudio_04_1k.hdr', import.meta.url).href;
 
 export class Scene {
   constructor(container) {
@@ -20,10 +54,10 @@ export class Scene {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // No tone mapping = paint colours render true (ACES filmic was darkening +
-    // desaturating them). A bright studio environment does the lifting instead.
-    this.renderer.toneMapping = THREE.NoToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
+    // A filmic curve rolls bright worktops and the window off softly instead of clipping them,
+    // like a camera; LOOK says which one and at what exposure (measured against the paint hexes).
+    this.renderer.toneMapping = LOOK.toneMapping;
+    this.renderer.toneMappingExposure = LOOK.exposure;
     container.appendChild(this.renderer.domElement);
 
     // ----- scene -----
@@ -71,22 +105,13 @@ export class Scene {
   }
 
   _buildLighting() {
-    // Bright studio set-up, but with a clear KEY direction so the shaker
-    // relief, reveals and knobs cast real micro-shadows. The hemisphere's
-    // ground tint is a shade darker than before — a gentle AO illusion on
-    // downward-facing surfaces — while the sum of light on the fronts stays
-    // the same, so painted finishes still read true to their swatch hex.
-    const hemi = new THREE.HemisphereLight(0xffffff, 0xb7a992, 0.82);
-    this.scene.add(hemi);
+    // ONE clear light direction (the key, aimed at the window by setKeyFrom) over a soft daylight
+    // environment, with a faint fill from the camera side. The old rig was four lights summing to
+    // ~1.1 on every surface facing the room, which read as flat all-round light.
+    this.hemi = new THREE.HemisphereLight(0xffffff, 0xb7a992, LOOK.hemi);
+    this.scene.add(this.hemi);
 
-    // Measured 2026-09-22 (her: "why does the back wall look white"): the key's front component
-    // + the fill + the hemisphere summed to ~1.1 on every surface facing the room, so the back
-    // wall and every cabinet front CLIPPED to white (Ghost #F7F4EB rendered 255,250,237) while
-    // the side walls, in shade, read as painted. The fill now comes from straight left (no front
-    // component) and the key is a touch lower: Ghost renders 248,242,229, the back wall no longer
-    // blows out, and the side walls barely change.
-    const key = new THREE.DirectionalLight(0xfff6ea, 1.6);
-    key.position.set(150, 210, 170);
+    const key = this.key = new THREE.DirectionalLight(0xfffbf5, LOOK.key);
     key.castShadow = true;
     key.shadow.mapSize.set(3072, 3072);   // fine texels so 8mm relief resolves
     const s = 240;
@@ -98,20 +123,83 @@ export class Scene {
     key.shadow.radius = 4;
     this.scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0xeef2ff, 0.55);
-    fill.position.set(-170, 130, 0);
-    this.scene.add(fill);
+    this.fill = new THREE.DirectionalLight(0xffffff, LOOK.fill);
+    this.scene.add(this.fill);
 
-    const rim = new THREE.DirectionalLight(0xffffff, 0.4);
-    rim.position.set(-40, 110, -190);
-    this.scene.add(rim);
-
-    // Real studio environment (soft white box) — this is the key fix: the old
-    // environment was an empty (black) scene, so reflections darkened surfaces.
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    // The environment: RoomEnvironment (a soft white box) at once, so the first frame is lit; the
+    // daylight HDRI replaces it when it has loaded, turned so its window sits where the key comes
+    // from. If the HDRI cannot load, RoomEnvironment simply stays.
+    this._pmrem = new THREE.PMREMGenerator(this.renderer);
     const roomEnv = new RoomEnvironment();
-    this.scene.environment = pmrem.fromScene(roomEnv, 0.04).texture;
+    this._envRT = this._pmrem.fromScene(roomEnv, 0.04);
+    this.scene.environment = this._envRT.texture;
     roomEnv.dispose?.();
+    this.setKeyFrom({});
+    /** Resolves once the HDRI is in (or has failed and RoomEnvironment stays): captures wait on it. */
+    this.envReady = this._loadHdri();
+  }
+
+  /** Aim the key (and turn the environment) for this room: core/keylight.js decides the direction. */
+  setKeyFrom(room) {
+    const k = keyLight(room), R = 320;
+    this.key.position.set(k.from[0] * R, k.from[1] * R, k.from[2] * R);
+    // fill: the key mirrored to the other side and lower, like a bounce card. It opens the shadow
+    // side (the wall facing away from the key went a heavy taupe without it) and casts none.
+    const h = Math.hypot(k.from[0], k.from[2]) || 1;
+    const f = new THREE.Vector3(-k.from[0] / h, 0.5, Math.max(0.6, k.from[2] / h)).normalize().multiplyScalar(R);
+    this.fill.position.copy(f);
+    this.keySource = k.source;
+    this._aimEnv(k.azimuth);
+  }
+
+  async _loadHdri() {
+    try {
+      const tex = await new RGBELoader().setDataType(THREE.FloatType).loadAsync(HDRI_URL);
+      const { width: w, height: h, data } = tex.image;
+      // where its light comes from (three's equirect: column u -> azimuth (u - 0.5) * 2pi, row 0 = up)
+      // and its solid-angle mean luminance, so LOOK.env sets the level whatever the file's exposure
+      let sx = 0, sz = 0, sl = 0, sw = 0;
+      for (let r = 0; r < h; r++) {
+        const cl = Math.cos((0.5 - (r + 0.5) / h) * Math.PI);
+        for (let c = 0; c < w; c++) {
+          const i = (r * w + c) * 4, L = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+          const ph = ((c + 0.5) / w - 0.5) * 2 * Math.PI;
+          sx += L * cl * Math.cos(ph); sz += L * cl * Math.sin(ph); sl += L * cl; sw += cl;
+        }
+      }
+      this._hdri = { w, h, data, az: Math.atan2(sz, sx), mean: sl / sw, scale: LOOK.env / (sl / sw) };
+      tex.dispose();
+      this._envAz = null;
+      this._aimEnv(this._wantAz ?? 0);
+    } catch (e) {
+      console.warn('PL/NNER: daylight HDRI did not load, keeping the studio environment', e);
+    }
+  }
+
+  /** Turn the HDRI about the vertical so its brightest side faces azimuth `az` (radians, from +x toward +z). */
+  _aimEnv(az) {
+    this._wantAz = az;
+    const H = this._hdri;
+    if (!H) return;
+    if (this._envAz != null && Math.abs(Math.atan2(Math.sin(az - this._envAz), Math.cos(az - this._envAz))) < 0.09) return;   // within 5 degrees: keep it
+    const { w, h, data, scale } = H;
+    const shift = ((Math.round((az - H.az) / (2 * Math.PI) * w) % w) + w) % w;
+    const out = new Uint16Array(w * h * 4), toHalf = THREE.DataUtils.toHalfFloat;
+    for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
+      const i = (r * w + c) * 4, o = (r * w + (c + shift) % w) * 4;
+      out[o] = toHalf(data[i] * scale); out[o + 1] = toHalf(data[i + 1] * scale); out[o + 2] = toHalf(data[i + 2] * scale); out[o + 3] = toHalf(1);
+    }
+    const dt = new THREE.DataTexture(out, w, h, THREE.RGBAFormat, THREE.HalfFloatType);
+    dt.mapping = THREE.EquirectangularReflectionMapping;
+    dt.colorSpace = THREE.LinearSRGBColorSpace;
+    dt.flipY = true; dt.minFilter = dt.magFilter = THREE.LinearFilter; dt.generateMipmaps = false;
+    dt.needsUpdate = true;
+    const rt = this._pmrem.fromEquirectangular(dt);
+    dt.dispose();
+    this._envRT?.dispose();
+    this._envRT = rt;
+    this.scene.environment = rt.texture;
+    this._envAz = az;
   }
 
   /** Register a callback run every frame before rendering (e.g. grounding). */

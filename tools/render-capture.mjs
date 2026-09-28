@@ -63,6 +63,7 @@ try {
     await frame();
 
     P.loadState(state);                     // rebuilds every layer and frames the room
+    await (S.envReady || Promise.resolve());   // the daylight HDRI, once it has loaded
     await new Promise((r) => setTimeout(r, 700));
     await frame();
 

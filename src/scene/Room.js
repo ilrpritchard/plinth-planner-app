@@ -105,7 +105,7 @@ export class Room {
       const seg = (c0, c1) => { if (c1 - c0 <= 0.5) return;
         const geo = axis === 'x' ? new THREE.BoxGeometry(c1 - c0, KERB_H, WALL_T) : new THREE.BoxGeometry(WALL_T, KERB_H, c1 - c0);
         const m = mesh(geo, wallMat); m.position.set(axis === 'x' ? (c0 + c1) / 2 : perp, KERB_H / 2, axis === 'x' ? perp : (c0 + c1) / 2);
-        m.receiveShadow = true; m.visible = false; m.name = 'kerb-' + name; this.group.add(m); this.kerbs[name].push(m); };
+        m.castShadow = false; m.receiveShadow = true; m.visible = false; m.name = 'kerb-' + name; this.group.add(m); this.kerbs[name].push(m); };
       for (const g of [...gapsFor(name)].sort((p, q) => p.c0 - q.c0)) { seg(cursor, Math.max(start, g.c0)); cursor = Math.max(cursor, Math.min(end, g.c1)); }
       seg(cursor, end);
     };
@@ -141,7 +141,9 @@ export class Room {
     const geo = axis === 'x' ? new THREE.BoxGeometry(len, h, WALL_T) : new THREE.BoxGeometry(WALL_T, h, len);
     const m = mesh(geo, wallMat);
     m.position.set(axis === 'x' ? mid : perp, yc, axis === 'x' ? perp : mid);
-    m.receiveShadow = true; m.name = 'wall-' + name; m.userData.wall = name;
+    // walls RECEIVE shadows but cast none: the room has no ceiling, so a wall's shadow is a hard
+    // wedge of "sun through the missing roof" across the run (render step 2, 2026-09-28)
+    m.castShadow = false; m.receiveShadow = true; m.name = 'wall-' + name; m.userData.wall = name;
     this.group.add(m);
     (this.walls[name] = this.walls[name] || []).push(m);
   }
