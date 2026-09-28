@@ -43,6 +43,52 @@ export function makeFloorTexture(key, colorInt, width, depth) {
   return tex;
 }
 
+/** PHOTO MODE (render step 5): a ROUGHNESS map for the timber floors (planks and herringbone), laid
+ *  out board for board over makeFloorTexture's own canvas: the same seeded painter is run again with
+ *  its drawing switched off (a context that only follows the moves), so every board lands where it
+ *  was painted and gets its own sheen (a matt-lacquered floor never wears evenly), with a little
+ *  variation along the grain and the joints a touch rougher. Its own RNG, so the layout's is untouched.
+ *  Null for the stone and concrete floors (and in node). Values are 0.65-1.0 of the material's. */
+export function makeFloorRoughness(key, colorInt, width, depth) {
+  const kind = (PAINT[key] || {}).kind;
+  if ((kind !== 'planks' && kind !== 'herringbone') || typeof document === 'undefined') return null;
+  const long = Math.max(width, depth, 1), scale = MAXPX / long;
+  const cw = Math.max(8, Math.round(width * scale)), ch = Math.max(8, Math.round(depth * scale));
+  const rc = document.createElement('canvas'); rc.width = cw; rc.height = ch;
+  const r = rc.getContext('2d'); r.fillStyle = 'rgb(235,235,235)'; r.fillRect(0, 0, cw, ch);
+  _rough = { ctx: r, R: rng(hash(`rough|${key}|${Math.round(width)}x${Math.round(depth)}`)) };
+  try { paintFloor(followOnly(r), key, colorInt, cw, ch, scale, false); } finally { _rough = null; }
+  const tex = new THREE.CanvasTexture(rc);
+  tex.colorSpace = THREE.NoColorSpace; tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping; tex.anisotropy = 8;
+  return tex;
+}
+let _rough = null;
+// a 2D context that draws nothing but passes every move (save / restore / translate / rotate) on to `r`
+function followOnly(r) {
+  const moves = new Set(['save', 'restore', 'translate', 'rotate', 'scale', 'setTransform', 'transform', 'resetTransform']);
+  const grad = { addColorStop() {} };
+  return new Proxy({}, {
+    get(_, k) {
+      if (moves.has(k)) return (...a) => r[k](...a);
+      if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => grad;
+      return () => {};
+    },
+    set() { return true; },
+  });
+}
+// one board's sheen (called by board() while makeFloorRoughness runs)
+function roughBoard(len, wid, s) {
+  const { ctx: r, R } = _rough, base = R.range(0.68, 0.98);
+  r.fillStyle = grey(base); r.fillRect(0, 0, len, wid);
+  for (let i = 0; i < 5; i++) {                              // a few long streaks along the grain
+    r.fillStyle = grey(Math.min(1, base + R.range(-0.06, 0.06)));
+    r.fillRect(0, R.range(0, wid), len, Math.max(1, s * R.range(0.3, 1.1)));
+  }
+  const e = Math.max(1, s * 0.09);
+  r.fillStyle = grey(1); r.fillRect(0, wid - e, len, e); r.fillRect(len - e, 0, e, wid);   // the joints
+}
+function grey(v) { const c = Math.round(255 * v); return `rgb(${c},${c},${c})`; }
+
 /** A small square of the real floor for the Room panel swatch (data URL). */
 export function floorSwatchURL(key, colorInt, px = 132, inches = 44) {
   const cnv = document.createElement('canvas');
@@ -81,6 +127,7 @@ export function floorSurface(key) {
 // One board, drawn lying along +x from (0,0), `len` x `wid` px. Callers translate
 // and rotate, so planks and herringbone blocks share one painter.
 function board(ctx, len, wid, s, rgb, R) {
+  if (_rough) roughBoard(len, wid, s);
   const tone = R.range(-11, 9), warm = R.range(-3, 3);
   const base = [rgb[0] + tone + warm, rgb[1] + tone, rgb[2] + tone - warm];
   ctx.save();

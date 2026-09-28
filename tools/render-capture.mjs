@@ -48,6 +48,7 @@ const browser = await puppeteer.launch({
 try {
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.error('  page error:', e.message));
+  page.on('console', (m) => { if (m.type() === 'error' && !/GoTrueClient/.test(m.text())) console.error('  console error:', m.text().slice(0, 400)); });
   // a 3:2 window at 1x, so the framing of view 1 matches the 3:2 photos
   await page.setViewport({ width: 1500, height: 1000, deviceScaleFactor: 1 });
   await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0' });

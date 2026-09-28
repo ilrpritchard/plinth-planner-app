@@ -8,6 +8,8 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { BRAND } from '../core/catalogue.js';
 import { keyLight, sunLight } from '../core/keylight.js';
+import { DETAIL_ON } from '../models/surfaceDetail.js';
+import { setWorktopDetail } from '../models/materials.js';
 
 // Khronos PBR Neutral (github.com/KhronosGroup/ToneMapping), the curve three.js ships as
 // NeutralToneMapping from r162; this vendored r160 lacks it, so it goes in through three's own
@@ -387,6 +389,7 @@ export class Scene {
       this._photoRoomKey = null;
       this._fitPhotoShadow();
       this._photoPaint(true);
+      DETAIL_ON.value = 1; setWorktopDetail(true); this.onPhotoDetail?.(true);   // materials, render step 5
       this.photoReady = import('./photoFx.js').then(({ PhotoAO }) => {
         if (this._photo && !this._photoFx) this._photoFx = new PhotoAO(this.renderer, this.scene, this.persp);
       }).catch((e) => console.warn('PL/NNER: photo contact shading did not load', e));
@@ -396,6 +399,7 @@ export class Scene {
       this._photoRoomKey = null;
       this.onPhotoClosed?.(false);
       this._photoPaint(false);
+      DETAIL_ON.value = 0; setWorktopDetail(false); this.onPhotoDetail?.(false);
       this.persp.near = 1; this.persp.updateProjectionMatrix();
       this._photoFx?.dispose(); this._photoFx = null;
       const L = this._liveShadow;

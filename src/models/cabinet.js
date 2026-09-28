@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { SPEC, mmToIn, MOUNT, counterShelfTops, SURFACE_Y } from '../core/units.js';
 import {
-  paintMat, oakMat, interiorMat, glassMat, brassMat,
+  paintMat, oakMat, interiorMat, glassMat, brassMat, stainlessMat,
   shadowMat, paintEdgeMat,
 } from './materials.js';
 import { makeKnob } from './knob.js';
@@ -605,7 +605,7 @@ function buildFront(g, cab, ctx) {
       revealRing(g, 0, cy, faceW, openH, frontZ);
       // the canopy LINER under it (a 54cm built-in like the AEG DGE5661HM, her reference): a slim
       // stainless plate with a grease filter and two lamps, all you see of the extractor
-      const steel = new THREE.MeshStandardMaterial({ color: 0xbcc1c5, metalness: 0.7, roughness: 0.4 });
+      const steel = stainlessMat(0xbcc1c5, 0.7, 0.4);
       const dark = new THREE.MeshStandardMaterial({ color: 0x3a3d40, metalness: 0.3, roughness: 0.7 });
       const lw = Math.min(faceW - 1, 21.3), ld = ctx.inD - 3;
       const plate = box(lw, 0.8, ld, steel); plate.position.set(0, -0.4, -0.5); g.add(plate);
@@ -653,8 +653,8 @@ function buildFront(g, cab, ctx) {
       // painted tall housing with an inset stainless wall oven at counter-to-
       // eye height: (bottom→top) hinged door · drawer-style panel · oven ·
       // blank painted panel up to the top rail. Neutral steels only.
-      const steel = new THREE.MeshStandardMaterial({ color: 0xb9bdc2, metalness: 0.85, roughness: 0.3 });
-      const steelDk = new THREE.MeshStandardMaterial({ color: 0x8f959b, metalness: 0.85, roughness: 0.35 });
+      const steel = stainlessMat(0xb9bdc2, 0.85, 0.3);
+      const steelDk = stainlessMat(0x8f959b, 0.85, 0.35);
       const dkGlass = new THREE.MeshStandardMaterial({ color: 0x131518, metalness: 0.3, roughness: 0.15 });
       const y0 = openCenterY - openH / 2, openTop = openCenterY + openH / 2;
       const seat = ovenSeat(cab);                    // shared with the oven appliance + the snap (core/ovenseat.js)
@@ -700,8 +700,8 @@ function buildFront(g, cab, ctx) {
       // the UNDER-COUNTER oven housing (F32): a slim drawer panel at the bottom, the oven
       // aperture right under the top rail. The oven (AP21) rides here and draws itself; empty,
       // the same gallery-style placeholder front the tall housing shows.
-      const steel = new THREE.MeshStandardMaterial({ color: 0xb9bdc2, metalness: 0.85, roughness: 0.3 });
-      const steelDk = new THREE.MeshStandardMaterial({ color: 0x8f959b, metalness: 0.85, roughness: 0.35 });
+      const steel = stainlessMat(0xb9bdc2, 0.85, 0.3);
+      const steelDk = stainlessMat(0x8f959b, 0.85, 0.35);
       const dkGlass = new THREE.MeshStandardMaterial({ color: 0x131518, metalness: 0.3, roughness: 0.15 });
       const y0 = openCenterY - openH / 2;
       const seat = ovenSeat(cab);

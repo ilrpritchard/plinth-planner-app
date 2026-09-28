@@ -1,0 +1,65 @@
+{
+  "note": "Render step 5 material close-ups: the hero with a 33\" sink in the F10 and a 48\" range at the right end. World inches; fronts z -41.75, range front ~ -39.75.",
+  "views": [
+    {
+      "key": "range",
+      "name": "Brushed stainless range front",
+      "pos": [
+        40,
+        40,
+        -4
+      ],
+      "target": [
+        56,
+        20,
+        -40
+      ],
+      "fov": 40
+    },
+    {
+      "key": "sink-stone",
+      "name": "Sink and honed Carrara, raking light",
+      "pos": [
+        26,
+        58,
+        -20
+      ],
+      "target": [
+        12,
+        36,
+        -54
+      ],
+      "fov": 40
+    },
+    {
+      "key": "paint-stile",
+      "name": "Painted stiles and rail at a grazing angle",
+      "pos": [
+        -10,
+        30,
+        -30
+      ],
+      "target": [
+        -18,
+        24,
+        -41.5
+      ],
+      "fov": 30
+    },
+    {
+      "key": "floor",
+      "name": "Oak floor boards",
+      "pos": [
+        20,
+        40,
+        30
+      ],
+      "target": [
+        0,
+        0,
+        -20
+      ],
+      "fov": 45
+    }
+  ]
+}

@@ -3,7 +3,8 @@
 
 import * as THREE from 'three';
 import { BRAND } from '../core/catalogue.js';
-import { worktopCanvas } from './worktopTexture.js';
+import { worktopCanvas, worktopDetailCanvases } from './worktopTexture.js';
+import { addDetail } from './surfaceDetail.js';
 
 const paintCache = new Map();
 
@@ -18,6 +19,7 @@ export function paintMat(hex) {
     clearcoat: 0.28,           // the satin lacquer film real painted cabinets have
     clearcoatRoughness: 0.5,   // soft, not glossy — catches a gentle highlight
   });
+  addDetail(m, 'paint');       // photo mode: brushed-eggshell micro-texture on every painted part (surfaceDetail.js)
   paintCache.set(hex, m);
   return m;
 }
@@ -70,12 +72,30 @@ export function plinthMat() {
   });
 }
 
+// The knobs (visual only: hardware is by others, cabinets ship undrilled, hard rule 17, so there is
+// NO picker). Render step 5 (2026-09-28): unlacquered satin brass, as the marketing images specify;
+// the planner drew a neutral grey metal before ("no gold/yellow in the scene"). KNOB_FINISH is the one
+// switch; 'nickel' is a satin nickel close to the old look, 'black' a matt black.
+export const KNOB_FINISHES = {
+  brass:  { color: 0xc9ab77, metalness: 1.0, roughness: 0.35, env: 1.0 },   // unlacquered, satin
+  nickel: { color: 0xc4c3be, metalness: 1.0, roughness: 0.3, env: 1.0 },
+  black:  { color: 0x1f1f20, metalness: 0.6, roughness: 0.5, env: 0.6 },
+};
+export const KNOB_FINISH = 'brass';
 export function brassMat() {
-  // brushed steel/nickel handles — neutral metal, no gold/yellow in the scene.
-  return _brass ||= new THREE.MeshStandardMaterial({
-    color: new THREE.Color(0x9a9ea3), roughness: 0.35, metalness: 0.85,
-    envMapIntensity: 1.0,
+  const f = KNOB_FINISHES[KNOB_FINISH];
+  return _brass ||= new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(f.color), roughness: f.roughness, metalness: f.metalness, envMapIntensity: f.env,
   });
+}
+
+/** Brushed stainless (render step 5): anisotropic highlights stretched ACROSS the grain, which runs
+ *  along each face's u (horizontal on a front), plus fine brush lines in photo mode. */
+export function stainlessMat(color, metalness = 0.8, roughness = 0.35, env = 1.0) {
+  return addDetail(new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(color), metalness, roughness, envMapIntensity: env,
+    anisotropy: 0.65, anisotropyRotation: 0,
+  }), 'brushed');
 }
 
 export function glassMat() {
@@ -112,6 +132,34 @@ function worktopTexture(name) {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;   // world-space UVs run past 0..1: the tile is seamless
   tex.anisotropy = 8;
   return tex;
+}
+
+/** PHOTO MODE (render step 5): the stones get honed PBR maps, a roughness map and a normal map made
+ *  from the same painted tile (worktopTexture.js worktopDetailCanvases: veins slightly etched, a fine
+ *  mineral grain, no mirror anywhere), built the first time photo mode opens; the clearcoat sheen
+ *  comes off (a honed slab has none). Off: back to the live material exactly. */
+const HONED = new Set(['marble', 'calacatta', 'quartz', 'soapstone', 'granite']);
+const _wtDetail = new Map();
+export function setWorktopDetail(on) {
+  for (const [name, m] of _wtCache) {
+    if (!HONED.has(name)) continue;
+    if (on) {
+      if (!_wtDetail.has(name)) {
+        const cv = worktopDetailCanvases(name);
+        if (!cv) continue;
+        const mk = (c) => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.NoColorSpace; t.anisotropy = 8; return t; };
+        _wtDetail.set(name, { rough: mk(cv.rough), normal: mk(cv.normal), live: null });
+      }
+      const d = _wtDetail.get(name);
+      if (!d.live) d.live = { roughness: m.roughness, clearcoat: m.clearcoat };
+      m.roughnessMap = d.rough; m.normalMap = d.normal; m.normalScale.set(0.35, 0.35);
+      m.roughness = Math.min(1, d.live.roughness * 1.25); m.clearcoat = 0;
+    } else {
+      const d = _wtDetail.get(name); if (!d || !d.live) continue;
+      m.roughnessMap = null; m.normalMap = null; m.roughness = d.live.roughness; m.clearcoat = d.live.clearcoat; d.live = null;
+    }
+    m.needsUpdate = true;
+  }
 }
 
 export function worktopMat(name = 'marble') {

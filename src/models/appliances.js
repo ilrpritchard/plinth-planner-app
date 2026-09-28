@@ -7,23 +7,25 @@ import { buildIntegratedFridge } from './cabinet.js';
 import { rangeSpec, rangeCooktop, hobSpec } from '../core/rangespec.js';
 import { sinkSpec } from '../core/sinkspec.js';
 import { WALLS, WALL_PAINT } from '../core/roomstyle.js';
+import { stainlessMat } from './materials.js';
 
 function mat(color, metalness, roughness, env = 0.8) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), metalness, roughness, envMapIntensity: env });
 }
-const STEEL = () => mat(0xc2c6cb, 0.85, 0.32, 1.0);
-const STEEL_DK = () => mat(0x9aa0a6, 0.85, 0.34, 1.0);
+// the stainless steels are brushed (anisotropic, fine lines in photo mode): materials.js stainlessMat
+const STEEL = () => stainlessMat(0xc2c6cb, 0.85, 0.32, 1.0);
+const STEEL_DK = () => stainlessMat(0x9aa0a6, 0.85, 0.34, 1.0);
 const DARK = () => mat(0x26282b, 0.4, 0.3, 0.7);
 const GLASS = () => mat(0x121417, 0.3, 0.12, 1.0);
 const CHROME = () => mat(0xe2e6ea, 0.95, 0.12, 1.2);
 const ENAMEL = () => mat(0xf3f3f0, 0.1, 0.45, 0.7);
 // brushed stainless for the hood: brighter and less metallic than STEEL, so it reads as satin
 // steel rather than dark grey in a room lit mostly from the environment (her note 2026-09-22)
-const STAINLESS = () => mat(0xbcc1c5, 0.7, 0.4, 0.9);
-const STAINLESS_DK = () => mat(0xa3a8ad, 0.7, 0.45, 0.8);
+const STAINLESS = () => stainlessMat(0xbcc1c5, 0.7, 0.4, 0.9);
+const STAINLESS_DK = () => stainlessMat(0xa3a8ad, 0.7, 0.45, 0.8);
 const CAST = () => mat(0x1c1d1f, 0.2, 0.6, 0.4);
 const RED = () => mat(0x9e1b21, 0.35, 0.4, 0.8);      // pro-range signature knob red
-const BASIN = () => mat(0xb4b9be, 0.5, 0.45, 1.2);    // brushed basin steel — low metalness so it never reads black in shadow
+const BASIN = () => stainlessMat(0xb4b9be, 0.5, 0.45, 1.2);    // brushed basin steel — low metalness so it never reads black in shadow
 
 function box(w, h, d, m, r = 0) {
   const g = r > 0 ? new THREE.BoxGeometry(w, h, d) : new THREE.BoxGeometry(w, h, d);
@@ -87,7 +89,7 @@ export function buildAppliance(cab, finishHex = '#efece3', opts = {}) {
       // the icon, elevation and plan draw the same appliance: 30" four
       // burners, 36" six, 48" six + a griddle over twin ovens.
       const spec = rangeSpec(cab), top = rangeCooktop(cab);
-      const BRIGHT = () => mat(0xd6dade, 0.72, 0.36, 1.1);   // brushed stainless that reads bright in flat light
+      const BRIGHT = () => stainlessMat(0xd6dade, 0.72, 0.36, 1.1);   // brushed stainless that reads bright in flat light
       const body = box(w, h - spec.kickH, d - 0.6, BRIGHT()); body.position.set(0, (h - spec.kickH) / 2 + spec.kickH, -0.3); g.add(body);
       const kick = box(w - 1.2, spec.kickH, d - 3.2, DARK()); kick.position.set(0, spec.kickH / 2, -1.0); g.add(kick);
       for (const sx of [-1, 1]) {                           // front levelling feet

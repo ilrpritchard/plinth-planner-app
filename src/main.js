@@ -38,7 +38,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-225 · photo mode: a closed room, the sun through the window, a city view out of it';
+const BUILD = 'W2W-226 · materials: brushed eggshell paint, honed stone with veins along the run, per-board oak, brushed stainless';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -154,6 +154,7 @@ ui.controls = controls; // late-bind so UI buttons can drive the controls
 
 // per-frame: grounding guard + auto-hide the walls between camera and room
 scene.onPhotoClosed = (closed) => room.setPhotoClosed(closed);   // photo mode's closed room (render step 4)
+scene.onPhotoDetail = (on) => room.setPhotoDetail(on);           // photo mode's per-board floor sheen (render step 5)
 scene.onBeforeRender(() => {
   layer.groundTick();
   room.updateWallVisibility(scene.camera.position, scene.view, wallsInUse(store.state));

@@ -1,0 +1,94 @@
+{
+  "schema": "plinth-planner",
+  "version": 1,
+  "room": {
+    "width": 160,
+    "depth": 132,
+    "height": 96,
+    "floor": "oak",
+    "wall": "chalk",
+    "worktop": "marble",
+    "cornice": "none",
+    "openings": [
+      {
+        "id": 1,
+        "type": "window",
+        "wall": "back",
+        "pos": 0.5875,
+        "width": 40
+      }
+    ],
+    "nextOpening": 2,
+    "boxings": [],
+    "nextBoxing": 1
+  },
+  "finish": "Nettle",
+  "handle": "knob",
+  "items": [
+    {
+      "id": 1,
+      "code": "T2",
+      "x": -66,
+      "z": -53.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 2,
+      "code": "T1",
+      "x": -40,
+      "z": -53.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 3,
+      "code": "F18",
+      "x": -16,
+      "z": -53.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 4,
+      "code": "F10",
+      "x": 14,
+      "z": -53.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 7,
+      "code": "W1",
+      "x": -22,
+      "z": -58.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 8,
+      "code": "AP19",
+      "x": 14,
+      "z": -53.75,
+      "rotDeg": 0
+    },
+    {
+      "id": 9,
+      "code": "AP3",
+      "x": 56,
+      "z": -52.75,
+      "rotDeg": 0
+    }
+  ],
+  "accessories": {},
+  "customer": {
+    "name": "",
+    "email": "",
+    "zip": "",
+    "notes": ""
+  },
+  "nextId": 10,
+  "mode": "home",
+  "trade": {
+    "project": "",
+    "units": [],
+    "finish": "Nettle",
+    "nextUnitId": 1,
+    "nextRowId": 1
+  }
+}

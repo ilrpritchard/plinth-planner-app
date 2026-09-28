@@ -10,7 +10,9 @@
 // Countertops are NOT supplied by PL/NTH: this is a visual aid, never priced.
 
 const S = 1024;               // px per tile
-export const WORKTOP_TILE_IN = 96;
+// one tile = a real slab's length (render step 5, 2026-09-28: Carrara and Calacatta come in slabs of
+// about 120" x 60"), so a run repeats no sooner than a real one would need a second slab
+export const WORKTOP_TILE_IN = 120;
 const PPI = S / WORKTOP_TILE_IN;
 
 const _canvas = new Map();
@@ -25,6 +27,49 @@ export function worktopCanvas(key) {
   (PAINTERS[key] || PAINTERS.marble)(g, R);
   _canvas.set(key, cv);
   return cv;
+}
+
+/** PHOTO MODE (render step 5): honed PBR maps made from the painted tile, so they line up with it
+ *  exactly: { rough, normal } canvases, same size and wrap. Honed, not polished: roughness sits high
+ *  and even (0.8-1.0 of the material's value), a little higher in the veins, which also sit a hair
+ *  lower (honing opens them slightly), over a fine mineral grain; the normal map is from that height,
+ *  in tangent space. Soapstone is chalkier and quartz nearly uniform. Browser only; null in node. */
+const _detail = new Map();
+export function worktopDetailCanvases(key) {
+  if (typeof document === 'undefined') return null;
+  if (_detail.has(key)) return _detail.get(key);
+  const src = worktopCanvas(key); if (!src) return null;
+  const px = src.getContext('2d').getImageData(0, 0, S, S).data;
+  const lum = new Float32Array(S * S);
+  let mean = 0; for (let i = 0; i < S * S; i++) { lum[i] = (0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]) / 255; mean += lum[i]; }
+  mean /= S * S;
+  const R = rng(hash(`honed|${key}`)), grain = new Float32Array(S * S);
+  for (let i = 0; i < S * S; i++) grain[i] = R.next();
+  const P = { marble: [0.9, 1.0, 0.5], calacatta: [0.9, 1.0, 0.5], quartz: [0.3, 0.35, 0.8], soapstone: [0.6, 0.8, 0.4], granite: [0.4, 0.6, 1.0] }[key] || [0.6, 0.8, 0.6];
+  const [veinRough, veinDepth, grainAmt] = P;
+  const at = (x, y) => (((y + S) % S) * S + ((x + S) % S));
+  // height: veins (darker than the ground) a hair lower, plus a fine blurred grain
+  const hgt = new Float32Array(S * S);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const i = at(x, y), g = (grain[i] + grain[at(x + 1, y)] + grain[at(x, y + 1)] + grain[at(x - 1, y)] + grain[at(x, y - 1)]) / 5;
+    hgt[i] = -veinDepth * Math.max(0, mean - lum[i]) + grainAmt * 0.04 * (g - 0.5);
+  }
+  const rough = document.createElement('canvas'), normal = document.createElement('canvas');
+  rough.width = rough.height = normal.width = normal.height = S;
+  const rc = rough.getContext('2d'), nc = normal.getContext('2d'), ri = rc.createImageData(S, S), ni = nc.createImageData(S, S);
+  const K = 6;                                      // height to slope
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const i = at(x, y), o = i * 4;
+    const r = Math.min(1, 0.82 + veinRough * 0.3 * Math.max(0, mean - lum[i]) + 0.06 * (grain[i] - 0.5));
+    ri.data[o] = ri.data[o + 1] = ri.data[o + 2] = Math.round(255 * r); ri.data[o + 3] = 255;
+    const dx = (hgt[at(x + 1, y)] - hgt[at(x - 1, y)]) * K, dy = (hgt[at(x, y + 1)] - hgt[at(x, y - 1)]) * K;
+    const n = Math.hypot(dx, dy, 1);
+    ni.data[o] = Math.round(255 * (0.5 - dx / n / 2)); ni.data[o + 1] = Math.round(255 * (0.5 + dy / n / 2)); ni.data[o + 2] = Math.round(255 * (0.5 + 0.5 / n)); ni.data[o + 3] = 255;
+  }
+  rc.putImageData(ri, 0, 0); nc.putImageData(ni, 0, 0);
+  const out = { rough, normal };
+  _detail.set(key, out);
+  return out;
 }
 
 /** A patch of the real surface for the Room-panel swatch (data URL). */
@@ -103,8 +148,8 @@ const PAINTERS = {
     const base = [226, 224, 219];
     g.fillStyle = css(base); g.fillRect(0, 0, S, S);
     clouds(g, R, 26, 90, 260, [196, 198, 202], 8, 0.22);
-    for (let i = 0; i < 34; i++) vein(g, R, { angle: 0.62, len: R.range(240, 760), color: grey(124, 128, 136), width: R.range(0.7, 1.9), soft: 4, branch: 0.35 });
-    for (let i = 0; i < 5; i++) vein(g, R, { angle: 0.62, len: R.range(500, 1000), color: grey(96, 100, 110), width: R.range(2.0, 3.4), soft: 5, branch: 0.6 });
+    for (let i = 0; i < 34; i++) vein(g, R, { angle: 0.14, len: R.range(240, 760), color: grey(124, 128, 136), width: R.range(0.7, 1.9), soft: 4, branch: 0.35 });
+    for (let i = 0; i < 5; i++) vein(g, R, { angle: 0.14, len: R.range(500, 1000), color: grey(96, 100, 110), width: R.range(2.0, 3.4), soft: 5, branch: 0.6 });
   },
   // Calacatta: whiter ground, a few bold veins with a warm edge, little else
   calacatta(g, R) {
@@ -112,11 +157,11 @@ const PAINTERS = {
     g.fillStyle = css(base); g.fillRect(0, 0, S, S);
     clouds(g, R, 12, 120, 300, [214, 212, 208], 6, 0.18);
     for (let i = 0; i < 7; i++) {
-      const a = 0.9 + R.range(-0.25, 0.25), len = R.range(700, 1300), w = R.range(3.5, 8);
+      const a = 0.2 + R.range(-0.18, 0.18), len = R.range(700, 1300), w = R.range(3.5, 8);
       vein(g, R, { angle: a, len, color: grey(176, 148, 104), width: w * 1.5, soft: 3.2, wander: 0.22 });   // warm halo
     }
-    for (let i = 0; i < 9; i++) vein(g, R, { angle: 0.9, len: R.range(600, 1300), color: grey(98, 100, 108), width: R.range(2.6, 6.5), soft: 3.6, wander: 0.24, branch: 0.7 });
-    for (let i = 0; i < 12; i++) vein(g, R, { angle: 0.9, len: R.range(200, 520), color: grey(140, 142, 150), width: R.range(0.7, 1.4), soft: 3, branch: 0.2 });
+    for (let i = 0; i < 9; i++) vein(g, R, { angle: 0.2, len: R.range(600, 1300), color: grey(98, 100, 108), width: R.range(2.6, 6.5), soft: 3.6, wander: 0.24, branch: 0.7 });
+    for (let i = 0; i < 12; i++) vein(g, R, { angle: 0.2, len: R.range(200, 520), color: grey(140, 142, 150), width: R.range(0.7, 1.4), soft: 3, branch: 0.2 });
   },
   // engineered quartz: near-uniform warm white with a fine fleck
   quartz(g, R) {
@@ -131,7 +176,7 @@ const PAINTERS = {
     g.fillStyle = css(base); g.fillRect(0, 0, S, S);
     clouds(g, R, 30, 70, 240, base, 14, 0.3);
     speckle(g, R, 5000, ['rgba(30,34,34,0.4)', 'rgba(120,130,126,0.22)'], 1, 2.4);
-    for (let i = 0; i < 9; i++) vein(g, R, { angle: 0.35, len: R.range(300, 900), color: grey(218, 224, 220), width: R.range(0.7, 1.8), soft: 3.4, branch: 0.45 });
+    for (let i = 0; i < 9; i++) vein(g, R, { angle: 0.12, len: R.range(300, 900), color: grey(218, 224, 220), width: R.range(0.7, 1.8), soft: 3.4, branch: 0.45 });
   },
   // honed black granite: near-black ground, tight mineral fleck
   granite(g, R) {

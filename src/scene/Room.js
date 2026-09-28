@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { BRAND } from '../core/catalogue.js';
 import { openingCenter, openingWidth } from '../core/openings.js';
-import { makeFloorTexture, floorSurface } from './floorTexture.js';
+import { makeFloorTexture, makeFloorRoughness, floorSurface } from './floorTexture.js';
 import { cityCanvas } from './cityView.js';
 
 const WALL_T = 4;
@@ -64,6 +64,8 @@ export class Room {
     const floorMat = new THREE.MeshStandardMaterial({
       map: this._floorTex, color: 0xffffff, roughness: surf.roughness, metalness: 0, envMapIntensity: surf.env,
     });
+    this._floorMat = floorMat; this._floorArgs = [opts.floor, floorColor, width, depth]; this._floorRough = surf.roughness;
+    if (this._floorRoughKey !== floorKey) { this._floorRoughTex?.dispose?.(); this._floorRoughTex = null; this._floorRoughKey = floorKey; }
     const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, ...WALL_PAINT, side: THREE.DoubleSide });
     wallMat.userData.wallPaint = true;        // photo mode gives every wall-paint material its matte variation   // WALL_PAINT: the plaster hood is lit the same
 
@@ -118,6 +120,7 @@ export class Room {
     this._openings = ops;
     this._cityPlanes = null;
     if (this._closed) this.setPhotoClosed(this._closed);   // a rebuild in photo mode stays closed
+    if (this._photoDetail) this.setPhotoDetail(true);
 
     // ---- the FOOTPRINT of each wall: a low kerb that shows only while its wall is auto-hidden.
     // Without it a cabinet standing hard against a hidden wall looks like it is hanging off
@@ -179,6 +182,19 @@ export class Room {
     m.castShadow = false; m.receiveShadow = true; m.name = 'wall-' + name; m.userData.wall = name;
     this.group.add(m);
     (this.walls[name] = this.walls[name] || []).push(m);
+  }
+
+  /** PHOTO MODE (render step 5): a timber floor gets its per-board roughness (floorTexture.js
+   *  makeFloorRoughness, built the first time and kept while the floor and footprint stay the same). */
+  setPhotoDetail(on) {
+    this._photoDetail = !!on;
+    const m = this._floorMat; if (!m) return;
+    if (on && !this._floorRoughTex && this._floorArgs) this._floorRoughTex = makeFloorRoughness(...this._floorArgs);
+    const tex = on ? this._floorRoughTex : null;
+    if (m.roughnessMap === tex) return;
+    m.roughnessMap = tex;
+    m.roughness = tex ? Math.min(1, this._floorRough / 0.83) : this._floorRough;   // the map averages ~0.83
+    m.needsUpdate = true;
   }
 
   // ---- PHOTO MODE: the closed room (render step 4, 2026-09-28) ----

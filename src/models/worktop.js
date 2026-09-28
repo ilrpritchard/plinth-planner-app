@@ -14,11 +14,10 @@ import { WORKTOP_TILE_IN } from './worktopTexture.js';
 
 const THICK = WORKTOP_SLAB;                 // 30mm
 
-const WOOD = new Set(['oak', 'walnut']);
 
-// Map a slab in WORLD space (96" per texture tile) so the surface is continuous
+// Map a slab in WORLD space (one texture tile = a 120" slab) so the surface is continuous
 // across every piece: a vein leaving one slab carries on in the next, and the
-// pieces round a sink cutout read as one stone. Timber staves follow the run:
+// pieces round a sink cutout read as one stone. Staves and veins follow the run:
 // along x on a back / front run, along z on a side run (`alongZ`).
 function worldUVs(geo, cx, cy, cz, alongZ) {
   const pos = geo.attributes.position, nor = geo.attributes.normal, uv = geo.attributes.uv, T = WORKTOP_TILE_IN;
@@ -53,7 +52,9 @@ export class Worktop {
   rebuild(items, getCab, defaultMat = 'marble', room = null) {
     this.clear();
     const planned = planWorktopSlabs(items, getCab, defaultMat, room);
-    for (const s of planned) s.alongZ = WOOD.has(s.mat) && (s.z1 - s.z0) > (s.x1 - s.x0);   // carried onto every cut piece
+    // timber staves AND stone veins follow the run (render step 5: veins along the worktop, as a
+    // slab is laid); carried onto every cut piece
+    for (const s of planned) s.alongZ = (s.z1 - s.z0) > (s.x1 - s.x0);
     // an undermount is cut flush to a rounded bowl: stone fillets round each corner of the square hole
     for (const f of sinkCornerFillets(planned, items, getCab)) {
       const shape = new THREE.Shape(f.pts.map(([x, z]) => new THREE.Vector2(x, z)));
