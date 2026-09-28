@@ -4,3 +4,7 @@ node_modules/
 CLAUDE.md
 SUPABASE_*.sql
 SUPABASE_SETUP.md
+
+# dev-only render comparisons (tools/render-capture.mjs): local, never deployed
+render-baseline/
+render-step*/
