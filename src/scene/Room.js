@@ -15,7 +15,7 @@ const WALL_T = 4;
 const KERB_H = 3;   // the footprint left behind by a wall that is hidden to let you see in
 
 // key -> label + base colour; scene/floorTexture.js PAINT says how each is drawn.
-import { FLOORS, WALLS } from '../core/roomstyle.js';
+import { FLOORS, WALLS, WALL_PAINT } from '../core/roomstyle.js';
 export { FLOORS, WALLS };   // the tables live in core/roomstyle.js (shared with the DXF export)
 
 export class Room {
@@ -62,7 +62,7 @@ export class Room {
     const floorMat = new THREE.MeshStandardMaterial({
       map: this._floorTex, color: 0xffffff, roughness: surf.roughness, metalness: 0, envMapIntensity: surf.env,
     });
-    const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 1, metalness: 0, side: THREE.DoubleSide });
+    const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, ...WALL_PAINT, side: THREE.DoubleSide });   // WALL_PAINT: the plaster hood is lit the same
 
     // floor
     const floor = mesh(new THREE.BoxGeometry(width, 1, depth), floorMat);

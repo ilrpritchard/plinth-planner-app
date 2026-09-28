@@ -22,4 +22,9 @@ export const WALLS = {
   charcoal: { label: 'Charcoal', color: 0x6f6f6e },
 };
 
-export const hexOf = (table, key, fallback) => '#' + ((table[key] || {}).color ?? fallback).toString(16).padStart(6, '0');
+// How painted plaster is lit: the room's walls (scene/Room.js) and anything "painted with the walls"
+// (the plaster hood, models/appliances.js) share these, so the hood reads as the same paint on the
+// same wall and not a cream box in front of it (her catch 2026-09-28: "it drops in as a chalk color").
+export const WALL_PAINT = { roughness: 1, metalness: 0, envMapIntensity: 1 };
+
+export const hexOf =(table, key, fallback) => '#' + ((table[key] || {}).color ?? fallback).toString(16).padStart(6, '0');

@@ -12,6 +12,8 @@ const { snapPosition } = await import('../src/interaction/snapping.js');
 const { planCornice } = await import('../src/core/cornice.js');
 const { computeWarnings } = await import('../src/core/warnings.js');
 const { getCab } = await import('../src/core/catalogue.js');
+const { buildAppliance } = await import('../src/models/appliances.js');
+const { WALLS, WALL_PAINT } = await import('../src/core/roomstyle.js');
 
 const W = 200, D = 150, minZ = -D / 2;
 const bounds = { minX: -W / 2, maxX: W / 2, minZ, maxZ: D / 2 };
@@ -45,6 +47,17 @@ test('no cooker-edge warning for an upper butted to the plaster hood; the warnin
   const store2 = kitchen('AP8');
   store2.addItem('W2', { x: -18 - 12, z: minZ + 7.25, rotDeg: 0 });
   assert.ok(computeWarnings(store2.state).some((w) => /cooker's edge/.test(w.msg)), 'AP8: still warned');
+});
+
+test('the plaster hood is painted with the walls: the wall swatch colour, lit like the wall material', () => {
+  const plasterOf = (opts) => { let m = null; buildAppliance(hoodCab, '#efece3', opts).traverse((o) => { if (o.name === 'plaster') m = o.material; }); return m; };
+  for (const key of ['white', 'chalk', 'sage', 'charcoal']) {
+    const m = plasterOf({ ceiling: 96, wallHex: WALLS[key].color });
+    assert.ok(m, 'a plaster body');
+    assert.equal(m.color.getHex(), WALLS[key].color, `${key}: the hood takes the wall colour`);
+    for (const k of Object.keys(WALL_PAINT)) assert.equal(m[k], WALL_PAINT[k], `${key}: ${k} matches the wall material`);
+  }
+  assert.equal(plasterOf({ ceiling: 96 }).color.getHex(), WALLS.white.color, 'no wall key: the default wall, never a colour of its own');
 });
 
 test('the crown of the uppers dies into the plaster hood: no side return at the hood, no crown on the hood', () => {

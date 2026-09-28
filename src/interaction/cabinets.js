@@ -107,7 +107,7 @@ export class CabinetLayer {
     if (cab.type === 'APPLIANCES') {
       // a hood under a W26 hood cover is hidden: a canopy liner inside the cover is all that shows
       const covered = cab.appliance === 'hood' && this.store.state.items.some((o) => { const oc = getCab(o.code); return oc?.hoodCover && Math.abs(o.x - item.x) < oc.w / 2 && Math.abs(o.z - item.z) < oc.d / 2 + 4; });
-      const wallHex = WALLS[this.store.state.room?.wall]?.color;          // a plaster hood is painted with the walls
+      const wallHex = (WALLS[this.store.state.room?.wall] || WALLS.white).color;   // a plaster hood is painted with the walls (the same fallback Room.js draws)
       return buildAppliance(cab, this.finishHexFor(item, this.store.state), { ceiling: this.store.state.room?.height || 96, covered, wallHex });
     }
     if (cab.type === 'SHELF') return buildFloatingShelf(cab);

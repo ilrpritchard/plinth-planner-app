@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { buildIntegratedFridge } from './cabinet.js';
 import { rangeSpec, rangeCooktop, hobSpec } from '../core/rangespec.js';
 import { sinkSpec } from '../core/sinkspec.js';
+import { WALLS, WALL_PAINT } from '../core/roomstyle.js';
 
 function mat(color, metalness, roughness, env = 0.8) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(color), metalness, roughness, envMapIntensity: env });
@@ -258,9 +259,12 @@ export function buildAppliance(cab, finishHex = '#efece3', opts = {}) {
         // a PLASTER chimney hood (her reference 2026-09-25): one plain painted box in the wall
         // colour, no trim, no cornice, from the 800mm line up to the ceiling; the extractor
         // liner (a stainless plate with its filter and two lamps) is all that shows underneath
-        const plaster = mat(opts.wallHex || 0xf1eee6, 0, 0.92, 0.5);
+        // THE SAME PAINT AS THE WALLS: the wall swatch's colour and the wall material's lighting
+        // (WALL_PAINT). A rougher, dimmer material in a near colour read as a cream box on a white
+        // wall (her catch 2026-09-28); the fallback is the room's default wall, never a colour of its own.
+        const plaster = new THREE.MeshStandardMaterial({ color: new THREE.Color(opts.wallHex ?? WALLS.white.color), ...WALL_PAINT });
         const hh = opts.ceiling > 0 && cab.mountY != null ? Math.max(h, opts.ceiling - cab.mountY - 0.05) : h;
-        const body = box(w, hh, d, plaster); body.position.set(0, hh / 2, 0); g.add(body);
+        const body = box(w, hh, d, plaster); body.position.set(0, hh / 2, 0); body.name = 'plaster'; g.add(body);
         const lw = Math.min(w - 5, 30), ld = d - 4;
         const plen = box(lw + 1, 1.2, ld + 1, DARK()); plen.position.set(0, 0.55, -0.4); g.add(plen);
         const plate = box(lw, 0.3, ld, STAINLESS()); plate.position.set(0, -0.05, -0.4); g.add(plate);
