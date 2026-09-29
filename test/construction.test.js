@@ -155,3 +155,36 @@ for (const [name, k] of Object.entries(K)) {
     }
   });
 }
+
+// every front in a run tops out at the same line, 35mm under the worktop: doors, a drawer bank and a
+// dishwasher panel side by side (her catch 2026-09-29: the dishwasher panel stood 13mm above its
+// neighbours once the drawer banks came down to the rail)
+test('doors, drawers and the dishwasher panel line up under one 35mm rail', () => {
+  const store = new Store();
+  const d = FIX.run;
+  assert.ok(store.replace({ ...d, items: [
+    { id: 1, code: 'F2', x: -24, z: -127.75, rotDeg: 0 },
+    { id: 2, code: 'F7', x: 0, z: -127.75, rotDeg: 0 },
+    { id: 3, code: 'F18', x: 24, z: -127.75, rotDeg: 0 },
+  ], nextId: 4 }));
+  const scene = new THREE.Scene(), layer = new CabinetLayer(scene, store);
+  scene.updateMatrixWorld(true);
+  const ray = new THREE.Raycaster(), dir = new THREE.Vector3(0, 0, -1), face = -127.75 + 12;
+  // straight down a column from the cabinet top: the first sample that is NOT the painted face
+  // plane is the front's top edge line
+  const railAt = (x) => {
+    let paint = null;
+    for (let y = 35 - STEP / 2; y > 30; y -= STEP) {
+      ray.set(new THREE.Vector3(x, y, face + 40), dir);
+      const h = ray.intersectObject(layer.group, true)[0];
+      const f = h && Math.abs(h.point.z - face) < 0.004;
+      if (f && !paint) paint = h.object.material;
+      if (!f || h.object.material !== paint) return (35 - y) / MM;
+    }
+    return NaN;
+  };
+  const tops = { F2: railAt(-24 - 6), F7: railAt(-6), F18: railAt(24 - 6) };
+  for (const [code, mm] of Object.entries(tops)) assert.ok(mm >= RAIL_MM - 1.5 && mm <= RAIL_MM + TOL, `${code}: its front starts ${mm.toFixed(1)}mm under the worktop, want 35`);
+  const spread = Math.max(...Object.values(tops)) - Math.min(...Object.values(tops));
+  assert.ok(spread <= 1.5, `the fronts line up (tops ${Object.entries(tops).map(([c, v]) => c + ' ' + v.toFixed(1)).join(', ')}mm)`);
+});

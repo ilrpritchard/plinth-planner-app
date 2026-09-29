@@ -338,14 +338,13 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // gap over every tall door (her catch 2026-07-23; the integrated fridge got
   // its explicit rail bar in W2W-68, ordinary cabinets never did). The bar sits
   // BETWEEN the side panels and BELOW the top panel's front edge — butted, not
-  // overlapped, so nothing z-fights. Drawer banks stop under the same 35mm rail
-  // (her call 2026-09-29, as the front drawings); the dishwasher panel runs its
-  // flush face past the rail line to the carcass top — no bar there.
-  if (cab.form !== 'dishwasher') {
-    const railBar = box(shellW - 2 * PANEL, TOPRAIL - PANEL, PANEL, mat);
-    railBar.position.set(0, h - PANEL - (TOPRAIL - PANEL) / 2, d / 2 - PANEL / 2);
-    g.add(railBar);
-  }
+  // overlapped, so nothing z-fights. Drawer banks and the dishwasher panel stop
+  // under the same 35mm rail as every door (her calls 2026-09-29, as the front
+  // drawings: a panel running up to the carcass top stood 13mm above its
+  // neighbours once the drawer banks came down to the rail).
+  const railBar = box(shellW - 2 * PANEL, TOPRAIL - PANEL, PANEL, mat);
+  railBar.position.set(0, h - PANEL - (TOPRAIL - PANEL) / 2, d / 2 - PANEL / 2);
+  g.add(railBar);
   const openCenterY = openY0 + openH / 2;
   const faceW = w - 2 * LEG - 2 * REVEAL;     // door spans between the legs
   const doorFrontZ = frontZ - RECESS;         // a leaf's panel face: its stiles come forward to the legs' plane
@@ -632,8 +631,8 @@ function buildFront(g, cab, ctx) {
     case 'dishwasher': {
       // appliance DOOR PANEL only: it always sits BETWEEN two cabinets, so it
       // has no legs of its own — one full-width shaker panel from the plinth
-      // up to a slim top rail, exactly like the F7 product drawing.
-      const ph = (ctx.bodyTop - PANEL) - ctx.bodyY0 - HAIR;
+      // up to the 35mm top rail, level with its neighbours, as the F7 drawing.
+      const ph = (ctx.bodyTop - TOPRAIL) - ctx.bodyY0 - HAIR;
       const leaf = shakerLeaf(cab.w - 2 * HAIR, ph, mat, false, 1);
       leaf.position.set(0, ctx.bodyY0 + HAIR + ph / 2, frontZ - DOOR_T / 2);
       const k = makeKnob(mat); k.position.set(0, ph / 2 - STILE / 2, LEAF_KNOB_Z); leaf.add(k);
