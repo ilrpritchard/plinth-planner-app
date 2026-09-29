@@ -424,14 +424,20 @@ export function sizedWidthCode(baseCode, width) {
 }
 // ONE LONG STOOL NICHE (her ask 2026-09-29, a photo of an island whose whole back is one open bay:
 // "no legs... whatever length the island is, the stool niche stretches"): 'F35:w<inches>' is a stool
-// niche of any length from 20" to 240" (to the quarter inch), legs only at its two ends. Price to confirm, like every niche.
-export const NICHE_WIDTH_LIMITS = [20, 240];
+// niche of any length from 10" to 240" (to the quarter inch), legs only at its two ends. Price to confirm, like every niche.
+export const NICHE_WIDTH_LIMITS = [10, 240];   // down to 10" so ANY leftover fills (under that, the scribe filler)
 const NICHE_STD = { 20: 'F35', 24: 'F36', 28: 'F37', 36: 'F38', 42: 'F39' };
-export function sizedNicheCode(width) {
+// ...and DEEPER beside a cabinet on the back (her screenshot 2026-09-29: "this should line up with the
+// cabinet, not be sat back"): 'F35:w56d24', the niche's legs and rail flush with that cabinet's front.
+export const NICHE_DEPTH_LIMITS = [mmToIn(300), 30];
+export function sizedNicheCode(width, depth = null) {
   // to the quarter inch, rounded DOWN: a niche that runs wall to wall must never come out ¼" through the wall
   const w = Math.floor((clampDim(width, NICHE_WIDTH_LIMITS, 20) + 0.01) * 4) / 4;
-  return NICHE_STD[w] || `F35:w${w}`;
+  const d = depth == null ? null : Math.round(clampDim(depth, NICHE_DEPTH_LIMITS, NICHE_DEPTH_LIMITS[0]) * 4) / 4;
+  if (d == null || d <= NICHE_DEPTH_LIMITS[0] + 0.3) return NICHE_STD[w] || `F35:w${w}`;
+  return `F35:w${w}d${d}`;
 }
+const SIZED_NICHE_RX = /^(F3[5-9]):w(\d+(?:\.\d+)?)d(\d+(?:\.\d+)?)$/i;
 function fitPriceFor(base, w) {
   const family = CATALOGUE.filter((c) => c.type === base.type && c.form === base.form && !c.corner && !!c.halfDepth === !!base.halfDepth && c.h === base.h && c.placeable);
   const wider = family.filter((c) => c.w >= w - 0.05).sort((p, q) => p.w - q.w)[0];
@@ -440,6 +446,18 @@ function fitPriceFor(base, w) {
 }
 
 export function getCab(code) {
+  const mn = typeof code === 'string' && SIZED_NICHE_RX.exec(code);
+  if (mn) {
+    let hit = sizedWidthCache.get(code);
+    if (!hit) {
+      const base = CATALOGUE.find((c) => c.code === mn[1].toUpperCase());
+      if (!base || base.form !== 'niche') return undefined;
+      const w = Math.round(clampDim(mn[2], NICHE_WIDTH_LIMITS, base.w) * 4) / 4, d = Math.round(clampDim(mn[3], NICHE_DEPTH_LIMITS, base.d) * 4) / 4;
+      hit = { ...base, code, w, d, baseCode: base.code, desc: `${base.desc} · ${w}" long, ${d}" deep`, notes: `One open bay ${w}" long and ${d}" deep for stools under the island worktop, its legs and rail flush with the cabinet beside it: a 22mm leg at each end only, a 35mm top rail, painted inside. No plinth.` };
+      sizedWidthCache.set(code, hit);
+    }
+    return hit;
+  }
   const mw = typeof code === 'string' && SIZED_WIDTH_RX.exec(code);
   if (mw) {
     let hit = sizedWidthCache.get(code);

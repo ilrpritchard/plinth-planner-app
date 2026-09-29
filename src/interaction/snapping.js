@@ -58,12 +58,34 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // wall (no snap threshold). Dragging one around the room just hops it wall to wall,
   // which is what "put it on THAT wall" needs. A counter cabinet used to FREEZE the moment
   // the pointer strayed 16" from its wall and jump back when it returned: glitchy.
+  // BACK TO BACK beats the wall (her ask 2026-09-29, share 74m454y: "allow cabinets to sit back to back on
+  // the corner"): a floor cabinet whose back lands on the back of a FREE-STANDING cabinet facing the other
+  // way (an island or peninsula row, its corner unit included) stays there, turned as it is, even hard
+  // against a side wall, where the wall snap used to swing it round onto that wall's run. 2c then lines
+  // it up.
+  const backToBack = cab.type === 'FLOOR' && !cab.corner && others.some((o) => {
+    const oc = getCab(o.code); if (!oc || oc.type !== 'FLOOR') return false;
+    const r0 = (((item.rotDeg || 0) % 360) + 360) % 360, r1 = (((o.rotDeg || 0) % 360) + 360) % 360;
+    if ((r1 - r0 + 360) % 360 !== 180) return false;                            // facing the other way
+    const ob = worldBox(o, oc);
+    if (ob.x0 - bounds.minX < 2 || bounds.maxX - ob.x1 < 2 || ob.z0 - bounds.minZ < 2 || bounds.maxZ - ob.z1 < 2) {
+      // standing on a wall: only its BACK being on that wall counts as seated
+      const rad = (r1 * Math.PI) / 180, bx = o.x - Math.sin(rad) * (oc.d / 2), bz = o.z - Math.cos(rad) * (oc.d / 2);
+      if (bx - bounds.minX < 2 || bounds.maxX - bx < 2 || bz - bounds.minZ < 2 || bounds.maxZ - bz < 2) return false;
+    }
+    const rad0 = (r0 * Math.PI) / 180, fx = Math.sin(rad0), fz = Math.cos(rad0);
+    const myBack = (rawX - fx * (d / 2)) * fx + (rawZ - fz * (d / 2)) * fz;     // my back plane, along my front normal
+    const oRad = (r1 * Math.PI) / 180, oBack = (o.x - Math.sin(oRad) * (oc.d / 2)) * fx + (o.z - Math.cos(oRad) * (oc.d / 2)) * fz;
+    if (Math.abs(myBack - oBack) > 9) return false;                            // backs must meet (2c's BACK_SNAP)
+    const along = (px, pz) => px * fz - pz * fx, myA = along(rawX, rawZ), oA = along(o.x, o.z);
+    return Math.abs(myA - oA) < (w + oc.w) / 2 + (oc.corner ? 20 : 0);         // behind it (a corner's return counts)
+  });
   const cands = [
     { wall: 'back', rot: 0, err: Math.abs(rawZ - (bounds.minZ + touch)) },
     { wall: 'left', rot: 90, err: Math.abs(rawX - (bounds.minX + touch)) },
     { wall: 'front', rot: 180, err: Math.abs(rawZ - (bounds.maxZ - touch)) },
     { wall: 'right', rot: 270, err: Math.abs(rawX - (bounds.maxX - touch)) },
-  ].filter((c) => ['WALL', 'COUNTER', 'TALL'].includes(cab.type) || c.err < WALL_SNAP).sort((a, b) => a.err - b.err);
+  ].filter((c) => ['WALL', 'COUNTER', 'TALL'].includes(cab.type) || (c.err < WALL_SNAP && !backToBack)).sort((a, b) => a.err - b.err);
   let wall = null;
   if (cands.length) {
     const match = cands.find((c) => (c.rot % 180) === ((item.rotDeg || 0) % 180));
