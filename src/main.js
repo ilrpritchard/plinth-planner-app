@@ -38,7 +38,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-230 · in-frame fronts: door stiles flush with legs and plinth, panels 5mm back; drawer banks under a 35mm top rail';
+const BUILD = 'W2W-231 · photo mode tip mentions the three magazine shots';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -275,7 +275,7 @@ function startPhotoMode() {
   bar.querySelector('#pbDone').addEventListener('click', endPhotoMode);
   document.addEventListener('keydown', photoKeys, true);
   photoAngle(0);
-  toast('Photo 1 is your view as it is: Save it, or ‹ › for five suggested angles at eye level.');
+  toast('Photo 1 is your view as it is: Save it, or ‹ › for five suggested angles at eye level, then three magazine shots.');
 }
 function photoAngle(i) {
   if (!photoMode) return;
