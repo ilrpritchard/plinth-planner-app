@@ -422,6 +422,15 @@ export function sizedWidthCode(baseCode, width) {
   const w = Math.round(clampDim(width, FIT_WIDTH_LIMITS, base.w) * 2) / 2;
   return Math.abs(w - getCab(root).w) < 0.05 ? root : `${root}:w${w}`;
 }
+// ONE LONG STOOL NICHE (her ask 2026-09-29, a photo of an island whose whole back is one open bay:
+// "no legs... whatever length the island is, the stool niche stretches"): 'F35:w<inches>' is a stool
+// niche of any length from 20" to 240", legs only at its two ends. Price to confirm, like every niche.
+export const NICHE_WIDTH_LIMITS = [20, 240];
+const NICHE_STD = { 20: 'F35', 24: 'F36', 28: 'F37', 36: 'F38', 42: 'F39' };
+export function sizedNicheCode(width) {
+  const w = Math.round(clampDim(width, NICHE_WIDTH_LIMITS, 20) * 2) / 2;
+  return NICHE_STD[w] || `F35:w${w}`;
+}
 function fitPriceFor(base, w) {
   const family = CATALOGUE.filter((c) => c.type === base.type && c.form === base.form && !c.corner && !!c.halfDepth === !!base.halfDepth && c.h === base.h && c.placeable);
   const wider = family.filter((c) => c.w >= w - 0.05).sort((p, q) => p.w - q.w)[0];
@@ -435,6 +444,12 @@ export function getCab(code) {
     let hit = sizedWidthCache.get(code);
     if (!hit) {
       const base = CATALOGUE.find((c) => c.code === mw[1].toUpperCase());
+      if (base && base.form === 'niche') {               // one long stool niche (sizedNicheCode)
+        const w = Math.round(clampDim(mw[2], NICHE_WIDTH_LIMITS, base.w) * 2) / 2;
+        hit = { ...base, code, w, baseCode: base.code, desc: `${base.desc} · ${w}" long`, notes: `One open bay ${w}" long for stools under the island worktop: 300mm deep, a 22mm leg at each end only, a 35mm top rail, painted inside. No plinth.` };
+        sizedWidthCache.set(code, hit);
+        return hit;
+      }
       if (!base || !canFitWidth(base)) return undefined;
       const w = Math.round(clampDim(mw[2], FIT_WIDTH_LIMITS, base.w) * 2) / 2;
       hit = { ...base, code, w, usd: fitPriceFor(base, w), baseCode: base.code, cutToFit: true, desc: `${base.desc} · resized to ${w}" (+10%)`, notes: `${base.notes ? base.notes + ' ' : ''}Resized to ${w}" wide to fit: the ${base.code} made ${w}", priced at the standard size plus 10%.` };

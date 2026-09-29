@@ -12,12 +12,11 @@
 // the whole row is packed instead; if even that cannot be exact it is refused: an island whose
 // two sides are different lengths is not a finished island.
 
-import { getCab } from './catalogue.js';
+import { getCab, sizedNicheCode } from './catalogue.js';
 import { boxAt, spotOk } from './placement.js';
 
 const DOOR_BY_W = { 20: 'F1', 24: 'F2', 28: 'F3', 36: 'F10', 42: 'F11' };
-// STOOL NICHES (W2W-243): the same plan with open 300mm bays instead of storage (opts.niches)
-const NICHE_BY_W = { 20: 'F35', 24: 'F36', 28: 'F37', 36: 'F38', 42: 'F39' };
+// STOOL NICHES (opts.niches): ONE open 300mm bay the length of the row instead of storage
 // HALF DEPTH (her ask 2026-09-29, "make double sided but half depth"): the 14" door cabinets, singles
 // to 28" (F4 / F5 / F6) and doubles above (F13 / F14), so a shallow island still gets its storage
 const HALF_BY_W = { 20: 'F4', 24: 'F5', 28: 'F6', 36: 'F13', 42: 'F14' };
@@ -34,7 +33,7 @@ function packExact(width, BY = DOOR_BY_W) {        // fewest door cabinets (or n
 }
 
 export function planIslandBack(state, id, opts = {}) {
-  const BY = opts.niches ? NICHE_BY_W : opts.halfDepth ? HALF_BY_W : DOOR_BY_W;
+  const BY = opts.halfDepth ? HALF_BY_W : DOOR_BY_W;
   const sel = (state.items || []).find((i) => i.id === id), selCab = sel && getCab(sel.code);
   const r = state.room || {}, W = r.width || 144, D = r.depth || 120, b = { minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2 };
   if (!sel || !floorLine(selCab)) return { ok: false, reason: 'not island' };
@@ -63,13 +62,16 @@ export function planIslandBack(state, id, opts = {}) {
   // what stands behind each front cabinet
   let codes = [], exactPerItem = true;
   const pieces = [];                               // [{ lo, codes }]
-  for (let i = 0; i < row.length; i++) {
+  // stool niches: ONE bay the whole length of the row, legs at its two ends only (her ask
+  // 2026-09-29, "whatever length the island is, the stool niche stretches")
+  if (opts.niches) pieces.push({ lo: rowLo, codes: [sizedNicheCode(rowHi - rowLo)] });
+  else for (let i = 0; i < row.length; i++) {
     const w = row[i].cab.w, lo = along(row[i].it) - w / 2;
     if (BY[w]) { pieces.push({ lo, codes: [BY[w]] }); continue; }
     const p = packExact(w, BY); if (!p) { exactPerItem = false; break; }
     pieces.push({ lo, codes: p });
   }
-  if (!exactPerItem) { const p = packExact(rowHi - rowLo, BY); if (!p) return { ok: false, reason: 'no fit' }; pieces.length = 0; pieces.push({ lo: rowLo, codes: p }); }
+  if (!opts.niches && !exactPerItem) { const p = packExact(rowHi - rowLo, BY); if (!p) return { ok: false, reason: 'no fit' }; pieces.length = 0; pieces.push({ lo: rowLo, codes: p }); }
 
   const placements = [];
   for (const pc of pieces) { let cur = pc.lo; for (const code of pc.codes) { const c = getCab(code), al = cur + c.w / 2, pp = backPlane - c.d / 2; cur += c.w;

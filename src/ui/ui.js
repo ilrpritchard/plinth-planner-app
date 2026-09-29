@@ -1206,9 +1206,9 @@ export class UI {
     document.getElementById('selNiches').addEventListener('click', () => {
       const id = this.controls.layer.selectedId; if (id == null) return;
       const p = planIslandBack(this.store.state, id, { niches: true });
-      if (!p.ok) { this._toast({ 'already double': 'Something already stands on the back of this row.', 'no room': 'There is no room behind it for niches. Move the island forward first.', 'no fit': 'No run of niches makes exactly this length.' }[p.reason] || 'Stool niches go on the back of an island or a peninsula.'); return; }
+      if (!p.ok) { this._toast({ 'already double': 'Something already stands on the back of this row.', 'no room': 'There is no room behind it for niches. Move the island forward first.', 'no fit': 'No niche makes exactly this length.' }[p.reason] || 'A stool niche goes on the back of an island or a peninsula.'); return; }
       const done = this.controls.placeInGap(p.placements);
-      this._toast(done ? `Stool niches: ${p.placements.map((q) => q.code).join(' + ')} on the back, price to confirm.${p.note === 'walkway' ? ` Only ${fmtIn(p.walkway)} is left behind them: 44" is the minimum.` : ''} Undo takes them back out.` : 'Something is in the way behind it.');
+      this._toast(done ? `Stool niche: one ${getCab(p.placements[0].code).w}" bay (${p.placements[0].code}) along the back, price to confirm.${p.note === 'walkway' ? ` Only ${fmtIn(p.walkway)} is left behind them: 44" is the minimum.` : ''} Undo takes them back out.` : 'Something is in the way behind it.');
       if (done) this.showSelbar(id);
     });
     // wall cabinets matched about the range, or about the middle of the wall

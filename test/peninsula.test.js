@@ -74,7 +74,7 @@ test('ONE continuous end panel across the peninsula back, the corner square incl
   assert.ok(slabs.some((b) => b.x0 <= s.legBack + 0.01 && b.z0 <= -85 + 1 && b.x1 > s.legBack + 20), 'worktop over the corner square');
 });
 
-test('stool niches: 300mm deep in the cabinet widths, price to confirm, one behind each island cabinet', () => {
+test('stool niches: 300mm deep, price to confirm, ONE niche the whole length of the island row', () => {
   for (const [code, w] of [['F35', 20], ['F36', 24], ['F37', 28], ['F38', 36], ['F39', 42]]) {
     const c = getCab(code);
     assert.equal(c.w, w); assert.ok(Math.abs(c.d - mmToIn(300)) < 1e-9); assert.equal(c.h, 35);
@@ -87,10 +87,12 @@ test('stool niches: 300mm deep in the cabinet widths, price to confirm, one behi
   assert.equal(exposedBackIds(s).size, 2, 'before: two exposed backs');
   const p = planIslandBack(s, 1, { niches: true });
   assert.ok(p.ok, p.reason);
-  for (const it of items) {                            // each niche stands behind the cabinet of its width
-    const q = p.placements.find((x) => Math.abs(x.x - it.x) < 0.01);
-    assert.ok(q && getCab(q.code).w === getCab(it.code).w, `a ${getCab(it.code).w}" niche behind ${it.code}`);
-  }
+  // one bay behind the whole row, legs at its two ends only (her ask 2026-09-29: "no legs... whatever
+  // length the island is, the stool niche stretches"), not a niche per cabinet with a leg at every joint
+  assert.equal(p.placements.length, 1, 'one niche');
+  const one = p.placements[0], oc = getCab(one.code);
+  assert.equal(one.code, 'F35:w60'); assert.equal(oc.w, 60); assert.equal(oc.form, 'niche'); assert.equal(oc.priceTBC, true);
+  assert.ok(Math.abs(one.x - 0) < 0.01, 'centred on the row (-30 .. 30)');
   for (const q of p.placements) {
     assert.equal(q.rotDeg, 0, 'the open side faces away from the island');
     assert.ok(Math.abs((q.z - getCab(q.code).d / 2) - 12) < 0.01, 'back to back with the island row');
