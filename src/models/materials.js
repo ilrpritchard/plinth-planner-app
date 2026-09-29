@@ -13,16 +13,11 @@ export function paintMat(hex) {
   if (paintCache.has(hex)) return paintCache.get(hex);
   const m = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(hex),
-    // EGGSHELL, not satin (her catch 2026-09-29): at 0.5 / 0.28 lacquer the side of a tall seen edge-on
-    // mirrored the bright room as a flat grey sheet, and on a dark paint (Kale, Swamp) the ends of the
-    // cabinets read grey, not green. Rougher, less reflective, a thin lacquer: the sheen stays, the
-    // colour holds at a glancing angle.
-    roughness: 0.7,
+    roughness: 0.5,            // eggshell body
     metalness: 0.0,
-    specularIntensity: 0.6,
     envMapIntensity: 0.55,     // soft fill from the bright studio env
-    clearcoat: 0.1,            // a thin satin lacquer film
-    clearcoatRoughness: 0.55,
+    clearcoat: 0.28,           // the satin lacquer film real painted cabinets have
+    clearcoatRoughness: 0.5,   // soft, not glossy — catches a gentle highlight
   });
   addDetail(m, 'paint');       // photo mode: brushed-eggshell micro-texture on every painted part (surfaceDetail.js)
   paintCache.set(hex, m);

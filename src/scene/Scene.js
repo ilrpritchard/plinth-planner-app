@@ -15,19 +15,14 @@ import { setWorktopDetail } from '../models/materials.js';
 // NeutralToneMapping from r162; this vendored r160 lacks it, so it goes in through three's own
 // CustomToneMapping hook. It leaves a colour's hue and saturation alone up to ~80% brightness and
 // rolls only highlights off, which is what paint swatches need (AgX and ACES both shift them).
-// Its offset takes back the 4% every standard dielectric reflects (F0 0.04); the painted cabinets are
-// an EGGSHELL at 0.6 of that (materials.js paintMat, 2026-09-29), so the offset is 0.024, its toe
-// scaled to match (Khronos: x < 2F ? x - x^2 / 4F : F). At 0.04 it crushed the dark paints: Skillet
-// read 26% under its chip.
 THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars_fragment.replace(
   'vec3 CustomToneMapping( vec3 color ) { return color; }',
   `vec3 CustomToneMapping( vec3 color ) {
-	const float StartCompression = 0.8 - 0.024;
+	const float StartCompression = 0.8 - 0.04;
 	const float Desaturation = 0.15;
 	color *= toneMappingExposure;
 	float x = min( color.r, min( color.g, color.b ) );
-	const float F0 = 0.024;
-	float offset = x < 2. * F0 ? x - x * x / ( 4. * F0 ) : F0;
+	float offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
 	color -= offset;
 	float peak = max( color.r, max( color.g, color.b ) );
 	if ( peak < StartCompression ) return color;
@@ -62,15 +57,13 @@ export const LIVE_SHADOW = { bias: 0.0001, normalBias: 0.04 };
 // its levels (tuned on the hero kitchen's fronts against their hex). SUN_SOFT / SUN_SAMPLES: a saved
 // photo averages that many sun directions inside a cone of that half-angle, which softens the glazing-
 // bar shadows the way a real window's are; the live preview uses one (hard edges while framing).
-export const PHOTO_SUN = { sun: 5.0, env: 1.0, fill: 0.85, hemi: 0.6, exposure: 1.6 };
+export const PHOTO_SUN = { sun: 5.0, env: 1.0, fill: 0.72, hemi: 0.6, exposure: 1.6 };
 // where the HDRI's bright side sits in every sunlit room: behind the back run, turned 32 degrees, as
 // the hero kitchen's back-wall window put it when PHOTO_SUN was calibrated (see _setSun)
 const PHOTO_SUN_ENV_AZ = Math.atan2(-Math.cos(32 * Math.PI / 180), Math.sin(32 * Math.PI / 180));
 const SUN_SOFT = 0.4 * Math.PI / 180, SUN_SAMPLES = 12;
 // photo mode's still (Scene._stillOnScreen): how long the view stands still first, and the supersampling
-const STILL_SETTLE_MS = 350, STILL_SCALE = 1.5;
-// how much of the daylight studio's own (brown) colour the environment keeps (Scene._loadHdri)
-const HDRI_SAT = 0.3;   // the real sun is ~0.27 deg in radius
+const STILL_SETTLE_MS = 350, STILL_SCALE = 1.5;   // the real sun is ~0.27 deg in radius
 // A white daylight apartment, one big window, almost no colour cast (CC0, Poly Haven; site-assets/hdri/LICENCE.md)
 const HDRI_URL = new URL('../../site-assets/hdri/brown_photostudio_04_1k.hdr', import.meta.url).href;
 
@@ -193,12 +186,6 @@ export class Scene {
     try {
       const tex = await new RGBELoader().setDataType(THREE.FloatType).loadAsync(HDRI_URL);
       const { width: w, height: h, data } = tex.image;
-      // the studio is BROWN: at full colour it tinted every surface warm, and in photo mode (env 1.0) a
-      // dark paint went yellow-brown (her catch 2026-09-29). Keep its light, take most of its colour.
-      for (let i = 0; i < data.length; i += 4) {
-        const L = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-        for (let c = 0; c < 3; c++) data[i + c] = L + (data[i + c] - L) * HDRI_SAT;
-      }
       // where its light comes from (three's equirect: column u -> azimuth (u - 0.5) * 2pi, row 0 = up)
       // and its solid-angle mean luminance, so LOOK.env sets the level whatever the file's exposure
       let sx = 0, sz = 0, sl = 0, sw = 0;
