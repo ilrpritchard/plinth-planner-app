@@ -884,21 +884,43 @@ export class TradeUI {
 
   /** Done → save the design on the unit + derive its cabinet rows.
    *  Cancel → throw the edit away. Either way restore the stashed state. */
+  /** The layout on screen → the unit being designed (its design + the cabinet rows derived from it),
+   *  in the stashed project. Shared by Done and by Save / autosave mid-session. */
+  _writeUnit() {
+    const stash = this._stash; if (!stash) return null;
+    const design = this.store.serialize();
+    design.mode = 'home';
+    delete design.trade;
+    const t = stash.trade;
+    const su = (t.units || []).find((x) => x.id === this._designUnitId);
+    if (su) {
+      su.design = design;                          // JSONB-ready snapshot
+      su.rows = rowsFromDesign(design.items, design.accessories)       // manual rows → derived rows (inserts ride along)
+        .map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
+    }
+    return su;
+  }
+
+  /** SAVE while a unit is being designed (her catch 2026-09-29: "when I click save... it doesn't let me
+   *  save it on the one I have open"): the layout goes into THIS unit and the project is saved to the
+   *  account, without leaving the unit. Also the account autosave's path mid-session (quiet), which
+   *  used to write the unit into a design called "Autosave". -> { unit, project, cloud } | null */
+  async saveUnitInPlace({ quiet = false } = {}) {
+    if (!this._stash) return null;
+    const su = this._writeUnit();
+    const t = this._stash.trade, unit = su ? unitName(su) : 'this unit', project = t.project || 'Untitled project';
+    try { localStorage.setItem('plnr-trade-stash', JSON.stringify({ stash: this._stash, unitId: this._designUnitId })); } catch { /* storage full */ }
+    let cloud = false;
+    try { if (await currentUser()) { await saveTradeProject(t); cloud = true; try { localStorage.setItem('plnr-trade-stash', JSON.stringify({ stash: this._stash, unitId: this._designUnitId })); } catch { /* cloudId */ } } }
+    catch (e) { if (!quiet) toast(`Saved to ${unit} on this device. The account save failed: ${e.message || 'are you online?'}`); return { unit, project, cloud: false }; }
+    if (!quiet) toast(cloud ? `Saved to ${unit} in ${project}.` : `Saved to ${unit} on this device. Sign in to save ${project} to your account.`);
+    return { unit, project, cloud };
+  }
+
   finishDesign(save) {
     const stash = this._stash;
     if (!stash) return;
-    if (save) {
-      const design = this.store.serialize();
-      design.mode = 'home';
-      delete design.trade;
-      const t = stash.trade;
-      const su = (t.units || []).find((x) => x.id === this._designUnitId);
-      if (su) {
-        su.design = design;                        // JSONB-ready snapshot
-        su.rows = rowsFromDesign(design.items, design.accessories)     // manual rows → derived rows (inserts ride along)
-          .map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
-      }
-    }
+    if (save) this._writeUnit();
     this._stash = null;
     this._designUnitId = null;
     document.getElementById('designBanner')?.remove();

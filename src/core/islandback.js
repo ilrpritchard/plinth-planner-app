@@ -47,8 +47,17 @@ export function planIslandBack(state, id, opts = {}) {
   const cands = (state.items || []).map((it) => ({ it, cab: getCab(it.code) })).filter((x) => floorLine(x.cab) && !x.cab.corner && ((((x.it.rotDeg || 0) % 360) + 360) % 360) === rot
     && Math.abs(perp(x.it) - perp(sel)) < 3 && (x.it.island || !nearWall(x.it, x.cab))).sort((p, q) => along(p.it) - along(q.it));
   // the contiguous chain that contains the selected cabinet
-  let i0 = cands.findIndex((x) => x.it.id === id), i1 = i0;
   const gap = (p, q) => (along(q.it) - q.cab.w / 2) - (along(p.it) + p.cab.w / 2);
+  let i0 = cands.findIndex((x) => x.it.id === id);
+  // a CORNER unit closing the row (a peninsula's) is not itself in the chain: the row is the one butting
+  // its door side. This used to be i0 = -1, and cands[-1] threw inside showSelbar, so clicking the
+  // peninsula's corner unit broke the selection (her "I can't click on any cabinets on the island").
+  if (i0 < 0 && selCab.corner) {
+    const me = { it: sel, cab: selCab };
+    i0 = cands.findIndex((x) => Math.abs(gap(me, x)) < 1 || Math.abs(gap(x, me)) < 1);
+  }
+  if (i0 < 0) return { ok: false, reason: 'not island' };
+  let i1 = i0;
   while (i0 > 0 && Math.abs(gap(cands[i0 - 1], cands[i0])) < 1) i0--;
   while (i1 < cands.length - 1 && Math.abs(gap(cands[i1], cands[i1 + 1])) < 1) i1++;
   const row = cands.slice(i0, i1 + 1);
@@ -90,7 +99,7 @@ export function planIslandBack(state, id, opts = {}) {
         a0 = Math.min(a0, al); a1 = Math.max(a1, al); p0 = Math.min(p0, pp); p1 = Math.max(p1, pp);
       }
       if (Math.abs(p0 - backPlane) < 1.5 && p1 > backPlane + 0.5 && c.form !== 'niche') flush.push([a0, a1]);   // its back on the line
-      else if (p0 < backPlane - 0.5 && p1 > backPlane - ND + 0.5) block.push([a0, a1, backPlane - p0]);     // standing where a niche would (and how deep)
+      else if (p0 < backPlane - 0.5 && p1 > backPlane - ND + 0.5) block.push([a0, a1, Math.abs(p1 - backPlane) < 1.5 ? backPlane - p0 : 0]);   // standing where a niche would (and how deep, when truly back to back)
     }
     for (let grew = true; grew;) {
       grew = false;

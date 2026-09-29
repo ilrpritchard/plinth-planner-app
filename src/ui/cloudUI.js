@@ -10,8 +10,11 @@ import { uiConfirm, uiPrompt } from './dialog.js';
 import { loadPreviews, whenAgo, forgetPreview } from './preview.js';
 
 export class CloudUI {
-  constructor({ store, onLoaded, onSaved }) {
+  constructor({ store, onLoaded, onSaved, unitSave }) {
     this.store = store;
+    // while a PROJECT UNIT is being designed, Save and the autosave write to that unit and its project
+    // (trade.saveUnitInPlace), never to My designs: returns null when no unit is open
+    this.unitSave = unitSave || null;
     this.onSaved = onSaved || null;
     // the design that is OPEN from My designs (id + name): Save writes it in place, and the
     // autosave keeps it current (her ask 2026-09-22: "it needs to autosave every few mins")
@@ -224,6 +227,7 @@ export class CloudUI {
   /** The SAVE button: the open design is written in place, no questions asked; only a design
    *  that has never been saved (or is only the Autosave) asks for a name. */
   async quickSave() {
+    if (this.unitSave && (await this.unitSave({ quiet: false }))) return;   // a project unit is open: saved to it
     if (!this.user) { this.open(); return; }
     if (!this.currentId || this.currentName === 'Autosave') { this._note = null; this.open(); setTimeout(() => this.modal.querySelector('#saveName')?.focus(), 50); return; }
     try {
@@ -247,6 +251,13 @@ export class CloudUI {
   }
   async autosave() {
     if (!this.user || this._saving || !isCloud()) return false;
+    if (this.unitSave) {                                   // a project unit is open: it autosaves into its project
+      const st = JSON.stringify(this.store.serialize());
+      if (st === this._lastUnitSaved) return false;
+      this._saving = true;
+      try { const r = await this.unitSave({ quiet: true }); if (r) { this._lastUnitSaved = st; this._note2(`Autosaved to ${r.unit} ${this._clock()}`); return true; } }
+      finally { this._saving = false; }
+    }
     const st = this.store.serialize();
     if (!(st.items || []).length && !this.currentId) return false;         // an empty room is not worth a design
     const json = JSON.stringify(st);

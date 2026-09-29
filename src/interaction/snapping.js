@@ -344,8 +344,10 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   // ---- 2c. back-to-back snap for islands ----
   // A free-standing cabinet dragged so its back nears another cabinet's back
   // (facing the opposite way) snaps flush, so a double-sided island reads as one
-  // solid block. Only when not against a wall and not already butted in a run.
-  if (!wall && best == null) {
+  // solid block. Only when not against a wall and not already butted in a run, OR when section 1 found
+  // it back to back (her screenshot 2026-09-29: dropped by the side wall, the butt to the wall end won,
+  // this was skipped, and the double stood 3" off the peninsula with a gap in the corner).
+  if (!wall && (best == null || backToBack)) {
     const BACK_SNAP = 9;
     const rad = (rotDeg * Math.PI) / 180;
     const sgn = horizontal ? (Math.cos(rad) >= 0 ? 1 : -1) : (Math.sin(rad) >= 0 ? 1 : -1);
@@ -363,7 +365,9 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       const oPerp = horizontal ? o.z : o.x;
       const oBack = oPerp - oSgn * (oFp.d / 2);
       const oAlong = horizontal ? o.x : o.z;
-      if (Math.abs(oAlong - along) > (w + oFp.w) / 2) continue;   // must sit behind each other
+      // must sit behind each other (a corner unit's return counts: the pointer can be past the side wall,
+      // the cabinet only comes back inside the room at the clamp below)
+      if (Math.abs(oAlong - along) > (w + oFp.w) / 2 + (oc.corner ? 20 : 0)) continue;
       const err = Math.abs(myBack - oBack);
       if (err < bestErr) { bestErr = err; bestBack = oBack; }
     }

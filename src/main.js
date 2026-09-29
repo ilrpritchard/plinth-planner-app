@@ -41,7 +41,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-248 · cabinets back to back on the corner, the stool niche fills what is left, flush with them';
+const BUILD = 'W2W-249 · Save goes to the unit you are designing, the island corner clicks, the photo arrows hold still';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -286,6 +286,15 @@ function startPhotoMode() {
     const b = document.getElementById('photoBar')?.getBoundingClientRect(), st = document.getElementById('stage')?.getBoundingClientRect();
     return b && st ? Math.max(0, b.bottom - st.top) : 0;
   });
+  // the caption box is as wide as the LONGEST caption, measured once, so the bar never changes width
+  // and the ‹ › stay put under the pointer (her ask 2026-09-29: "don't move the arrow button... so
+  // annoying that it bounces and moves around")
+  {
+    const cap = bar.querySelector('#pbCap'), n = photoMode.views.length;
+    let widest = 0;
+    for (let k = 0; k < n; k++) { cap.innerHTML = photoCaption(k); widest = Math.max(widest, cap.getBoundingClientRect().width); }
+    cap.style.minWidth = `${Math.ceil(widest)}px`;
+  }
   photoAngle(0);
   toast('Photo 1 is your view as it is: Save it, or ‹ › for five suggested angles at eye level, then three magazine shots.');
 }
@@ -295,7 +304,10 @@ function photoAngle(i) {
   photoMode.i = ((i % n) + n) % n;
   scene.lookFrom(photoMode.views[photoMode.i]);
   const cap = document.getElementById('pbCap');
-  if (cap) cap.innerHTML = `<strong>Photo</strong> ${photoMode.i + 1} / ${n} · ${esc(photoMode.views[photoMode.i].name)}`;
+  if (cap) cap.innerHTML = photoCaption(photoMode.i);
+}
+function photoCaption(i) {
+  return `<strong>Photo</strong> ${i + 1} / ${photoMode.views.length} · ${esc(photoMode.views[i].name)}`;
 }
 function photoKeys(e) {
   const t = e.target;
@@ -550,6 +562,7 @@ const cloudUI = new CloudUI({
   store,
   onLoaded: () => { buildRoom(true); rebuildWorktop(); rebuildFillers(); applyMode(); },
   onSaved: (msg) => toast(msg),
+  unitSave: (o) => (tradeUI?.designingUnit() ? tradeUI.saveUnitInPlace(o) : null),
 });
 
 // when cloud is on, Save/Open go to the account (file export is the offline fallback)

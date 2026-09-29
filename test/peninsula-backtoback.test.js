@@ -34,6 +34,14 @@ test('a double dropped back to back with the corner stays there, hard to the sid
     assert.equal(sn.flag, undefined);
     assert.ok(spotOk(s.state, c, sn.x, sn.z, 0, bounds, it.id));
   }
+  // dropped by hand: the pointer anywhere near the corner, even past the side wall, within reach of the
+  // back line (her screenshot: "a weird gap in the corner", the double 3" off the peninsula)
+  for (let rx = bounds.minX + 8; rx <= bounds.minX + 32; rx += 4) for (let rz = BACK + 6; rz <= BACK + 20; rz += 2) {
+    const s = hers(), it = s.addItem('F9', { x: 0, z: 60, rotDeg: 0, island: true });
+    const sn = snapPosition(s, it.id, rx, rz, bounds);
+    assert.equal(sn.rotDeg, 0, `drop (${rx}, ${rz}): still facing the stools`);
+    assert.ok(Math.abs((sn.z - 12) - BACK) < 0.01, `drop (${rx}, ${rz}): back on the peninsula's back (${(sn.z - 12).toFixed(2)})`);
+  }
   // an ordinary cabinet dragged to that wall with nothing to stand back to back with still joins its run
   const s = hers(), it = s.addItem('F2', { x: 0, z: 60, rotDeg: 0 });
   assert.equal(snapPosition(s, it.id, bounds.minX + 12, 70, bounds).rotDeg, 90);
@@ -68,4 +76,25 @@ test('then the stool niche fills the leftover: from the double to the free end, 
   // with nothing on the back, the niche keeps its 300mm
   const bare = hers(), bp = planIslandBack(bare.state, bare.state.items.find((i) => i.code === 'F9').id, { niches: true });
   assert.ok(Math.abs(getCab(bp.placements[0].code).d - 300 / 25.4) < 1e-9);
+});
+
+test('clicking ANY cabinet never breaks the selection bar (her "I can\'t click on any cabinets on the island")', async () => {
+  // planIslandBack runs for every click (the Arrange menu); the peninsula's corner unit is not in its row's
+  // chain and it used to throw (cands[-1]), killing the selection bar mid-click
+  const s = hers();
+  s.addItem('F12', { x: bounds.minX + 14, z: BACK + 7, rotDeg: 0, island: true });
+  for (const it of s.state.items) for (const opts of [{}, { halfDepth: true }, { niches: true }]) {
+    assert.doesNotThrow(() => planIslandBack(s.state, it.id, opts), `${it.code} #${it.id} ${JSON.stringify(opts)}`);
+  }
+  // the corner unit itself offers the niche for the row it closes
+  const corner = s.state.items.find((i) => i.code === 'F15R');
+  assert.ok(planIslandBack(s.state, corner.id, { niches: true }).ok);
+  // and every cabinet of every generated peninsula
+  const { generateKitchen } = await import('../src/core/layouts.js');
+  for (const shape of ['peninsula', 'c-peninsula']) for (const seed of [1, 3, 7, 11]) {
+    const st = { room: { width: 220, depth: 180, height: 96, openings: [], boxings: [] }, items: [] };
+    let x = -110, id = 1;
+    for (const step of generateKitchen(shape, st.room, seed, {}).steps) { const c = getCab(step.code); if (!c) continue; st.items.push({ id: id++, code: step.code, x: x += 1, z: 0, rotDeg: 0 }); }
+    for (const it of st.items) assert.doesNotThrow(() => planIslandBack(st, it.id, { niches: true }));
+  }
 });
