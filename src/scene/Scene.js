@@ -39,10 +39,6 @@ THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars
 //   key  = the one shadow-casting light, aimed by core/keylight.js (from the window if there is one)
 //   fill = soft, shadowless, from the camera side opposite the key
 //   hemi = a faint sky/ground tint, so undersides read a shade darker
-// the live fill's rise: 0.45 = about 24 degrees above the viewer's line of sight (Scene._aimFill)
-const FILL_RISE = 0.45, LIVE_FILL = 0.5, LIVE_HEMI = 0.8;
-// the live environment's bright side, relative to the viewer's azimuth, and how far she swings before it follows
-const ENV_FOLLOW = 0, ENV_SWING = 20 * Math.PI / 180;
 export const LOOK = { toneMapping: THREE.CustomToneMapping, exposure: 1.35, env: 0.35, key: 2.0, fill: 0.5, hemi: 0.3 };   // Custom = PBR Neutral, above
 // Photo mode's key shadow (render step 3): fitted to the room, so 6144 texels over a ~230" room is
 // ~0.04" (1mm) a texel, fine enough for the 8mm shaker relief, the 35mm top rail and the legs.
@@ -178,7 +174,6 @@ export class Scene {
     const f = new THREE.Vector3(-k.from[0] / h, 0.5, Math.max(0.6, k.from[2] / h)).normalize().multiplyScalar(R);
     this.fill.position.copy(f);
     this.keySource = k.source;
-    this._keyAz = k.azimuth;
     this._aimEnv(k.azimuth);
   }
 
@@ -249,7 +244,6 @@ export class Scene {
     this.renderer.setSize(w, h, false);
     if (this.camera.isPerspectiveCamera) { this.camera.aspect = w / h; if (this.camera === this.persp) this._applyShift(w, h); this.camera.updateProjectionMatrix(); }
     if (this._photo) this._applyPhotoRoom();   // closed or open for THIS camera, before the wall auto-hide
-    else this._aimFill();                      // the live fill from over this camera's shoulder
     this._beforeRender?.();                 // grounding + wall auto-hide for THIS camera position
     this._render(true);
     const W = this.renderer.domElement.width, H = this.renderer.domElement.height;
@@ -359,26 +353,7 @@ export class Scene {
     if (this._beforeRender) this._beforeRender();
     this.controls.update();
     if (this._photo && this._stillOnScreen()) return;     // the finished still is showing: nothing to redraw
-    if (!this._photo) this._aimFill();
     this._render();
-  }
-
-  /** LIVE: the fill comes from over the viewer's shoulder, so whatever she is looking at is lit from
-   *  the front whichever wall the window is on. Mirrored off the key it came in at a glancing angle
-   *  when the window sat off-centre, and a dark paint read far below its chip (her catch 2026-09-29:
-   *  Kale at -23 to -33%, Skillet to -45%, even Ghost -12%). Photo mode keeps its own tuned fill.
-   *  Looking straight down (the plan), the key-mirrored fill from setKeyFrom stays. */
-  _aimFill(cam = this.camera, target = this.controls.target) {
-    const dx = cam.position.x - target.x, dz = cam.position.z - target.z, h = Math.hypot(dx, dz);
-    if (h < 1e-3) return;
-    this.fill.position.set(dx / h, FILL_RISE, dz / h).normalize().multiplyScalar(320);
-    this.fill.intensity = LIVE_FILL; this.hemi.intensity = LIVE_HEMI;
-    // ...and the daylight environment turns with the viewer, its bright side behind her: turned toward
-    // the window, a window off-centre put the dark studio floor in front of the fronts and a dark
-    // paint picked it up as a brown cast (Kale 51,46,27 against its chip 76,74,62). Re-aimed only
-    // when the view has swung more than ENV_SWING (a rebuild is ~5-10ms).
-    const az = Math.atan2(dz, dx) + (this._envOffset ?? ENV_FOLLOW);
-    if (this._envAz == null || Math.abs(Math.atan2(Math.sin(az - this._envAz), Math.cos(az - this._envAz))) > ENV_SWING) this._aimEnv(az);
   }
 
   /** Photo mode's STILL. The live preview draws the contact shading from an un-smoothed depth pass, so
@@ -486,8 +461,6 @@ export class Scene {
     const key = this.key, sh = key.shadow;
     if (on && !this._photo) {
       this._photo = true;
-      this.fill.intensity = LOOK.fill; this.hemi.intensity = LOOK.hemi;   // photo mode's own tuned levels (live: LIVE_FILL, LIVE_HEMI)
-      if (this._keyAz != null) this._aimEnv(this._keyAz);                 // and its environment turned to the window, as before
       this._liveShadow = { size: sh.mapSize.x, bias: sh.bias, normalBias: sh.normalBias, radius: sh.radius, cam: [sh.camera.left, sh.camera.right, sh.camera.top, sh.camera.bottom, sh.camera.near, sh.camera.far] };
       const max = this.renderer.capabilities.maxTextureSize || 4096;
       this._setShadowMap(Math.min(PHOTO_SHADOW.size, max));
