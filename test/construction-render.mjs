@@ -13,7 +13,7 @@
 //   · straight on is straight: a level camera stays level, so legs and joints stand vertical
 //   · each cabinet: a painted 22mm leg down both sides, ended by the dark reveal of its front
 //   · each junction: leg, ONE dark joint line, leg (never none, never a double line)
-//   · each door cabinet: a painted 35mm top rail between the worktop and the top of the door, and no
+//   · each door cabinet and drawer bank: a painted 35mm top rail between the worktop and the front, no
 //     shadow striping along it (the live shadow's stepped edge, fixed 2026-09-29)
 //   · the plinth: along it, exactly one dark joint per junction and no other line; up it, paint from
 //     the floor (no dark toe-kick band, no gap under the cabinet)
@@ -192,20 +192,20 @@ for (const f of frames) {
     }
   });
 
-  test(`${tag}: a painted 35mm top rail over every door`, () => {
+  test(`${tag}: a painted 35mm top rail over every door and drawer bank`, () => {
     for (const { code, x, s } of f.rails) {
-      if (code === 'F18') continue;               // the drawer bank's rail is a TODO (construction.test.js)
       const { k: kp, L: Lp } = f.paint[cabAt(x)];
       const hue = (q) => (q.c[1] - q.c[2]) / Math.max(1, q.c[1]) > 0.5 * kp;
       const st = STEP(s), n3 = Math.round(3 * MM / st);
       // down from above the worktop: the rail starts at the first paint-hued pixel that stays paint
       const i0 = s.findIndex((q, i) => s.slice(i, i + n3).every(hue));
       assert.ok(i0 >= 0, `${code} x=${x}: no paint under the worktop`);
-      // ...and ends where the door begins: the first 3mm that read as the door's own stile (its
-      // brightness read 45-60mm down). A rail that renders the same as the door ends at once and fails;
-      // a shadow line or a worktop shadow on the rail is part of the rail.
+      // ...and ends where the door begins: at the door's top edge line, or failing that the first 3mm that
+      // read as the door's own stile (its brightness read 45-60mm down). A rail that renders the same as
+      // the door ends at once and fails; a soft worktop shadow on the rail is part of the rail.
+      const band = s.slice(i0 + n3, i0 + 3 * n3).map((q) => q.L).sort((a, b) => a - b), ref = band[band.length >> 1];
       const door = s.filter((q) => q.w < TOP - 45 * MM && q.w > TOP - 60 * MM).map((q) => q.L).sort((a, b) => a - b), Ld = door[door.length >> 1];
-      const i1 = s.findIndex((q, i) => i > i0 + n3 && s.slice(i, i + n3).every((p) => Math.abs(p.L - Ld) <= 0.04 * Ld));
+      const i1 = s.findIndex((q, i) => i > i0 + n3 && (q.L < 0.6 * ref || s.slice(i, i + n3).every((p) => Math.abs(p.L - Ld) <= 0.04 * Ld)));
       const railMm = i1 > 0 ? (s[i0].w - s[i1].w) / MM : NaN;
       const say = s.filter((_, i) => i % Math.round(1 * MM / st) === 0 && i >= i0 - 4 && i <= (i1 > 0 ? i1 + 4 : s.length)).map((q) => q.L.toFixed(0)).join(' ');
       assert.ok(within(railMm, RAIL), `${code} x=${x}: top rail ${Number.isNaN(railMm) ? 'not found' : railMm.toFixed(1) + 'mm'} (1mm steps down from the worktop: ${say})`);

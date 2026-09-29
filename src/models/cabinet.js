@@ -21,11 +21,16 @@ const REVEAL = SPEC.REVEAL_IN;   // gap between faces
 const HAIR = mmToIn(2);          // 2mm hairline reveal around flush drawer fronts
 const STILE = SPEC.FRAME_IN;     // 80mm shaker stiles & rails
 const SHELF = SPEC.SHELF_IN;     // 18mm oak shelf
-const RECESS = mmToIn(8);        // shaker centre panel sits back 8mm from stiles/rails
+// IN-FRAME (her spec 2026-09-29): a door's stiles and rails sit FLUSH with the legs and the plinth, in
+// the face plane, and its centre panel is set back 5mm behind them (core/dxf.js draws the same 5mm).
+const RECESS = mmToIn(5);        // shaker centre panel sits back 5mm from stiles/rails (and from the face)
 const DOOR_T = 0.75;
 const TOPRAIL = mmToIn(35);   // top rail per the master library drawings (35mm — NOT the 22mm panel)
 const FRAME_T = 0.14;
 const KNOB_INSET = 2.2;
+// a knob on a shaker leaf: its back seated 8mm into the stile, as it has always been drawn (the knob
+// is anchored in leaf space, where z = DOOR_T / 2 is the recessed panel's face)
+const LEAF_KNOB_Z = DOOR_T / 2 + RECESS - mmToIn(8);
 export const OPEN_ANGLE = THREE.MathUtils.degToRad(105);
 
 export { MOUNT };   // the one copy lives in core/units.js
@@ -65,10 +70,19 @@ function edgeRing(parent, cx, cy, w, h, z, lw, depth, mat, skip = null) {
   if (skip !== 'left') mk(lw, h - lw, cx - w / 2, cy);   // left
   if (skip !== 'right') mk(lw, h - lw, cx + w / 2, cy);  // right
 }
-// Reveal for a RECESSED front (doors sit 0.18 behind the carcass face): the
+// Reveal for a shaker front (its panel face sits RECESS behind the carcass face): the
 // ring floats in the reveal depth, in front of the leaf but behind the frame.
 function revealRing(parent, cx, cy, w, h, doorFrontZ, lw = 0.17, skip = null) {
   edgeRing(parent, cx, cy, w, h, doorFrontZ + 0.10, lw, 0.06, shadowMat(), skip);
+  // the leaf's rails sit flush with the top rail and the bottom rail (RECESS), so its top and bottom
+  // edges have no step to read by: a hairline a whisker proud of the face on each, the weight of the
+  // real gap down each side (REVEAL, less the carcass skin)
+  for (const s of [1, -1]) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.1, 0.03), shadowMat());
+    m.position.set(cx, cy + s * h / 2, doorFrontZ + RECESS + 0.02);
+    m.castShadow = false; m.receiveShadow = false;
+    parent.add(m);
+  }
 }
 // Reveal for a FLUSH front (drawer banks): a hairline ring a whisker proud.
 function flushRing(parent, cx, cy, w, h, faceZ, lw = 0.11) {
@@ -177,7 +191,7 @@ function hingedDoor(parent, doors, { w, h, mat, glazed, frontZ, hingeX, centerY,
   // handle on the LEADING (opening) edge — opposite the hinge — so a pair meets
   // in the middle and a single sits on its opening side.
   const edgeX = -hingeSign * (w / 2 - 1.4);
-  if (handle === 'knob') { const k = makeKnob(mat); k.position.set(edgeX, knobY, DOOR_T / 2); leaf.add(k); }
+  if (handle === 'knob') { const k = makeKnob(mat); k.position.set(edgeX, knobY, LEAF_KNOB_Z); leaf.add(k); }
   else if (handle === 'bar') { const b = barPull(mat, true, h); b.position.set(edgeX, knobY, DOOR_T / 2 - 0.1); leaf.add(b); }
   pivot.add(leaf);
   pivot.userData.openAngle = hingeSign * OPEN_ANGLE;
@@ -324,16 +338,17 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // gap over every tall door (her catch 2026-07-23; the integrated fridge got
   // its explicit rail bar in W2W-68, ordinary cabinets never did). The bar sits
   // BETWEEN the side panels and BELOW the top panel's front edge — butted, not
-  // overlapped, so nothing z-fights. Drawer banks and the dishwasher panel run
-  // their flush faces past the rail line to the carcass top — no bar there.
-  if (cab.form !== 'drawers' && cab.form !== 'dishwasher') {
+  // overlapped, so nothing z-fights. Drawer banks stop under the same 35mm rail
+  // (her call 2026-09-29, as the front drawings); the dishwasher panel runs its
+  // flush face past the rail line to the carcass top — no bar there.
+  if (cab.form !== 'dishwasher') {
     const railBar = box(shellW - 2 * PANEL, TOPRAIL - PANEL, PANEL, mat);
     railBar.position.set(0, h - PANEL - (TOPRAIL - PANEL) / 2, d / 2 - PANEL / 2);
     g.add(railBar);
   }
   const openCenterY = openY0 + openH / 2;
   const faceW = w - 2 * LEG - 2 * REVEAL;     // door spans between the legs
-  const doorFrontZ = frontZ - 0.18;           // doors recessed behind the legs
+  const doorFrontZ = frontZ - RECESS;         // a leaf's panel face: its stiles come forward to the legs' plane
 
   const ctx = { mat, doors, faceW, openH, openCenterY, frontZ: doorFrontZ, frontFlush: frontZ, openY0, inW, inD, bodyY0, bodyTop: bodyY0 + bodyH, handle: opts.handle || 'knob', hinge: opts.hinge === 'R' ? 1 : -1, ovenFitted: !!opts.ovenFitted };
   const hasShelf = buildFront(g, cab, ctx);
@@ -429,7 +444,7 @@ export function buildIntegratedFridge(cab, finishHex) {
   // front composition: doors above the freezer line, one drawer front below —
   // every front is a true shaker leaf recessed behind the 22mm legs
   const faceW = w - 2 * LEG - 2 * REVEAL;
-  const doorFrontZ = frontZ - 0.18;
+  const doorFrontZ = frontZ - RECESS;         // stiles flush with the legs, panels 5mm back (see RECESS)
   const splitY = Math.min(31, h * 0.4);            // freezer drawer line AFF
   const leafZ = doorFrontZ - DOOR_T / 2;
 
@@ -447,7 +462,7 @@ export function buildIntegratedFridge(cab, finishHex) {
   if (cab.overUnder) {
     const leaf = shakerLeaf(faceW, doorH, mat, false, doorH > 62 ? 2 : 1);
     leaf.position.set(0, doorY0 + doorH / 2, leafZ);
-    const k = makeKnob(mat); k.position.set(-(faceW / 2 - STILE / 2), 0, DOOR_T / 2); leaf.add(k);
+    const k = makeKnob(mat); k.position.set(-(faceW / 2 - STILE / 2), 0, LEAF_KNOB_Z); leaf.add(k);
     g.add(leaf);
     revealRing(g, 0, doorY0 + doorH / 2, faceW, doorH, doorFrontZ);
   } else {
@@ -457,7 +472,7 @@ export function buildIntegratedFridge(cab, finishHex) {
       const leaf = shakerLeaf(dw, doorH, mat, false, doorH > 62 ? 2 : 1);
       leaf.position.set(cx, doorY0 + doorH / 2, leafZ);
       // knobs meet in the middle like a proper pair
-      const k = makeKnob(mat); k.position.set(-sgn * (dw / 2 - STILE / 2), 0, DOOR_T / 2); leaf.add(k);
+      const k = makeKnob(mat); k.position.set(-sgn * (dw / 2 - STILE / 2), 0, LEAF_KNOB_Z); leaf.add(k);
       g.add(leaf);
       revealRing(g, cx, doorY0 + doorH / 2, dw, doorH, doorFrontZ);
     }
@@ -467,7 +482,7 @@ export function buildIntegratedFridge(cab, finishHex) {
   const drawer = shakerLeaf(faceW, drawerH, mat, false, 1);
   drawer.position.set(0, drawerY0 + drawerH / 2, leafZ);
   for (const sgn of [-1, 1]) {          // knob pair, 1/9 of the front width in from each end
-    const k = makeKnob(mat); k.position.set(sgn * (faceW / 2 - faceW / 9), drawerH / 2 - STILE / 2, DOOR_T / 2); drawer.add(k);
+    const k = makeKnob(mat); k.position.set(sgn * (faceW / 2 - faceW / 9), drawerH / 2 - STILE / 2, LEAF_KNOB_Z); drawer.add(k);
   }
   g.add(drawer);
   revealRing(g, 0, drawerY0 + drawerH / 2, faceW, drawerH, doorFrontZ);
@@ -527,7 +542,7 @@ function buildFront(g, cab, ctx) {
     const slots = [...faces].reverse();          // bottom→top: 315, 245, 175
     const sum = slots.reduce((a, b) => a + b, 0);
     const bottom = ctx.bodyY0;                   // plinth top
-    const top = ctx.bodyTop - PANEL;             // just below the carcass top rail
+    const top = ctx.bodyTop - TOPRAIL;           // under the 35mm top rail, like every door (frontdraw.js FD.TOP)
     const reveals = HAIR * (slots.length + 1);
     const avail = (top - bottom) - reveals;
     // dark backer behind the whole bank — the 2mm hairlines between faces show
@@ -585,7 +600,7 @@ function buildFront(g, cab, ctx) {
       const leaf = shakerLeaf(faceW, openH, mat, false, 1);
       leaf.position.set(0, cy, frontZ - DOOR_T / 2);
       // knob centered on the TOP RAIL, exactly like the dishwasher panel
-      const k = makeKnob(mat); k.position.set(0, openH / 2 - STILE / 2, DOOR_T / 2); leaf.add(k);
+      const k = makeKnob(mat); k.position.set(0, openH / 2 - STILE / 2, LEAF_KNOB_Z); leaf.add(k);
       g.add(leaf);
       revealRing(g, 0, cy, faceW, openH, frontZ);
       return false;
@@ -621,7 +636,7 @@ function buildFront(g, cab, ctx) {
       const ph = (ctx.bodyTop - PANEL) - ctx.bodyY0 - HAIR;
       const leaf = shakerLeaf(cab.w - 2 * HAIR, ph, mat, false, 1);
       leaf.position.set(0, ctx.bodyY0 + HAIR + ph / 2, frontZ - DOOR_T / 2);
-      const k = makeKnob(mat); k.position.set(0, ph / 2 - STILE / 2, DOOR_T / 2); leaf.add(k);
+      const k = makeKnob(mat); k.position.set(0, ph / 2 - STILE / 2, LEAF_KNOB_Z); leaf.add(k);
       g.add(leaf);
       revealRing(g, 0, ctx.bodyY0 + HAIR + ph / 2, cab.w - 2 * HAIR, ph, frontZ);
       return false;
@@ -642,7 +657,7 @@ function buildFront(g, cab, ctx) {
           ? -(ctx.hinge ?? -1) * (colW / 2 - 1.4)
           : (c === 0 ? colW / 2 - 1.4 : -(colW / 2 - 1.4));
         const hy = openH > 60 ? tallMidRail(openH).y : 0;      // on the mid rail, like every tall door
-        if (handle === 'knob') { const k = makeKnob(mat); k.position.set(edgeX, hy, DOOR_T / 2); leaf.add(k); }
+        if (handle === 'knob') { const k = makeKnob(mat); k.position.set(edgeX, hy, LEAF_KNOB_Z); leaf.add(k); }
         else if (handle === 'bar') { const b = barPull(mat, true, openH); b.position.set(edgeX, hy, DOOR_T / 2 - 0.1); leaf.add(b); }
         g.add(leaf);
         revealRing(g, cx, cy, colW, openH, frontZ);

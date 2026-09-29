@@ -96,24 +96,14 @@ for (const [name, k] of Object.entries(K)) {
     }
   });
 
-  test(`${name}: a 35mm painted top rail runs over every door`, () => {
-    for (const c of k.cabs.filter((q) => q.form !== 'drawers')) for (const x of [c.x0 + c.w / 4, c.x1 - c.w / 4]) {
+  // doors and drawer banks alike (her call 2026-09-29: a bank's rail is 35mm, as the front drawings)
+  test(`${name}: a 35mm painted top rail runs over every door and drawer bank`, () => {
+    for (const c of k.cabs) for (const x of [c.x0 + c.w / 4, c.x1 - c.w / 4]) {
       const r = runs(k.col(x, c.h - 60 * MM, c.h - STEP / 2));
       const top = r[r.length - 1];
-      assert.ok(top.c === 'F' && near(top.mm, RAIL_MM - 0.05, TOL), `${c.code} top rail at x=${x}: ${top.c === 'F' ? top.mm.toFixed(1) + 'mm' : 'missing'}`);
+      // 35mm to the door's top edge; a door's edge hairline (1.3mm of it on the rail) may cover the last of it
+      assert.ok(top.c === 'F' && top.mm >= RAIL_MM - 1.5 && top.mm <= RAIL_MM + TOL, `${c.code} top rail at x=${x}: ${top.c === 'F' ? top.mm.toFixed(1) + 'mm' : 'missing'}`);
       assert.equal(r[r.length - 2]?.c, '.', `${c.code}: a reveal under the rail`);
-    }
-  });
-
-  // her master library drawings (ui/frontdraw.js FD.TOP) put the 35mm rail over a drawer bank too;
-  // the 3D bank runs its top drawer up to the 22mm carcass top. Reported, not failed: geometry is
-  // out of scope for the render work, so this waits for her call.
-  const banks = k.cabs.filter((q) => q.form === 'drawers');
-  if (banks.length) test(`${name}: a drawer bank shows the 35mm top rail`, { todo: 'the 3D drawer bank shows a 22mm rail; the front drawings show 35mm' }, () => {
-    for (const c of banks) {
-      const r = runs(k.col(c.x0 + c.w / 4, c.h - 60 * MM, c.h - STEP / 2));
-      const top = r[r.length - 1];
-      assert.ok(top.c === 'F' && near(top.mm, RAIL_MM - 0.05), `${c.code} drawer-bank top rail: ${top.mm.toFixed(1)}mm`);
     }
   });
 
@@ -141,16 +131,16 @@ for (const [name, k] of Object.entries(K)) {
     }
   });
 
-  // in-frame: a door is inset flush within the face, so its stiles sit in the plinth's plane. The
-  // 3D shaker leaf stands its stiles 8mm proud of its panel, which carries them 3.4mm IN FRONT of the
-  // legs and plinth (doorFrontZ is 0.18" back, the stile face 0.315" forward of that). Reported, not
-  // failed: geometry is out of scope for the render work, so this waits for her call.
-  const doorCabs = k.cabs.filter((q) => q.form !== 'drawers');
-  test(`${name}: door stiles sit flush with the plinth and legs`, { todo: 'the 3D door stiles stand 3.4mm proud of the legs and plinth' }, () => {
-    for (const c of doorCabs) {
+  // in-frame (her spec 2026-09-29): a door's stiles sit flush with the legs and the plinth, in one
+  // plane, and its shaker centre panel is set back 5mm behind them
+  test(`${name}: door stiles flush with the legs and plinth, panels set back 5mm`, () => {
+    for (const c of k.cabs.filter((q) => q.form !== 'drawers')) {
+      const y = (SPEC.PLINTH_IN + c.h) / 2 - 3;                           // clear of the knob
       const stile = c.x0 + SPEC.LEG_IN + SPEC.REVEAL_IN + 40 * MM;       // the middle of the hinge-side 80mm stile
-      const proud = (k.hit(stile, (SPEC.PLINTH_IN + c.h) / 2).point.z - k.face) / MM;
-      assert.ok(Math.abs(proud) <= 0.5, `${c.code}: door stile ${proud.toFixed(1)}mm ${proud > 0 ? 'proud of' : 'behind'} the plinth plane`);
+      const proud = (k.hit(stile, y).point.z - k.face) / MM;
+      assert.ok(Math.abs(proud) <= 0.1, `${c.code}: door stile ${proud.toFixed(1)}mm ${proud > 0 ? 'proud of' : 'behind'} the plinth plane`);
+      const panel = (k.face - k.hit(c.x0 + c.w / 4, y).point.z) / MM;   // a quarter in: the centre panel
+      assert.ok(Math.abs(panel - 5) <= 0.1, `${c.code}: shaker panel ${panel.toFixed(1)}mm behind the face, want 5`);
     }
   });
 
