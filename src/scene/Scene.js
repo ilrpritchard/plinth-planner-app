@@ -9,7 +9,8 @@ import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { BRAND } from '../core/catalogue.js';
 import { keyLight, sunLight } from '../core/keylight.js';
 import { DETAIL_ON } from '../models/surfaceDetail.js';
-import { setWorktopDetail } from '../models/materials.js';
+import { setWorktopDetail, setPaintPhoto } from '../models/materials.js';
+import { setPanelShade } from '../models/cabinet.js';
 
 // Khronos PBR Neutral (github.com/KhronosGroup/ToneMapping), the curve three.js ships as
 // NeutralToneMapping from r162; this vendored r160 lacks it, so it goes in through three's own
@@ -53,7 +54,11 @@ export const LIVE_SHADOW = { bias: 0.0001, normalBias: 0.04 };
 // its levels (tuned on the hero kitchen's fronts against their hex). SUN_SOFT / SUN_SAMPLES: a saved
 // photo averages that many sun directions inside a cone of that half-angle, which softens the glazing-
 // bar shadows the way a real window's are; the live preview uses one (hard edges while framing).
-export const PHOTO_SUN = { sun: 5.0, env: 1.0, fill: 0.72, hemi: 0.6, exposure: 1.6 };
+export const PHOTO_SUN = { sun: 5.0, env: 1.0, fill: 1.1, hemi: 0.6, exposure: 1.6 };
+// Photo mode's fill (W2W-240): from behind the viewer and well above (rise 0.9), so the faces of a
+// shaker panel's 5mm step turn differently to it; straight from the camera it lit frame and panel alike.
+// (It casts no shadow: the closed room's ceiling and front wall would shade everything.)
+export const PHOTO_FILL = { side: 0, rise: 0.9 };
 // where the HDRI's bright side sits in every sunlit room: behind the back run, turned 32 degrees, as
 // the hero kitchen's back-wall window put it when PHOTO_SUN was calibrated (see _setSun)
 const PHOTO_SUN_ENV_AZ = Math.atan2(-Math.cos(32 * Math.PI / 180), Math.sin(32 * Math.PI / 180));
@@ -243,7 +248,7 @@ export class Scene {
     this.renderer.setPixelRatio(o.width ? 1 : (o.scale || 3));
     this.renderer.setSize(w, h, false);
     if (this.camera.isPerspectiveCamera) { this.camera.aspect = w / h; if (this.camera === this.persp) this._applyShift(w, h); this.camera.updateProjectionMatrix(); }
-    if (this._photo) this._applyPhotoRoom();   // closed or open for THIS camera, before the wall auto-hide
+    if (this._photo) { this._applyPhotoRoom(); this._aimPhotoFill(); }   // closed or open for THIS camera, before the wall auto-hide
     this._beforeRender?.();                 // grounding + wall auto-hide for THIS camera position
     this._render(true);
     const W = this.renderer.domElement.width, H = this.renderer.domElement.height;
@@ -353,7 +358,18 @@ export class Scene {
     if (this._beforeRender) this._beforeRender();
     this.controls.update();
     if (this._photo && this._stillOnScreen()) return;     // the finished still is showing: nothing to redraw
+    if (this._photo) this._aimPhotoFill();
     this._render();
+  }
+
+  /** PHOTO MODE: the fill over the viewer's left shoulder, high (PHOTO_FILL). */
+  _aimPhotoFill(cam = this.camera, target = this.controls.target) {
+    const dx = cam.position.x - target.x, dz = cam.position.z - target.z;
+    if (Math.hypot(dx, dz) < 1e-3) return;
+    const a = Math.atan2(dz, dx) + PHOTO_FILL.side, f = new THREE.Vector3(Math.cos(a), PHOTO_FILL.rise, Math.sin(a)).normalize();
+    const H = (this._room || {}).height || 96, fill = this.fill;
+    fill.target.position.set(0, H / 2, 0); fill.target.updateMatrixWorld();
+    fill.position.set(f.x * 320, H / 2 + f.y * 320, f.z * 320);
   }
 
   /** Photo mode's STILL. The live preview draws the contact shading from an un-smoothed depth pass, so
@@ -475,6 +491,7 @@ export class Scene {
       this._fitShadow();
       this._photoPaint(true);
       DETAIL_ON.value = 1; setWorktopDetail(true); this.onPhotoDetail?.(true);   // materials, render step 5
+      setPaintPhoto(true); setPanelShade(true);                             // eggshell paint, panel shade (W2W-240)
       this.photoReady = import('./photoFx.js').then(({ PhotoAO }) => {
         if (this._photo && !this._photoFx) this._photoFx = new PhotoAO(this.renderer, this.scene, this.persp);
       }).catch((e) => console.warn('PL/NNER: photo contact shading did not load', e));
@@ -486,6 +503,9 @@ export class Scene {
       this.onPhotoClosed?.(false);
       this._photoPaint(false);
       DETAIL_ON.value = 0; setWorktopDetail(false); this.onPhotoDetail?.(false);
+      setPaintPhoto(false); setPanelShade(false);
+      this.fill.target.position.set(0, 0, 0); this.fill.target.updateMatrixWorld();   // the live fill back where setKeyFrom puts it
+      this.setKeyFrom(this._room || {});
       this.persp.near = 1; this.persp.updateProjectionMatrix();
       this._photoFx?.dispose(); this._photoFx = null;
       const L = this._liveShadow;

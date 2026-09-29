@@ -9,6 +9,21 @@ import { addDetail } from './surfaceDetail.js';
 const paintCache = new Map();
 
 /** Hand-painted shaker with a satin lacquer — a thin clearcoat over true colour. */
+// PHOTO MODE ONLY (W2W-240): the paint turns from a satin to an EGGSHELL while photo mode is on. At
+// satin (roughness 0.5, lacquer 0.28) under photo mode's bright environment, the side of a tall seen
+// edge-on mirrored the room as a flat grey sheet: the ends of dark cabinets read grey (her catch
+// 2026-09-29). The live view keeps the satin.
+const PHOTO_PAINT = { roughness: 0.7, specularIntensity: 0.6, clearcoat: 0.1, clearcoatRoughness: 0.55 };
+let _paintPhoto = false;
+function applyPaintPhoto(m) {
+  if (_paintPhoto) { m.userData.livePaint ??= { roughness: m.roughness, specularIntensity: m.specularIntensity, clearcoat: m.clearcoat, clearcoatRoughness: m.clearcoatRoughness }; Object.assign(m, PHOTO_PAINT); }
+  else if (m.userData.livePaint) { Object.assign(m, m.userData.livePaint); delete m.userData.livePaint; }
+}
+export function setPaintPhoto(on) {
+  _paintPhoto = !!on;
+  for (const m of paintCache.values()) applyPaintPhoto(m);
+}
+
 export function paintMat(hex) {
   if (paintCache.has(hex)) return paintCache.get(hex);
   const m = new THREE.MeshPhysicalMaterial({
@@ -20,6 +35,7 @@ export function paintMat(hex) {
     clearcoatRoughness: 0.5,   // soft, not glossy — catches a gentle highlight
   });
   addDetail(m, 'paint');       // photo mode: brushed-eggshell micro-texture on every painted part (surfaceDetail.js)
+  applyPaintPhoto(m);          // a paint first made while photo mode is on starts as the eggshell
   paintCache.set(hex, m);
   return m;
 }
