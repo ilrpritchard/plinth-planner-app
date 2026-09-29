@@ -259,6 +259,10 @@ export class Scene {
     this._applyShift();
     cam.updateProjectionMatrix();
     c.minDistance = 12;                    // room-scale: stand close to the run if the shot wants it
+    // a LEVEL view (the magazine presets) stays level: the orbit's floor clamp (2.3 degrees short of
+    // horizontal) would otherwise tip it down on c.update() and lean every vertical. Still never below.
+    const off = cam.position.clone().sub(c.target), phi = Math.acos(Math.min(1, Math.max(-1, off.y / (off.length() || 1))));
+    c.maxPolarAngle = Math.min(Math.PI / 2, Math.max(Math.PI / 2 - 0.04, phi));
     c.update();
   }
 

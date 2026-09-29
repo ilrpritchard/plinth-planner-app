@@ -1,0 +1,24 @@
+{
+  "_about": "The construction guard's two kitchens (test/construction.test.js, test/construction-render.mjs). A standard two-cabinet run on the back wall (F2 single door + F10 double door, one junction) and a free-standing island (F2 + F18 drawer bank + F2, two junctions). The room is deep so a straight-on camera fits inside the closed photo-mode room. Do not change: every measurement in the guard is taken from these.",
+  "run": {
+    "schema": "plinth-planner", "version": 1,
+    "room": { "width": 200, "depth": 280, "height": 96, "floor": "oak", "wall": "chalk", "worktop": "marble", "cornice": "none", "openings": [], "nextOpening": 1, "boxings": [], "nextBoxing": 1 },
+    "finish": "Nettle", "handle": "knob",
+    "items": [
+      { "id": 1, "code": "F2",  "x": -18, "z": -127.75, "rotDeg": 0 },
+      { "id": 2, "code": "F10", "x": 12,  "z": -127.75, "rotDeg": 0 }
+    ],
+    "nextId": 3
+  },
+  "island": {
+    "schema": "plinth-planner", "version": 1,
+    "room": { "width": 200, "depth": 280, "height": 96, "floor": "oak", "wall": "chalk", "worktop": "marble", "cornice": "none", "openings": [], "nextOpening": 1, "boxings": [], "nextBoxing": 1 },
+    "finish": "Nettle", "handle": "knob",
+    "items": [
+      { "id": 1, "code": "F2",  "x": -24, "z": 0, "rotDeg": 0 },
+      { "id": 2, "code": "F18", "x": 0,   "z": 0, "rotDeg": 0 },
+      { "id": 3, "code": "F2",  "x": 24,  "z": 0, "rotDeg": 0 }
+    ],
+    "nextId": 4
+  }
+}
