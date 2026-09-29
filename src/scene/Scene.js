@@ -57,7 +57,9 @@ export const PHOTO_SUN = { sun: 5.0, env: 1.0, fill: 0.72, hemi: 0.6, exposure: 
 // where the HDRI's bright side sits in every sunlit room: behind the back run, turned 32 degrees, as
 // the hero kitchen's back-wall window put it when PHOTO_SUN was calibrated (see _setSun)
 const PHOTO_SUN_ENV_AZ = Math.atan2(-Math.cos(32 * Math.PI / 180), Math.sin(32 * Math.PI / 180));
-const SUN_SOFT = 0.4 * Math.PI / 180, SUN_SAMPLES = 12;   // the real sun is ~0.27 deg in radius
+const SUN_SOFT = 0.4 * Math.PI / 180, SUN_SAMPLES = 12;
+// photo mode's still (Scene._stillOnScreen): how long the view stands still first, and the supersampling
+const STILL_SETTLE_MS = 350, STILL_SCALE = 1.5;   // the real sun is ~0.27 deg in radius
 // A white daylight apartment, one big window, almost no colour cast (CC0, Poly Haven; site-assets/hdri/LICENCE.md)
 const HDRI_URL = new URL('../../site-assets/hdri/brown_photostudio_04_1k.hdr', import.meta.url).href;
 
@@ -245,7 +247,13 @@ export class Scene {
     this._beforeRender?.();                 // grounding + wall auto-hide for THIS camera position
     this._render(true);
     const W = this.renderer.domElement.width, H = this.renderer.domElement.height;
-    const url = (this._sunOn && o.softSun !== false ? this._softSunFrame(W, H) : this.renderer.domElement).toDataURL(o.type || 'image/png', o.quality);
+    const src = this._sunOn && o.softSun !== false ? this._softSunFrame(W, H) : this.renderer.domElement;
+    let url;
+    if (o.into) {                                       // drawn (scaled) into a canvas instead: photo mode's still
+      const g = o.into.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.clearRect(0, 0, o.into.width, o.into.height); g.drawImage(src, 0, 0, o.into.width, o.into.height);
+      url = o.into;
+    } else url = src.toDataURL(o.type || 'image/png', o.quality);
     this.renderer.setPixelRatio(prevRatio);
     this._onResize();
     return url;
@@ -311,6 +319,7 @@ export class Scene {
    *  centred, so what is on screen is what Save writes. null = the canvas fills the stage again. */
   setViewfinder(aspect, top = 0) {
     this._finder = aspect ? { aspect, top } : null;
+    if (!aspect) this._hideStill();
     this._onResize();
   }
 
@@ -343,8 +352,38 @@ export class Scene {
     if (this._photo) this._applyPhotoRoom();
     if (this._beforeRender) this._beforeRender();
     this.controls.update();
+    if (this._photo && this._stillOnScreen()) return;     // the finished still is showing: nothing to redraw
     this._render();
   }
+
+  /** Photo mode's STILL. The live preview draws the contact shading from an un-smoothed depth pass, so
+   *  every reveal and joint thinner than a pixel breaks into grey dashes (her catch 2026-09-29: "doesn't
+   *  look good quality when I click photo"). Once the view has stood still for a moment, the frame is
+   *  rendered exactly as Save renders it (the soft sun, the shading), 1.5x larger and scaled down, and
+   *  shown over the canvas; any move of the camera, a new angle or a change to the kitchen
+   *  (invalidateStill) hands back to the live preview. */
+  _stillOnScreen() {
+    const cam = this.persp, cv = this.renderer.domElement;
+    if (!this._finder || this.camera !== cam || !this._photoFx) { this._hideStill(); return false; }
+    const key = [...cam.matrixWorld.elements, ...cam.projectionMatrix.elements].map((v) => v.toFixed(4)).join(',') + `|${cv.width}x${cv.height}|${this._stillGen || 0}`;
+    const now = performance.now();
+    if (key !== this._stillKey) { this._stillKey = key; this._stillAt = now; this._hideStill(); return false; }
+    if (this._stillShown) return true;
+    if (now - this._stillAt < STILL_SETTLE_MS) return false;
+    const el = this._stillEl || (this._stillEl = Object.assign(document.createElement('canvas'), { className: 'photo-still' }));
+    el.width = cv.width; el.height = cv.height;
+    this.captureImage({ width: Math.round(cv.width * STILL_SCALE), height: Math.round(cv.height * STILL_SCALE), into: el });
+    // exactly over the canvas (the stage's CSS stretches every canvas in it, !important, so this is too)
+    for (const k of ['position', 'left', 'top', 'width', 'height']) el.style.setProperty(k, cv.style.getPropertyValue(k), 'important');
+    el.style.pointerEvents = 'none'; el.style.zIndex = '1';
+    if (el.parentNode !== this.container) this.container.appendChild(el);
+    el.style.display = 'block'; this._stillShown = true;
+    this._stillKey = key;                                  // (the capture put the camera back exactly)
+    return true;
+  }
+  _hideStill() { if (this._stillShown) { this._stillEl.style.display = 'none'; this._stillShown = false; } }
+  /** The kitchen changed under a still (a finish, a cabinet): draw the live preview again. */
+  invalidateStill() { this._stillGen = (this._stillGen || 0) + 1; }
 
   /** One frame. In photo mode the contact shading (scene/photoFx.js) is laid over it. */
   /** Photo mode, every frame: can this camera see a CLOSED room? Inside it, or standing just outside a
@@ -437,6 +476,7 @@ export class Scene {
       }).catch((e) => console.warn('PL/NNER: photo contact shading did not load', e));
     } else if (!on && this._photo) {
       this._photo = false;
+      this._hideStill();
       this._setSun(false);
       this._photoRoomKey = null;
       this.onPhotoClosed?.(false);

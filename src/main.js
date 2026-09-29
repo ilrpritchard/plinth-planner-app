@@ -38,7 +38,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-234 · fronts come down to the plinth (wall units: 45mm bottom rail), as the elevation drawings; a high-floor skyline out of the window';
+const BUILD = 'W2W-235 · photo mode shows the finished still (as Save renders it) once the view stands still: no dashed grey edges';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -423,6 +423,7 @@ document.getElementById('planDXF')?.addEventListener('click', async () => {
 });
 // keep the drawing live while it's open
 store.subscribe((s, c) => { if (planActive && !c.quiet) renderPlan(); });
+store.subscribe(() => scene.invalidateStill());       // photo mode's still: the kitchen changed, draw it live again
 
 // ----- branded quote / PDF -----
 const quoteOverlay = document.getElementById('quoteOverlay');
