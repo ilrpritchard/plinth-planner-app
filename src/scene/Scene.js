@@ -43,6 +43,11 @@ export const LOOK = { toneMapping: THREE.CustomToneMapping, exposure: 1.35, env:
 // Photo mode's key shadow (render step 3): fitted to the room, so 6144 texels over a ~230" room is
 // ~0.04" (1mm) a texel, fine enough for the 8mm shaker relief, the 35mm top rail and the legs.
 export const PHOTO_SHADOW = { size: 6144, bias: -0.0001, normalBias: 0.04, radius: 4 };
+// The LIVE key shadow keeps its 3072 map (no extra cost) but is fitted to the room too (~2mm a texel
+// in a 14' room, was a fixed 480" square, ~4mm), with small offsets: the old 0.18" normal bias let a
+// sliver of light in under the worktop's lip, and its edge stepped down the top rail as diagonal
+// stripes (found by the construction guard, 2026-09-29).
+export const LIVE_SHADOW = { bias: 0.0001, normalBias: 0.04 };
 // Photo mode's CLOSED ROOM with a window (render step 4): the key becomes the sun through the window
 // and the walls and ceiling block it everywhere else, so the ambient side carries the room; these are
 // its levels (tuned on the hero kitchen's fronts against their hex). SUN_SOFT / SUN_SAMPLES: a saved
@@ -133,8 +138,8 @@ export class Scene {
     key.shadow.camera.left = -s; key.shadow.camera.right = s;
     key.shadow.camera.top = s; key.shadow.camera.bottom = -s;
     key.shadow.camera.near = 10; key.shadow.camera.far = 800;
-    key.shadow.bias = -0.0003;
-    key.shadow.normalBias = 0.18;
+    key.shadow.bias = LIVE_SHADOW.bias;
+    key.shadow.normalBias = LIVE_SHADOW.normalBias;
     key.shadow.radius = 4;
     this.scene.add(key);
 
@@ -159,7 +164,8 @@ export class Scene {
     const k = keyLight(room), R = 320;
     this._room = room; this._keyFrom = k.from;
     this.key.position.set(k.from[0] * R, k.from[1] * R, k.from[2] * R);
-    if (this._photo) { this._sun = sunLight(room); this._photoRoomKey = null; this._sunOn = false; this._fitPhotoShadow(); }
+    if (this._photo) { this._sun = sunLight(room); this._photoRoomKey = null; this._sunOn = false; }
+    this._fitShadow();
     // fill: the key mirrored to the other side and lower, like a bounce card. It opens the shadow
     // side (the wall facing away from the key went a heavy taupe without it) and casts none.
     const h = Math.hypot(k.from[0], k.from[2]) || 1;
@@ -376,7 +382,7 @@ export class Scene {
     } else {
       this.setKeyFrom(this._room || {});      // key, fill and environment back to the room's key light
     }
-    this._fitPhotoShadow(on ? this._sun.from : this._keyFrom);
+    this._fitShadow(on ? this._sun.from : this._keyFrom);
     this.renderer.shadowMap.needsUpdate = true;
   }
 
@@ -402,7 +408,7 @@ export class Scene {
       sh.bias = PHOTO_SHADOW.bias; sh.normalBias = PHOTO_SHADOW.normalBias; sh.radius = PHOTO_SHADOW.radius;
       this._sun = sunLight(this._room || {});
       this._photoRoomKey = null;
-      this._fitPhotoShadow();
+      this._fitShadow();
       this._photoPaint(true);
       DETAIL_ON.value = 1; setWorktopDetail(true); this.onPhotoDetail?.(true);   // materials, render step 5
       this.photoReady = import('./photoFx.js').then(({ PhotoAO }) => {
@@ -475,9 +481,9 @@ export class Scene {
     sh.map?.dispose(); sh.map = null;          // re-allocated at the new size on the next frame
   }
 
-  /** Photo mode: the key's shadow camera wraps the room's bounding sphere, no more, so every texel
-   *  lands on the kitchen (the live frustum is a fixed 480" square whatever the room). */
-  _fitPhotoShadow(from) {
+  /** The key's shadow camera wraps the room's bounding sphere, no more, so every texel lands on the
+   *  kitchen (live and photo mode alike; photo mode just has four times the texels). */
+  _fitShadow(from) {
     const r0 = this._room || {}, W = r0.width || 144, D = r0.depth || 120, H = r0.height || 96;
     const f = from || (this._sunOn && this._sun ? this._sun.from : this._keyFrom) || [0, 1, 0], rad = 0.5 * Math.hypot(W, D, H) + 6, R = Math.max(320, rad + 60);
     const key = this.key, cam = key.shadow.camera;

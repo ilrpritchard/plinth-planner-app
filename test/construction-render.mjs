@@ -13,7 +13,8 @@
 //   · straight on is straight: a level camera stays level, so legs and joints stand vertical
 //   · each cabinet: a painted 22mm leg down both sides, ended by the dark reveal of its front
 //   · each junction: leg, ONE dark joint line, leg (never none, never a double line)
-//   · each door cabinet: a painted 35mm top rail between the worktop and the top of the door
+//   · each door cabinet: a painted 35mm top rail between the worktop and the top of the door, and no
+//     shadow striping along it (the live shadow's stepped edge, fixed 2026-09-29)
 //   · the plinth: along it, exactly one dark joint per junction and no other line; up it, paint from
 //     the floor (no dark toe-kick band, no gap under the cabinet)
 // Tolerances are a few pixels: tight enough that a missing leg, a swallowed or doubled joint, or a
@@ -37,6 +38,7 @@ const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Conte
 const MM = 1 / 25.4, PLINTH = 115 * MM, TOP = 35;               // inches; TOP = the cabinet top (worktop underside)
 const DARK = 0.85;       // darker than 85% of the paint around it = a line (reveal, joint) or a shadow
 const LEG = [18, 26], JOINT_MAX = 4, RAIL = [30, 40];            // mm, as seen: the reveal eats a pixel or two
+const STRIPE = 0.45;     // the rail's stripe score limit (see the test)
 
 // ---- render both kitchens in both modes and read the measurement lines off each frame ---------------
 async function renderAll() {
@@ -112,6 +114,9 @@ async function measure(state, name, mode, W, H, K) {
     for (const x of [c.x0 + w / 4, c.x1 - w / 4]) out.rails.push({ code: c.code, x, s: line(x, K.TOP + 0.5, x, K.TOP - 70 * K.MM) });
     for (let x = c.x0 + 1; x < c.x1 - 0.9; x += 2) out.plinthCols.push({ code: c.code, x, s: line(x, 5 * K.MM, x, K.PLINTH - 3 * K.MM) });
   }
+  // the rail band across the whole run, 3-30mm under the worktop, for the stripe check
+  out.railRows = [];
+  for (let mm = 3; mm <= 30; mm += 1.5) out.railRows.push(line(xa + 1.5, K.TOP - mm * K.MM, xb - 1.5, K.TOP - mm * K.MM).filter((_, i) => i % 2 === 0).map((q) => q.L));
   // the paint of each cabinet, read off the middle of its plinth: luminance and (G-B)/G, its hue
   out.paint = cabs.map((c) => {
     const s = line(c.x0 + 2, K.PLINTH / 2, c.x1 - 2, K.PLINTH / 2), m = s[s.length >> 1];
@@ -207,6 +212,15 @@ for (const f of frames) {
       const rail = s.slice(i0 + n3, i1), mean = rail.reduce((a, q) => a + q.L, 0) / rail.length;
       assert.ok(rail.every(hue) && mean > 0.5 * Lp, `${code} x=${x}: the rail reads as painted wood (${mean.toFixed(0)} against the plinth's ${Lp.toFixed(0)})`);
     }
+  });
+
+  test(`${tag}: the top rail is clean: no shadow striping under the worktop`, () => {
+    // mean |pixel - the mean of its 9 neighbours along the row|: the old live shadow's diagonal stripes
+    // scored 0.56 (run) and 0.77 (island); now 0.11 / 0.24 live, 0.16 / 0.36 photo (brushed paint)
+    let sum = 0, n = 0;
+    for (const L of f.railRows) for (let i = 4; i < L.length - 4; i++) { let m = 0; for (let j = -4; j <= 4; j++) m += L[i + j]; sum += Math.abs(L[i] - m / 9); n++; }
+    console.log(`#   ${tag} rail stripe score ${(sum / n).toFixed(3)}`);
+    assert.ok(sum / n < STRIPE, `stripe score ${(sum / n).toFixed(3)} (limit ${STRIPE})`);
   });
 
   test(`${tag}: the plinth shows exactly one joint per junction and no other line`, () => {
