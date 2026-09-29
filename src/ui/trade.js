@@ -137,7 +137,7 @@ export class TradeUI {
         <header class="trade-head trade-head-slim">
           <div class="trade-cloud trade-cloud-left">
             <button class="tquiet" id="tStartOver" title="Clear this project and go back to the three ways to start">&larr; Start over</button>
-            <a class="tquiet" href="mailto:imogen@plinthmade.com?subject=${encodeURIComponent('Floor plans for pricing')}" title="Send a plan per floor and we lay the kitchens out for you">Send us the floor plans</a>
+            <a class="tquiet" href="mailto:imogen@plinthmade.com?subject=${encodeURIComponent('Floor plans for pricing')}" title="One plan per floor: PL/NTH lays out the kitchens and returns a priced project">Submit floor plans</a>
           </div>
           ${isCloud() ? `<div class="trade-cloud">
             <button class="sm" id="tCloudSave" title="Save this project to your PL/NTH account (sign-in required)">Save project</button>
@@ -231,22 +231,22 @@ export class TradeUI {
         </header>
         <section class="trade-welcome">
           <h2>Price a building.</h2>
-          <p>Set the unit mix and specify the kitchen for each unit type. Pricing is live, per unit and for the whole project, with tariffs and delivery to a warehouse in the project's city included.</p>
+          <p>Specify each kitchen type and set the unit mix. Pricing is live, per unit and per project, including tariffs and delivery to a warehouse in the project's city.</p>
           <div class="tw-opts">
             <button class="tw-opt" id="twDemo">
-              <strong>View an example building</strong>
-              <span>See how a project reads: ${n} units across three kitchen types, priced live. Change anything, or start over with your own unit mix.</span>
+              <strong>Example building</strong>
+              <span>${n} units, three kitchen types, priced live. Adjust any figure, or clear it for a new project.</span>
             </button>
             <button class="tw-opt" id="twMix">
               <strong>Enter the unit mix</strong>
-              <span>Add each kitchen type, specify its cabinets or lay it out in 3D, and set the number of units it repeats across.</span>
+              <span>Specify each kitchen type from the cabinet list or in 3D, then set its unit count.</span>
             </button>
             <a class="tw-opt" id="twSend" href="${mail}">
-              <strong>Send us the floor plans</strong>
-              <span>A plan per floor and the kitchen types. PL/NTH lays out the kitchens and returns a priced project.</span>
+              <strong>Submit floor plans</strong>
+              <span>One plan per floor, with the kitchen types. PL/NTH lays out the kitchens and returns a priced project.</span>
             </a>
           </div>
-          <div class="tw-foot">Smaller projects and one-off kitchens: <a href="mailto:imogen@plinthmade.com">imogen@plinthmade.com</a></div>
+          <div class="tw-foot">Single residences and smaller projects: <a href="mailto:imogen@plinthmade.com">imogen@plinthmade.com</a></div>
         </section>
       </div>`;
     const $ = (id) => document.getElementById(id);
