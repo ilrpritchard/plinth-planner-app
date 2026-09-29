@@ -5,7 +5,7 @@
 // "Generate again" produces a different (but still sensible) layout each time.
 
 import { getCab, sizedFridgeCode } from './catalogue.js';
-import { boxingBoxes } from './openings.js';
+import { boxingBoxes, openingCenter, openingWidth } from './openings.js';
 
 function rng32(seed) {
   // scramble the seed so ADJACENT seeds (Generate again → seed+1) give clearly
@@ -267,6 +267,7 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
       else uShape = false;                                    // truly too narrow → L
     }
     if (!cookOnSide && width < (uShape ? 2 : 1) * cornerW + essentials) cookOnSide = true;
+    if (opts.cookSide) cookOnSide = true;                    // a back-wall window leaves the cooker no safe spot (clearBackWindows)
     if (width < cornerW + W(sink.code)) hasCorner = false;   // can't even hold corner + sink
   }
   // NO corner unit but a side leg still coming? The two runs would CRASH at
@@ -650,8 +651,167 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
   // end — worktop must run past the basin on both sides. Runs LAST so no other
   // repair pass re-exposes it.
   enforceSinkOffEnds(steps);
+  // ---- COOKER NEVER IN FRONT OF A WINDOW (hard rule): the back run is laid
+  // out blind to the glass above, so reorder it (sink under the window, the
+  // cooker and its landings clear) without breaking any rule the passes above
+  // just enforced. Runs LAST and only accepts a run no worse on any of them.
+  let backStart = shadowUsed;
+  for (const bx of boxingBoxes(room)) {
+    const nearBack = bx.wall === 'back' || bx.z0 + depth / 2 < 26;
+    if (nearBack && bx.x0 <= -(room.width || 144) / 2 + 1) backStart = Math.max(backStart, bx.x1 + (room.width || 144) / 2 + shadowUsed);
+  }
+  const winClear = clearBackWindows(steps, room, { start: backStart, len: width - shadowUsed, mirror: !lLike && !doorEnd, legFit: sideLeg, hood: features.hood, rnd: r });
+  // no order of this back run keeps the cooker off the glass (a peninsula's fridge closing one end, a
+  // corner the other): the cooker goes round the corner onto the leg, the way a short back wall exiles it
+  if (!winClear && sideLeg && !opts.cookSide) {
+    const alt = generateKitchen(shape, room, seed, { ...opts, cookSide: true });
+    if (alt.steps.some((s) => s.wall === 'left' && isCookStep(s))) return alt;
+  }
 
   return { steps, features };
+}
+
+// ---- cooker ↔ window repair ----------------------------------------------------
+// The wizard butts the back run from its left end (a left corner's return
+// first, or a cornerless leg's 24" shadow), and nudges it right to put a TALL
+// closing the right end against the wall. With that known, each unit's span
+// along the back wall is known here, before anything is placed. When the
+// cooker's span meets a back-wall window, the run is rebuilt from its parts:
+// the end blocks (corners, talls) stay put, the sink block (sink + its DW /
+// bin flank) and the cooker are re-seated among the plain base units, and the
+// first arrangement that clears the glass AND is no worse on any other rule
+// (runViolations, cooker beside a corner, talls under glass) wins, preferring
+// the sink under the window and the cooker one landing from the sink.
+
+/** Along-wall spans ([a, b], inches from the back wall's left end) of the
+ *  back-wall windows. */
+function backWindowSpans(room) {
+  const W0 = room.width || 144;
+  return (room.openings || []).filter((o) => o.type === 'window' && (o.wall || 'back') === 'back')
+    .map((o) => { const c = openingCenter(room, o) + W0 / 2, h = openingWidth(o, room) / 2; return [c - h, c + h]; });
+}
+
+/** Reorder the back run so no cooking step stands in front of a back-wall
+ *  window. `start` is where the run begins along the wall, `len` the length
+ *  it can take (for the wizard's tall-to-the-wall nudge), `mirror` whether the
+ *  whole run may flip end for end (a straight run with no doorway fixing its
+ *  tall end), `legFit` whether a side leg's leg-to-leg fit may undo that nudge.
+ *  Returns false when no arrangement clears the glass. Exported for tests. */
+export function clearBackWindows(steps, room, { start = 0, len = room.width || 144, mirror = false, legFit = false, hood = false, rnd = Math.random } = {}) {
+  const wins = backWindowSpans(room);
+  const seq0 = steps.filter((s) => s.wall === 'back');
+  if (!wins.length) return true;
+  // no cooker on this wall (it went round the corner: a peninsula, a short back wall): the only
+  // job left is the sink, centred under the glass as nearly as the unit widths allow
+  const hasCook = seq0.some(isCookStep);
+  const HOOD = W('AP8');
+  const measure = (seq, exact = false) => {
+    // each unit's span: a left corner's return comes before its body, a right one's after
+    const spans = [];
+    let x = start;
+    for (const s of seq) {
+      if (s.corner && s.code !== 'F16R') x += 24.25;
+      spans.push([x, x + W(s.code)]);
+      x += W(s.code) + (s.corner && s.code === 'F16R' ? 24.25 : 0);
+    }
+    // the wizard pushes a run that ends in a TALL right up to the wall, unless a corner's
+    // leg-to-leg fit takes it back: a unit's span covers both places it can end up
+    const slack = start + len - x, last = getCab(seq[seq.length - 1]?.code);
+    const shift = last?.type === 'TALL' && slack > 0.4 && slack < 10 ? slack : 0;
+    // exact: where it DOES end up. A left corner's leg-to-leg fit always takes the nudge back
+    if (exact) { const sh = legFit && seq[0]?.corner ? 0 : shift; return spans.map(([a, b]) => [a + sh, b + sh]); }
+    return spans.map(([a, b]) => [legFit ? a : a + shift, b + shift]);
+  };
+  const overlap = ([a, b]) => Math.max(0, ...wins.map(([p, q]) => Math.min(b, q) - Math.max(a, p)));
+  const gapTo = ([a, b]) => Math.min(...wins.map(([p, q]) => Math.max(p - b, a - q)));
+  const score = (seq) => {
+    const sp = measure(seq), ci = seq.findIndex(isCookStep), si = seq.findIndex((s) => s.sink);
+    const v = runViolations(seq);
+    const cookCorner = ci >= 0 && ((seq[ci - 1] && seq[ci - 1].corner) || (seq[ci + 1] && seq[ci + 1].corner)) ? 1 : 0;
+    // a dishwasher beside the RIGHT corner unit: legal, but a U's right corner can slide out over a
+    // filler (the sliver), leaving the leg-less panel beside a gap: never MOVE one there
+    const dwCorner = seq.reduce((t, st, k) => t + (st.code === 'F7' && ((seq[k - 1] && seq[k - 1].code === 'F16R') || (seq[k + 1] && seq[k + 1].code === 'F16R')) ? 1 : 0), 0);
+    // the sink hard against a tall: no worktop past the basin on that side, as bad as a wall end
+    const sinkTall = seq.reduce((t, st, k) => t + (st.sink && ((seq[k - 1] && isTallishStep(seq[k - 1])) || (seq[k + 1] && isTallishStep(seq[k + 1]))) ? 1 : 0), 0);
+    const tallWin = seq.reduce((t, s, k) => t + (isTallishStep(s) ? overlap(sp[k]) : 0), 0);
+    // the sink under the glass, by the wizard's own test (the base spans the window's middle);
+    // otherwise the wizard swaps it with whatever same-width base is under there
+    let sinkOff = 0, sinkD = Infinity;
+    if (si >= 0) {
+      const [a, b] = measure(seq, true)[si];
+      sinkD = Math.min(...wins.map(([p, q]) => Math.abs((a + b) / 2 - (p + q) / 2)));
+      const c = (sp[si][0] + sp[si][1]) / 2, bw = W(seq[si].code);
+      sinkOff = Math.min(...wins.map(([p, q]) => { const d = Math.abs(c - (p + q) / 2); return d < (q - p) / 2 + bw / 2 - 2 ? d / 4 : 40 + d; }));
+    }
+    const cw = ci >= 0 ? W(seq[ci].code) : 0;
+    const noHood = hood && ci >= 0 && cw <= HOOD && gapTo(sp[ci]) < (HOOD - cw) / 2 + 1 ? 1 : 0;
+    const apart = ci >= 0 && si >= 0 ? Math.abs(ci - si) : 0;
+    return { clash: ci >= 0 ? overlap(sp[ci]) : 0, v: { ...v, cookCorner, dwCorner, sinkTall }, tallWin, sinkOff, sinkD, noHood, apart };
+  };
+  const base = score(seq0);
+  if (hasCook ? base.clash <= 0 : base.sinkD <= 3) return true;   // (no sink: sinkD is Infinity, nothing to centre)
+  if (!hasCook && !seq0.some((st) => st.sink)) return true;
+
+  // the fixed end blocks: corners and talls hold the run's ends
+  const anchor = (s) => s.corner || isTallishStep(s);
+  let lo = 0; while (lo < seq0.length && anchor(seq0[lo])) lo++;
+  let hi = seq0.length; while (hi > lo && anchor(seq0[hi - 1])) hi--;
+  const head = seq0.slice(0, lo), tail = seq0.slice(hi), mid = seq0.slice(lo, hi);
+  const ci = mid.findIndex(isCookStep), si = mid.findIndex((s) => s.sink);
+  if (hasCook && ci < 0) return false;
+  if (!hasCook && si < 0) return true;
+  const cook = hasCook ? mid[ci] : null;
+
+  const noWorse = (sc) => Object.keys(base.v).every((k) => sc.v[k] <= base.v[k]) && sc.tallWin <= base.tallWin + 0.01;
+  const rank = (sc) => Object.values(sc.v).reduce((t, n) => t + n, 0) * 1e6 + sc.tallWin * 1e3 + (!hasCook ? sc.sinkD
+    : sc.noHood * 60 + Math.min(sc.sinkOff, 160) + 8 * Math.max(0, sc.apart - 2));
+  // every arrangement that passes, by signature (many interleavings repeat)
+  const ok = new Map();
+  const consider = (seq, extra) => {
+    const key = seq.map((s) => s.code).join(' ');
+    if (ok.has(key)) return;
+    const sc = score(seq);
+    if (sc.clash > 0 || !noWorse(sc)) return;
+    ok.set(key, { seq, r: rank(sc) + extra });
+  };
+  const perms = (a) => a.length <= 1 ? [a] : a.flatMap((x, k) => perms([...a.slice(0, k), ...a.slice(k + 1)]).map((p) => [x, ...p]));
+  // the sink block: the sink with its dishwasher(s), and the bin that flanks it; as a second
+  // choice the bin may leave it (a drawer bank flanks the sink instead) for a few inches of rank
+  const DW = (c) => c.form === 'dishwasher', BIN = (c) => c.form === 'bin';
+  for (const [glue, extra] of [[(c) => DW(c) || BIN(c), 0], [DW, 10]]) {
+    const glued = (s) => { const c = getCab(s.code); return !!c && glue(c); };
+    let s0 = si, s1 = si;
+    if (si >= 0) { while (s0 > 0 && s0 - 1 !== ci && glued(mid[s0 - 1])) s0--; while (s1 < mid.length - 1 && s1 + 1 !== ci && glued(mid[s1 + 1])) s1++; }
+    const sinkBlock = si >= 0 ? mid.slice(s0, s1 + 1) : [];
+    const free = mid.filter((s, k) => k !== ci && (si < 0 || k < s0 || k > s1));
+    const orders = free.length <= 4 ? perms(free)
+      : [free, free.slice().reverse(), free.slice().sort((a, b) => W(a.code) - W(b.code)), free.slice().sort((a, b) => W(b.code) - W(a.code))];
+    for (const f of orders) {
+      for (const flip of [false, true]) {
+        const blk = flip ? sinkBlock.slice().reverse() : sinkBlock;
+        for (const cookFirst of cook ? [false, true] : [false]) {
+          const [A, B] = !cook ? [blk, []] : cookFirst ? [[cook], blk] : [blk, [cook]];
+          for (let i = 0; i <= f.length; i++) {
+            for (let j = 0; i + j <= f.length; j++) {
+              const run = [...head, ...f.slice(0, i), ...A, ...f.slice(i, i + j), ...B, ...f.slice(i + j), ...tail];
+              consider(run, extra);
+              if (mirror) consider(run.slice().reverse(), extra);
+            }
+          }
+        }
+      }
+    }
+  }
+  if (!hasCook) consider(seq0, 0);                     // the run as it came is always a candidate
+  if (!ok.size) return !hasCook;                       // truly forced: the caller exiles the cooker, or the wizard's reroll + the warning remain
+  // "Generate again" still reads differently: a seeded pick among the arrangements
+  // within a few inches of the best (a centred sink: within an inch), never one that trades a rule away
+  const all = [...ok.values()], top = Math.min(...all.map((c) => c.r));
+  const near = all.filter((c) => c.r <= top + (hasCook ? 12 : 1));
+  const best = near[Math.floor(rnd() * near.length)].seq;
+  let w = 0;
+  for (let k = 0; k < steps.length; k++) if (steps[k].wall === 'back') steps[k] = best[w++];
+  return true;
 }
 
 

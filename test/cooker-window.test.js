@@ -18,12 +18,13 @@ const { getCab } = await import('../src/core/catalogue.js');
 const { cookerWindowClashes, computeWarnings } = await import('../src/core/warnings.js');
 
 function mkControls(store) {
-  const cursors = {};
+  let cursors = {};
   return {
     layer: { select() {} },
     placeNew(code, wall) {
       const cab = getCab(code); if (!cab) return null;
       const rm = store.state.room;
+      if (!store.state.items.length) cursors = {};   // a reroll starts a fresh draft (it used to carry on past the wall)
       const cur = cursors[wall] ?? -rm.width / 2;
       const it = store.addItem(code, { x: cur + cab.w / 2, z: -rm.depth / 2 + cab.d / 2 + 0.25, rotDeg: 0 });
       cursors[wall] = cur + cab.w;

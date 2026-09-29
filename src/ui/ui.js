@@ -1191,14 +1191,17 @@ export class UI {
       this.showSelbar(id);
     });
     // one press: a storage row behind the island row (her ask 2026-09-21)
-    document.getElementById('selDouble').addEventListener('click', () => {
+    // double sided, full depth (24") or half depth (14", her ask 2026-09-29)
+    const makeDouble = (opts, label) => () => {
       const id = this.controls.layer.selectedId; if (id == null) return;
-      const p = planIslandBack(this.store.state, id);
+      const p = planIslandBack(this.store.state, id, opts);
       if (!p.ok) { this._toast({ 'already double': 'This island is already double sided.', 'no room': 'There is no room behind it for a second row. Move the island forward first.', 'no fit': 'No storage row makes exactly this length. Drag a cabinet in behind it instead.' }[p.reason] || 'This is not an island cabinet.'); return; }
       const done = this.controls.placeInGap(p.placements);
-      this._toast(done ? `Double sided: ${p.placements.map((q) => q.code).join(' + ')} behind it.${p.note === 'walkway' ? ` Only ${fmtIn(p.walkway)} of walkway is left behind it: 44" is the minimum.` : ''} Undo takes them back out.` : 'Something is in the way behind it.');
+      this._toast(done ? `${label}: ${p.placements.map((q) => q.code).join(' + ')} behind it.${p.note === 'walkway' ? ` Only ${fmtIn(p.walkway)} of walkway is left behind it: 44" is the minimum.` : ''} Undo takes them back out.` : 'Something is in the way behind it.');
       if (done) this.showSelbar(id);
-    });
+    };
+    document.getElementById('selDouble').addEventListener('click', makeDouble({}, 'Double sided'));
+    document.getElementById('selHalf').addEventListener('click', makeDouble({ halfDepth: true }, 'Double sided, half depth'));
     // stool niches on the back of an island or peninsula row (her ask 2026-09-29, W2W-243)
     document.getElementById('selNiches').addEventListener('click', () => {
       const id = this.controls.layer.selectedId; if (id == null) return;
@@ -1394,6 +1397,8 @@ export class UI {
     // island: "Make double sided" while it is a single row; wall cabinets: match about a point
     const dbl = planIslandBack(this.store.state, id);
     document.getElementById('selDouble').style.display = (dbl.ok || ['no room', 'no fit'].includes(dbl.reason)) ? '' : 'none';
+    const half = getCab(it.code)?.form === 'niche' ? { ok: false } : planIslandBack(this.store.state, id, { halfDepth: true });
+    document.getElementById('selHalf').style.display = (half.ok || ['no room', 'no fit'].includes(half.reason)) ? '' : 'none';
     const nic = getCab(it.code)?.form === 'niche' ? { ok: false } : planIslandBack(this.store.state, id, { niches: true });
     document.getElementById('selNiches').style.display = (nic.ok || ['no room', 'no fit'].includes(nic.reason)) ? '' : 'none';
     const cRoom = planIslandCentre(this.store.state, id, 'room'), cRange = planIslandCentre(this.store.state, id, 'range');

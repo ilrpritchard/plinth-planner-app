@@ -780,9 +780,14 @@ export class Wizard {
           const under = (x) => Math.abs(x - wc) < ww / 2 + bw / 2 - 2;        // the base spans the window's middle
           if (!under(base.x)) {
             const minZ0 = -room0.depth / 2;
+            // HARD RULE 6: the sink never lands beside the cooker, so a base butting a range (or
+            // the base a cooktop rides on) is never the one it swaps with
+            const cooks = this.store.state.items.filter((k) => { const kc = getCab(k.code);
+              return kc && (kc.appliance === 'range' || (kc.type === 'FLOOR' && this.store.state.items.some((h) => getCab(h.code)?.appliance === 'hob' && Math.abs(h.x - k.x) < 1 && Math.abs(h.z - k.z) < 1))); });
+            const byCook = (o, w) => cooks.some((k) => Math.abs(k.z - o.z) < 8 && Math.abs(Math.abs(k.x - o.x) - (w + getCab(k.code).w) / 2) < 1.5);
             const swap = this.store.state.items.find((o) => { const c = getCab(o.code);
               return o.id !== base.id && c && c.type === 'FLOOR' && !c.corner && ['door', 'double', 'drawers'].includes(c.form) && !/cooktop/i.test(c.desc)
-                && Math.abs(c.w - bw) < 0.5 && ((o.rotDeg || 0) % 180) === 0 && Math.abs(o.z - (minZ0 + c.d / 2 + 0.25)) < 8 && under(o.x); });
+                && Math.abs(c.w - bw) < 0.5 && ((o.rotDeg || 0) % 180) === 0 && Math.abs(o.z - (minZ0 + c.d / 2 + 0.25)) < 8 && under(o.x) && !byCook(o, c.w); });
             if (swap) { const bx = base.x; this.store.updateItem(base.id, { x: swap.x }, { quiet: true }); this.store.updateItem(swap.id, { x: bx }, { quiet: true }); }
           }
         }

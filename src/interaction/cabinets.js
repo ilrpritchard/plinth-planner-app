@@ -41,7 +41,7 @@ export class CabinetLayer {
       case 'finish': this.rebuildAll(); break;
       // room resized → a corner cabinet's drawn return may need to reach a
       // wall that moved; re-check every corner unit
-      case 'room': for (const it of this.store.state.items) { const c = getCab(it.code); if (c?.corner) this._reposition(it.id); if (c?.appliance === 'hood') { this._dispose(it.id); this._addOrUpdate(it); } } break;   // a chimney hood's flue runs to the (new) ceiling
+      case 'room': for (const it of this.store.state.items) { const c = getCab(it.code); if (c?.corner) this._reposition(it.id); if (c?.appliance === 'hood') { this._rebuild(it); } } break;   // a chimney hood's flue runs to the (new) ceiling
       case 'load': case 'reset': this.syncAll(); break;
       default: break;
     }
@@ -92,19 +92,19 @@ export class CabinetLayer {
       if (!rec) continue;
       // a peninsula leg arriving in front of a corner unit (or leaving) changes where its return stops,
       // and a cabinet arriving behind another covers its back: redraw when either answer changes (W2W-243)
-      if (cab.corner && Math.abs(returnReach(cab, it, this.store.state.items, this.store.state.room).len - (rec.returnLen ?? 0)) > 0.05) { this._dispose(it.id); this._addOrUpdate(it); continue; }
-      if (cab.type === 'FLOOR' && rec.finishedBack != null && rec.finishedBack !== (!!it.backPanel || backs.has(it.id))) { this._dispose(it.id); this._addOrUpdate(it); continue; }
+      if (cab.corner && Math.abs(returnReach(cab, it, this.store.state.items, this.store.state.room).len - (rec.returnLen ?? 0)) > 0.05) { this._rebuild(it); continue; }
+      if (cab.type === 'FLOOR' && rec.finishedBack != null && rec.finishedBack !== (!!it.backPanel || backs.has(it.id))) { this._rebuild(it); continue; }
       if (isOvenHousing(cab)) {                      // oven fitted / taken out → redraw the housing's seat
-        if (!!rec.ovenIn !== !!ovenIn(this.store.state, it.id)) { this._dispose(it.id); this._addOrUpdate(it); }
+        if (!!rec.ovenIn !== !!ovenIn(this.store.state, it.id)) { this._rebuild(it); }
         continue;
       }
       if (cab.appliance === 'hood') {                // a W26 cover arrives over it / leaves: the hood hides / shows
         const covered = this.store.state.items.some((o) => { const oc = getCab(o.code); return oc?.hoodCover && Math.abs(o.x - it.x) < oc.w / 2 && Math.abs(o.z - it.z) < oc.d / 2 + 4; });
-        if (!!rec.covered !== covered) { this._dispose(it.id); this._addOrUpdate(it); const r2 = this.map.get(it.id); if (r2) r2.covered = covered; }
+        if (!!rec.covered !== covered) { this._rebuild(it); const r2 = this.map.get(it.id); if (r2) r2.covered = covered; }
         continue;
       }
       if (cab.type !== 'FLOOR') continue;
-      if (!!rec.sinkOver !== this._sinkOver(it, cab)) { this._dispose(it.id); this._addOrUpdate(it); }
+      if (!!rec.sinkOver !== this._sinkOver(it, cab)) { this._rebuild(it); }
     }
   }
 
@@ -170,6 +170,15 @@ export class CabinetLayer {
     rec.group.position.set(item.x, getMountY(cab), item.z);
     rec.group.rotation.y = THREE.MathUtils.degToRad(item.rotDeg || 0);
     if (this.selectedId === id) this._refreshBoxes();
+  }
+
+  /** Redraw one cabinet in place (its back panel, a sink / oven / hood / corner return changed).
+   *  The SELECTION stays on it: a redraw used to drop it while the selection bar still showed the
+   *  cabinet, so the next Rotate / Delete press did nothing (her stool niche that "does not rotate"). */
+  _rebuild(it) {
+    const sel = this.selectedId === it.id;
+    this._dispose(it.id); this._addOrUpdate(it);
+    if (sel) this.select(it.id);
   }
 
   _dispose(id) {

@@ -3,7 +3,7 @@
 // works out a storage row for the BACK of the island row the selected cabinet belongs to:
 // same length, facing the other way, backs touching (hard rule 10: the back row is storage).
 //
-//   planIslandBack(state, id) -> { ok:true, placements:[{code,x,z,rotDeg,island:true}], row:[ids], note }
+//   planIslandBack(state, id, { niches | halfDepth }) -> { ok:true, placements:[{code,x,z,rotDeg,island:true}], row:[ids], note }
 //                              | { ok:false, reason }     reasons: 'not island' | 'already double' | 'no fit' | 'no room'
 //
 // Each front cabinet gets a door cabinet of its own width behind it (20/24/28 single, 36/42
@@ -18,6 +18,9 @@ import { boxAt, spotOk } from './placement.js';
 const DOOR_BY_W = { 20: 'F1', 24: 'F2', 28: 'F3', 36: 'F10', 42: 'F11' };
 // STOOL NICHES (W2W-243): the same plan with open 300mm bays instead of storage (opts.niches)
 const NICHE_BY_W = { 20: 'F35', 24: 'F36', 28: 'F37', 36: 'F38', 42: 'F39' };
+// HALF DEPTH (her ask 2026-09-29, "make double sided but half depth"): the 14" door cabinets, singles
+// to 28" (F4 / F5 / F6) and doubles above (F13 / F14), so a shallow island still gets its storage
+const HALF_BY_W = { 20: 'F4', 24: 'F5', 28: 'F6', 36: 'F13', 42: 'F14' };
 const WIDTHS = [42, 36, 28, 24, 20];
 const floorLine = (c) => c && c.placeable && (c.type === 'FLOOR' || (c.type === 'APPLIANCES' && (c.mountY || 0) === 0 && !['sink', 'hob', 'oven'].includes(c.appliance)));
 
@@ -31,7 +34,7 @@ function packExact(width, BY = DOOR_BY_W) {        // fewest door cabinets (or n
 }
 
 export function planIslandBack(state, id, opts = {}) {
-  const BY = opts.niches ? NICHE_BY_W : DOOR_BY_W;
+  const BY = opts.niches ? NICHE_BY_W : opts.halfDepth ? HALF_BY_W : DOOR_BY_W;
   const sel = (state.items || []).find((i) => i.id === id), selCab = sel && getCab(sel.code);
   const r = state.room || {}, W = r.width || 144, D = r.depth || 120, b = { minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2 };
   if (!sel || !floorLine(selCab)) return { ok: false, reason: 'not island' };
@@ -75,6 +78,7 @@ export function planIslandBack(state, id, opts = {}) {
   for (const [i, p] of placements.entries()) { if (!spotOk(virt, getCab(p.code), p.x, p.z, p.rotDeg, b)) return { ok: false, reason: 'no room' }; virt = { ...virt, items: [...virt.items, { id: `b${i}`, ...p }] }; }
   // how much walkway is left behind the new row (hard rule 10 wants 44")
   const newFront = backPlane - Math.max(...placements.map((p) => getCab(p.code).d));
-  const wallDist = (f.z !== 0 ? (f.z > 0 ? newFront - b.minZ : b.maxZ + newFront) : (f.x > 0 ? newFront - b.minX : b.maxX + newFront));
+  // (|f.z| > 0.5, never f.z !== 0: cos 90 deg is 6e-17, so a row facing sideways measured to the wrong wall)
+  const wallDist = (Math.abs(f.z) > 0.5 ? (f.z > 0 ? newFront - b.minZ : b.maxZ + newFront) : (f.x > 0 ? newFront - b.minX : b.maxX + newFront));
   return { ok: true, placements, row: row.map((x) => x.it.id), walkway: wallDist, note: wallDist < 44 ? 'walkway' : null };
 }
