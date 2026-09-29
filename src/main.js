@@ -38,7 +38,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-235 · photo mode shows the finished still (as Save renders it) once the view stands still: no dashed grey edges';
+const BUILD = 'W2W-236 · live light from the viewer side: fill over the shoulder, environment behind her, so paints read at their chip (Kale, Skillet)';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
