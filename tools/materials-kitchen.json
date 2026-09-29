@@ -15,7 +15,7 @@
         "type": "window",
         "wall": "back",
         "pos": 0.5875,
-        "width": 40
+        "width": 36
       }
     ],
     "nextOpening": 2,
@@ -56,7 +56,7 @@
     {
       "id": 7,
       "code": "W1",
-      "x": -22,
+      "x": -18,
       "z": -58.75,
       "rotDeg": 0
     },
