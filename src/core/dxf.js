@@ -386,6 +386,12 @@ function frontEntities(cab) {
     out.push(...box(0, W, 0, D, 0, H, 'BODY'));
     return out;
   }
+  if (cab.form === 'niche') {                    // stool niche: the two legs and the top rail, open below (W2W-243)
+    out.push(...box(0, M.FRONT, 0, M.FRONT, 0, H, 'FRONT'));
+    out.push(...box(W - M.FRONT, W, 0, M.FRONT, 0, H, 'FRONT'));
+    out.push(...box(M.FRONT, W - M.FRONT, 0, M.FRONT, H - M.TOP, H, 'FRONT'));
+    return out;
+  }
   if (cab.form === 'dishwasher') {               // door & plinth only — no carcass
     out.push(...box(0, W, 0, M.FRONT, 0, zB, 'FRONT'));            // plinth
     out.push(...box(0, W, 0, M.FRONT, zT, H, 'FRONT'));            // top rail
@@ -489,6 +495,13 @@ function bodyBoxes(cab) {
   if (cab.form === 'shelf' || cab.form === 'dishwasher') return [];
   const W = cab.w * IN, H = cab.h * IN, D = cab.d * IN;
   const P = M.PANEL, F = M.FRONT;
+  const sides = [
+    [0, P, F, D, 0, H],                   // left side
+    [W - P, W, F, D, 0, H],               // right side
+    [0, W, D - P, D, 0, H],               // back
+    [P, W - P, F, D - P, H - P, H],       // top
+  ];
+  if (cab.form === 'niche') return sides;   // a stool niche has no bottom: open to the floor (W2W-243)
   return [
     [0, P, F, D, 0, H],                   // left side
     [W - P, W, F, D, 0, H],               // right side

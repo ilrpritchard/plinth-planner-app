@@ -72,7 +72,7 @@ export function sinkSizes(code) {
 // one. baseUnder() finds that base from a pointer position: the floor cabinet
 // the point is over, else the nearest one within `reach`. Corners never host.
 
-const hostable = (c) => !!c && c.type === 'FLOOR' && !c.corner && c.form !== 'leg' && c.placeable !== false;   // nothing sits on the end leg
+const hostable = (c) => !!c && c.type === 'FLOOR' && !c.corner && c.form !== 'leg' && c.form !== 'niche' && c.placeable !== false;   // nothing sits on the end leg or in a stool niche
 
 function localOffset(base, cab, x, z) {
   const th = ((base.rotDeg || 0) * Math.PI) / 180, c = Math.cos(th), sn = Math.sin(th);

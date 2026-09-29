@@ -56,6 +56,11 @@ export function cabinetSVG(cab, opts = {}) {
   if (cab.form === 'leg') {
     p.push(rect(x0, y0, dw, dh, 1.2, STROKE, STROKE));
     if (hasPlinth) p.push(hline(x0 - 2, x0 + dw + 2, y0 + dh - plinth, 1.1));
+  } else if (cab.form === 'niche') {
+    // a stool niche: two solid legs and the top rail round an open bay (no plinth)
+    p.push(rect(x0, y0, leg, dh, 0.8, STROKE, STROKE));
+    p.push(rect(x0 + dw - leg, y0, leg, dh, 0.8, STROKE, STROKE));
+    p.push(rect(x0 + leg, y0, dw - 2 * leg, leg * 1.6, 0.8, STROKE, STROKE));
   } else {
   // leg + top-rail lines (light)
   p.push(vline(x0 + leg, y0, y0 + dh, 0.7));

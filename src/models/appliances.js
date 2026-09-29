@@ -268,6 +268,17 @@ export function buildAppliance(cab, finishHex = '#efece3', opts = {}) {
         plaster.userData.wallPaint = true;   // photo mode's matte variation reaches it too (painted with the walls)
         const hh = opts.ceiling > 0 && cab.mountY != null ? Math.max(h, opts.ceiling - cab.mountY - 0.05) : h;
         const body = box(w, hh, d, plaster); body.position.set(0, hh / 2, 0); body.name = 'plaster'; g.add(body);
+        // its OUTLINE (W2W-243, her catch 2026-09-29: "impossible to see the hood in some orbits"): its
+        // front is parallel to the wall, same paint, same light, so head-on the two render as one colour.
+        // A hairline on every edge reads as the shadow line a real one has. The line is unlit, so it is
+        // set well under the wall colour and kept out of the tone mapping, darker than the wall in sun AND
+        // in shade. The factor is on LINEAR light: 0.22 shows a white wall's line at about half its
+        // brightness (0.45 displayed at ~70%, the same as a wall in shade, and vanished).
+        const edgeCol = new THREE.Color(opts.wallHex ?? WALLS.white.color).multiplyScalar(0.22);
+        // (drawn on a box a hair bigger than the hood: lines exactly on its own edges lose the depth test
+        // to the faces they bound and never show)
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w + 0.08, hh + 0.08, d + 0.08)), new THREE.LineBasicMaterial({ color: edgeCol, toneMapped: false }));
+        edges.position.copy(body.position); edges.name = 'plasterEdges'; g.add(edges);
         const lw = Math.min(w - 5, 30), ld = d - 4;
         const plen = box(lw + 1, 1.2, ld + 1, DARK()); plen.position.set(0, 0.55, -0.4); g.add(plen);
         const plate = box(lw, 0.3, ld, STAINLESS()); plate.position.set(0, -0.05, -0.4); g.add(plate);

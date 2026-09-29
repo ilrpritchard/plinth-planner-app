@@ -6,6 +6,7 @@
 // painted in 3D, so this only feeds the cost. One panel per exposed back.
 
 import { getCab } from './catalogue.js';
+import { peninsulaReturnEnds } from './cornerreturn.js';
 
 const WALL_TOL = 8;
 
@@ -64,7 +65,8 @@ export function computeEndPanels(state) {
     px <= minX + WALL_TOL || px >= maxX - WALL_TOL || pz <= minZ + WALL_TOL || pz >= maxZ - WALL_TOL;
 
   const backIds = exposedBackIds(state);
-  let count = backIds.size;
+  // + the end of a corner return that runs to a peninsula's back: the continuous panel covers it (W2W-243)
+  let count = backIds.size + peninsulaReturnEnds(state).length;
   for (const f of floors) {
     const { it, cab } = f;
     const rad = (it.rotDeg || 0) * Math.PI / 180;

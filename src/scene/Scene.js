@@ -64,7 +64,15 @@ export const PHOTO_SUN = { sun: 5.0, env: 0.7, fill: 0.9, hemi: 0.35, exposure: 
 // near it in the island kitchen). It throws the wall cabinets' shadow down the splash and the knobs'
 // onto the doors, and makes the near end of a run a little brighter than the far one. `lux` = the light
 // arriving at the aim point (intensity = lux x distance); `drop` = inches under the ceiling.
-export const PHOTO_BOX = { lux: 1.0, side: 0.3, drop: 8, inset: 8, decay: 1, color: 0xfffaf3 };
+// W2W-243: on for EVERY photo taken inside the room (with the sun rig gone, a run facing away from
+// the room's key came out brown in shade); 0.5 checked on Ghost / Nettle / Skillet / a peninsula.
+// W2W-243: OFF. With a window in the room, photo mode used to swap the key light for the sun through
+// that window (and PHOTO_SUN's levels): her catch 2026-09-29, "I added a window and it jumps to this
+// weird photo setting and looks shit". The sun rig washed every paint out; a room with a window now
+// photographs exactly like one without (the room's key light, which already comes from the window side,
+// core/keylight.js). PHOTO_SUN, PHOTO_BOX and the soft sun stay for if it is ever worth another go.
+export const PHOTO_WINDOW_SUN = false;
+export const PHOTO_BOX = { lux: 0.5, side: 0.3, drop: 8, inset: 8, decay: 1, color: 0xfffaf3 };
 // Photo mode's fill (W2W-240): from behind the viewer and well above (rise 0.9), so the faces of a
 // shaker panel's 5mm step turn differently to it; straight from the camera it lit frame and panel alike.
 // (It casts no shadow: the closed room's ceiling and front wall would shade everything.)
@@ -184,7 +192,7 @@ export class Scene {
     const k = keyLight(room), R = 320;
     this._room = room; this._keyFrom = k.from;
     this.key.position.set(k.from[0] * R, k.from[1] * R, k.from[2] * R);
-    if (this._photo) { this._sun = sunLight(room); this._photoRoomKey = null; this._sunOn = false; }
+    if (this._photo) { this._sun = PHOTO_WINDOW_SUN ? sunLight(room) : null; this._photoRoomKey = null; this._sunOn = false; }
     this._fitShadow();
     // fill: the key mirrored to the other side and lower, like a bounce card. It opens the shadow
     // side (the wall facing away from the key went a heavy taupe without it) and casts none.
@@ -452,6 +460,7 @@ export class Scene {
     const cam = this.camera;
     if (!cam.isPerspectiveCamera) return;
     const pr = this._photoRoomFor(cam), sun = pr.closed && !!this._sun;
+    if (this._softbox) this._softbox.visible = pr.closed;   // the softbox lights every shot inside the room (W2W-243)
     if (Math.abs(cam.near - pr.near) > 1e-3) { cam.near = pr.near; cam.updateProjectionMatrix(); }
     const key = pr.closed ? (sun ? 'sun' : 'closed') : 'open';
     if (key === this._photoRoomKey) return;
@@ -477,7 +486,6 @@ export class Scene {
     this.hemi.intensity = L.hemi; this.fill.intensity = L.fill;
     this.renderer.toneMappingExposure = L.exposure;
     if (this._hdri) { this._hdri.scale = L.env / this._hdri.mean; this._envAz = null; }
-    if (this._softbox) this._softbox.visible = on;
     if (on) {
       this._aimEnv(PHOTO_SUN_ENV_AZ);
       this.fill.position.set(0, 0.45, 1).normalize().multiplyScalar(320);      // from the camera side
@@ -508,7 +516,7 @@ export class Scene {
       this._setShadowMap(Math.min(PHOTO_SHADOW.size, max));
       this.renderer.shadowMap.autoUpdate = false; this._shadowTick = 0;
       sh.bias = PHOTO_SHADOW.bias; sh.normalBias = PHOTO_SHADOW.normalBias; sh.radius = PHOTO_SHADOW.radius;
-      this._sun = sunLight(this._room || {});
+      this._sun = PHOTO_WINDOW_SUN ? sunLight(this._room || {}) : null;
       this._photoRoomKey = null;
       this._fitShadow();
       this._photoPaint(true);
@@ -527,6 +535,7 @@ export class Scene {
       this._photo = false;
       this._hideStill();
       this._setSun(false);
+      if (this._softbox) this._softbox.visible = false;
       this._photoRoomKey = null;
       this.onPhotoClosed?.(false);
       this._photoPaint(false);

@@ -27,6 +27,12 @@ const RAW = [
   // One product, either hand (it is symmetrical). Counts as a leg-bearing cabinet everywhere.
   // $150 (her call 2026-09-22: between the $91 scribe filler and any cabinet).
   { code: 'F34', type: 'FLOOR', desc: 'End Leg', w: mmToIn(22), d: 24, h: 35, hinge: 'n/a', usd: 150, notes: 'A single painted 22mm leg with the plinth under it: the end of a run beside a dishwasher front or a range, either hand. Scribed to the wall like any run end.' },
+  // STOOL NICHES (W2W-243, her ask 2026-09-29): an open bay on the back of an island (or a peninsula)
+  // so stools tuck in under the worktop. 300mm deep; a 22mm leg each side, a 35mm rail across the top,
+  // painted inside (sides, top underside, back); no plinth, no floor, no doors. Widths match the floor
+  // cabinets so the legs line up through the island (her call). PRICE TO CONFIRM (her call).
+  ...[['F35', 20], ['F36', 24], ['F37', 28], ['F38', 36], ['F39', 42]].map(([code, w]) => ({ code, type: 'FLOOR', desc: 'Stool Niche', w, d: mmToIn(300), h: 35, hinge: 'n/a', usd: 0, priceTBC: true,
+    notes: 'Open bay for stools under the island worktop: 300mm deep, 22mm legs each side, a 35mm top rail, painted inside. No plinth.' })),
   // the 18" (slimline) dishwasher front, same legless panel + plinth (her ask 2026-09-22); priced as F7 less 20%
   { code: 'F33', type: 'FLOOR', desc: 'Dishwasher Door & Plinth (18")', w: 18, d: 24, h: 35, hinge: 'n/a', usd: 751, notes: 'Door panel + plinth for an 18" dishwasher, appliance not supplied' },
   { code: 'F8', type: 'FLOOR', desc: 'Tray Space (Adjustable)', w: 10, d: 24, h: 35, hinge: 'n/a', usd: 1744, notes: 'Open tray space, no door' },
@@ -206,6 +212,7 @@ function classify(it) {
   if (it.type === 'ACCESSORIES') return 'accessory';
   if (it.corner) return 'corner';
   if (d === 'end leg') return 'leg';
+  if (d === 'stool niche') return 'niche';
   if (d.includes('drawers (3)')) return 'drawers';
   if (d.includes('larder (drawers)')) return 'larderDrawers';
   if (d.includes('larder')) return 'larder';

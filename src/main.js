@@ -16,6 +16,8 @@ import { Scene } from './scene/Scene.js';
 import { Room } from './scene/Room.js';
 import { Worktop } from './models/worktop.js';
 import { FillerLayer } from './models/filler.js';
+import { BackPanelLayer } from './models/backpanel.js';
+import { computeBackPanels } from './core/backpanels.js';
 import { CorniceLayer } from './models/cornice.js';
 import { DecorLayer } from './models/decor.js';
 import { CabinetLayer } from './interaction/cabinets.js';
@@ -39,7 +41,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-242 · photo mode: a softbox light in the room (wall cabinet and knob shadows, less flat), less ambient, reveals drawn as even lines not dashes';
+const BUILD = 'W2W-243 · peninsula layouts, stool niches, one panel on an exposed back, a window no longer changes photo lighting, hood outline';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -66,6 +68,7 @@ const scene = new Scene(document.getElementById('stage'));
 const room = new Room(scene);
 const worktop = new Worktop(scene);
 const fillerLayer = new FillerLayer(scene);
+const backPanelLayer = new BackPanelLayer(scene);            // one painted panel across an exposed back (W2W-243)
 const corniceLayer = new CorniceLayer(scene);
 const decorLayer = new DecorLayer(scene);
 const layer = new CabinetLayer(scene, store);
@@ -83,6 +86,7 @@ function rebuildWorktop() {
 }
 function rebuildFillers() {
   fillerLayer.rebuild(computeFillers(store.state), getFinish(store.state.finish).hex);
+  backPanelLayer.rebuild(computeBackPanels(store.state), (name) => getFinish(name).hex);
 }
 function rebuildCornice() {
   corniceLayer.rebuild(store.state, getFinish(store.state.finish).hex);

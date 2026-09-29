@@ -16,19 +16,22 @@ import { getCab } from './catalogue.js';
 import { boxAt, spotOk } from './placement.js';
 
 const DOOR_BY_W = { 20: 'F1', 24: 'F2', 28: 'F3', 36: 'F10', 42: 'F11' };
+// STOOL NICHES (W2W-243): the same plan with open 300mm bays instead of storage (opts.niches)
+const NICHE_BY_W = { 20: 'F35', 24: 'F36', 28: 'F37', 36: 'F38', 42: 'F39' };
 const WIDTHS = [42, 36, 28, 24, 20];
 const floorLine = (c) => c && c.placeable && (c.type === 'FLOOR' || (c.type === 'APPLIANCES' && (c.mountY || 0) === 0 && !['sink', 'hob', 'oven'].includes(c.appliance)));
 
-function packExact(width) {                       // fewest door cabinets that make `width` exactly (to 0.1")
+function packExact(width, BY = DOOR_BY_W) {        // fewest door cabinets (or niches) that make `width` exactly (to 0.1")
   const cap = Math.round(width * 10), best = new Map([[0, []]]);
   // fewest pieces, and among those the most EVEN widths (48" is 24 + 24, never 20 + 28)
   const spread = (codes) => { const ws = codes.map((c) => getCab(c).w); return Math.max(...ws) - Math.min(...ws); };
-  for (let s = 0; s <= cap; s++) { const cur = best.get(s); if (!cur) continue; for (const w of WIDTHS) { const n = s + w * 10; if (n > cap) continue; const cand = [...cur, DOOR_BY_W[w]], old = best.get(n);
+  for (let s = 0; s <= cap; s++) { const cur = best.get(s); if (!cur) continue; for (const w of WIDTHS) { const n = s + w * 10; if (n > cap) continue; const cand = [...cur, BY[w]], old = best.get(n);
     if (!old || old.length > cand.length || (old.length === cand.length && spread(cand) < spread(old))) best.set(n, cand); } }
   const out = best.get(cap); return out ? [...out].sort((p, q) => getCab(q).w - getCab(p).w) : null;
 }
 
-export function planIslandBack(state, id) {
+export function planIslandBack(state, id, opts = {}) {
+  const BY = opts.niches ? NICHE_BY_W : DOOR_BY_W;
   const sel = (state.items || []).find((i) => i.id === id), selCab = sel && getCab(sel.code);
   const r = state.room || {}, W = r.width || 144, D = r.depth || 120, b = { minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2 };
   if (!sel || !floorLine(selCab)) return { ok: false, reason: 'not island' };
@@ -59,11 +62,11 @@ export function planIslandBack(state, id) {
   const pieces = [];                               // [{ lo, codes }]
   for (let i = 0; i < row.length; i++) {
     const w = row[i].cab.w, lo = along(row[i].it) - w / 2;
-    if (DOOR_BY_W[w]) { pieces.push({ lo, codes: [DOOR_BY_W[w]] }); continue; }
-    const p = packExact(w); if (!p) { exactPerItem = false; break; }
+    if (BY[w]) { pieces.push({ lo, codes: [BY[w]] }); continue; }
+    const p = packExact(w, BY); if (!p) { exactPerItem = false; break; }
     pieces.push({ lo, codes: p });
   }
-  if (!exactPerItem) { const p = packExact(rowHi - rowLo); if (!p) return { ok: false, reason: 'no fit' }; pieces.length = 0; pieces.push({ lo: rowLo, codes: p }); }
+  if (!exactPerItem) { const p = packExact(rowHi - rowLo, BY); if (!p) return { ok: false, reason: 'no fit' }; pieces.length = 0; pieces.push({ lo: rowLo, codes: p }); }
 
   const placements = [];
   for (const pc of pieces) { let cur = pc.lo; for (const code of pc.codes) { const c = getCab(code), al = cur + c.w / 2, pp = backPlane - c.d / 2; cur += c.w;

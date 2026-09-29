@@ -79,6 +79,31 @@ export const TEMPLATES = [
       { wall: 'island', code: 'F20' },
     ],
   },
+  // W2W-243: peninsula layouts (layouts.js PEN_SHAPES; the wizard stands the leg free of its wall)
+  {
+    id: 'peninsula',
+    name: 'Run + peninsula',
+    desc: 'A back run with a peninsula off its end, standing free with a walkway round it.',
+    steps: [
+      { wall: 'back', code: 'F16' },
+      { wall: 'back', code: 'F2' },
+      { wall: 'back', code: 'AP2' },
+      { wall: 'back', code: 'T1' },
+      { wall: 'left', code: 'F20' },
+    ],
+  },
+  {
+    id: 'c-peninsula',
+    name: 'C with peninsula',
+    desc: 'Back run and a side-wall run, with a peninsula as the third leg.',
+    steps: [
+      { wall: 'left', code: 'T1' },
+      { wall: 'back', code: 'F16' },
+      { wall: 'back', code: 'AP2' },
+      { wall: 'back', code: 'F16R' },
+      { wall: 'right', code: 'F20' },
+    ],
+  },
 ];
 
 export function getTemplate(id) { return TEMPLATES.find((t) => t.id === id); }

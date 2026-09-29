@@ -11,6 +11,7 @@
 // exactly (no 1" overhang over the range, no spill past its edge at a run
 // end), stops dead, and resumes on the other side.
 
+import { returnReach } from './cornerreturn.js';
 import { sinkSpec } from './sinkspec.js';
 
 const OVERHANG = 1.0;   // proud of a door front / island edge
@@ -48,22 +49,16 @@ export function planWorktopSlabs(items, getCab, defaultMat = 'marble', room = nu
     // a CORNER cabinet's blank return extends the footprint one side — the
     // worktop must cover it too, so the surface turns the corner continuously.
     // The DRAWN return stretches past the 20" SKU to meet the adjacent wall
-    // (cornerReturnLength in interaction/snapping.js covers scribe gaps up to
+    // (cornerReturnLength in core/cornerreturn.js covers scribe gaps up to
     // ~10"); the worktop must cover the STRETCHED panel too, or the strip
     // between the SKU return and the wall shows bare carcass at the corner.
     if (cab.corner) {
       const sl = cab.cornerSide === 'right' ? 1 : -1;  // return on local left by default
       const rad = (it.rotDeg || 0) * Math.PI / 180;
       const wx = Math.cos(rad) * sl, wz = -Math.sin(rad) * sl;  // world dir of the return
-      let ret = cab.type === 'FLOOR' ? 20 : 10;        // SKU return
-      if (room) {                                      // same stretch rule as the drawn panel
-        let dist = null;                               // door edge → adjacent wall
-        if (wx > 0.5) dist = room.width / 2 - cell.x1;
-        else if (wx < -0.5) dist = cell.x0 + room.width / 2;
-        else if (wz > 0.5) dist = room.depth / 2 - cell.z1;
-        else if (wz < -0.5) dist = cell.z0 + room.depth / 2;
-        if (dist != null && dist > 1 && dist <= ret + 10) ret = dist;
-      }
+      // the same drawn length as the 3D (core/cornerreturn.js): stretched to the wall, cut at a
+      // bulkhead, or run to a peninsula leg's back (W2W-243)
+      const ret = returnReach(cab, it, items, room).len;
       if (wx < -0.5) cell.x0 -= ret; else if (wx > 0.5) cell.x1 += ret;
       if (wz < -0.5) cell.z0 -= ret; else if (wz > 0.5) cell.z1 += ret;
     }

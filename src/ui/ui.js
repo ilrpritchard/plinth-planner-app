@@ -723,12 +723,12 @@ export class UI {
       const ceiling = this.store.state.room.height || 96;
       // sub-headings inside the big families, so like sits with like (her ask 2026-09-22: "group the
       // floor cabinets in a better way, the dishwashers next to each other, more intuitive")
-      const SUB = { FLOOR: (c) => (c.form === 'corner' ? 'Corners' : c.form === 'drawers' && !/cooktop/i.test(c.desc) ? 'Drawers' : c.form === 'dishwasher' ? 'Appliance fronts' : c.form === 'ovenBase' || /cooktop/i.test(c.desc) ? 'Cooking' : c.form === 'bin' || c.form === 'tray' ? 'Pull-outs and trays' : c.form === 'open' ? 'Open shelves' : c.form === 'leg' ? 'End leg' : c.halfDepth ? 'Doors, half depth' : 'Doors'),
+      const SUB = { FLOOR: (c) => (c.form === 'corner' ? 'Corners' : c.form === 'drawers' && !/cooktop/i.test(c.desc) ? 'Drawers' : c.form === 'dishwasher' ? 'Appliance fronts' : c.form === 'ovenBase' || /cooktop/i.test(c.desc) ? 'Cooking' : c.form === 'bin' || c.form === 'tray' ? 'Pull-outs and trays' : c.form === 'open' ? 'Open shelves' : c.form === 'leg' ? 'End leg' : c.form === 'niche' ? 'Stool niches' : c.halfDepth ? 'Doors, half depth' : 'Doors'),
         WALL: (c) => (c.corner ? 'Corners' : c.form === 'open' ? 'Open shelves' : c.hoodCover ? 'Hood cover' : c.glazed ? 'Glazed' : 'Doors'), HIGH: (c) => (c.corner ? 'Corners' : c.form === 'open' ? 'Open shelves' : c.glazed ? 'Glazed' : 'Doors'),
         COUNTER: (c) => (c.form === 'open' ? 'Open shelves' : c.glazed ? 'Glazed' : 'Doors'), TALL: (c) => (c.form === 'ovenHousing' ? 'Oven housings' : c.form === 'housing' ? 'Fridge housings' : c.corner ? 'Corners' : 'Larders'),
         STACKER: (c) => (c.onTall ? 'On a tall' : /fits C/.test(c.desc || '') ? 'On a counter cabinet' : 'On a wall cabinet'),
         APPLIANCES: (c) => (c.appliance === 'range' ? 'Ranges' : c.appliance === 'hob' ? 'Cooktops' : c.appliance === 'oven' ? 'Ovens' : c.appliance === 'sink' ? 'Sinks' : c.appliance === 'hood' ? 'Hoods' : 'Fridges') };
-      const ORDER = { FLOOR: ['Doors', 'Doors, half depth', 'Drawers', 'Corners', 'Pull-outs and trays', 'Open shelves', 'Appliance fronts', 'Cooking', 'End leg'], WALL: ['Doors', 'Glazed', 'Corners', 'Open shelves', 'Hood cover'], HIGH: ['Doors', 'Glazed', 'Corners', 'Open shelves'], COUNTER: ['Doors', 'Glazed', 'Open shelves'], TALL: ['Larders', 'Fridge housings', 'Oven housings', 'Corners'], STACKER: ['On a tall', 'On a wall cabinet', 'On a counter cabinet'], APPLIANCES: ['Ranges', 'Cooktops', 'Ovens', 'Hoods', 'Sinks', 'Fridges'] };
+      const ORDER = { FLOOR: ['Doors', 'Doors, half depth', 'Drawers', 'Corners', 'Pull-outs and trays', 'Open shelves', 'Appliance fronts', 'Cooking', 'End leg', 'Stool niches'], WALL: ['Doors', 'Glazed', 'Corners', 'Open shelves', 'Hood cover'], HIGH: ['Doors', 'Glazed', 'Corners', 'Open shelves'], COUNTER: ['Doors', 'Glazed', 'Open shelves'], TALL: ['Larders', 'Fridge housings', 'Oven housings', 'Corners'], STACKER: ['On a tall', 'On a wall cabinet', 'On a counter cabinet'], APPLIANCES: ['Ranges', 'Cooktops', 'Ovens', 'Hoods', 'Sinks', 'Fridges'] };
       const subOf = SUB[fam];
       if (subOf) { const rank = (c) => { const o = ORDER[fam] || [], i = o.indexOf(subOf(c)); return i === -1 ? 99 : i; }; items.sort((p, q) => rank(p) - rank(q) || (subOf(p) < subOf(q) ? -1 : subOf(p) > subOf(q) ? 1 : 0)); }
       let lastSub = null;
@@ -1199,6 +1199,15 @@ export class UI {
       this._toast(done ? `Double sided: ${p.placements.map((q) => q.code).join(' + ')} behind it.${p.note === 'walkway' ? ` Only ${fmtIn(p.walkway)} of walkway is left behind it: 44" is the minimum.` : ''} Undo takes them back out.` : 'Something is in the way behind it.');
       if (done) this.showSelbar(id);
     });
+    // stool niches on the back of an island or peninsula row (her ask 2026-09-29, W2W-243)
+    document.getElementById('selNiches').addEventListener('click', () => {
+      const id = this.controls.layer.selectedId; if (id == null) return;
+      const p = planIslandBack(this.store.state, id, { niches: true });
+      if (!p.ok) { this._toast({ 'already double': 'Something already stands on the back of this row.', 'no room': 'There is no room behind it for niches. Move the island forward first.', 'no fit': 'No run of niches makes exactly this length.' }[p.reason] || 'Stool niches go on the back of an island or a peninsula.'); return; }
+      const done = this.controls.placeInGap(p.placements);
+      this._toast(done ? `Stool niches: ${p.placements.map((q) => q.code).join(' + ')} on the back, price to confirm.${p.note === 'walkway' ? ` Only ${fmtIn(p.walkway)} is left behind them: 44" is the minimum.` : ''} Undo takes them back out.` : 'Something is in the way behind it.');
+      if (done) this.showSelbar(id);
+    });
     // wall cabinets matched about the range, or about the middle of the wall
     const mirror = (about) => () => {
       const id = this.controls.layer.selectedId; if (id == null) return;
@@ -1385,6 +1394,8 @@ export class UI {
     // island: "Make double sided" while it is a single row; wall cabinets: match about a point
     const dbl = planIslandBack(this.store.state, id);
     document.getElementById('selDouble').style.display = (dbl.ok || ['no room', 'no fit'].includes(dbl.reason)) ? '' : 'none';
+    const nic = getCab(it.code)?.form === 'niche' ? { ok: false } : planIslandBack(this.store.state, id, { niches: true });
+    document.getElementById('selNiches').style.display = (nic.ok || ['no room', 'no fit'].includes(nic.reason)) ? '' : 'none';
     const cRoom = planIslandCentre(this.store.state, id, 'room'), cRange = planIslandCentre(this.store.state, id, 'range');
     document.getElementById('selCentreRoom').style.display = cRoom.reason === 'not island' ? 'none' : '';
     document.getElementById('selSpaceWrap').style.display = cRoom.reason === 'not island' ? 'none' : '';

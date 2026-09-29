@@ -300,6 +300,18 @@ export function buildCabinet(cab, finishHex, opts = {}) {
     g.userData = { code: cab.code, type: cab.type, footprint: { w, d, returnLeg: 0 }, mountY: getMountY(cab), doors: [] };
     return g;
   }
+  // a STOOL NICHE (W2W-243): an open bay, painted inside. A 22mm leg each side (full depth: the side
+  // panels ARE the legs seen from the front), a top under the worktop, a painted back, and the 35mm rail
+  // across the top of the opening. No plinth and no floor: stools and feet go right in.
+  if (cab.form === 'niche') {
+    const iw = w - 2 * LEG;
+    for (const sx of [-1, 1]) { const side = box(LEG, h, d, mat); side.position.set(sx * (w / 2 - LEG / 2), h / 2, 0); g.add(side); }
+    const top = box(iw, PANEL, d, mat); top.position.set(0, h - PANEL / 2, 0); g.add(top);
+    const back = box(iw, h - PANEL, PANEL, mat); back.position.set(0, (h - PANEL) / 2, -d / 2 + PANEL / 2); g.add(back);
+    const rail = box(iw, TOPRAIL, LEG, mat); rail.position.set(0, h - TOPRAIL / 2, d / 2 - LEG / 2); g.add(rail);
+    g.userData = { code: cab.code, type: cab.type, footprint: { w, d, returnLeg: 0 }, mountY: getMountY(cab), doors: [] };
+    return g;
+  }
   const hasPlinth = cab.type === 'FLOOR' || cab.type === 'TALL';
   const pH = hasPlinth ? PLINTH : 0;
   const bodyY0 = pH;

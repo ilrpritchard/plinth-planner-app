@@ -138,7 +138,42 @@ export function wallFreeSpan(room, wall) {
  *     always parks at the very END of its run so the owner can slide it out
  *   - dishwashers: 1 | 2 (the second F7 sits on the other side of the sink)
  */
+// PENINSULA layouts (W2W-243, her ask 2026-09-29: "a back run, C shape, but the C is part peninsula,
+// and a run + peninsula"). A peninsula is an L / U leg standing FREE of its side wall: its back is
+// PEN_WALK (the island walkway, hard rule 10) off that wall and its open end stops PEN_WALK short of the
+// front wall. The kitchen is generated as the L / U of the room with that wall moved in by PEN_WALK
+// (penRoom); the wizard then stands the leg off the real wall (result.pen). A peninsula carries base
+// cabinets only: no fridge, no talls (they go to the back run's open end, or the C's wall leg).
+export const PEN_WALK = 44;
+export const PEN_SHAPES = { peninsula: { base: 'l-shape', side: 'left' }, 'c-peninsula': { base: 'u-shape', side: 'right' } };
+
+/** The room as the generator should see it for a peninsula on `side`: that wall moved in by PEN_WALK
+ *  (back / front openings and boxings re-measured along the shorter wall, the peninsula wall's dropped). */
+export function penRoom(room, side) {
+  const W = room.width || 144, W2 = W - PEN_WALK, x0 = side === 'left' ? -W / 2 + PEN_WALK : -W / 2;
+  const remap = (o) => {
+    const w = o.wall || 'back';
+    if (w === side) return null;                          // the peninsula stands clear of that wall
+    if (w !== 'back' && w !== 'front') return o;
+    const x = -W / 2 + (o.pos ?? 0.5) * W, pos = (x - x0) / W2;
+    return pos < 0 || pos > 1 ? null : { ...o, pos };
+  };
+  return { ...room, width: W2, openings: (room.openings || []).map(remap).filter(Boolean), boxings: (room.boxings || []).map(remap).filter(Boolean) };
+}
+
 export function generateKitchen(shape, room, seed = 1, opts = {}) {
+  const PS = PEN_SHAPES[shape];
+  if (PS) {
+    // too small for a peninsula plus its walkway: the plain L / U it grows from
+    const fits = (room.width || 144) - PEN_WALK >= 120 && (room.depth || 120) >= 24.3 + 24 + PEN_WALK;
+    if (!fits) return { ...generateKitchen(PS.base, room, seed, opts), pen: null };
+    const out = generateKitchen(PS.base, penRoom(room, PS.side), seed, { ...opts, pen: PS.side, penDepth: room.depth || 120 });
+    // the leg did not survive (a C too narrow for two corners degrades to an L): no peninsula to stand
+    // free, so the plain shape in the whole room, never a run stopping short of a wall for nothing
+    if (!out.steps.some((x) => x.wall === PS.side)) return { ...generateKitchen(PS.base, room, seed, opts), pen: null };
+    return { ...out, pen: { side: PS.side, walk: PEN_WALK } };
+  }
+  const pen = opts.pen || null;                          // set on the inner call only
   const r = rng32(seed);
   const wallOven = opts.cooking === 'wallOven';
   const freeFridge = opts.fridge === 'freestanding';
@@ -206,7 +241,7 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
   // single or (big rooms) a 36" double base with a double-bowl sink.
   const sinkCode = (width >= 160 && chance(0.3)) ? 'F10' : (width >= 144 && chance(0.35)) ? 'F3' : 'F2';
   const sink = { code: sinkCode, sink: true };
-  const fridgeOnBack = !lLike && !galley;                 // L/U: fridge on the side run; galley: facing run
+  const fridgeOnBack = (!lLike && !galley) || pen === 'left';   // L/U: fridge on the side run; galley: facing run; a peninsula takes no fridge
 
   // --- short-wall degradation (L-shape only) --------------------------------
   // The corner (44" incl. return), sink and cooker can out-measure a short back
@@ -377,8 +412,12 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
   if (lLike) {
     // corner at the left junction; a U-shape closes the run with a mirrored
     // corner at the RIGHT junction too (blank return toward the right wall).
-    run = [...(hasCorner ? [{ code: 'F16', corner: true }] : []), ...fillA, ...sinkGroup, ...fillB,
-      ...(hasCorner && uShape ? [{ code: 'F16R', corner: true }] : [])];
+    // Run + peninsula: the talls close the back run's RIGHT end, so the cooker end of the sink group
+    // turns toward the corner and the talls get the sink side (range clearance, hard rule 16)
+    const group = pen === 'left' && !uShape && talls.length ? sinkGroup.slice().reverse() : sinkGroup;
+    run = [...(hasCorner ? [{ code: 'F16', corner: true }] : []), ...fillA, ...group, ...fillB,
+      ...(hasCorner && uShape ? [{ code: 'F16R', corner: true }] : []),
+      ...(pen === 'left' && !uShape ? talls : [])];     // Run + peninsula: the fridge and talls close the back run's open end
   } else {
     // talls anchor one end (varies between layouts); fill splits around the sink.
     // But if NOTHING follows the cooker (no guard fit, no fill) the talls MUST
@@ -448,10 +487,12 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
     // the leg runs from just clear of the corner unit all the way to the FRONT
     // wall — the ENTIRE side wall bar a scribe gap — but never across a door.
     let sremain = Math.max(0, wallFreeSpan(room, 'left')[1] - wallFreeSpan(room, 'left')[0]);
+    if (pen === 'left') sremain = Math.min(sremain, (opts.penDepth || depth) - 24.3 - PEN_WALK);   // the open end keeps its walkway
     const sideTalls = [];
+    const penLeg = pen === 'left';                       // a peninsula: base cabinets only
     // the FRIDGE always stands on the side run (every layout has a fridge),
     // with a larder alongside it when the leg is long enough.
-    if (sremain >= W(FRIDGE)) { sideTalls.push(FRIDGE); sremain -= W(FRIDGE); } // fridge — always
+    if (!penLeg && sremain >= W(FRIDGE)) { sideTalls.push(FRIDGE); sremain -= W(FRIDGE); } // fridge — always (never on a peninsula)
     // units exiled from a short back wall come next in the budget (essentials
     // before the optional larder): the cooker, then the dishwasher.
     let sideCook = null, sideClear = null;
@@ -470,8 +511,8 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
     const sideFront = [];
     if (dwOnSide && sremain >= W('F7')) { sideFront.push('F7'); sremain -= W('F7'); dwOnSide = false; } // DW nearest the corner — closest to the sink
     // wall-oven mode: the T9 oven housing joins the fridge on the side run
-    if (wallOven && sremain >= W('T9')) { sideTalls.push('T9'); sremain -= W('T9'); }
-    if (sremain >= W('T5') + 20 && chance(0.6)) { sideTalls.push('T5'); sremain -= W('T5'); } // + larder when there's room
+    if (!penLeg && wallOven && sremain >= W('T9')) { sideTalls.push('T9'); sremain -= W('T9'); }
+    if (!penLeg && sremain >= W('T5') + 20 && chance(0.6)) { sideTalls.push('T5'); sremain -= W('T5'); } // + larder when there's room
     // fill the rest of the leg wall-to-wall: subset-sum pack of drawer banks
     // (nearest reach), a 10" tray space mops up a sub-20" remainder, and the
     // seeded shuffle reorders the banks so "Generate again" reads differently.
@@ -505,11 +546,12 @@ export function generateKitchen(shape, room, seed = 1, opts = {}) {
   if (uShape && hasCorner) {
     const [rA, rB] = wallFreeSpan(room, 'right');
     let rremain = Math.max(0, rB - rA);
+    if (pen === 'right') rremain = Math.min(rremain, (opts.penDepth || depth) - 24.3 - PEN_WALK);   // C with peninsula: base only, walkway at its end
     const rFront = [];
     // the dishwasher falls through to the RIGHT leg when the left one is full
     if (dwOnSide && rremain >= W('F7')) { rFront.push('F7'); rremain -= W('F7'); dwOnSide = false; }
     const rTalls = [];
-    if (rremain >= W('T5') + 20 && chance(0.5)) { rTalls.push('T5'); rremain -= W('T5'); }
+    if (pen !== 'right' && rremain >= W('T5') + 20 && chance(0.5)) { rTalls.push('T5'); rremain -= W('T5'); }
     const rFill = fillRun(rremain).map((o) => o.code);
     rremain -= rFill.reduce((t, c) => t + W(c), 0);
     if (rremain >= W('F8')) { rFill.push('F8'); rremain -= W('F8'); }

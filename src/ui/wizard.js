@@ -72,6 +72,8 @@ function shapeGlyph(id) {
     'u-shape': '<path class="g-run" d="M7 8.5 H37 M8.5 7 V27 M35.5 7 V27"/>',
     'galley': '<path class="g-run" d="M7 8.5 H37 M7 25.5 H37"/>',
     'island': '<path class="g-run" d="M7 8.5 H37"/><rect class="g-isl" x="15" y="17.5" width="14" height="5.5" rx="1"/>',
+    'peninsula': '<path class="g-run" d="M15 8.5 H37 M16.5 7 V21"/>',
+    'c-peninsula': '<path class="g-run" d="M7 8.5 H30 M8.5 7 V27 M28.5 7 V21"/>',
   };
   return `<svg viewBox="0 0 44 34" xmlns="http://www.w3.org/2000/svg">${room}${runs[id] || runs['one-wall']}</svg>`;
 }
@@ -474,6 +476,9 @@ export class Wizard {
     const msg = this._canIsland ? "Big room. Want an island?" : v.resultMsg;
     // budget outcome — honest either way
     const $ = (n) => '$' + Math.round(n).toLocaleString('en-US');
+    // a peninsula shape the room could not take (W2W-243): say so, never a silent swap
+    const penShape = ['peninsula', 'c-peninsula'].includes(this.lastShape || this.shape);
+    const penLine = penShape && !this._pen ? `<div class="wz-budgetline over">This room is too small for a peninsula with a 44" walkway round it, so this is the ${(this.lastShape || this.shape) === 'peninsula' ? 'L-shape' : 'U-shape'} it grows from.</div>` : '';
     let budgetLine = '';
     const bp = this._budgetPlan;
     if (bp) {
@@ -504,7 +509,7 @@ export class Wizard {
         ${v.showSave ? '<button class="ghost sm" id="wzSave" title="Save this design to your account">♥ Save</button>' : ''}
         <button class="cta sm wz-result-go" id="wzKeep">${this._canIsland ? 'Start editing →' : escV(v.keepBtn)}</button>
       </div>
-      ${budgetLine}${doorLine}${chips}`;
+      ${budgetLine}${doorLine}${penLine}${chips}`;
     bar.classList.add('show');
     document.body.classList.add('wz-reviewing');   // clear the deck: view controls hide while reviewing
     bar.querySelector('#wzReroll').onclick = () => this.regenerate();
@@ -537,6 +542,9 @@ export class Wizard {
    *  a side wall, is the wall as far as the run is concerned. */
   _backFree(rm) {
     let minX = -rm.width / 2, maxX = rm.width / 2;
+    // a peninsula stands PEN_WALK in from its wall: the back run starts at its back (W2W-243)
+    if (this._pen?.side === 'left') minX += this._pen.walk;
+    if (this._pen?.side === 'right') maxX -= this._pen.walk;
     for (const bx of boxingBoxes(rm)) {
       const nearBack = bx.wall === 'back' || bx.z0 - (-rm.depth / 2) < 26;
       if (!nearBack) continue;
@@ -585,6 +593,7 @@ export class Wizard {
     }
     this._lastSig = JSON.stringify(gen.steps);
     const { steps, features } = gen;
+    this._pen = gen.pen || null;                         // a peninsula leg stands free of its wall (layouts.js PEN_SHAPES)
     // back wall via placeNew (snap + butt); side run + island placed explicitly
     let sinkItem = null, hobBase = null;
     for (const s of steps.filter((x) => x.wall === 'back')) {
@@ -645,9 +654,27 @@ export class Wizard {
         } else if (dir > 0) gap = edgeL() - minX;
         else gap = maxX - edgeR();
         let shift = (corner ? sideD + 0.25 : sideD) - gap;   // +away from the wall, −toward it
+        const want = shift;
         if (shift > 0) shift = Math.min(shift, dir > 0 ? maxX - edgeR() : edgeL() - minX);
         if (!corner && shift < 0) shift = 0;                 // never PULL a cornerless run into the shadow
         if (Math.abs(shift) > 0.05) for (const it of backRun) this.store.updateItem(it.id, { x: it.x + dir * shift }, { quiet: true });
+        // the run is already against its far wall but has a gap INSIDE it (a tall that could not stand
+        // under the window jumped past it): slide the corner and the cabinets butted to it into that gap,
+        // so the corner still meets the leg leg-to-leg (W2W-243: a peninsula corner half behind its leg)
+        const rest = want - Math.max(0, shift);
+        if (corner && rest > 0.05) {
+          const ends = (it) => { const w = getCab(it.code).w; return [it.x - w / 2, it.x + w / 2]; };
+          const cur = backRun.map((it) => this.store.getItem(it.id)).sort((a, b) => dir * (a.x - b.x));
+          const chain = []; let edge = null, next = null;
+          for (const it of cur) {
+            const [lo, hi] = ends(it);
+            if (!chain.length) { if (it.id !== corner.id) continue; chain.push(it); edge = dir > 0 ? hi : lo; continue; }
+            const g = dir > 0 ? lo - edge : edge - hi;
+            if (g < 0.6) { chain.push(it); edge = dir > 0 ? hi : lo; } else { next = g; break; }
+          }
+          const slide = next != null ? Math.min(rest, next - 0.05) : 0;
+          if (slide > 0.05) for (const it of chain) this.store.updateItem(it.id, { x: it.x + dir * slide }, { quiet: true });
+        }
       };
       // with corners at BOTH ends the run length fixes one of them — fit the
       // left exactly, then absorb the RIGHT corner's residual the way a
@@ -683,7 +710,9 @@ export class Wizard {
     if (leftSteps.length) {
       const rm = this.store.state.room;
       const minX = -rm.width / 2, minZ = -rm.depth / 2;
-      const [sA, sB] = wallFreeSpan(rm, 'left');    // clear of the corner AND any door
+      const pen = this._pen?.side === 'left' ? this._pen.walk : 0;   // a peninsula: off the wall, walkway at its end
+      const [sA, sB0] = wallFreeSpan(rm, 'left');   // clear of the corner AND any door
+      const sB = pen ? rm.depth - pen : sB0;
       let cz = minZ + sA;
       for (const s of leftSteps) {
         const cab = getCab(s.code); if (!cab) continue;
@@ -691,7 +720,7 @@ export class Wizard {
         // talls stand 30mm PROUD of the base run so the counter dies into
         // their side (client spec — same offset drag-snapping uses)
         const proud = cab.type === 'TALL' || cab.onTall ? TALL_PROUD : 0;
-        const it = this.store.addItem(s.code, { x: minX + cab.d / 2 + 0.25 + proud, z: cz + cab.w / 2, rotDeg: 90 });
+        const it = this.store.addItem(s.code, { x: minX + pen + cab.d / 2 + 0.25 + proud, z: cz + cab.w / 2, rotDeg: 90 });
         if (s.hob && it) hobBase = { id: it.id, hob: s.hob };
         cz += cab.w;
       }
@@ -701,12 +730,14 @@ export class Wizard {
     if (rightSteps.length) {
       const rm = this.store.state.room;
       const maxX = rm.width / 2, minZ = -rm.depth / 2;
-      const [rA, rB] = wallFreeSpan(rm, 'right');
+      const pen = this._pen?.side === 'right' ? this._pen.walk : 0;  // C with peninsula: this leg stands free
+      const [rA, rB0] = wallFreeSpan(rm, 'right');
+      const rB = pen ? rm.depth - pen : rB0;
       let cz = minZ + rA;
       for (const s of rightSteps) {
         const cab = getCab(s.code); if (!cab) continue;
         if (cz + cab.w > minZ + rB) break;
-        this.store.addItem(s.code, { x: maxX - cab.d / 2 - 0.25 - rightLegInset - (cab.type === 'TALL' || cab.onTall ? TALL_PROUD : 0), z: cz + cab.w / 2, rotDeg: 270 });
+        this.store.addItem(s.code, { x: maxX - pen - cab.d / 2 - 0.25 - rightLegInset - (cab.type === 'TALL' || cab.onTall ? TALL_PROUD : 0), z: cz + cab.w / 2, rotDeg: 270 });
         cz += cab.w;
       }
     }

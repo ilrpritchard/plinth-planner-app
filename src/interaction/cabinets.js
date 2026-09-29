@@ -6,7 +6,7 @@ import { buildCabinet, buildFloatingShelf, getMountY } from '../models/cabinet.j
 import { buildAppliance } from '../models/appliances.js';
 import { exposedBackIds } from '../core/endpanels.js';
 import { getCab, getFinish } from '../core/catalogue.js';
-import { cornerReturnLength } from './snapping.js';
+import { returnReach } from '../core/cornerreturn.js';
 import { isOvenHousing, ovenIn } from '../core/ovenseat.js';
 import { WALLS } from '../scene/Room.js';
 
@@ -84,11 +84,16 @@ export class CabinetLayer {
 
   /** Rebuild any floor cabinet whose sink-over state flipped (top panel on/off). */
   _syncSinkBases() {
+    const backs = exposedBackIds(this.store.state);
     for (const it of this.store.state.items) {
       const cab = getCab(it.code);
       if (!cab) continue;
       const rec = this.map.get(it.id);
       if (!rec) continue;
+      // a peninsula leg arriving in front of a corner unit (or leaving) changes where its return stops,
+      // and a cabinet arriving behind another covers its back: redraw when either answer changes (W2W-243)
+      if (cab.corner && Math.abs(returnReach(cab, it, this.store.state.items, this.store.state.room).len - (rec.returnLen ?? 0)) > 0.05) { this._dispose(it.id); this._addOrUpdate(it); continue; }
+      if (cab.type === 'FLOOR' && rec.finishedBack != null && rec.finishedBack !== (!!it.backPanel || backs.has(it.id))) { this._dispose(it.id); this._addOrUpdate(it); continue; }
       if (isOvenHousing(cab)) {                      // oven fitted / taken out → redraw the housing's seat
         if (!!rec.ovenIn !== !!ovenIn(this.store.state, it.id)) { this._dispose(it.id); this._addOrUpdate(it); }
         continue;
@@ -116,6 +121,7 @@ export class CabinetLayer {
     // already prices it (endpanels.js); the render must match.
     const finishedBack = !!item.backPanel || exposedBackIds(this.store.state).has(item.id);
     const opts = { hinge: item.hinge, handle: 'knob', backPanel: finishedBack };
+    this._lastFinishedBack = finishedBack;
     this._lastSinkOver = cab.type === 'FLOOR' && this._sinkOver(item, cab);
     opts.sinkOver = this._lastSinkOver;
     // an oven housing with a real wall oven in it shows the seat, not its placeholder oven
@@ -123,7 +129,10 @@ export class CabinetLayer {
     opts.ovenFitted = this._lastOvenIn;
     // corner units: draw the blank return long enough to meet the adjacent
     // wall flush (sized from the actual distance — see cornerReturnLength)
-    if (cab.corner) opts.returnLen = cornerReturnLength(cab, item, this.store.state.room);
+    if (cab.corner) {
+      const rr = returnReach(cab, item, this.store.state.items, this.store.state.room);
+      opts.returnLen = rr.len; opts.returnLeg = rr.leg;      // a peninsula leg: the return runs to its back (W2W-243)
+    }
     return buildCabinet(cab, this.finishHexFor(item, this.store.state), opts);
   }
 
@@ -134,8 +143,8 @@ export class CabinetLayer {
     const g = this._build(cab, item);
     g.userData.itemId = item.id;
     this.group.add(g);
-    const rec = { group: g, code: item.code, sinkOver: this._lastSinkOver, ovenIn: this._lastOvenIn };
-    if (cab.corner) rec.returnLen = cornerReturnLength(cab, item, this.store.state.room);
+    const rec = { group: g, code: item.code, sinkOver: this._lastSinkOver, ovenIn: this._lastOvenIn, finishedBack: this._lastFinishedBack };
+    if (cab.corner) rec.returnLen = returnReach(cab, item, this.store.state.items, this.store.state.room).len;
     this.map.set(item.id, rec);
     this._reposition(item.id);
   }
@@ -152,7 +161,7 @@ export class CabinetLayer {
     // a corner unit that moved (or whose room changed) may need its drawn
     // return re-sized to keep meeting the adjacent wall — rebuild if so
     if (cab.corner) {
-      const rl = cornerReturnLength(cab, item, this.store.state.room);
+      const rl = returnReach(cab, item, this.store.state.items, this.store.state.room).len;
       if (Math.abs(rl - (rec.returnLen ?? 0)) > 0.05) {
         this.group.remove(rec.group); disposeGroup(rec.group); this.map.delete(id);
         this._addOrUpdate(item); return;

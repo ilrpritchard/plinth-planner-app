@@ -90,6 +90,8 @@ export function frontParts(cab) {
 
   const E = FD.E, F = FD.FRAME;
   const zB = bottomZone(cab), zT = h - FD.TOP;
+  // a stool niche (W2W-243): the two legs and the 35mm top rail round an open bay, no plinth line
+  if (cab.form === 'niche') { vline('leg', E, 0, h); vline('leg', w - E, 0, h); hline('rail', zT, E, w - E); return out; }
   const dishwasher = cab.form === 'dishwasher';
 
   // skeleton: 22mm legs both sides (NOT on the dishwasher panel), 35mm top
