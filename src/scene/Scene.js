@@ -395,6 +395,10 @@ export class Scene {
     const p = cam.position;
     const out = { back: -D / 2 - p.z, front: p.z - D / 2, left: -W / 2 - p.x, right: p.x - W / 2 };
     if (p.y >= H - 1 || Object.values(out).some((v) => v > REACH)) return { closed: false, near: 1 };
+    // Outside a wall the room stays OPEN (the live cut-away), the near plane at 1: pushing the near
+    // plane past the wall cut the island and the side runs in half and cropped the floor whenever the
+    // view was at an angle or zoomed in (her catch 2026-09-29). Closed only from inside the room.
+    if (Object.values(out).some((v) => v > -T)) return { closed: false, near: 1 };
     // the inside face of every wall the camera stands behind: its farthest corner in view depth
     cam.updateMatrixWorld();
     const inv = cam.matrixWorldInverse.copy(cam.matrixWorld).invert(), v = new THREE.Vector3();
