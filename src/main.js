@@ -38,7 +38,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-231 · photo mode tip mentions the three magazine shots';
+const BUILD = 'W2W-232 · photo mode shows the exact 3:2 frame it saves; straight-on preset at 0.9 m, plinth always in';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -241,7 +241,7 @@ function startPhotoMode() {
   // photo 1 is HER OWN VIEW, exactly as she left it (her catch 2026-09-25: "when I angle the camera
   // and click photo it removes my view"); the five suggested standpoints are one arrow away
   const mine = { key: 'your-view', name: 'Your view, as it is', pos: was.pos.toArray(), target: was.target.toArray(), fov: was.fov };
-  // then the three magazine presets: level cameras, real lenses (85 / 50 / 100mm), a lens shift
+  // then the three magazine presets: level cameras, real lenses (85 or shorter / 50 / 100mm), a lens shift
   photoMode = { views: [mine, ...photoViews(store.state.room, store.state.items), ...magazineViews(store.state.room, store.state.items)], i: 0, was };
   layer.select(null); ui.showSelbar(null); layer.setHover?.(null);
   room.setGridVisible(false);
@@ -274,6 +274,13 @@ function startPhotoMode() {
   });
   bar.querySelector('#pbDone').addEventListener('click', endPhotoMode);
   document.addEventListener('keydown', photoKeys, true);
+  // the VIEWFINDER: the view on screen becomes exactly the saved photo's 3:2 frame, under the photo
+  // bar, with the view toolbar out of the way, so what she sees is what Save writes
+  document.body.classList.add('photo-mode');
+  scene.setViewfinder(PHOTO.width / PHOTO.height, () => {
+    const b = document.getElementById('photoBar')?.getBoundingClientRect(), st = document.getElementById('stage')?.getBoundingClientRect();
+    return b && st ? Math.max(0, b.bottom - st.top) : 0;
+  });
   photoAngle(0);
   toast('Photo 1 is your view as it is: Save it, or ‹ › for five suggested angles at eye level, then three magazine shots.');
 }
@@ -298,6 +305,8 @@ function endPhotoMode() {
   photoMode = null;
   document.removeEventListener('keydown', photoKeys, true);
   document.getElementById('photoBar')?.remove();
+  document.body.classList.remove('photo-mode');
+  scene.setViewfinder(null);
   document.getElementById('btnPhoto')?.classList.remove('active');
   room.setGridVisible(true);
   scene.setPhotoQuality(false);

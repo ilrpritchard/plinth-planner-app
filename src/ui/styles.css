@@ -1008,6 +1008,9 @@ body.wz-reviewing #viewControls, body.wz-reviewing #selbar {
   border: 1px solid var(--line-strong); border-radius: 9px; padding: 8px 14px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.4); font-size: 13px; max-width: 94vw; flex-wrap: wrap; justify-content: center;
 }
+/* photo mode's viewfinder (Scene.setViewfinder): the 3:2 frame sits on the stage like a print on a mat */
+body.photo-mode #viewControls { display: none; }
+body.photo-mode #stage canvas { box-shadow: 0 8px 28px rgba(0,0,0,0.28); }
 #photoBar strong { font-family: var(--serif); font-style: italic; font-weight: 500; color: var(--cream-hi); }
 #photoBar button { border: none; border-radius: 6px; padding: 6px 13px; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 600; background: var(--cream, #645b3d); color: var(--brown-deep, #fffdf4); }
 #photoBar button.pb-ghost { background: transparent; color: var(--cream, #645b3d); border: 1px solid var(--line-strong); font-weight: 400; }

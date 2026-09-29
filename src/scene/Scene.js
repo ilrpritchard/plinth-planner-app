@@ -235,8 +235,7 @@ export class Scene {
    *  photo, her ask 2026-09-25 "higher quality to be able to render them after"). */
   captureImage(opts = 3) {
     const o = typeof opts === 'number' ? { scale: opts } : (opts || {});
-    const vw = this.container.clientWidth || window.innerWidth;
-    const vh = this.container.clientHeight || window.innerHeight;
+    const { w: vw, h: vh } = this._viewSize();
     const w = o.width || vw, h = o.height || vh;
     const prevRatio = this.renderer.getPixelRatio();
     this.renderer.setPixelRatio(o.width ? 1 : (o.scale || 3));
@@ -273,10 +272,10 @@ export class Scene {
   }
 
   /** The lens shift as a view offset on the perspective camera, for a frame of w x h (default: the
-   *  stage). shift = the fraction of the frame height the picture moves down. */
+   *  view on screen). shift = the fraction of the frame height the picture moves down. */
   _applyShift(w, h) {
     const cam = this.persp;
-    w = w || this.container.clientWidth || window.innerWidth; h = h || this.container.clientHeight || window.innerHeight;
+    if (!w || !h) ({ w, h } = this._viewSize());
     if (this._shift) cam.setViewOffset(w, h, 0, this._shift * h, w, h); else if (cam.view) cam.clearViewOffset();
   }
 
@@ -306,10 +305,32 @@ export class Scene {
   add(obj) { this.scene.add(obj); }
   remove(obj) { this.scene.remove(obj); }
 
+  /** Photo mode's VIEWFINDER: the canvas becomes exactly the saved photo's frame (`aspect`, the
+   *  photo's width / height), as large as fits in the stage below `top` px (or a function giving it:
+   *  the photo bar, which can wrap) and
+   *  centred, so what is on screen is what Save writes. null = the canvas fills the stage again. */
+  setViewfinder(aspect, top = 0) {
+    this._finder = aspect ? { aspect, top } : null;
+    this._onResize();
+  }
+
+  /** The size the view is drawn at on screen: the whole stage, or photo mode's viewfinder frame. */
+  _viewSize() {
+    const cw = this.container.clientWidth || window.innerWidth, ch = this.container.clientHeight || window.innerHeight;
+    if (!this._finder || this.view !== '3d') return { w: cw, h: ch, cw, ch };
+    const { aspect } = this._finder, top = typeof this._finder.top === 'function' ? this._finder.top() : this._finder.top;
+    const pad = 14, aw = cw - 2 * pad, ah = ch - top - 2 * pad;
+    const w = Math.max(1, Math.round(Math.min(aw, ah * aspect))), h = Math.max(1, Math.round(w / aspect));
+    return { w, h, cw, ch, x: Math.round((cw - w) / 2), y: Math.round(top + pad + (ah - h) / 2) };
+  }
+
   _onResize() {
-    const w = this.container.clientWidth || window.innerWidth;
-    const h = this.container.clientHeight || window.innerHeight;
+    const { w, h, x, y } = this._viewSize(), st = this.renderer.domElement.style;
     this.renderer.setSize(w, h, false);
+    // the stage's CSS stretches the canvas to fill it (!important), so the frame overrides it inline
+    if (x != null) {
+      for (const [k, v] of [['position', 'absolute'], ['left', `${x}px`], ['top', `${y}px`], ['width', `${w}px`], ['height', `${h}px`]]) st.setProperty(k, v, 'important');
+    } else for (const k of ['position', 'left', 'top', 'width', 'height']) st.removeProperty(k);
     this.aspect = w / h;
     this.persp.aspect = this.aspect;
     if (this._shift) this._applyShift(w, h);

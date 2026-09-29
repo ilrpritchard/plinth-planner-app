@@ -11,6 +11,7 @@
 //   photoViews(room, items?) -> [{ key, name, pos:[x,y,z], target:[x,y,z], fov }]
 
 import { getCab } from './catalogue.js';
+import { SURFACE_Y } from './units.js';
 
 const EYE = 56;             // 4'8": where kitchen photographers stand the camera (chest height keeps verticals straight and reads the counters)
 const LOW = 44;             // worktop-level close-up
@@ -65,8 +66,8 @@ export function photoViews(room = {}, items = []) {
 // of view is 2 atan(12 / f). Every camera is LEVEL (target at the camera's own height: verticals stay
 // vertical, as with a view camera) and the frame is moved up or down by a LENS SHIFT instead of by
 // tilting: `shift` is the fraction of the frame height the picture moves down (Scene.lookFrom applies
-// it as a view offset). 1.2 m = 47.2", 1.3 m = 51.2", 1.0 m = 39.4".
-//   magazineViews(room, items) -> [straight-on 85mm, three-quarter 50mm, detail 100mm]
+// it as a view offset). 0.9 m = 35.4", 1.3 m = 51.2", 1.0 m = 39.4".
+//   magazineViews(room, items) -> [straight-on 85mm (70 / 50 / 35 in a smaller room), three-quarter 50mm, detail 100mm]
 const IN_PER_M = 39.3701;
 export const vfovFor = (mm) => 2 * Math.atan(12 / mm) * 180 / Math.PI;
 
@@ -97,19 +98,27 @@ export function magazineViews(room = {}, items = []) {
   const back = -D / 2, front = D / 2, M = 6;
   const { runX } = focus(room, items);
   const face = back + 24.5;                               // the fronts of the back run
+  // centreY: the height (inches, on the fronts) the frame centres on, or a function of the frame's
+  // height there, for a frame that has to reach a given line (the straight-on's floor)
   const view = (key, name, mm, pos, aimXZ, centreY) => {
     const fov = vfovFor(mm), dist = Math.hypot(aimXZ[0] - pos[0], aimXZ[1] - pos[2]);
     const frameH = 2 * dist * Math.tan(fov * Math.PI / 360);
-    // a shift over ~a third of the frame is more than a real shift lens gives: frame nearer level instead
-    const shift = clamp((pos[1] - centreY) / frameH, -0.35, 0.35);
+    const cy = typeof centreY === 'function' ? centreY(frameH) : centreY;
+    // a real shift lens moves the frame about half its height (12mm on the 24mm-tall frame), no more
+    const shift = clamp((pos[1] - cy) / frameH, -0.5, 0.5);
     return { key, name, pos, target: [aimXZ[0], pos[1], aimXZ[1]], fov, lens: mm, shift: +shift.toFixed(4) };
   };
-  const h12 = Math.min(1.2 * IN_PER_M, H - 10), h13 = Math.min(1.3 * IN_PER_M, H - 10), h10 = Math.min(1.0 * IN_PER_M, H - 10);
+  const h09 = Math.min(0.9 * IN_PER_M, H - 10), h13 = Math.min(1.3 * IN_PER_M, H - 10), h10 = Math.min(1.0 * IN_PER_M, H - 10);
   // 1. straight on, one-point perspective: as far back as the room allows, square to the run, on the
   //    working bay (the window over the sink when there is one, else the middle of the run)
   const win = (room.openings || []).find((o) => o.type === 'window' && (o.wall || 'back') === 'back');
   const bayX = win ? clamp(-W / 2 + (win.pos ?? 0.5) * W, -W / 2 + 20, W / 2 - 20) : runX;
-  const a = view('mag-straight', 'Magazine: straight on, 85mm at 1.2 m', 85, [bayX, h12, front - M], [bayX, face], 32);   // the fronts, the worktop, the splash
+  //    At 0.9 m, with the frame's bottom 2" below the floor line so the plinth is always in (her catch
+  //    2026-09-29: at 1.2 m it cut the plinth off). The lens is the longest that takes in the floor to
+  //    6" over the worktop from here, as a photographer would change lens in a small room.
+  const dStraight = front - M - face, reach = SURFACE_Y + 6 + 2;
+  const mmStraight = [85, 70, 50, 35].find((mm) => 2 * dStraight * Math.tan(vfovFor(mm) * Math.PI / 360) >= reach) || 35;
+  const a = view('mag-straight', `Magazine: straight on, ${mmStraight}mm at 0.9 m`, mmStraight, [bayX, h09, front - M], [bayX, face], (fh) => fh / 2 - 2);
   // 2. three-quarter from the far front corner, 50mm, across the run
   const cx = runX >= 0 ? -1 : 1;                           // the corner across from where the run sits
   const b = view('mag-three-quarter', 'Magazine: three-quarter, 50mm at 1.3 m', 50, [cx * (W / 2 - M - 2), h13, front - M - 2], [runX - cx * W * 0.08, back + 14], 38);   // down to the plinth line
