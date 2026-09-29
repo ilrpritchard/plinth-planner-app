@@ -54,7 +54,17 @@ export const LIVE_SHADOW = { bias: 0.0001, normalBias: 0.04 };
 // its levels (tuned on the hero kitchen's fronts against their hex). SUN_SOFT / SUN_SAMPLES: a saved
 // photo averages that many sun directions inside a cone of that half-angle, which softens the glazing-
 // bar shadows the way a real window's are; the live preview uses one (hard edges while framing).
-export const PHOTO_SUN = { sun: 5.0, env: 1.0, fill: 1.1, hemi: 0.6, exposure: 1.6 };
+// W2W-242: the ambient side cut back (it lit every face alike: the flat, washed-out look she called
+// out on 2026-09-29, "this still doesn't look good"); the SOFTBOX below gives the room its shape.
+// Checked on Ghost / Nettle / Skillet close-ups: panels within ~5% of the W2W-240 levels.
+export const PHOTO_SUN = { sun: 5.0, env: 0.7, fill: 0.9, hemi: 0.35, exposure: 1.6 };
+// Photo mode's SOFTBOX (W2W-242): a shadow-casting light INSIDE the closed room, near the ceiling,
+// behind the camera and turned `side` radians off it, aimed at what the shot looks at, falling off
+// gently with distance (decay 1: a big softbox, not a bare bulb; the square law burnt out a tall standing
+// near it in the island kitchen). It throws the wall cabinets' shadow down the splash and the knobs'
+// onto the doors, and makes the near end of a run a little brighter than the far one. `lux` = the light
+// arriving at the aim point (intensity = lux x distance); `drop` = inches under the ceiling.
+export const PHOTO_BOX = { lux: 1.0, side: 0.3, drop: 8, inset: 8, decay: 1, color: 0xfffaf3 };
 // Photo mode's fill (W2W-240): from behind the viewer and well above (rise 0.9), so the faces of a
 // shaker panel's 5mm step turn differently to it; straight from the camera it lit frame and panel alike.
 // (It casts no shadow: the closed room's ceiling and front wall would shade everything.)
@@ -63,6 +73,9 @@ export const PHOTO_FILL = { side: 0, rise: 0.9 };
 // the hero kitchen's back-wall window put it when PHOTO_SUN was calibrated (see _setSun)
 const PHOTO_SUN_ENV_AZ = Math.atan2(-Math.cos(32 * Math.PI / 180), Math.sin(32 * Math.PI / 180));
 const SUN_SOFT = 0.4 * Math.PI / 180, SUN_SAMPLES = 12;
+// every saved frame is that many renders averaged; each also shifts the camera by under a pixel (a
+// Halton pattern), so a 3mm reveal thinner than a pixel draws as an even line, never dashes (W2W-242)
+const halton = (i, b) => { let f = 1, r = 0; while (i > 0) { f /= b; r += f * (i % b); i = Math.floor(i / b); } return r; };
 // photo mode's still (Scene._stillOnScreen): how long the view stands still first, and the supersampling
 const STILL_SETTLE_MS = 350, STILL_SCALE = 1.5;   // the real sun is ~0.27 deg in radius
 // A white daylight apartment, one big window, almost no colour cast (CC0, Poly Haven; site-assets/hdri/LICENCE.md)
@@ -252,7 +265,7 @@ export class Scene {
     this._beforeRender?.();                 // grounding + wall auto-hide for THIS camera position
     this._render(true);
     const W = this.renderer.domElement.width, H = this.renderer.domElement.height;
-    const src = this._sunOn && o.softSun !== false ? this._softSunFrame(W, H) : this.renderer.domElement;
+    const src = this._photo && o.softSun !== false ? this._softSunFrame(W, H) : this.renderer.domElement;
     let url;
     if (o.into) {                                       // drawn (scaled) into a canvas instead: photo mode's still
       const g = o.into.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
@@ -370,6 +383,14 @@ export class Scene {
     const H = (this._room || {}).height || 96, fill = this.fill;
     fill.target.position.set(0, H / 2, 0); fill.target.updateMatrixWorld();
     fill.position.set(f.x * 320, H / 2 + f.y * 320, f.z * 320);
+    const box = this._softbox;
+    if (box?.visible) {
+      const r = this._room || {}, W = r.width || 144, D = r.depth || 120, dist = Math.hypot(dx, dz);
+      const b = Math.atan2(dz, dx) + PHOTO_BOX.side, hx = W / 2 - PHOTO_BOX.inset, hz = D / 2 - PHOTO_BOX.inset;
+      box.position.set(Math.max(-hx, Math.min(hx, target.x + Math.cos(b) * dist)), H - PHOTO_BOX.drop, Math.max(-hz, Math.min(hz, target.z + Math.sin(b) * dist)));
+      box.target.position.copy(target); box.target.updateMatrixWorld();
+      box.intensity = PHOTO_BOX.lux * box.position.distanceTo(target) ** PHOTO_BOX.decay;
+    }
   }
 
   /** Photo mode's STILL. The live preview draws the contact shading from an un-smoothed depth pass, so
@@ -456,6 +477,7 @@ export class Scene {
     this.hemi.intensity = L.hemi; this.fill.intensity = L.fill;
     this.renderer.toneMappingExposure = L.exposure;
     if (this._hdri) { this._hdri.scale = L.env / this._hdri.mean; this._envAz = null; }
+    if (this._softbox) this._softbox.visible = on;
     if (on) {
       this._aimEnv(PHOTO_SUN_ENV_AZ);
       this.fill.position.set(0, 0.45, 1).normalize().multiplyScalar(320);      // from the camera side
@@ -490,6 +512,12 @@ export class Scene {
       this._photoRoomKey = null;
       this._fitShadow();
       this._photoPaint(true);
+      if (!this._softbox) {
+        const box = this._softbox = new THREE.SpotLight(PHOTO_BOX.color, 0, 0, Math.PI * 0.42, 1, PHOTO_BOX.decay);
+        box.castShadow = true; box.shadow.mapSize.set(2048, 2048);
+        box.shadow.bias = -0.0004; box.shadow.normalBias = 0.03; box.shadow.camera.near = 10; box.shadow.camera.far = 900;
+        box.visible = false; this.scene.add(box, box.target);
+      }
       DETAIL_ON.value = 1; setWorktopDetail(true); this.onPhotoDetail?.(true);   // materials, render step 5
       setPaintPhoto(true); setPanelShade(true);                             // eggshell paint, panel shade (W2W-240)
       this.photoReady = import('./photoFx.js').then(({ PhotoAO }) => {
@@ -535,9 +563,13 @@ export class Scene {
     });
   }
 
-  /** A saved photo in the sun: the frame rendered SUN_SAMPLES times with the sun moved about inside a
-   *  small cone and averaged, so its shadows (the glazing bars on the floor) have soft edges. */
+  /** A saved photo (and photo mode's still): the frame rendered SUN_SAMPLES times and averaged. In the
+   *  sun, the sun moves about inside a small cone, so its shadows (the glazing bars on the floor) have
+   *  soft edges; always, the camera shifts by under a pixel each time, so thin reveals and joints come
+   *  out as even lines instead of dashes (W2W-242). */
   _softSunFrame(w, h) {
+    const cam = this.camera, jit = cam.isPerspectiveCamera, was = cam.view ? { ...cam.view } : null;
+    const fw = was ? was.fullWidth : w, fh = was ? was.fullHeight : h;
     const key = this.key, base = key.position.clone(), t = key.target.position, dir = base.clone().sub(t), R = dir.length();
     dir.normalize();
     const u = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), v = dir.clone().cross(u);
@@ -545,7 +577,8 @@ export class Scene {
     const g = cv.getContext('2d', { willReadFrequently: true }), acc = new Float32Array(w * h * 4);
     for (let i = 0; i < SUN_SAMPLES; i++) {
       const r = SUN_SOFT * Math.sqrt((i + 0.5) / SUN_SAMPLES), a = i * 2.39996323;      // a Vogel disc: even, deterministic
-      key.position.copy(t).addScaledVector(dir.clone().addScaledVector(u, Math.cos(a) * Math.tan(r)).addScaledVector(v, Math.sin(a) * Math.tan(r)).normalize(), R);
+      if (this._sunOn) key.position.copy(t).addScaledVector(dir.clone().addScaledVector(u, Math.cos(a) * Math.tan(r)).addScaledVector(v, Math.sin(a) * Math.tan(r)).normalize(), R);
+      if (jit) cam.setViewOffset(fw, fh, (was ? was.offsetX : 0) + (halton(i + 1, 2) - 0.5) * fw / w, (was ? was.offsetY : 0) + (halton(i + 1, 3) - 0.5) * fh / h, was ? was.width : fw, was ? was.height : fh);
       this.renderer.shadowMap.needsUpdate = true;
       this._render(true);
       g.drawImage(this.renderer.domElement, 0, 0);
@@ -553,6 +586,7 @@ export class Scene {
       for (let k = 0; k < d.length; k++) acc[k] += d[k];
     }
     key.position.copy(base); this.renderer.shadowMap.needsUpdate = true;
+    if (jit) { if (was) cam.setViewOffset(was.fullWidth, was.fullHeight, was.offsetX, was.offsetY, was.width, was.height); else cam.clearViewOffset(); }
     const img = g.createImageData(w, h);
     for (let k = 0; k < acc.length; k++) img.data[k] = Math.round(acc[k] / SUN_SAMPLES);
     g.putImageData(img, 0, 0);

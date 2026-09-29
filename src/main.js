@@ -39,7 +39,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-241 · nothing sits on anything: the wizard and every modal cover the bars, bars stack and stay between the panels';
+const BUILD = 'W2W-242 · photo mode: a softbox light in the room (wall cabinet and knob shadows, less flat), less ambient, reveals drawn as even lines not dashes';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
