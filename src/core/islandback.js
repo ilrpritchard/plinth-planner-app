@@ -14,6 +14,7 @@
 
 import { getCab, sizedNicheCode } from './catalogue.js';
 import { boxAt, spotOk } from './placement.js';
+import { returnReach } from './cornerreturn.js';
 
 const DOOR_BY_W = { 20: 'F1', 24: 'F2', 28: 'F3', 36: 'F10', 42: 'F11' };
 // STOOL NICHES (opts.niches): ONE open 300mm bay the length of the row instead of storage
@@ -64,7 +65,42 @@ export function planIslandBack(state, id, opts = {}) {
   const pieces = [];                               // [{ lo, codes }]
   // stool niches: ONE bay the whole length of the row, legs at its two ends only (her ask
   // 2026-09-29, "whatever length the island is, the stool niche stretches")
-  if (opts.niches) pieces.push({ lo: rowLo, codes: [sizedNicheCode(rowHi - rowLo)] });
+  // "THE WHOLE LENGTH" (her screenshot the same day: the niche stopped where the row's own cabinets
+  // did, and the corner unit + the corner square beyond it stood bare): the niche runs on over everything
+  // whose back lies on the same line (a corner unit and its drawn return, the side of the run it meets),
+  // and to the wall when that leaves less than 6". Something standing proud of the line stops it.
+  let nLo = rowLo, nHi = rowHi;
+  if (opts.niches) {
+    const flush = [], proud = [];
+    for (const it of state.items || []) {
+      const c = getCab(it.code);
+      if (!c || !c.placeable || row.some((x) => x.it.id === it.id) || c.form === 'niche') continue;
+      if (!(c.type === 'FLOOR' || c.type === 'TALL' || (c.type === 'APPLIANCES' && (c.mountY || 0) === 0 && !['sink', 'hob', 'oven'].includes(c.appliance)))) continue;
+      // the drawn footprint (a corner's return as far as it really reaches), in (along, perp)
+      const ret = c.corner ? returnReach(c, it, state.items, r).len : 0;
+      const l = c.w / 2 + (c.corner && c.cornerSide !== 'right' ? ret : 0), rr = c.w / 2 + (c.corner && c.cornerSide === 'right' ? ret : 0);
+      const rd = ((it.rotDeg || 0) * Math.PI) / 180, cs = Math.cos(rd), sn = Math.sin(rd);
+      let a0 = Infinity, a1 = -Infinity, p0 = Infinity, p1 = -Infinity;
+      for (const [lx, lz] of [[-l, -c.d / 2], [rr, -c.d / 2], [rr, c.d / 2], [-l, c.d / 2]]) {
+        const wx = it.x + lx * cs + lz * sn, wz = it.z - lx * sn + lz * cs;
+        const al = wx * a.x + wz * a.z, pp = wx * f.x + wz * f.z;
+        a0 = Math.min(a0, al); a1 = Math.max(a1, al); p0 = Math.min(p0, pp); p1 = Math.max(p1, pp);
+      }
+      if (p1 <= backPlane + 0.5) continue;                       // wholly behind the line: not part of this back
+      (Math.abs(p0 - backPlane) < 1.5 ? flush : p0 < backPlane - 1.5 ? proud : []).push([a0, a1]);
+    }
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const [a0, a1] of flush) {
+        if (a0 < nLo - 0.05 && a1 > nLo - 1.5) { nLo = a0; grew = true; }
+        if (a1 > nHi + 0.05 && a0 < nHi + 1.5) { nHi = a1; grew = true; }
+      }
+    }
+    const ends = [b.minX * a.x + b.minZ * a.z, b.maxX * a.x + b.maxZ * a.z], wLo = Math.min(...ends), wHi = Math.max(...ends);
+    if (nLo - wLo < 6 && !proud.some(([, a1]) => a1 > wLo && a1 <= nLo + 0.05)) nLo = wLo;
+    if (wHi - nHi < 6 && !proud.some(([a0]) => a0 < wHi && a0 >= nHi - 0.05)) nHi = wHi;
+    pieces.push({ lo: nLo, codes: [sizedNicheCode(nHi - nLo)] });
+  }
   else for (let i = 0; i < row.length; i++) {
     const w = row[i].cab.w, lo = along(row[i].it) - w / 2;
     if (BY[w]) { pieces.push({ lo, codes: [BY[w]] }); continue; }
@@ -76,8 +112,16 @@ export function planIslandBack(state, id, opts = {}) {
   const placements = [];
   for (const pc of pieces) { let cur = pc.lo; for (const code of pc.codes) { const c = getCab(code), al = cur + c.w / 2, pp = backPlane - c.d / 2; cur += c.w;
     placements.push({ code, x: al * a.x + pp * f.x, z: al * a.z + pp * f.z, rotDeg: (rot + 180) % 360, island: true }); } }
-  let virt = { ...state, items: [...state.items] };
-  for (const [i, p] of placements.entries()) { if (!spotOk(virt, getCab(p.code), p.x, p.z, p.rotDeg, b)) return { ok: false, reason: 'no room' }; virt = { ...virt, items: [...virt.items, { id: `b${i}`, ...p }] }; }
+  const fits = (pl) => { let virt = { ...state, items: [...state.items] };
+    for (const [i, p] of pl.entries()) { if (!spotOk(virt, getCab(p.code), p.x, p.z, p.rotDeg, b)) return false; virt = { ...virt, items: [...virt.items, { id: `b${i}`, ...p }] }; }
+    return true; };
+  if (!fits(placements)) {
+    // a niche that could not run the whole way (something in the way beyond the row): the row's own length
+    if (!opts.niches || (nLo === rowLo && nHi === rowHi)) return { ok: false, reason: 'no room' };
+    const c = getCab(sizedNicheCode(rowHi - rowLo)), al = rowLo + c.w / 2, pp = backPlane - c.d / 2;
+    placements.length = 0; placements.push({ code: c.code, x: al * a.x + pp * f.x, z: al * a.z + pp * f.z, rotDeg: (rot + 180) % 360, island: true });
+    if (!fits(placements)) return { ok: false, reason: 'no room' };
+  }
   // how much walkway is left behind the new row (hard rule 10 wants 44")
   const newFront = backPlane - Math.max(...placements.map((p) => getCab(p.code).d));
   // (|f.z| > 0.5, never f.z !== 0: cos 90 deg is 6e-17, so a row facing sideways measured to the wrong wall)

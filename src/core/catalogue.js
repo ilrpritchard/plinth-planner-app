@@ -424,11 +424,12 @@ export function sizedWidthCode(baseCode, width) {
 }
 // ONE LONG STOOL NICHE (her ask 2026-09-29, a photo of an island whose whole back is one open bay:
 // "no legs... whatever length the island is, the stool niche stretches"): 'F35:w<inches>' is a stool
-// niche of any length from 20" to 240", legs only at its two ends. Price to confirm, like every niche.
+// niche of any length from 20" to 240" (to the quarter inch), legs only at its two ends. Price to confirm, like every niche.
 export const NICHE_WIDTH_LIMITS = [20, 240];
 const NICHE_STD = { 20: 'F35', 24: 'F36', 28: 'F37', 36: 'F38', 42: 'F39' };
 export function sizedNicheCode(width) {
-  const w = Math.round(clampDim(width, NICHE_WIDTH_LIMITS, 20) * 2) / 2;
+  // to the quarter inch, rounded DOWN: a niche that runs wall to wall must never come out ¼" through the wall
+  const w = Math.floor((clampDim(width, NICHE_WIDTH_LIMITS, 20) + 0.01) * 4) / 4;
   return NICHE_STD[w] || `F35:w${w}`;
 }
 function fitPriceFor(base, w) {
@@ -445,7 +446,7 @@ export function getCab(code) {
     if (!hit) {
       const base = CATALOGUE.find((c) => c.code === mw[1].toUpperCase());
       if (base && base.form === 'niche') {               // one long stool niche (sizedNicheCode)
-        const w = Math.round(clampDim(mw[2], NICHE_WIDTH_LIMITS, base.w) * 2) / 2;
+        const w = Math.round(clampDim(mw[2], NICHE_WIDTH_LIMITS, base.w) * 4) / 4;
         hit = { ...base, code, w, baseCode: base.code, desc: `${base.desc} · ${w}" long`, notes: `One open bay ${w}" long for stools under the island worktop: 300mm deep, a 22mm leg at each end only, a 35mm top rail, painted inside. No plinth.` };
         sizedWidthCache.set(code, hit);
         return hit;

@@ -88,7 +88,20 @@ export function peninsulaReturnEnds(state) {
     const cab = getCab(it.code);
     if (!cab?.corner || cab.type !== 'FLOOR') continue;
     const rr = returnReach(cab, it, state.items, state.room);
-    if (rr.leg) out.push({ it, cab, len: rr.len });
+    if (!rr.leg) continue;
+    // something standing against the return's end (a stool niche run the whole length of the peninsula,
+    // her ask 2026-09-29) covers it: no finished end there, and none priced
+    const dir = cab.cornerSide === 'right' ? 1 : -1, r = ((it.rotDeg || 0) * Math.PI) / 180;
+    const ux = dir * Math.cos(r), uz = -dir * Math.sin(r), reach = cab.w / 2 + rr.len + 1.5;
+    const px = it.x + ux * reach, pz = it.z + uz * reach;
+    const covered = (state.items || []).some((o) => {
+      if (o === it) return false;
+      const oc = getCab(o.code);
+      if (!oc || !(oc.type === 'FLOOR' || oc.type === 'TALL')) return false;
+      const ra = ((o.rotDeg || 0) * Math.PI) / 180, c = Math.cos(ra), sn = Math.sin(ra), dx = px - o.x, dz = pz - o.z;
+      return Math.abs(dx * c - dz * sn) <= oc.w / 2 && Math.abs(dx * sn + dz * c) <= oc.d / 2;
+    });
+    if (!covered) out.push({ it, cab, len: rr.len });
   }
   return out;
 }

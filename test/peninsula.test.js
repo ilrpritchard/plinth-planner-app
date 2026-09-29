@@ -103,3 +103,36 @@ test('stool niches: 300mm deep, price to confirm, ONE niche the whole length of 
   const slabs = planWorktopSlabs(after.items, getCab, 'marble', after.room);
   assert.ok(slabs.some((b) => b.z1 >= 12 + mmToIn(300) - 0.01), 'the worktop runs over the niches');
 });
+
+test('the stool niche runs THE WHOLE LENGTH: past the corner unit and the corner square to the wall', () => {
+  // her kitchen (screenshot 2026-09-29): a run down the left wall, a corner unit at its front end, the
+  // peninsula row turning right off it and facing the back wall. The niche used to stop where the row's
+  // own cabinets did, leaving the corner unit's back and the corner square bare.
+  const W = 200, D = 170, zp = 20, minX = -W / 2;
+  const items = [
+    { id: 1, code: 'F20', x: minX + 12.25, z: zp - 12.25 - 18 - 36, rotDeg: 90 },
+    { id: 2, code: 'F20', x: minX + 12.25, z: zp - 12.25 - 18, rotDeg: 90 },
+    { id: 3, code: 'F16R', x: minX + 24.25 + 12, z: zp, rotDeg: 180 },         // body leg to leg, its return to the left wall
+    { id: 4, code: 'F20', x: minX + 48.25 + 18, z: zp, rotDeg: 180 },
+    { id: 5, code: 'F2', x: minX + 84.25 + 12, z: zp, rotDeg: 180 },
+  ];
+  const s = { room: room(W, D), items, finish: 'Ghost' };
+  const p = planIslandBack(s, 4, { niches: true });
+  assert.ok(p.ok, p.reason);
+  assert.equal(p.placements.length, 1);
+  const q = p.placements[0], c = getCab(q.code);
+  assert.ok(Math.abs((q.x - c.w / 2) - minX) < 0.3, `from the left wall (${(q.x - c.w / 2).toFixed(2)})`);
+  assert.ok(Math.abs((q.x + c.w / 2) - (minX + 108.25)) < 0.3, `to the free end of the row (${(q.x + c.w / 2).toFixed(2)})`);
+  assert.ok(Math.abs((q.z - c.d / 2) - (zp + 12)) < 0.01, 'its back on the row\'s back');
+  const after = { ...s, items: [...items, { id: 9, ...q }] };
+  assert.equal(computeBackPanels(after).length, 0, 'no bare back left anywhere along it');
+
+  // the wizard's "Run + peninsula": the corner on the back wall, the leg standing 44" off the left wall
+  const ps = penState(), leg = ps.items[1];
+  const pp = planIslandBack(ps, leg.id, { niches: true });
+  assert.ok(pp.ok, pp.reason);
+  const n = pp.placements[0], nc = getCab(n.code), lo = n.z - nc.w / 2, hi = n.z + nc.w / 2;
+  assert.ok(Math.abs(lo - (-ps.room.depth / 2)) < 0.3, `from the back wall (${lo.toFixed(2)})`);
+  assert.ok(Math.abs(hi - (-ps.room.depth / 2 + 24.3 + 36 + 24)) < 0.3, `to the leg's end (${hi.toFixed(2)})`);
+  assert.equal(computeBackPanels({ ...ps, items: [...ps.items, { id: 9, ...n }] }).length, 0);
+});
