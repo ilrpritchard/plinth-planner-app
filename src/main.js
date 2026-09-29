@@ -11,6 +11,7 @@ import { autosave, loadSaved, loadFromHash, buildShareURL } from './core/persist
 import { shortShareURL, fetchShortDesign } from './core/sharelink.js';
 import { createKeepTracker } from './core/keepprompt.js';
 import { showKeepCard } from './ui/keepcard.js';
+import { watchLanes } from './ui/lanes.js';
 import { Scene } from './scene/Scene.js';
 import { Room } from './scene/Room.js';
 import { Worktop } from './models/worktop.js';
@@ -38,7 +39,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-240 · photo mode only: eggshell paint (no grey cabinet ends), shaker panel shade, fill from behind and above';
+const BUILD = 'W2W-241 · nothing sits on anything: the wizard and every modal cover the bars, bars stack and stay between the panels';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -801,8 +802,11 @@ if (new URLSearchParams(location.search).get('reset') === '1') {
     });
 }
 
+watchLanes();                                          // bars over the stage never sit on each other (ui/lanes.js)
+
 window.PlinthPlanner = {
   store, scene, room, controls,
+  ui, layer, wizard, cloudUI, tradeUI,                                        // test/ui-overlap.mjs opens every panel through these
   photoMode: { start: startPhotoMode, angle: photoAngle, end: endPhotoMode },   // photo mode without the sign-in gate (checks)
   loadState(json) {
     store.replace(JSON.parse(JSON.stringify(json)));

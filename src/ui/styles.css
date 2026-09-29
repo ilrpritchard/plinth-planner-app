@@ -37,7 +37,13 @@ body {
   font-size: 14px;
   overflow: hidden;
 }
-#app { position: fixed; inset: 0; }
+/* ONE STACKING SCALE (W2W-241): #app must never be a stacking context (position: fixed, a z-index,
+   transform, filter or opacity would make it one), or a modal inside it loses to a bar on <body>
+   whatever their numbers. Bands: stage chrome 14-20, bars and cards 40-53, modals 55-80, toast 9999.
+   test/ui-overlap.mjs checks no control sits on another. overflow: CLIP (never hidden: hidden can
+   still be scrolled from script) so the phone's off-screen sheets never make the page scrollable; a
+   scrollIntoView on a selected cabinet's cost line used to scroll the top bar away. */
+#app { position: absolute; inset: 0; overflow: clip; }
 /* stage sits BETWEEN the side panels so the room is never hidden under them */
 #stage { position: absolute; top: 58px; left: var(--panel-w); right: var(--panel-w); bottom: 0; background: var(--brown-deep); }
 #stage canvas { display: block; touch-action: none; width: 100% !important; height: 100% !important; }
@@ -456,7 +462,7 @@ kbd {
 
 /* live dimensions chip while dragging a cabinet */
 #dimChip {
-  position: fixed; z-index: 60; display: none; pointer-events: none;
+  position: fixed; z-index: 52; display: none; pointer-events: none;
   background: rgba(255,255,255,0.94); color: var(--cream);
   border: 1px solid var(--line-strong); border-radius: 7px;
   padding: 6px 10px; font-size: 12px; white-space: nowrap;
@@ -500,7 +506,7 @@ kbd {
 
 /* rule-violation flag while dragging (e.g. cabinet over a window) */
 #ruleFlag {
-  position: fixed; z-index: 61; display: none; pointer-events: none;
+  position: fixed; z-index: 53; display: none; pointer-events: none;
   background: var(--red, #b1392b); color: #fff;
   border-radius: 7px; padding: 6px 10px; font-size: 12px; font-weight: 600;
   white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,0.35);
@@ -895,7 +901,7 @@ kbd {
      sits in normal flow at the top of the document so the browser paginates
      the whole sheet: render, schedule, totals, notes. */
   html, body { height: auto !important; overflow: visible !important; }
-  #app { position: static !important; }
+  #app { position: static !important; overflow: visible !important; }
   body * { visibility: hidden !important; }
   #planOverlay.show, #planOverlay.show *,
   #quoteOverlay.show, #quoteOverlay.show * { visibility: visible !important; }
@@ -1002,7 +1008,7 @@ body.wz-reviewing #viewControls, body.wz-reviewing #selbar {
 /* on-brand confirm/alert dialogs (dialog.js) — same paper card as the modal */
 /* Photo mode: the live camera stands at a photography standpoint; this bar steps the angles and saves */
 #photoBar {
-  position: fixed; top: 66px; left: 50%; transform: translateX(-50%); z-index: 60;
+  position: fixed; top: 66px; left: 50%; transform: translateX(-50%); z-index: 46;
   display: flex; align-items: center; gap: 10px;
   background: var(--brown-deep, #fffdf4); color: var(--cream, #645b3d);
   border: 1px solid var(--line-strong); border-radius: 9px; padding: 8px 14px;
@@ -1215,7 +1221,7 @@ a.tlink:hover { background: var(--cream); color: var(--brown-deep); border-color
 
 /* persistent banner while designing a trade unit in Home mode */
 #designBanner {
-  position: fixed; top: 66px; left: 50%; transform: translateX(-50%); z-index: 60;
+  position: fixed; top: 66px; left: 50%; transform: translateX(-50%); z-index: 46;
   display: flex; align-items: center; gap: 12px;
   background: var(--brown-deep, #fffdf4); color: var(--cream, #645b3d);
   border: 1px solid var(--line-strong); border-radius: 9px; padding: 9px 16px;
@@ -1246,6 +1252,16 @@ body:has(#designBanner):has(#photoBar) #selbar { top: 186px; }
   body:has(#designBanner) #photoBar { top: 118px; }
   body:has(#photoBar) #selbar { top: 130px; }
   body:has(#designBanner):has(#photoBar) #selbar { top: 190px; }
+}
+
+/* NOTHING FLOATS ON ANYTHING ELSE (W2W-241, her rule): on a desktop layout the bars and cards over
+   the stage stay BETWEEN the side panels and wrap rather than run under them; ui/lanes.js stacks them
+   top down so a wrapped bar pushes the next one down. test/ui-overlap.mjs checks it. */
+#keepCard.lane-aside, #ideaTray.lane-aside, body.lane-vc-aside #viewControls { visibility: hidden !important; pointer-events: none !important; }
+@media (min-width: 821px) {
+  #designBanner, #photoBar, #selbar { max-width: calc(100vw - 2 * var(--panel-w) - 24px); flex-wrap: wrap; justify-content: center; }
+  body #keepCard { max-width: calc(100vw - 2 * var(--panel-w) - 32px); }
+  .wz-result { max-width: min(920px, calc(100vw - 2 * var(--panel-w) - 24px)); }
 }
 
 /* ---- Trade visual cabinet picker ---- */
