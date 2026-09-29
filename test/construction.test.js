@@ -109,7 +109,7 @@ for (const [name, k] of Object.entries(K)) {
 
   test(`${name}: the 115mm plinth is flush with the face, one joint per junction and no others`, () => {
     const xa = k.cabs[0].x0 - 0.5, xb = k.cabs[k.cabs.length - 1].x1 + 0.5;
-    for (const y of [0.3 * MM, SPEC.PLINTH_IN / 2, SPEC.PLINTH_IN - 0.3 * MM]) {
+    for (const y of [0.3 * MM, SPEC.PLINTH_IN / 2, SPEC.PLINTH_IN - 2 * MM]) {        // 2mm clear of the fronts' bottom edge line
       const r = runs(k.row(y, xa, xb));
       const core = r.slice(r.findIndex((q) => q.c === 'F'), r.findLastIndex((q) => q.c === 'F') + 1);
       const joints = core.filter((q) => q.c === '.');
@@ -119,10 +119,11 @@ for (const [name, k] of Object.entries(K)) {
       });
       assert.ok(Math.abs(core[0].a - k.cabs[0].x0) < 1 * MM && Math.abs(core[core.length - 1].b - k.cabs[k.cabs.length - 1].x1) < 1 * MM, 'the plinth runs the full length');
     }
-    // the plinth reaches exactly 115mm, then the painted bottom rail carries on in the same plane
+    // the plinth is face from the floor to 115mm, where the front above it begins: no bottom rail in
+    // between (the drawings), just the fronts' edge line centred on the plinth top
     for (const c of k.cabs) {
       const r = runs(k.col((c.x0 + c.x1) / 2, STEP / 2, SPEC.PLINTH_IN + 10 * MM));
-      assert.ok(r[0].c === 'F' && r[0].b >= SPEC.PLINTH_IN - STEP, `${c.code}: face from the floor to above the plinth (${r[0].mm.toFixed(1)}mm)`);
+      assert.ok(r[0].c === 'F' && Math.abs(r[0].b - SPEC.PLINTH_IN) <= 1.5 * MM, `${c.code}: the plinth runs from the floor to the front's bottom edge at 115mm (${r[0].mm.toFixed(1)}mm)`);
     }
     // drawer faces sit in the same plane as the plinth and the legs
     for (const c of k.cabs.filter((q) => q.form === 'drawers')) {
@@ -149,7 +150,7 @@ for (const [name, k] of Object.entries(K)) {
       const box = new THREE.Box3().setFromObject(k.layer.map.get(c.id).group);
       assert.ok(Math.abs(box.min.y) < 1e-6, `${c.code} stands on the floor (${box.min.y})`);
       for (let x = c.x0 + 1 * MM; x < c.x1 - 1 * MM; x += 0.5) {
-        const r = runs(k.col(x, STEP / 2, SPEC.PLINTH_IN));
+        const r = runs(k.col(x, STEP / 2, SPEC.PLINTH_IN - 2 * MM));
         assert.ok(r.length === 1 && r[0].c === 'F', `${c.code} x=${x.toFixed(2)}: ${r.map((q) => q.c + q.mm.toFixed(1)).join(' ')} under the cabinet`);
       }
     }
@@ -187,4 +188,20 @@ test('doors, drawers and the dishwasher panel line up under one 35mm rail', () =
   for (const [code, mm] of Object.entries(tops)) assert.ok(mm >= RAIL_MM - 1.5 && mm <= RAIL_MM + TOL, `${code}: its front starts ${mm.toFixed(1)}mm under the worktop, want 35`);
   const spread = Math.max(...Object.values(tops)) - Math.min(...Object.values(tops));
   assert.ok(spread <= 1.5, `the fronts line up (tops ${Object.entries(tops).map(([c, v]) => c + ' ' + v.toFixed(1)).join(', ')}mm)`);
+});
+
+// every front runs from under the 35mm top rail down to its type's bottom line, as the elevation
+// drawings (PLINTH_Cabinet_Elevations.pdf): floor and tall fronts to the plinth with no bottom rail,
+// wall units on a 45mm bottom rail, counter-standing units over a 3mm shadow gap (her call 2026-09-29)
+test('fronts meet their bottom line: the plinth, a 45mm wall rail, a 3mm counter gap', async () => {
+  const { buildCabinet } = await import('../src/models/cabinet.js');
+  for (const [code, want] of [['F2', SPEC.PLINTH_IN], ['F10', SPEC.PLINTH_IN], ['T1', SPEC.PLINTH_IN], ['W1', mmToIn(45)], ['W5', mmToIn(45)], ['C1', mmToIn(3)]]) {
+    const cab = getCab(code), g = buildCabinet(cab, '#b4b296');
+    g.updateMatrixWorld(true);
+    const leaf = g.userData.doors[0];
+    assert.ok(leaf, `${code} has a door`);
+    const box = new THREE.Box3().setFromObject(leaf), top = cab.h - mmToIn(RAIL_MM);
+    assert.ok(Math.abs(box.min.y - want) < 0.02, `${code}: the door comes down to ${(want / MM).toFixed(0)}mm (it stops at ${(box.min.y / MM).toFixed(1)}mm)`);
+    assert.ok(Math.abs(box.max.y - top) < 0.02, `${code}: the door stops under the 35mm top rail (${((cab.h - box.max.y) / MM).toFixed(1)}mm down)`);
+  }
 });

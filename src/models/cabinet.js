@@ -26,6 +26,8 @@ const SHELF = SPEC.SHELF_IN;     // 18mm oak shelf
 const RECESS = mmToIn(5);        // shaker centre panel sits back 5mm from stiles/rails (and from the face)
 const DOOR_T = 0.75;
 const TOPRAIL = mmToIn(35);   // top rail per the master library drawings (35mm — NOT the 22mm panel)
+const WALL_RAIL = mmToIn(45);   // wall units' bottom rail (the drawings)
+const COUNTER_GAP = mmToIn(3);  // counter-standing units: the shadow gap under the fronts (the drawings)
 const FRAME_T = 0.14;
 const KNOB_INSET = 2.2;
 // a knob on a shaker leaf: its back seated 8mm into the stile, as it has always been drawn (the knob
@@ -326,10 +328,23 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   }
 
   // ----- opening -----
-  const openY0 = bodyY0 + PANEL;
-  // doors/drawers stop a full 35mm top rail below the cabinet top (master
-  // library spec — frontdraw.js FD.TOP) with the recessed shadow gap under it
+  // The fronts fill the frame from under the 35mm top rail down to the cabinet's BOTTOM LINE, as
+  // the elevation drawings (PLINTH_Cabinet_Elevations.pdf; ui/frontdraw.js + core/dxf.js
+  // bottomZone): floor and tall fronts come straight down to the plinth (no bottom rail), wall units
+  // stand on a 45mm bottom rail, counter-standing units keep a 3mm shadow gap (her call 2026-09-29:
+  // the 3D had every front sitting on a 22mm rail). Oven housings keep their own seat (ovenseat.js;
+  // not in the drawings yet).
+  const ovenForm = cab.form === 'ovenHousing' || cab.form === 'ovenBase';
+  const bottomLine = cab.type === 'WALL' ? WALL_RAIL : cab.type === 'COUNTER' ? COUNTER_GAP : 0;
+  const openY0 = ovenForm ? bodyY0 + PANEL : bodyY0 + bottomLine;
   const openH = (h - TOPRAIL) - openY0;
+  // a wall unit's 45mm bottom rail: painted, in the face plane, between the side panels and on top
+  // of the 22mm carcass bottom (its front edge is the rest of the rail)
+  if (cab.type === 'WALL' && !ovenForm) {
+    const bb = box(shellW - 2 * PANEL, WALL_RAIL - PANEL, PANEL, mat);
+    bb.position.set(0, bodyY0 + PANEL + (WALL_RAIL - PANEL) / 2, d / 2 - PANEL / 2);
+    g.add(bb);
+  }
 
   // ----- painted top rail (front) -----
   // the 35mm top rail is REAL painted wood at the front. The top panel is only

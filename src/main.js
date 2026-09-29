@@ -38,7 +38,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-233 · the dishwasher panel stops under the 35mm rail, level with the doors and drawers beside it';
+const BUILD = 'W2W-234 · fronts come down to the plinth (wall units: 45mm bottom rail), as the elevation drawings; a high-floor skyline out of the window';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
