@@ -62,13 +62,7 @@ export const LIVE_SHADOW = { bias: 0.0001, normalBias: 0.04 };
 // its levels (tuned on the hero kitchen's fronts against their hex). SUN_SOFT / SUN_SAMPLES: a saved
 // photo averages that many sun directions inside a cone of that half-angle, which softens the glazing-
 // bar shadows the way a real window's are; the live preview uses one (hard edges while framing).
-export const PHOTO_SUN = { sun: 5.0, env: 1.0, fill: 1.15, hemi: 0.6, exposure: 1.6 };
-// Photo mode's fill (her ask 2026-09-29, "define the cabinets a bit more"): from over the viewer's
-// LEFT shoulder and well above, so the faces of a shaker panel's 5mm step turn differently to it (the
-// underside of a rail and one stile's edge in shade, the others lit); straight from the camera it lit
-// frame and panel alike and the step vanished. (It casts no shadow: the closed room's ceiling and front
-// wall would shade everything.)
-export const PHOTO_FILL = { side: 25 * Math.PI / 180, rise: 0.9 };
+export const PHOTO_SUN = { sun: 5.0, env: 1.0, fill: 0.85, hemi: 0.6, exposure: 1.6 };
 // where the HDRI's bright side sits in every sunlit room: behind the back run, turned 32 degrees, as
 // the hero kitchen's back-wall window put it when PHOTO_SUN was calibrated (see _setSun)
 const PHOTO_SUN_ENV_AZ = Math.atan2(-Math.cos(32 * Math.PI / 180), Math.sin(32 * Math.PI / 180));
@@ -267,7 +261,7 @@ export class Scene {
     this.renderer.setPixelRatio(o.width ? 1 : (o.scale || 3));
     this.renderer.setSize(w, h, false);
     if (this.camera.isPerspectiveCamera) { this.camera.aspect = w / h; if (this.camera === this.persp) this._applyShift(w, h); this.camera.updateProjectionMatrix(); }
-    if (this._photo) { this._applyPhotoRoom(); this._aimPhotoFill(); }   // closed or open for THIS camera, before the wall auto-hide
+    if (this._photo) this._applyPhotoRoom();   // closed or open for THIS camera, before the wall auto-hide
     else this._aimFill();                      // the live fill from over this camera's shoulder
     this._beforeRender?.();                 // grounding + wall auto-hide for THIS camera position
     this._render(true);
@@ -378,18 +372,8 @@ export class Scene {
     if (this._beforeRender) this._beforeRender();
     this.controls.update();
     if (this._photo && this._stillOnScreen()) return;     // the finished still is showing: nothing to redraw
-    if (!this._photo) this._aimFill(); else this._aimPhotoFill();
+    if (!this._photo) this._aimFill();
     this._render();
-  }
-
-  /** PHOTO MODE: the fill over the viewer's left shoulder, high (PHOTO_FILL). */
-  _aimPhotoFill(cam = this.camera, target = this.controls.target) {
-    const dx = cam.position.x - target.x, dz = cam.position.z - target.z;
-    if (Math.hypot(dx, dz) < 1e-3) return;
-    const a = Math.atan2(dz, dx) + PHOTO_FILL.side, f = new THREE.Vector3(Math.cos(a), PHOTO_FILL.rise, Math.sin(a)).normalize();
-    const H = (this._room || {}).height || 96, fill = this.fill;
-    fill.target.position.set(0, H / 2, 0); fill.target.updateMatrixWorld();
-    fill.position.set(f.x * 320, H / 2 + f.y * 320, f.z * 320);
   }
 
   /** LIVE: the fill comes from over the viewer's shoulder, so whatever she is looking at is lit from
@@ -533,7 +517,6 @@ export class Scene {
     } else if (!on && this._photo) {
       this._photo = false;
       this._hideStill();
-      this.fill.target.position.set(0, 0, 0); this.fill.target.updateMatrixWorld();
       this._setSun(false);
       this._photoRoomKey = null;
       this.onPhotoClosed?.(false);

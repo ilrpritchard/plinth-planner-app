@@ -153,59 +153,14 @@ function shakerLeaf(w, h, mat, glazed, panels = 1) {
       const topPanelH = Math.max(0.5, (h / 2 - STILE) - (midY + midH / 2)), botPanelH = Math.max(0.5, (midY - midH / 2) - (-h / 2 + STILE));
       edgeRing(g, 0, midY + midH / 2 + topPanelH / 2, iw, topPanelH, DOOR_T / 2 + 0.02, 0.3, 0.04, edge);
       edgeRing(g, 0, midY - midH / 2 - botPanelH / 2, iw, botPanelH, DOOR_T / 2 + 0.02, 0.3, 0.04, edge);
-      panelShade(g, 0, midY + midH / 2 + topPanelH / 2, iw, topPanelH);
-      panelShade(g, 0, midY - midH / 2 - botPanelH / 2, iw, botPanelH);
     } else {
       // shadow line where the recessed panel meets the stiles — a slightly darker
       // frame hugging the inside of the rails so the relief reads even in flat light
       edgeRing(g, 0, 0, iw, ih, DOOR_T / 2 + 0.02, 0.3, 0.04, edge);
-      panelShade(g, 0, 0, iw, ih);
     }
   }
   return g;
 }
-// The shade a shaker panel's 5mm step throws, lit from the upper left as a room usually is: a soft
-// band under the top rail and a fainter one down the left stile, fading onto the panel (her ask
-// 2026-09-29, "define the cabinets a bit more"). The frame is edge-on to a camera in front, so without
-// it the step read as a hairline; no light in the scene can draw it (photo mode's closed room would
-// shade a front-lit shadow-caster everywhere). On the leaf, so it swings with the door. Needs a canvas
-// (none in the node tests: no bands there).
-const SHADE_TOP = mmToIn(11), SHADE_SIDE = mmToIn(7), SHADE_TOP_A = 0.32, SHADE_SIDE_A = 0.2;
-// ...and the lit side of the step: a thin catch-light along the bottom rail's edge and up the right
-// stile, which is what shows the relief on a dark paint (Kale, Skillet), where a shade has little to darken
-const LIT_W = mmToIn(3), LIT_BOTTOM_A = 0.16, LIT_SIDE_A = 0.1;
-let _shadeTex;
-function shadeTexture() {
-  if (_shadeTex !== undefined) return _shadeTex;
-  const cv = typeof document !== 'undefined' && document.createElement?.('canvas'), g = cv?.getContext?.('2d');
-  if (!g) return (_shadeTex = null);
-  cv.width = 4; cv.height = 64;
-  const gr = g.createLinearGradient(0, 0, 0, 64);            // opaque at the rail, clear on the panel
-  gr.addColorStop(0, '#fff'); gr.addColorStop(0.35, '#888'); gr.addColorStop(1, '#000');
-  g.fillStyle = gr; g.fillRect(0, 0, 4, 64);
-  return (_shadeTex = new THREE.CanvasTexture(cv));
-}
-const _shadeMats = {};
-function shadeMat(alpha, color = 0x000000) {
-  return _shadeMats[`${color}:${alpha}`] ||= new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, alphaMap: shadeTexture(), depthWrite: false, toneMapped: false });
-}
-function panelShade(g, cx, cy, iw, ih) {
-  if (!shadeTexture()) return;
-  const z = DOOR_T / 2 + 0.045;                               // on the panel face, over its edge ring
-  const top = new THREE.Mesh(new THREE.PlaneGeometry(iw, SHADE_TOP), shadeMat(SHADE_TOP_A));
-  top.position.set(cx, cy + ih / 2 - SHADE_TOP / 2, z);
-  const side = new THREE.Mesh(new THREE.PlaneGeometry(ih, SHADE_SIDE), shadeMat(SHADE_SIDE_A));
-  side.rotation.z = Math.PI / 2;                              // its opaque edge turned to the left
-  side.position.set(cx - iw / 2 + SHADE_SIDE / 2, cy, z);
-  const bottom = new THREE.Mesh(new THREE.PlaneGeometry(iw, LIT_W), shadeMat(LIT_BOTTOM_A, 0xffffff));
-  bottom.rotation.z = Math.PI;                               // opaque edge down, against the bottom rail
-  bottom.position.set(cx, cy - ih / 2 + LIT_W / 2, z);
-  const right = new THREE.Mesh(new THREE.PlaneGeometry(ih, LIT_W), shadeMat(LIT_SIDE_A, 0xffffff));
-  right.rotation.z = -Math.PI / 2;                           // opaque edge to the right stile
-  right.position.set(cx + iw / 2 - LIT_W / 2, cy, z);
-  for (const m of [top, side, bottom, right]) { m.castShadow = false; m.receiveShadow = false; m.renderOrder = 1; g.add(m); }
-}
-
 function addFrameRing(g, w, h, mat, z, thick = FRAME_T) {
   const innerH = Math.max(1, h - 2 * STILE);
   const top = box(w, STILE, thick, mat); top.position.set(0, h / 2 - STILE / 2, z);
