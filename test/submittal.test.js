@@ -2,7 +2,7 @@
 import {
   WALL_ORDER, wallsWithItems, itemsOnWall, computeElevation, scheduleRows,
   distinctSkus, drawingIndex, nextRev, bumpRev, unitRev, esc, mountY, alongWall,
-  islandFaces, islandSheets, computeIslandElevation, cutSheetPages, cutCardMM,
+  islandFaces, islandSheets, computeIslandElevation, cutSheetPages, cutCardMM, drawingBlockers,
 } from '../src/core/submittal.js';
 import { rowsFromDesign } from '../src/core/cost.js';
 import { getCab, sellUSD } from '../src/core/catalogue.js';
@@ -264,6 +264,16 @@ ok('cut cards are a label / value grid', html.includes('<table class="cut-spec">
 ok('no surface-burning / ASTM E84 claim on the spec sheet (removed at her request: no test data held)', !/surface.burning|E84/i.test(html));
 
 ok('no formaldehyde / TSCA / CARB claim printed until the certificates are held', !/TSCA|CARB|formaldehyde/i.test(html));
+
+// ---- HARD RULE: no drawing is issued for a kitchen that breaks a hard rule (2026-09-30) ----
+// The fixture above hangs W2 over the T1 tall and stands the range under the window: both block.
+const blocks = drawingBlockers(design);
+ok('overlapping cabinets block the drawings', blocks.some((m) => /T1 and W2 overlap/.test(m)));
+ok('a cooker in front of a window blocks the drawings', blocks.some((m) => /window/.test(m)));
+const clean = { ...design, room: { ...design.room, openings: [] },
+  items: design.items.filter((it) => !(it.code === 'W2' && it.x === -39)) };
+ok('a clean kitchen issues', drawingBlockers(clean).length === 0);
+ok('no design, nothing to block', drawingBlockers(null).length === 0);
 
 console.log(`\nsubmittal.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

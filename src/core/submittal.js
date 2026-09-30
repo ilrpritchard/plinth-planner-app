@@ -15,6 +15,7 @@ import { computeFillers } from './fillers.js';
 import { openingCenter, openingWidth } from './openings.js';
 import { SPEC, MOUNT as UNIT_MOUNT, fmtIn, SURFACE_Y, WORKTOP_SLAB } from './units.js';
 import { hingeSummary, sharedHinge } from './hinge.js';
+import { computeWarnings } from './warnings.js';
 
 // mount heights — the one copy in core/units.js (the 3D uses the same)
 export const MOUNT = { ...UNIT_MOUNT, SHELF: UNIT_MOUNT.WALL };
@@ -423,6 +424,15 @@ const WALL_TITLE = { back: 'BACK WALL', left: 'LEFT WALL', right: 'RIGHT WALL', 
 export function wallTitle(wall) { return WALL_TITLE[wall] || wall.toUpperCase(); }
 
 /** The drawing index shown on the cover: [{ no, title }]. */
+/** HARD RULE (her ask 2026-09-30, "set a rule that this never happens"): no drawing leaves the
+ *  planner showing a broken kitchen. Every error-level warning (cabinets overlapping, a cooker
+ *  in front of a window, a unit through the ceiling or a boxing, an over-full run...) blocks the
+ *  submittal, the plan DXFs and the IFC until it is fixed. Returns the messages; [] = clear. */
+export function drawingBlockers(design) {
+  if (!design) return [];
+  return computeWarnings(design).filter((w) => w.level === 'error').map((w) => w.msg);
+}
+
 export function drawingIndex(design) {
   const idx = [{ no: 'A-000', title: 'COVER & DRAWING INDEX' }, { no: 'A-100', title: 'FLOOR PLAN & KEY' }];
   const walls = wallsWithItems(design);

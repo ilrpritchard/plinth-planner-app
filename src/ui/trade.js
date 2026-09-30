@@ -16,7 +16,7 @@ const DOC_GATE = { title: 'Where should we send updates?', sub: 'Leave your emai
 import { buildTradeOrderCSV } from '../core/tradecsv.js';
 import { buildFloorplanSVG } from './floorplan.js';
 import { loadPreviews, whenAgo } from './preview.js';
-import { bumpRev, unitRev, wallsWithItems, computeElevation, islandFaces, computeIslandElevation } from '../core/submittal.js';
+import { bumpRev, unitRev, drawingBlockers, wallsWithItems, computeElevation, islandFaces, computeIslandElevation } from '../core/submittal.js';
 import { saveNow } from '../core/persistence.js';
 import { uiConfirm, uiChoice, uiAlert, uiPrompt, mailFallback } from './dialog.js';
 import { frontSVG } from './frontdraw.js';
@@ -67,6 +67,15 @@ import { openChangeEditor, changesHTML } from './changerequest.js';
 
 const BED_TYPES = ['Studio', '1 Bed', '2 Bed', '3 Bed', '4 Bed', 'Penthouse'];
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+/** Drawings never show a broken kitchen (core drawingBlockers): if any unit breaks a hard rule,
+ *  say which and what to fix, and issue nothing. Resolves true when blocked. */
+async function drawingsBlocked(units) {
+  const lines = units.flatMap((u) => drawingBlockers(u.design).map((m) => `${unitName(u)}: ${m}`));
+  if (!lines.length) return false;
+  await uiAlert(`Fix ${lines.length === 1 ? 'this' : 'these'} in the 3D design first. Drawings are only issued for a kitchen with nothing overlapping.\n\n${lines.join('\n')}`, { title: 'Drawings not issued', okLabel: 'Got it' });
+  return true;
+}
 
 export class TradeUI {
   constructor({ store, onDesignLoad, onRoomFirst, openAccount } = { store: null }) {
@@ -655,6 +664,7 @@ export class TradeUI {
     $('tSubmittalPack')?.addEventListener('click', async () => {
       const designed = this.t.units.filter((u) => u.design);
       if (!designed.length) return toast('No designed units yet, hit “✎ Lay out this unit in 3D” first.');
+      if (await drawingsBlocked(designed)) return;
       if (!(await ensureEmailGate('submittal-pack', DOC_GATE))) return;
       openPrintWindow(buildSubmittalPackHTML(this.t));
       toast('Submittal pack ready: save it as a PDF from the print dialog.');
@@ -662,6 +672,7 @@ export class TradeUI {
     $('tUnitPlans')?.addEventListener('click', async () => {
       const designed = this.t.units.filter((u) => u.design);
       if (!designed.length) return toast('No designed units yet, hit “✎ Lay out this unit in 3D” first.');
+      if (await drawingsBlocked(designed)) return;
       if (!(await ensureDxfEmail('unit-plans'))) return;
       const variant = await chooseDxfVariant();
       if (!variant) return;
@@ -671,6 +682,7 @@ export class TradeUI {
     $('tUnitIFC')?.addEventListener('click', async () => {
       const designed = this.t.units.filter((u) => u.design);
       if (!designed.length) return toast('No designed units yet, hit “✎ Lay out this unit in 3D” first.');
+      if (await drawingsBlocked(designed)) return;
       if (!(await ensureDxfEmail('unit-ifc'))) return;
       const ifc = buildUnitIFC(designed.map((u) => ({ name: unitName(u), state: u.design })),
         { timestamp: new Date().toISOString() });
@@ -736,11 +748,11 @@ export class TradeUI {
     else if (act === 'u-design') { this.enterDesign(u); }
     else if (act === 'u-submittal') {
       if (!u.design) return toast('Design this unit first. The submittal is built from its layout.');
-      ensureEmailGate('unit-submittal', DOC_GATE).then((ok) => {
+      drawingsBlocked([u]).then((stop) => !stop && ensureEmailGate('unit-submittal', DOC_GATE).then((ok) => {
         if (!ok) return;
         openPrintWindow(buildSubmittalHTML({ project: this.t.project, unit: u, trade: this.t }));
         toast('Submittal ready: save it as a PDF from the print dialog.');
-      });
+      }));
     }
     else if (act === 'u-rev') {
       const rev = bumpRev(u);

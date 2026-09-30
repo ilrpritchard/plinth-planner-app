@@ -48,7 +48,9 @@ function drawFiller(out, f, Y) {
     const xb = x0 + Math.min(t, fw), yb = y1 + Math.max(0, t - fw);
     out.push(svgLine(xa, ya, xb, yb, P.W_18, '#9a9a9a'));
   }
-  out.push(`<text x="${n(x0 + fw / 2)}" y="${n(y1 + fh / 2)}" font-size="2.4" fill="#666" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 ${n(x0 + fw / 2)} ${n(y1 + fh / 2)})">FILL ${fmtIn(f.w)}</text>`);
+  // the label runs up the panel only when the panel is wide enough to hold it: text never
+  // spills over a neighbour (her rule 2026-09-30, nothing overlaps on a drawing)
+  if (fw >= 2.75) out.push(`<text x="${n(x0 + fw / 2)}" y="${n(y1 + fh / 2)}" font-size="2.4" fill="#666" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 ${n(x0 + fw / 2)} ${n(y1 + fh / 2)})">FILL ${fmtIn(f.w)}</text>`);
 }
 
 // ---- the elevation drawing for one wall ------------------------------------
@@ -67,7 +69,13 @@ export function buildElevationSVG(elev, opts = {}) {
   // openings on this wall, dashed, at their true sill/head heights
   for (const o of elev.openings) {
     out.push(`<rect x="${n(o.s0)}" y="${n(Y(o.y0 + o.h))}" width="${n(o.w)}" height="${n(o.h)}" fill="none" stroke="${P.UPPER}" stroke-width="${P.W_UPPER}" vector-effect="non-scaling-stroke" stroke-dasharray="3.5 2.5"/>`);
-    if (!thumb) out.push(`<text x="${n(o.s0 + o.w / 2)}" y="${n(Y(o.y0 + o.h) - 1.6)}" font-size="2.6" fill="${P.UPPER}" text-anchor="middle" letter-spacing="0.5">${esc(o.type.toUpperCase())}${o.type === 'window' ? ` · SILL ${fmtIn(o.y0)}` : ''}</text>`);
+    // label INSIDE the opening, under its head: an opening is always clear of cabinets, so the
+    // words can never run into a wall unit beside it (they did above the head, 2026-09-30)
+    if (!thumb) {
+      const cx = n(o.s0 + o.w / 2), top = Y(o.y0 + o.h);
+      out.push(`<text x="${cx}" y="${n(top + 4)}" font-size="2.4" fill="${P.UPPER}" text-anchor="middle" letter-spacing="0.4">${esc(o.type.toUpperCase())}</text>`);
+      if (o.type === 'window') out.push(`<text x="${cx}" y="${n(top + 7.4)}" font-size="2.4" fill="${P.UPPER}" text-anchor="middle" letter-spacing="0.4">SILL ${fmtIn(o.y0)}</text>`);
+    }
   }
 
   // cabinets at their true x + mount height, drawn with their full
