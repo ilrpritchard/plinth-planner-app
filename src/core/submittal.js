@@ -390,34 +390,22 @@ export function distinctSkus(design) {
 }
 
 // ---- cut-sheet pagination -------------------------------------------------------
-// Up to SIX cards a page (rows of three), every glyph at ONE scale so the
-// cabinets stay mutually to scale. Talls are tall: a page takes as many rows
-// as fit its height budget, so two rows of bases share a page but two rows of
-// talls never overflow it (the sheet clips, it cannot grow).
-export const CUT_MM_PER_IN = 0.56;
-// measured in Chrome: the sheet body holds 154mm of cards under the tallest
-// (4-line) title block; a base card prints ~56mm, a tall ~87mm
-const CUT_PAGE_MM = 150, CUT_ROW_GAP_MM = 6;
+// SIX identical cards a page, rows of three (her rule 2026-09-30: "keep the boxes identical sizes
+// no matter the size cabinet inside it", the descriptions always aligned). Every glyph prints at
+// 1/4" = 1'-0" in a drawing well sized for the tallest cabinet (86" + its dimension margin), so
+// the cabinets stay mutually to scale and stand on one floor line.
+export const CUT_MM_PER_IN = 25.4 * 0.25 / 12;
+export const CUT_WELL_MM = Math.ceil((86 + 18) * CUT_MM_PER_IN) + 1;
+export const CUT_CARD_MM = 88;
 
-/** Estimated printed height (mm) of one cut card. */
-export function cutCardMM(sku) {
-  const lines = (sku.specs || []).reduce((t, [, v]) => t + Math.ceil(String(v).length / 46), 0);
-  return (sku.cab.h + 18) * CUT_MM_PER_IN + 13 + lines * 3.7;
-}
+/** Printed height (mm) of one cut card: the same for every cabinet. */
+export function cutCardMM() { return CUT_CARD_MM; }
 
-/** skus → pages → the skus on each page (rows of 3, max 2 rows a page). */
+/** skus -> pages -> the skus on each page (six a page, rows of three). */
 export function cutSheetPages(skus) {
-  const rows = [];
-  for (let i = 0; i < skus.length; i += 3) rows.push(skus.slice(i, i + 3));
   const pages = [];
-  let cur = null, used = 0;
-  for (const row of rows) {
-    const h = Math.max(...row.map(cutCardMM));
-    if (!cur || cur.rows === 2 || used + CUT_ROW_GAP_MM + h > CUT_PAGE_MM) { cur = { rows: 0, skus: [] }; pages.push(cur); used = 0; }
-    used += (cur.rows ? CUT_ROW_GAP_MM : 0) + h;
-    cur.rows++; cur.skus.push(...row);
-  }
-  return pages.length ? pages.map((p) => p.skus) : [[]];
+  for (let i = 0; i < skus.length; i += 6) pages.push(skus.slice(i, i + 6));
+  return pages.length ? pages : [[]];
 }
 
 const WALL_TITLE = { back: 'BACK WALL', left: 'LEFT WALL', right: 'RIGHT WALL', front: 'FRONT WALL' };

@@ -5,8 +5,8 @@ import {
   islandFaces, islandSheets, computeIslandElevation, cutSheetPages, cutCardMM, drawingBlockers,
 } from '../src/core/submittal.js';
 import { rowsFromDesign } from '../src/core/cost.js';
-import { getCab, sellUSD } from '../src/core/catalogue.js';
-import { buildElevationSVG, skuGlyphSVG, buildSubmittalHTML } from '../src/ui/submittal.js';
+import { getCab, sellUSD, getFinish } from '../src/core/catalogue.js';
+import { buildElevationSVG, skuGlyphSVG, buildSubmittalHTML, buildSubmittalPackHTML } from '../src/ui/submittal.js';
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { c ? pass++ : (fail++, console.error('✗ ' + n)); };
@@ -147,11 +147,20 @@ const glyph = skuGlyphSVG(getCab('F18'));
 ok('SKU glyph is an svg', glyph.startsWith('<svg') && glyph.includes('</svg>'));
 const html = buildSubmittalHTML({ project: 'Hudson & Co Tower', unit, date: 'July 8, 2026' });
 ok('submittal HTML: letter landscape + all sheet types', html.includes('size: letter landscape')
-  && html.includes('>SUBMITTAL<') && html.includes('FLOOR PLAN') && html.includes('ELEVATION: BACK WALL')
-  && html.includes('ELEVATION: LEFT WALL') && html.includes('CABINET SCHEDULE') && html.includes('CUT SHEETS')
-  && html.includes('<small>PRODUCT SPECIFICATION</small>') && !/COMPLIANCE/.test(html));
+  && html.includes('CABINET SUBMITTAL') && html.includes('Floor plan &amp; cabinet key') && html.includes('Interior elevation<br>BACK WALL')
+  && html.includes('Interior elevation<br>LEFT WALL') && html.includes('CABINET SCHEDULE') && html.includes('Cabinet cut sheets')
+  && html.includes('>Product specification<') && !/COMPLIANCE/.test(html));
+// ---- architectural sheets (W2W-252, her ask 2026-09-30) ----
+ok('every sheet has the title block strip, sheet number and field verification',
+  (html.match(/<aside class="tb">/g) || []).length === (html.match(/<section class="sheet(?! title)[^"]*">/g) || []).length
+  && html.includes('<div class="no">A-100</div>') && html.includes('<div class="no">A-600</div>'));
+ok('drawings print at a true scale with a bubble and a scale bar', /Scale \d[\d/]*&quot;|Scale \d/.test(html) && html.includes('class="bub"') && html.includes('class="sb"')
+  && /width="[\d.]+mm" height="[\d.]+mm"/.test(html));
+ok('the plan carries elevation markers pointing at the elevation sheets', html.includes('>1/A-201<') && html.includes('>2/A-202<'));
+ok('the title block names the kitchen color', html.includes('Cabinet color') && html.includes('class="chip"'));
+ok('Rev A is not dated today once the unit is on Rev C', html.includes('<tr><td>A</td><td></td><td>Issued for approval</td></tr>'));
 ok('submittal HTML escapes the project name', html.includes('Hudson &amp; Co Tower') && !html.includes('Hudson & Co Tower'));
-ok('rev letter + disclaimer on the sheets', html.includes('Rev C') && html.includes('does not survey or verify site dimensions'));
+ok('rev letter + disclaimer on the sheets', html.includes('<span class="k">Rev</span>C') && html.includes('Revision C') && html.includes('does not survey or verify site dimensions'));
 
 
 // ---- her 2026-09-18 markup, locked ------------------------------------------------
@@ -172,19 +181,17 @@ ok('unnamed project: the address heads the cover', anon.includes('<h1>12 Rockled
 ok('elevation draws hinge swing marks + grey appliances', svg.includes('stroke-dasharray="2.2 1.6"') && svg.includes('#ebebeb'));
 
 
-// ---- cut sheets: six to a sheet, never past the sheet's height -------------------
+// ---- cut sheets: six IDENTICAL cards a sheet (her rule 2026-09-30) -------------------
 ok('6 base/wall SKUs share one cut sheet', cutSheetPages(skus).length === 1 && cutSheetPages(skus)[0].length === 6);
 {
   const mk = (codes) => distinctSkus({ room: design.room, items: codes.map((code, i) => ({ id: i + 1, code, x: i * 40, z: 0, rotDeg: 0 })) });
   const talls = cutSheetPages(mk(['T1', 'T5', 'T6', 'T10', 'T11', 'T12']));
-  ok('two rows of talls never share a sheet (the sheet clips, it cannot grow)', talls.length === 2 && talls.every((pg) => pg.length === 3));
+  ok('six talls share one sheet: every card is the same box', talls.length === 1 && talls[0].length === 6);
   const mixed = cutSheetPages(mk(['F2', 'F10', 'F18', 'T1', 'T3', 'T5']));
   ok('a row of bases + a row of talls fit one sheet', mixed.length === 1);
   const every = cutSheetPages(mk(['F1', 'F2', 'F3', 'F7', 'F10', 'F16', 'F18', 'F21', 'W1', 'W2', 'W5', 'C1', 'T1', 'T3', 'T6', 'T9', 'T10', 'T13']));
-  ok('every page holds <= 6 cards in rows that fit 150mm', every.every((pg) => {
-    const rows = [pg.slice(0, 3), pg.slice(3, 6)].filter((r) => r.length);
-    return pg.length <= 6 && rows.reduce((t, r) => t + Math.max(...r.map(cutCardMM)), 0) + (rows.length - 1) * 6 <= 150;
-  }));
+  ok('every page holds 6 cards (the last the rest), every card the same height', every.length === 3 && every.slice(0, -1).every((pg) => pg.length === 6)
+    && new Set(every.flat().map(cutCardMM)).size === 1);
   ok('no SKU is lost or repeated by pagination', every.flat().length === 18 && new Set(every.flat().map((x) => x.code)).size === 18);
   ok('empty design still gets one (empty) cut sheet', cutSheetPages([]).length === 1);
 }
@@ -216,7 +223,7 @@ ok('6 base/wall SKUs share one cut sheet', cutSheetPages(skus).length === 1 && c
   ok('both faces share ONE island sheet, numbered after the walls', islandSheets(isl).length === 1
     && drawingIndex(isl).some((d) => d.no === 'A-203' && d.title === 'ELEVATION — ISLAND'));
   const islHtml = buildSubmittalHTML({ project: 'P', unit: { ...unit, design: isl }, date: 'July 8, 2026' });
-  ok('submittal carries the island sheet with both sides + the F2 swing', islHtml.includes('ELEVATION: ISLAND<') && islHtml.includes('SIDE FACING FRONT WALL')
+  ok('submittal carries the island sheet with both sides + the F2 swing', islHtml.includes('>Island elevations<') && islHtml.includes('SIDE FACING FRONT WALL')
     && islHtml.includes('SIDE FACING BACK WALL'));
   ok('no island → no island sheet', !html.includes('ELEVATION: ISLAND') && islandFaces(design).length === 0);
 }
@@ -257,7 +264,7 @@ ok('crown is drawn as built: a slim 22mm bar, not a 1½" band', svg.includes(`he
   const sh = buildSubmittalHTML({ project: 'P', unit: { ...unit, design: sinkDesign }, date: 'July 8, 2026' });
   ok('wherever there is a sink: the base it needs + what its base takes', sh.includes('needs a 33&quot; base or wider') && sh.includes('F10 is a sink base') && sh.includes('cut-out up to 34&quot; wide'));
 }
-ok('spec sheet: inches first with mm in brackets, headed PRODUCT SPECIFICATION', html.includes('PRODUCT SPECIFICATION') && html.includes('CONSTRUCTION &amp; FINISH') && html.includes('4&#189;" (115mm)')
+ok('spec sheet: inches first with mm in brackets, headed PRODUCT SPECIFICATION', html.includes('>Product specification<') && html.includes('CONSTRUCTION &amp; FINISH') && html.includes('4&#189;" (115mm)')
   && html.includes('&#8542;" (22mm)') && !html.includes('80mm stiles'));
 ok('cut cards are a label / value grid', html.includes('<table class="cut-spec">') && html.includes('<th>Size</th>') && !html.includes('cut-notes'));
 
@@ -274,6 +281,21 @@ const clean = { ...design, room: { ...design.room, openings: [] },
   items: design.items.filter((it) => !(it.code === 'W2' && it.x === -39)) };
 ok('a clean kitchen issues', drawingBlockers(clean).length === 0);
 ok('no design, nothing to block', drawingBlockers(null).length === 0);
+
+// ---- a color per kitchen (her ask 2026-09-30, "what if each kitchen is a different color") ----
+{
+  const pack = buildSubmittalPackHTML({ project: 'P', finish: 'Hudson', units: [
+    { id: 1, beds: '1 Bed', letter: 'A', qty: 2, design: { ...design, finish: 'Hudson' } },
+    { id: 2, beds: '2 Bed', letter: 'B', qty: 3, design: { ...design, finish: 'Ghost' } },
+  ] }, 'July 8, 2026');
+  ok('pack title page shows every kitchen color, each naming its kitchen', pack.includes('<small>COLORS</small>')
+    && pack.includes('<b>Hudson</b>1 Bed Type A') && pack.includes('<b>Ghost</b>2 Bed Type B'));
+  ok('pack cover lists each unit type with its own color', pack.includes('UNIT TYPES &amp; COLORS') && /1 Bed Type A<\/strong><\/td><td>Hudson/.test(pack) && /2 Bed Type B<\/strong><\/td><td>Ghost/.test(pack));
+  ok("each kitchen's sheets carry its own color in the title block",
+    /<div class="of">[^<]*1 Bed Type A[\s\S]*?/.test(pack) && pack.split('Cabinet color').length > 3 && pack.includes('<i style="background:' + getFinish('Ghost').hex + '"></i>Ghost'));
+  const one = buildSubmittalPackHTML({ project: 'P', units: [{ id: 1, qty: 1, design: { ...design, finish: 'Ghost' } }] }, 'July 8, 2026');
+  ok('a one-color project keeps the single COLOR tile', one.includes('<small>COLOR</small>Ghost') && !one.includes('<small>COLORS</small>'));
+}
 
 console.log(`\nsubmittal.test.js — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

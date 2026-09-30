@@ -5,6 +5,7 @@
 import { summarizeState, tradeSummary, unitName, unitQty, deliveryEstimate } from './cost.js';
 import { fmtUSD, getCab } from './catalogue.js';
 import { fmtFeetIn } from './units.js';
+import { islandFinish, withIslandFlags } from './islands.js';
 
 export const ORDER_TO = 'imogen@plinthmade.com';
 export const TRADE_TO = 'imogen@plinthmade.com';
@@ -76,11 +77,20 @@ export function buildTradeOrderEmail(state) {
   if (t.gc) L.push(`GC:       ${t.gc}`);
   if (t.owner) L.push(`Owner:    ${t.owner}`);
   L.push(`Contact:  ${c.name || '—'}  ${c.email || ''}`);
-  L.push(`Finish:   ${t.finish}${t.finish === 'Custom RAL' && t.finishRal ? ` (RAL ${t.finishRal})` : ''} (all units)`);
+  // each kitchen can be its own color (a unit's layout carries its finish, and its island's);
+  // "(all units)" only when that is true
+  const ral = (f) => `${f}${f === 'Custom RAL' && t.finishRal ? ` (RAL ${t.finishRal})` : ''}`;
+  const colorOf = (u) => {
+    const f = (u.design && u.design.finish) || t.finish;
+    const isl = u.design ? islandFinish(withIslandFlags(u.design)) : null;
+    return ral(f) + (isl ? `, island ${isl}` : '');
+  };
+  const colors = new Set((t.units || []).map(colorOf));
+  L.push(colors.size <= 1 ? `Finish:   ${[...colors][0] || ral(t.finish)} (all units)` : 'Finish:   by unit type, as listed below');
   L.push('Hardware: by others — cabinets supplied undrilled');
   L.push('');
   for (const u of t.units || []) {
-    L.push(`— ${unitName(u)}  ×${unitQty(u)} units`);
+    L.push(`— ${unitName(u)}  ×${unitQty(u)} units${colors.size > 1 ? `  · ${colorOf(u)}` : ''}`);
     for (const r of u.rows || []) {
       const cab = getCab(r.code);
       if (!cab) continue;
