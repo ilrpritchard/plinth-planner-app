@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { buildIntegratedFridge } from './cabinet.js';
 import { rangeSpec, rangeCooktop, hobSpec } from '../core/rangespec.js';
 import { sinkSpec } from '../core/sinkspec.js';
-import { WALLS, WALL_PAINT } from '../core/roomstyle.js';
+import { WALLS, wallPaint } from '../core/roomstyle.js';
 import { stainlessMat } from './materials.js';
 
 function mat(color, metalness, roughness, env = 0.8) {
@@ -264,7 +264,7 @@ export function buildAppliance(cab, finishHex = '#efece3', opts = {}) {
         // THE SAME PAINT AS THE WALLS: the wall swatch's colour and the wall material's lighting
         // (WALL_PAINT). A rougher, dimmer material in a near colour read as a cream box on a white
         // wall (her catch 2026-09-28); the fallback is the room's default wall, never a colour of its own.
-        const plaster = new THREE.MeshStandardMaterial({ color: new THREE.Color(opts.wallHex ?? WALLS.white.color), ...WALL_PAINT });
+        const plaster = new THREE.MeshStandardMaterial(wallPaint(new THREE.Color(opts.wallHex ?? WALLS.white.color)));
         plaster.userData.wallPaint = true;   // photo mode's matte variation reaches it too (painted with the walls)
         const hh = opts.ceiling > 0 && cab.mountY != null ? Math.max(h, opts.ceiling - cab.mountY - 0.05) : h;
         const body = box(w, hh, d, plaster); body.position.set(0, hh / 2, 0); body.name = 'plaster'; g.add(body);

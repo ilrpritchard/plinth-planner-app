@@ -16,7 +16,7 @@ const WALL_T = 4;
 const KERB_H = 3;   // the footprint left behind by a wall that is hidden to let you see in
 
 // key -> label + base colour; scene/floorTexture.js PAINT says how each is drawn.
-import { FLOORS, WALLS, WALL_PAINT, CEILING } from '../core/roomstyle.js';
+import { FLOORS, WALLS, CEILING, CEILING_GLOW, wallPaint } from '../core/roomstyle.js';
 export { FLOORS, WALLS };   // the tables live in core/roomstyle.js (shared with the DXF export)
 
 export class Room {
@@ -66,7 +66,7 @@ export class Room {
     });
     this._floorMat = floorMat; this._floorArgs = [opts.floor, floorColor, width, depth]; this._floorRough = surf.roughness;
     if (this._floorRoughKey !== floorKey) { this._floorRoughTex?.dispose?.(); this._floorRoughTex = null; this._floorRoughKey = floorKey; }
-    const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, ...WALL_PAINT, side: THREE.DoubleSide });
+    const wallMat = new THREE.MeshStandardMaterial({ ...wallPaint(wallColor), side: THREE.DoubleSide });
     wallMat.userData.wallPaint = true;        // photo mode gives every wall-paint material its matte variation   // WALL_PAINT: the plaster hood is lit the same
 
     // floor
@@ -243,7 +243,7 @@ export class Room {
     }
     // a doorway leads into the next room, not onto the street: a short hall behind it (an open box in
     // the wall paint, seen from inside), so the view through it stops at a wall a few feet away
-    const hallMat = new THREE.MeshStandardMaterial({ color: this._wallColor ?? 0xf3efe6, ...WALL_PAINT, side: THREE.BackSide });
+    const hallMat = new THREE.MeshStandardMaterial({ ...wallPaint(this._wallColor ?? 0xf3efe6), side: THREE.BackSide });
     hallMat.userData.wallPaint = true;
     for (const o of (this._openings || []).filter((q) => q.type === 'doorway')) {
       const wall = o.wall || 'back', rd = { width, depth }, c = openingCenter(rd, o), w = openingWidth(o, rd), HD = 42, H = this._height || 96;
@@ -457,7 +457,7 @@ function windowSpan(o, height) {
 let _ceiling = null, _cityMat = null;
 function ceilingMat() {
   if (_ceiling) return _ceiling;
-  _ceiling = new THREE.MeshStandardMaterial({ color: CEILING, ...WALL_PAINT });
+  _ceiling = new THREE.MeshStandardMaterial(wallPaint(CEILING, CEILING_GLOW));
   _ceiling.userData.wallPaint = true;
   return _ceiling;
 }

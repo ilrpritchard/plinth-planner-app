@@ -40,7 +40,13 @@ THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars
 //   key  = the one shadow-casting light, aimed by core/keylight.js (from the window if there is one)
 //   fill = soft, shadowless, from the camera side opposite the key
 //   hemi = a faint sky/ground tint, so undersides read a shade darker
-export const LOOK = { toneMapping: THREE.CustomToneMapping, exposure: 1.35, env: 0.35, key: 2.0, fill: 0.5, hemi: 0.3 };   // Custom = PBR Neutral, above
+//   cross = two soft, shadowless lights from the side walls (2026-10-02, her catch "wall cabinets look a
+//          different color to the floor cabinets"): a run on a side wall faces across both key and
+//          fill, so Dough wall cabinets over a side-wall range read 41% darker than the same Dough
+//          on the back run. Horizontal-ish, so fronts facing the back wall (and the swatches) are untouched.
+//          0.7 is the ceiling: being shadowless they also light the sides of butted cabinets, and from
+//          0.85 the joint between two legs fades (test:render fails). 0.7 takes 41% to 19% darker.
+export const LOOK = { toneMapping: THREE.CustomToneMapping, exposure: 1.35, env: 0.35, key: 2.0, fill: 0.5, hemi: 0.3, cross: 0.7 };   // Custom = PBR Neutral, above
 // Photo mode's key shadow (render step 3): fitted to the room, so 6144 texels over a ~230" room is
 // ~0.04" (1mm) a texel, fine enough for the 8mm shaker relief, the 35mm top rail and the legs.
 export const PHOTO_SHADOW = { size: 6144, bias: -0.0001, normalBias: 0.04, radius: 4 };
@@ -132,6 +138,10 @@ export class Scene {
     this.controls.rotateSpeed = 0.75;
     this.controls.panSpeed = 1.0;
     this.controls.screenSpacePanning = true; // pan parallel to the screen — intuitive
+    // a hand on the orbit (her "the orbiting is very glitchy", 2026-09-29): photo mode never stops to
+    // render its finished still while the mouse is held down, only once it is let go and the view settles
+    this.controls.addEventListener('start', () => { this._orbiting = true; });
+    this.controls.addEventListener('end', () => { this._orbiting = false; this._stillKey = null; });
     this.controls.target.set(0, 30, 0);
     this.navMode = 'orbit';
     // left = orbit (or pan in pan-mode), right = always pan, middle = zoom.
@@ -173,6 +183,13 @@ export class Scene {
 
     this.fill = new THREE.DirectionalLight(0xffffff, LOOK.fill);
     this.scene.add(this.fill);
+
+    this.cross = [1, -1].map((side) => {
+      const l = new THREE.DirectionalLight(0xffffff, LOOK.cross);
+      l.position.set(side, 0.42, 0).normalize().multiplyScalar(320);      // from each side wall, a little above
+      this.scene.add(l);
+      return l;
+    });
 
     // The environment: RoomEnvironment (a soft white box) at once, so the first frame is lit; the
     // daylight HDRI replaces it when it has loaded, turned so its window sits where the key comes
@@ -409,7 +426,7 @@ export class Scene {
    *  (invalidateStill) hands back to the live preview. */
   _stillOnScreen() {
     const cam = this.persp, cv = this.renderer.domElement;
-    if (!this._finder || this.camera !== cam || !this._photoFx) { this._hideStill(); return false; }
+    if (!this._finder || this.camera !== cam || !this._photoFx || this._orbiting) { this._hideStill(); this._stillKey = null; return false; }
     const key = [...cam.matrixWorld.elements, ...cam.projectionMatrix.elements].map((v) => v.toFixed(4)).join(',') + `|${cv.width}x${cv.height}|${this._stillGen || 0}`;
     const now = performance.now();
     if (key !== this._stillKey) { this._stillKey = key; this._stillAt = now; this._hideStill(); return false; }

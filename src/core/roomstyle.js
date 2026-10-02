@@ -26,7 +26,15 @@ export const WALLS = {
 // (the plaster hood, models/appliances.js) share these, so the hood reads as the same paint on the
 // same wall and not a cream box in front of it (her catch 2026-09-28: "it drops in as a chalk color").
 export const WALL_PAINT = { roughness: 1, metalness: 0, envMapIntensity: 1 };
-// The ceiling in photo mode's closed room (render step 4): a flat, warm ceiling white, whatever the walls are.
-export const CEILING = 0xf3efe6;
+// Painted plaster reads as its paint (her catch 2026-10-02, "make the walls and ceiling white"): a white
+// wall on the side away from the key went mid-grey, and photo mode's ceiling a grey band over every
+// shot. Each wall-paint material glows faintly in its own colour, so a shaded wall stays the paint
+// it is (a charcoal wall stays charcoal); the ceiling, lit by nothing but bounce, glows more.
+export const WALL_GLOW = 0.18, CEILING_GLOW = 0.55;
+/** MeshStandardMaterial parameters for wall paint of colour `color` (hex or THREE.Color). */
+export const wallPaint = (color, glow = WALL_GLOW) => ({ color, emissive: color, emissiveIntensity: glow, ...WALL_PAINT });
+// The ceiling in photo mode's closed room (render step 4): ceiling white, whatever the walls are. The same
+// white as WALLS.white (was a warm 0xf3efe6, which with CEILING_GLOW read as a cream band; 2026-10-02).
+export const CEILING = 0xf7f6f2;
 
 export const hexOf =(table, key, fallback) => '#' + ((table[key] || {}).color ?? fallback).toString(16).padStart(6, '0');
