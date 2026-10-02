@@ -445,7 +445,39 @@ function fitPriceFor(base, w) {
   return Math.round((wider || widest || base).usd * (1 + RESIZE_UPCHARGE));   // +10% for the resize (her call 2026-09-26)
 }
 
+// MADE-TO-HEIGHT STACKERS (her call 2026-10-02): on an odd ceiling a stacker can be made to fill it,
+// asked for, never by default. 'S11:h24' is the S11 made 24" high: 12" to 30" to the quarter inch,
+// priced at the 21" stacker for the same host + 15%. The "(fits ...)" list stays in the desc.
+export const STACKER_HEIGHT_LIMITS = [12, 30];
+export const BESPOKE_STACKER_UPCHARGE = 0.15;
+const SIZED_STACKER_RX = /^(S\d+):h(\d+(?:\.\d+)?)$/i;
+const sizedStackerCache = new Map();
+const fitsListOf = (c) => ((c.desc || '').match(/\(fits ([^)]*)\)/) || [, ''])[1];
+/** The code of the stacker made for the same hosts as baseCode, h inches high: a standard S code at 15" or 21". */
+export function sizedStackerCode(baseCode, h) {
+  const base = CATALOGUE.find((c) => c.code === String(baseCode).split(':')[0]);
+  if (!base || !base.stacker) return baseCode;
+  const hh = Math.floor(clampDim(h, STACKER_HEIGHT_LIMITS, base.h) * 4 + 0.01) / 4;
+  const std = CATALOGUE.find((c) => c.stacker && c.h === hh && fitsListOf(c) === fitsListOf(base));
+  return std ? std.code : `${base.code}:h${hh}`;
+}
+
 export function getCab(code) {
+  const mk = typeof code === 'string' && SIZED_STACKER_RX.exec(code);
+  if (mk) {
+    let hit = sizedStackerCache.get(code);
+    if (!hit) {
+      const base = CATALOGUE.find((c) => c.code === mk[1].toUpperCase());
+      if (!base || !base.stacker) return undefined;
+      const h = Math.round(clampDim(mk[2], STACKER_HEIGHT_LIMITS, base.h) * 4) / 4;
+      const fits = fitsListOf(base), at21 = CATALOGUE.find((c) => c.stacker && c.h === 21 && fitsListOf(c) === fits) || base;
+      hit = { ...base, code, h, usd: Math.round(at21.usd * (1 + BESPOKE_STACKER_UPCHARGE)), baseCode: base.code, madeToHeight: true,
+        desc: `${base.desc.replace(/\d+(?:\.\d+)?\\?"/, `${h}"`)} · made to height (+15%)`,
+        notes: `The ${base.code} made ${h}" high to suit the ceiling, priced at the 21" stacker plus 15%. ${base.notes || ''}`.trim() };
+      sizedStackerCache.set(code, hit);
+    }
+    return hit;
+  }
   const mn = typeof code === 'string' && SIZED_NICHE_RX.exec(code);
   if (mn) {
     let hit = sizedWidthCache.get(code);

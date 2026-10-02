@@ -130,13 +130,14 @@ export class UI {
   }
 
   /** One press: the right stacker on every host on the active wall (or, with an id, on that one). */
-  _stackWall(onlyId = null, wall = null) {
+  _stackWall(onlyId = null, wall = null, bespoke = false) {
     // one cabinet: wherever it stands. The catalogue tile: the whole kitchen. The wall card: that wall.
-    const p = planStackers(this.store.state, onlyId != null ? null : wall, onlyId);
+    // bespoke: made to height, filling the ceiling at the 21" price + 15% (asked for, never the default)
+    const p = planStackers(this.store.state, onlyId != null ? null : wall, onlyId, { bespoke });
     if (!p.ok) { this._toast(p.reason === 'too low' ? `The ceiling is ${fmtFeetIn(p.ceiling)}. Stackers need ${fmtFeetIn(p.need)}.` : 'Nothing here can take a stacker.'); return; }
     const added = this.controls.addStackers(p.placements);
     this._renderWallFit(); this._refreshCatalogue(); this._refreshCost();
-    this._toast(added ? `${added} stacker${added === 1 ? '' : 's'} added (${p.size}"): ${p.placements.map((q) => q.code).join(', ')}. Undo takes them off.` : 'Nothing was added.');
+    this._toast(added ? `${added} stacker${added === 1 ? '' : 's'} added (${fmtIn(p.size)}${bespoke ? ', made to height' : ''}): ${p.placements.map((q) => q.code).join(', ')}. Undo takes them off.` : 'Nothing was added.');
   }
 
   // ---------- stackers: one press puts the right stacker on every tall, upper and counter
@@ -146,7 +147,7 @@ export class UI {
     if (this.activeWall === 'island') return '';
     const p = planStackers(this.store.state, this.activeWall);
     if (!p.ok) {
-      if (p.reason === 'too low') return `<div class="wf-even"><div class="wf-gap-h"><strong>Stackers</strong> The ceiling is ${fmtFeetIn(p.ceiling)}. Stackers need ${fmtFeetIn(p.need)} (15") or ${fmtFeetIn(p.need + 6)} (21") with their crown.</div></div>`;
+      if (p.reason === 'too low') return `<div class="wf-even"><div class="wf-gap-h"><strong>Stackers</strong> The ceiling is ${fmtFeetIn(p.ceiling)}. Stackers need ${fmtFeetIn(p.need)} (15") or ${fmtFeetIn(p.need + 6)} (21") with their crown${p.bespoke ? ', or can be made to height' : ''}.</div>${this._stackMadeHTML(p)}</div>`;
       return '';
     }
     this._stack = p;
@@ -155,7 +156,17 @@ export class UI {
     return `<div class="wf-even"><div class="wf-gap-h"><strong>Stackers</strong> ${p.placements.length} cabinet${p.placements.length === 1 ? '' : 's'} on this wall can take a ${p.size}" stacker (ceiling ${fmtFeetIn(this.store.state.room.height || 96)}).</div>
       <button type="button" class="wf-gap-opt" id="wfStack" title="Puts the matching stacker on each tall, wall and counter cabinet on this wall, back on the wall, face flush with the cabinet below">
         <span class="wf-gap-codes">Add ${p.placements.length} stacker${p.placements.length === 1 ? '' : 's'} (${p.size}")</span>
-        <span class="wf-gap-meta">${p.placements.map((q) => q.code).join(' · ')}${skip.length ? ` · skipped ${skip.map((k) => `${k.code} (${why[k.why] || k.why})`).join(', ')}` : ''}</span></button></div>`;
+        <span class="wf-gap-meta">${p.placements.map((q) => q.code).join(' · ')}${skip.length ? ` · skipped ${skip.map((k) => `${k.code} (${why[k.why] || k.why})`).join(', ')}` : ''}</span></button>${this._stackMadeHTML(p)}</div>`;
+  }
+
+  /** The made-to-height offer under the standard one, when the ceiling would take a different height. */
+  _stackMadeHTML(p) {
+    if (!p.bespoke) return '';
+    const m = planStackers(this.store.state, this.activeWall, null, { bespoke: true });
+    if (!m.ok) return '';
+    return `<button type="button" class="wf-gap-opt" id="wfStackMade" title="Stackers made ${fmtIn(m.size)} high to fill the ceiling to its crown, priced at the 21&quot; stacker plus 15%">
+        <span class="wf-gap-codes">Made to height: ${m.placements.length} stacker${m.placements.length === 1 ? '' : 's'} (${fmtIn(m.size)}, +15%)</span>
+        <span class="wf-gap-meta">fills the ceiling · ${m.placements.map((q) => getCab(q.code).baseCode || q.code).join(' · ')}</span></button>`;
   }
 
   // ---------- gaps: "there is a gap here, this is what would fit" (her ask 2026-09-21) ----------
@@ -198,6 +209,7 @@ export class UI {
     }
     el.innerHTML = `<div class="wf-tabs">${tabs}</div>${bar}${this._evenHTML()}${this._gapsHTML()}${this._stackersHTML()}`;
     el.querySelector('#wfStack')?.addEventListener('click', () => this._stackWall(null, this.activeWall === 'island' ? null : this.activeWall));
+    el.querySelector('#wfStackMade')?.addEventListener('click', () => this._stackWall(null, this.activeWall === 'island' ? null : this.activeWall, true));
     el.querySelector('.wf-even')?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-even]'); if (!btn) return;
       const o = this._even && this._even.options[Number(btn.dataset.even)]; if (!o) return;
@@ -703,7 +715,13 @@ export class UI {
           <span class="ci-code">Add stackers</span>
           <span class="ci-desc">${p.placements.length} stacker${p.placements.length === 1 ? '' : 's'}, ${p.size}", matched to each tall, wall and counter cabinet in the kitchen</span>
           <span class="ci-meta">${p.placements.map((q) => q.code).join(' · ')}</span></button>`;
-        else if (p.reason === 'too low') html += `<div class="hint" style="margin:2px 0 8px">The ceiling is ${fmtFeetIn(p.ceiling)}: stackers need ${fmtFeetIn(p.need)} for 15" or ${fmtFeetIn(p.need + 6)} for 21", with their crown. Change the ceiling under Room and a one-press "Add stackers" appears here.</div>`;
+        if (p.bespoke) { const m = planStackers(this.store.state, null, null, { bespoke: true });
+          if (m.ok) html += `<button type="button" class="cat-item cat-combo cat-stack" data-stack="made" title="Stackers made ${fmtIn(m.size)} high to fill the ceiling to its crown, priced at the 21&quot; stacker plus 15%">
+          <span class="cat-thumb">${cabinetSVG(getCab(m.placements[0].code))}</span>
+          <span class="ci-code">Made to height</span>
+          <span class="ci-desc">${m.placements.length} stacker${m.placements.length === 1 ? '' : 's'}, ${fmtIn(m.size)}, made to fill the ceiling: the 21" price + 15%</span>
+          <span class="ci-meta">${m.placements.map((q) => getCab(q.code).baseCode || q.code).join(' · ')}</span></button>`; }
+        if (!p.ok && p.reason === 'too low') html += `<div class="hint" style="margin:2px 0 8px">The ceiling is ${fmtFeetIn(p.ceiling)}: stackers need ${fmtFeetIn(p.need)} for 15" or ${fmtFeetIn(p.need + 6)} for 21", with their crown. Change the ceiling under Room and a one-press "Add stackers" appears here.</div>`;
         else if (p.reason === 'no hosts') html += `<div class="hint" style="margin:2px 0 8px">Stackers sit on tall, wall and counter cabinets. Add those first and a one-press "Add stackers" appears here.</div>`;
       }
       // "Sink base" shortcuts lead the Floor list: a real base + a real sink, centred, in one tap
@@ -758,7 +776,7 @@ export class UI {
     document.getElementById('catalogue').addEventListener('click', (e) => {
       const row = e.target.closest('.cat-item');
       if (!row) return;
-      if (row.dataset.stack) { this._stackWall(); return; }
+      if (row.dataset.stack) { this._stackWall(null, null, row.dataset.stack === 'made'); return; }
       if (row.dataset.combo) {
         const combo = sinkBaseCombo(row.dataset.combo);
         const res = combo && this.controls.placeSinkBase(combo, this.activeWall);

@@ -42,3 +42,25 @@ test("a new ceiling resizes the stackers already placed: up to 21\", back to 15\
   assert.deepEqual(resizeStackers({ room: room(106), items: tall }).map((s) => s.to), placed.map((q) => q.code), "back down to 15\"");
   assert.deepEqual(resizeStackers({ room: room(96), items: tall }), [], "too low: left for the warning");
 });
+
+test('made to height, when asked: fills the ceiling 12" to 30", at the 21" price + 15%, and refits with the ceiling', () => {
+  const p = planStackers({ room: room(113), items });                 // 9' 5": 21" standard, 24" made to height on offer
+  assert.equal(p.size, 21); assert.equal(p.bespoke, 24);
+  const m = planStackers({ room: room(113), items }, null, null, { bespoke: true });
+  assert.equal(m.size, 24); assert.equal(m.bespoke, 0);
+  for (const q of m.placements) {
+    const c = getCab(q.code), at21 = getCab(planStackers({ room: room(113), items }).placements.find((s) => s.hostId === q.hostId).code);
+    assert.equal(c.h, 24); assert.ok(c.madeToHeight); assert.equal(c.usd, Math.round(at21.usd * 1.15)); assert.equal(c.mountY, at21.mountY);
+  }
+  assert.equal(planStackers({ room: room(110), items }).bespoke, 0, 'a ceiling 21" fills exactly offers nothing extra');
+  assert.equal(planStackers({ room: room(140), items }, null, null, { bespoke: true }).size, 30, 'never over 30"');
+  const low = planStackers({ room: room(102), items });              // too low for 15", room for 13" made to height
+  assert.equal(low.ok, false); assert.equal(low.bespoke, 13);
+  assert.equal(planStackers({ room: room(100), items }).bespoke, 0, 'under 12" none');
+  // a made-to-height stacker refits to the new ceiling; landing on 21" it becomes the standard code
+  const placed = [...items, ...m.placements.map((q, i) => ({ id: 200 + i, code: q.code, x: q.x, z: q.z, rotDeg: q.rotDeg }))];
+  const re = resizeStackers({ room: room(116), items: placed });
+  assert.ok(re.length === m.placements.length && re.every((s) => getCab(s.to).h === 27 && getCab(s.to).madeToHeight));
+  const back21 = resizeStackers({ room: room(110), items: placed });
+  assert.ok(back21.every((s) => getCab(s.to).h === 21 && !getCab(s.to).madeToHeight));
+});
