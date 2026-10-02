@@ -15,7 +15,7 @@ import { canFitWidth } from '../core/catalogue.js';
 import { measureRun } from '../core/measure.js';
 import { planRoomResize } from '../core/roomresize.js';
 import { canFileIsland } from '../core/islands.js';
-import { planStackers } from '../core/stackers.js';
+import { planStackers, resizeStackers } from '../core/stackers.js';
 import { planIslandBack } from '../core/islandback.js';
 import { planMirror, mirrorTargets } from '../core/mirror.js';
 import { summarizeState, deliveryEstimate } from '../core/cost.js';
@@ -822,7 +822,11 @@ export class UI {
             for (const o of plan.openings) this.store.updateOpening(o.id, { pos: o.pos });
             for (const bx of plan.boxings) this.store.updateBoxing(bx.id, { pos: bx.pos });
           }
+          // a new ceiling: the stackers already placed go to the height it takes, 15" or 21" (core/stackers.js)
+          const swaps = key === 'height' ? resizeStackers(this.store.state) : [];
+          for (const sw of swaps) this.store.swapItem(sw.id, sw.to, { quiet: true });
           this.store.endHistory();
+          if (swaps.length) this._toast(`${swaps.length} stacker${swaps.length === 1 ? '' : 's'} now ${getCab(swaps[0].to).h}" to suit the ${fmtFeetIn(v)} ceiling. Undo puts ${swaps.length === 1 ? 'it' : 'them'} back.`);
           if (plan && plan.moves.length) this.controls.layer.rebuildAll?.();
           this.onRoomChange(true);   // dimensions changed → re-frame camera
           if (plan) this.flagRoomFit(plan, true);

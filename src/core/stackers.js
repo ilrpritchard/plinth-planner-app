@@ -19,6 +19,9 @@ const hostTop = (cab) => (cab.type === 'TALL' ? TALL_H : cab.type === 'WALL' ? M
 const fitsOf = (s) => ((s.desc || '').match(/\(fits ([^)]*)\)/) || [, ''])[1].split(/[,\s]+/).filter(Boolean);
 const STACKERS = CATALOGUE.filter((c) => c.stacker);
 
+/** The stacker height a ceiling of H takes with its crown: 21, 15, or 0 (none). */
+export const sizeFor = (H) => (H >= TALL_H + 21 + CLEAR ? 21 : H >= TALL_H + 15 + CLEAR ? 15 : 0);
+
 /** The stacker of `h` inches made for this host, or null. */
 export function stackerFor(hostCode, h) {
   return STACKERS.find((s) => s.h === h && fitsOf(s).includes(hostCode)) || null;
@@ -31,7 +34,7 @@ export function planStackers(state, wall = null, onlyId = null) {
   const offWall = (it, c) => { const rot = rotOf(it); return rot === 0 ? it.z - c.d / 2 + D / 2 : rot === 180 ? D / 2 - (it.z + c.d / 2) : rot === 90 ? it.x - c.d / 2 + W / 2 : rot === 270 ? W / 2 - (it.x + c.d / 2) : Infinity; };
   const hosts = items.map((it) => ({ it, cab: getCab(it.code) })).filter(({ it, cab }) => isHost(cab) && (onlyId == null || it.id === onlyId) && (!wall || ROT_WALL[rotOf(it)] === wall || (wall === 'left' && ROT_WALL[rotOf(it)] === 'right')));
   if (!hosts.length) return { ok: false, reason: 'no hosts' };
-  const size = H >= TALL_H + 21 + CLEAR ? 21 : H >= TALL_H + 15 + CLEAR ? 15 : 0;
+  const size = sizeFor(H);
   if (!size) return { ok: false, reason: 'too low', need: TALL_H + 15 + CLEAR, ceiling: H };
 
   const stacked = items.filter((it) => getCab(it.code)?.stacker);
@@ -50,4 +53,24 @@ export function planStackers(state, wall = null, onlyId = null) {
   }
   if (!placements.length) return { ok: false, reason: 'nothing to add', size, skipped };
   return { ok: true, size, placements, hosts: hosts.length, skipped };
+}
+
+// The ceiling changed (her ask 2026-10-02, "upgrade stackers automatically when the ceiling
+// changes"): every stacker already placed goes to the height the new ceiling takes, up to 21"
+// or back down to 15". Its host is the cabinet it fits, on the same wall, at the same spot.
+// A ceiling too low for any stacker leaves them as they are: warnings.js flags them.
+//   resizeStackers(state) -> [{ id, from, to }]
+export function resizeStackers(state) {
+  const size = sizeFor((state && state.room && state.room.height) || 96);
+  if (!size) return [];
+  const items = (state && state.items) || [], swaps = [];
+  for (const it of items) {
+    const cab = getCab(it.code);
+    if (!cab || !cab.stacker || cab.h === size) continue;
+    const rot = rotOf(it), fits = fitsOf(cab), along = (o) => (rot % 180 === 0 ? o.x : o.z);
+    const host = items.find((o) => o !== it && fits.includes(o.code) && rotOf(o) === rot && Math.abs(along(o) - along(it)) < 1);
+    const s = host && stackerFor(host.code, size);
+    if (s && s.code !== it.code) swaps.push({ id: it.id, from: it.code, to: s.code });
+  }
+  return swaps;
 }

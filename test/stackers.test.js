@@ -1,7 +1,7 @@
 // stackers.test.js — the right stacker lands on every tall, wall and counter cabinet in one press.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planStackers, stackerFor } from '../src/core/stackers.js';
+import { planStackers, stackerFor, resizeStackers } from '../src/core/stackers.js';
 import { getCab } from '../src/core/catalogue.js';
 
 const W = 200, D = 160;
@@ -29,4 +29,16 @@ test('too low a ceiling is refused; a stacked host, a corner unit and an island 
   assert.deepEqual(p.skipped.map((k) => [k.id, k.why]).sort((a, b) => a[0] - b[0]), [[1, 'already stacked'], [10, 'corner'], [11, 'off the wall']]);
   // one wall at a time
   assert.equal(planStackers({ room: room(108), items: [...items, { id: 12, code: 'T1', x: W / 2 - 12.25 - 1.18, z: 30, rotDeg: 270 }] }, 'left').placements.length, 1);
+});
+
+test("a new ceiling resizes the stackers already placed: up to 21\", back to 15\", none when too low", () => {
+  const placed = planStackers({ room: room(108), items }).placements.map((q, i) => ({ id: 100 + i, code: q.code, x: q.x, z: q.z, rotDeg: q.rotDeg }));
+  const all = [...items, ...placed];
+  assert.deepEqual(resizeStackers({ room: room(108), items: all }), [], "already the right height");
+  const up = resizeStackers({ room: room(110), items: all });          // 9' 2": 86 + 21 + 3
+  assert.equal(up.length, placed.length);
+  for (const sw of up) { const host = items.find((i) => i.x === all.find((o) => o.id === sw.id).x); assert.equal(sw.to, stackerFor(host.code, 21).code); }
+  const tall = all.map((o) => { const sw = up.find((u) => u.id === o.id); return sw ? { ...o, code: sw.to } : o; });
+  assert.deepEqual(resizeStackers({ room: room(106), items: tall }).map((s) => s.to), placed.map((q) => q.code), "back down to 15\"");
+  assert.deepEqual(resizeStackers({ room: room(96), items: tall }), [], "too low: left for the warning");
 });
