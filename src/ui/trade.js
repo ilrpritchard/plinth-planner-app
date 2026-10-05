@@ -255,7 +255,6 @@ export class TradeUI {
               <span>One plan per floor, with the kitchen types. PL/NTH lays out the kitchens and returns a priced project.</span>
             </a>
           </div>
-          <div class="tw-foot">Single residences and smaller projects: <a href="mailto:imogen@plinthmade.com">imogen@plinthmade.com</a></div>
         </section>
       </div>`;
     const $ = (id) => document.getElementById(id);
