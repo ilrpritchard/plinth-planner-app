@@ -1118,7 +1118,7 @@ export class UI {
       <div class="order-no-big">${esc(orderNo)}</div>
       <p class="cloud-sub">Thank you${s.customer.name ? `, ${esc(s.customer.name.split(' ')[0])}` : ''}. This kitchen
         (${sum.totalCabs} cabinets · ${fmtUSD(sum.subtotal)}) is with PL/NTH.
-        We check it over and email the fixed quote to
+        We check it over and email the quote to
         <strong>${esc(s.customer.email)}</strong>.
         Keep the reference above. It identifies your order in any conversation.</p>
       <div class="order-modal-btns">

@@ -187,14 +187,14 @@ export class TradeUI {
 
 
         <section class="trade-order" id="tOrder">
-          <h3>Request a fixed quote</h3>
+          <h3>Request a quote</h3>
           <div class="trade-fields">
             <label>Contact name<input id="tcName" value="${esc(this.store.state.customer.name)}"></label>
             <label>Email<input id="tcEmail" value="${esc(this.store.state.customer.email)}"></label>
             <label>Notes<input id="tcNotes" value="${esc(this.store.state.customer.notes)}"></label>
           </div>
-          <button class="cta" id="tPlaceOrder">Request a fixed quote →</button>
-          <div class="trade-note">Requesting a quote logs the project with PL/NTH under a PL- number with live status tracking. We reply by email with the fixed price. Volume pricing shown is indicative until confirmed on quote.</div>
+          <button class="cta" id="tPlaceOrder">Request a quote →</button>
+          <div class="trade-note">Requesting a quote logs the project with PL/NTH under a PL- number with live status tracking. We reply by email with the quote. Volume pricing shown is indicative until confirmed on quote.</div>
         </section>
       </div>`;
     this.wire();
@@ -338,7 +338,7 @@ export class TradeUI {
       </div>
       <div class="tb-right">
         <div class="tb-total"><span class="l">Project total</span><span class="v">${fmtUSD(s.grand)}</span></div>
-        <button class="cta" id="tQuote">Request a fixed quote</button>
+        <button class="cta" id="tQuote">Request a quote</button>
       </div>`;
   }
 
@@ -1269,7 +1269,7 @@ export class TradeUI {
       }
       try {
         await this.quoteByWeb();
-        await uiAlert('Your project and the full cabinet list are with PL/NTH. We reply by email with the fixed price. Sign in any time to track it under Orders.', { title: 'Quote requested', okLabel: 'Done' });
+        await uiAlert('Your project and the full cabinet list are with PL/NTH. We reply by email with the quote. Sign in any time to track it under Orders.', { title: 'Quote requested', okLabel: 'Done' });
         return;
       } catch { return this.orderFallback('signin'); }
     }
@@ -1346,7 +1346,7 @@ export class TradeUI {
       <div class="order-no-big">${esc(snapshot.orderNo)}</div>
       <p class="cloud-sub">Your project <strong>${esc(snapshot.project)}</strong>
         (${snapshot.totals.cabinets} cabinets · ${fmtUSD(snapshot.totals.grand)}) is with PL/NTH.
-        We reply by email with the fixed price. ${link
+        We reply by email with the quote. ${link
           ? 'Keep the tracking link below: anyone on the team can follow the order with it, no account needed. It shows status only, never prices.'
           : 'Track it any time under Orders.'}</p>
       ${link ? `<div class="trk-link-row"><input id="osLink" readonly value="${esc(link)}" aria-label="Tracking link"><button class="ghost sm" id="osCopy">Copy link</button></div>` : ''}
@@ -1475,7 +1475,7 @@ export class TradeUI {
     }
     if (!rows.length) {
       body.innerHTML = `<div class="orders-empty"><h3>No orders yet</h3>
-        <p>When you request a fixed quote while signed in, the project lands here with a PL- number and live status tracking.</p></div>`;
+        <p>When you request a quote while signed in, the project lands here with a PL- number and live status tracking.</p></div>`;
       return;
     }
     // change requests by order. NULL = SUPABASE_CHANGES.sql not run: the card keeps the print-only change order
