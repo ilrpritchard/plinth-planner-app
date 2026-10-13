@@ -1,5 +1,5 @@
 # Supabase pauses free-tier projects after 7 days without any API activity.
-# This pings the PL/NTH project every 2 days so the planner's cloud features
+# This pings the PL/NTH project every day so the planner's cloud features
 # (order checks, contact form, DXF gates, sign-in, saved designs) never go dark.
 # The key it uses is the public "anon" key already served to every visitor in
 # src/core/config.js, so nothing secret lives here.
@@ -7,7 +7,7 @@ name: Keep Supabase awake
 
 on:
   schedule:
-    - cron: '17 9 */2 * *'   # every 2 days at 09:17 UTC
+    - cron: '17 9 * * *'   # every day at 09:17 UTC
   workflow_dispatch:
 
 jobs:
@@ -20,8 +20,13 @@ jobs:
           KEY=$(curl -fsS https://planner.plinthmade.com/src/core/config.js | grep -o 'eyJ[A-Za-z0-9._-]*' | head -1)
           [ -n "$KEY" ] || { echo "could not read the public key from config.js"; exit 1; }
           BASE=https://quzjzgllwjrkynapeuzi.supabase.co
-          # a real database query through the API (RLS may return an empty list; that still counts as activity)
+          # a database query through the API (RLS returns an empty list)
           code=$(curl -s -o /tmp/r.json -w '%{http_code}' "$BASE/rest/v1/order_checks?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
           echo "rest $code $(head -c 200 /tmp/r.json)"
           case "$code" in 2*|401|403) ;; *) echo "database not reachable (paused?)"; exit 1;; esac
+          # an empty list under RLS was not enough for Supabase (warning email, 13 Oct 2026),
+          # so also run a real function inside the database; an unknown token returns null
+          code=$(curl -s -o /tmp/f.json -w '%{http_code}' -X POST "$BASE/rest/v1/rpc/get_shared_project" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"tok":"keepalive-ping"}')
+          echo "rpc $code $(head -c 200 /tmp/f.json)"
+          case "$code" in 2*) ;; *) echo "database function failed"; exit 1;; esac
           curl -fsS "$BASE/auth/v1/health" -H "apikey: $KEY" >/dev/null && echo "auth ok"
