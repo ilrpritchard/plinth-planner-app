@@ -140,6 +140,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       out = opts.sort((a, b) => a.err - b.err)[0].out;
       // (an open shelf is ONE depth, her call 2026-10-14: it never deepens on a pull; it goes back to
       // the wall, or flush with a tall's face, like any wall cabinet)
+    }
     if (wall === 'back') z = bounds.minZ + touch + out;
     else if (wall === 'front') z = bounds.maxZ - touch - out;
     else if (wall === 'left') x = bounds.minX + touch + out;
