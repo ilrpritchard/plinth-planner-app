@@ -133,7 +133,7 @@ export function magazineViews(room = {}, items = []) {
 
 // ---- STRAIGHT-ON VIEWS (her call 2026-10-14: "the photo views look terrible and keep glitching... just
 // give 2 straight on views of each side/angle of the kitchens") ------------------------------------
-// For every side that carries cabinets (back, left, right, front wall, the island) two level cameras
+// For every side that carries cabinets (back, left, right, front wall; the island's front AND its back) two level cameras
 // square to the run: WHOLE (the full run, floor to crown, centred on the run) and CLOSE (nearer, the
 // worktop and uppers band, centred on the working bay: the cooker, else the sink, else the middle).
 // Level camera = verticals stay vertical, no lens shift, no tilt. The lens is the longest of 50 / 35 /
@@ -158,7 +158,10 @@ export function straightViews(room = {}, items = []) {
   }
   const out = [];
   const NAMES = { back: 'Back wall', left: 'Left wall', right: 'Right wall', front: 'Front wall', island: 'Island' };
-  for (const side of ['back', 'left', 'right', 'front', 'island']) {
+  // the island is two sides of its own: its FRONT (the doors, facing the run) always, and its back
+  // (her call 2026-10-14: "the island should also have a straight on view from the front")
+  for (const pass of ['back', 'left', 'right', 'front', 'island', 'island-back']) {
+    const side = pass === 'island-back' ? 'island' : pass;
     const g = groups[side]; if (!g.length) continue;
     // the side's frame: `along` runs across the picture, `out` toward the camera, from the run's front
     const rot = side === 'island' ? (g.filter((q) => q.rot === 180).length > g.length / 2 ? 180 : 0) : SIDES[side];
@@ -182,10 +185,24 @@ export function straightViews(room = {}, items = []) {
       return tx != null ? Math.abs(tx) : Math.abs(tz);
     };
     let face = frontP, dir = 1, outMax = edgeOut(1) - M - frontP;
-    if (side === 'island') {                                               // shoot the island from whichever side has the room
-      const other = edgeOut(-1) - M + backP;
-      if (other > outMax) { face = backP; dir = -1; outMax = other; }
+    if (pass === 'island-back') { face = backP; dir = -1; outMax = edgeOut(-1) - M + backP; }   // from behind: its back panel or seating side
+    // the island is shot from INSIDE the room: the camera stops short of whatever stands across from it
+    // (the back run in front of it, a wall run behind it), never steps through a wall, and takes the
+    // widest lens instead. A wall run's camera may step back past an island (it stands above it)
+    let stepBack = STEP_BACK;
+    if (side === 'island') {
+      stepBack = 0;
+      for (const it of items || []) {
+        const cab = getCab(it && it.code); if (!cab || !cab.placeable || it.island) continue;
+        const a = alongOf(it.x, it.z), o = outOf(it.x, it.z), horizItem = ((it.rotDeg || 0) - rot) % 180 === 0;
+        const w = horizItem ? cab.w : cab.d, d = horizItem ? cab.d : cab.w;
+        if (a + w / 2 < lo || a - w / 2 > hi) continue;                     // not across from the island
+        const near = dir > 0 ? o - d / 2 : o + d / 2;                        // its face toward the island
+        const room = (near - face) * dir - M;
+        if (room > 0) outMax = Math.min(outMax, room);
+      }
     }
+    if (outMax < 12) continue;                                             // no room to stand on that side at all
     const bay = (() => {                                                   // the working bay: cooker, else sink, else the middle
       const cook = g.find(({ cab }) => cab.appliance === 'range' || cab.appliance === 'hob');
       const sink = g.find(({ cab }) => cab.appliance === 'sink');
@@ -197,19 +214,19 @@ export function straightViews(room = {}, items = []) {
       for (const mm of LENSES) {
         const t = Math.tan(vfovFor(mm) * Math.PI / 360);
         const need = Math.max(frameH / (2 * t), frameW / (3 * t));            // 3:2 frame: width = 1.5 × height
-        if (need <= outMax + STEP_BACK) { lens = mm; dist = need; break; }
+        if (need <= outMax + stepBack) { lens = mm; dist = need; break; }
         dist = need;
       }
-      dist = Math.min(dist, outMax + STEP_BACK);
+      dist = Math.min(dist, outMax + stepBack);
       const o = face + dir * dist, y = clamp(centreY, 24, H - 10);
       const px = centreA * c + o * s, pz = -centreA * s + o * c;             // back to world
       const tx = centreA * c + face * s, tz = -centreA * s + face * c;
       out.push({ key, name, side, pos: [px, y, pz], target: [tx, y, tz], fov: vfovFor(lens), lens, shift: 0 });
     };
-    const label = NAMES[side] + (side === 'island' && dir < 0 ? ', from behind' : '');
-    const cy = Math.max(top / 2, 36);                                       // never a knee-high camera: the frame grows down to the floor instead
-    mk(`${side}-whole`, `${label}, straight on: the whole run`, (lo + hi) / 2, cy, Math.max(top + 6, 2 * cy + 4), hi - lo + 8);
-    mk(`${side}-close`, `${label}, straight on, closer: worktop and uppers`, bay, 48, 64, 0);
+    const label = side === 'island' ? (dir < 0 ? 'Island, from behind' : 'Island, from the front') : NAMES[side];
+    const cy = Math.max(top / 2, 40);                                       // never a knee-high camera (and clear of an island top): the frame grows down to the floor instead
+    mk(`${pass}-whole`, `${label}, straight on: the whole run`, (lo + hi) / 2, cy, Math.max(top + 6, 2 * cy + 4), hi - lo + 8);
+    mk(`${pass}-close`, `${label}, straight on, closer: ${side === 'island' ? 'the worktop' : 'worktop and uppers'}`, bay, 48, 64, 0);
   }
   return out;
 }

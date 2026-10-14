@@ -42,11 +42,18 @@ test('straight-on: two level views square to every side that carries cabinets, n
   const items = [{ code: 'F10', x: 80, z: -87.75, rotDeg: 0 }, { code: 'AP1', x: 40, z: -87, rotDeg: 0 }, { code: 'W2', x: 80, z: -93, rotDeg: 0 },
     { code: 'T1', x: -110.5, z: -40, rotDeg: 90 }, { code: 'F20', x: 20, z: -20, rotDeg: 180, island: true }];
   const vs = straightViews(room, items);
-  assert.deepEqual(vs.map((v) => v.key), ['back-whole', 'back-close', 'left-whole', 'left-close', 'island-whole', 'island-close']);
+  assert.deepEqual(vs.map((v) => v.key), ['back-whole', 'back-close', 'left-whole', 'left-close', 'island-whole', 'island-close', 'island-back-whole', 'island-back-close']);
+  // the island's front (its doors face the back run, rot 180: the front plane is at z = -32) is shot from the run side, looking +z
+  const isl = vs.find((v) => v.key === 'island-whole');
+  assert.ok(isl.pos[2] < isl.target[2] && Math.abs(isl.target[2] - (-32)) < 1e-9 && Math.abs(isl.pos[0] - 20) < 1e-9, `island front: ${isl.pos} -> ${isl.target}`);
+  assert.ok(/from the front/.test(isl.name));
+  assert.ok(isl.pos[2] > -75.8 + 6 - 1e-9 && isl.lens === 24, `island front: the camera stays in front of the back run, widest lens (${isl.pos[2]}, ${isl.lens}mm)`);
+  const islB = vs.find((v) => v.key === 'island-back-whole');
+  assert.ok(islB.pos[2] > islB.target[2] && Math.abs(islB.target[2] - (-8)) < 1e-9 && /from behind/.test(islB.name), 'and from behind');
   for (const v of vs) {
     assert.equal(v.pos[1], v.target[1], `${v.key}: level camera, verticals vertical`);
     assert.equal(v.shift, 0, `${v.key}: no lens shift`);
-    assert.ok(v.pos[1] >= 36 && v.pos[1] <= room.height - 10, `${v.key}: a standing camera (${v.pos[1]})`);
+    assert.ok(v.pos[1] >= 40 && v.pos[1] <= room.height - 10, `${v.key}: a standing camera (${v.pos[1]})`);
     assert.ok([24, 28, 35, 50].includes(v.lens), `${v.key}: a real lens`);
     if (v.side === 'back') assert.ok(Math.abs(v.pos[0] - v.target[0]) < 1e-9 && v.target[2] === -74 && v.pos[2] > v.target[2], `${v.key}: square to the back run's front`);
     if (v.side === 'left') assert.ok(Math.abs(v.pos[2] - v.target[2]) < 1e-9 && v.pos[0] > v.target[0], `${v.key}: square to the left run`);
