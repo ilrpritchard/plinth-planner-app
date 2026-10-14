@@ -7,7 +7,7 @@
 import { DEMO_DESIGNS } from './tradedemo-building.js';
 
 export const DEMO_PROJECT = 'The Morgan';
-export const DEMO_ADDRESS = 'Gramercy, New York, NY';
+export const DEMO_ADDRESS = 'New York, NY';
 
 // One entry per kitchen type: the floors it repeats across (unitQty = floors ×
 // per floor), and the cabinets in each kitchen as [code, qty] pairs: the same
