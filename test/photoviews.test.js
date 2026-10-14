@@ -2,7 +2,7 @@
 // and look at the kitchen, whatever the room size.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { photoViews } from '../src/core/photoviews.js';
+import { photoViews, straightViews } from '../src/core/photoviews.js';
 
 const inside = (room, [px, py, pz]) => px > -room.width / 2 && px < room.width / 2 && pz > -room.depth / 2 && pz < room.depth / 2 && py > 0 && py < room.height;
 
@@ -34,4 +34,28 @@ test('the views aim at the run where it stands, and read the island when there i
   assert.ok(isl, 'an island view replaces the worktop close-up');
   assert.ok(isl.pos[2] > -20, 'shot from the far side of the island toward the run');
   assert.ok(!withIsland.some((v) => v.key === 'worktop'));
+});
+
+// her call 2026-10-14: "just give 2 straight on views of each side/angle of the kitchens"
+test('straight-on: two level views square to every side that carries cabinets, none for an empty side', () => {
+  const room = { width: 240, depth: 200, height: 96, openings: [] };
+  const items = [{ code: 'F10', x: 80, z: -87.75, rotDeg: 0 }, { code: 'AP1', x: 40, z: -87, rotDeg: 0 }, { code: 'W2', x: 80, z: -93, rotDeg: 0 },
+    { code: 'T1', x: -110.5, z: -40, rotDeg: 90 }, { code: 'F20', x: 20, z: -20, rotDeg: 180, island: true }];
+  const vs = straightViews(room, items);
+  assert.deepEqual(vs.map((v) => v.key), ['back-whole', 'back-close', 'left-whole', 'left-close', 'island-whole', 'island-close']);
+  for (const v of vs) {
+    assert.equal(v.pos[1], v.target[1], `${v.key}: level camera, verticals vertical`);
+    assert.equal(v.shift, 0, `${v.key}: no lens shift`);
+    assert.ok(v.pos[1] >= 36 && v.pos[1] <= room.height - 10, `${v.key}: a standing camera (${v.pos[1]})`);
+    assert.ok([24, 28, 35, 50].includes(v.lens), `${v.key}: a real lens`);
+    if (v.side === 'back') assert.ok(Math.abs(v.pos[0] - v.target[0]) < 1e-9 && v.target[2] === -74 && v.pos[2] > v.target[2], `${v.key}: square to the back run's front`);
+    if (v.side === 'left') assert.ok(Math.abs(v.pos[2] - v.target[2]) < 1e-9 && v.pos[0] > v.target[0], `${v.key}: square to the left run`);
+    // never further back than 6' beyond the facing wall
+    assert.ok(v.pos[0] > -room.width / 2 - 72 && v.pos[0] < room.width / 2 + 72 && v.pos[2] > -room.depth / 2 - 72 && v.pos[2] < room.depth / 2 + 72, `${v.key}: within reach`);
+  }
+  assert.ok(Math.abs(vs[0].target[0] - 61.5) < 0.01, 'the whole-run view is centred on the run');
+  assert.ok(Math.abs(vs[1].target[0] - 45) < 0.01, 'the closer view is centred on the range, held 20" in from the run end so the frame stays on the run');
+  assert.ok(vs[0].pos[2] > vs[1].pos[2], 'the whole-run view stands further back');
+  assert.deepEqual(straightViews(room, []), [], 'nothing to photograph: no views');
+  assert.equal(straightViews(room, items.slice(0, 3)).length, 2, 'one side: two views');
 });

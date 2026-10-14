@@ -34,7 +34,7 @@ import { TradeUI } from './ui/trade.js';
 import { CloudUI } from './ui/cloudUI.js';
 import { Wizard } from './ui/wizard.js';
 import { isCloud, requestOrderCheck, currentUser } from './core/cloud.js';
-import { photoViews, magazineViews } from './core/photoviews.js';
+import { straightViews } from './core/photoviews.js';
 import { buildZip } from './core/xlsxmini.js';
 import { fetchSharedProject } from './core/tradecloud.js';
 
@@ -216,17 +216,16 @@ document.getElementById('navSwitch')?.addEventListener('click', (e) => {
 
 // PHOTO MODE (her asks 2026-09-25: "realistic camera angles / heights", "not auto download but
 // show a preview", "auto put the camera at eye level, the best level for shooting a kitchen").
-// Photo moves the LIVE camera to a kitchen-photography standpoint (core/photoviews.js: eye level,
-// wide lens, aimed at the run) so the shot is seen before it is saved. A bar steps through the
-// five angles; orbit is left on so the shot can be tuned by hand; "Save this photo" renders
-// exactly what is on screen at 3840x2560, "Save all five" renders the five standpoints into one
-// zip; Done puts the view back. Signed-in only when cloud is configured: the photos are an
+// Photo moves the LIVE camera to a standpoint (core/photoviews.js straightViews: a level camera square
+// to each side of the kitchen, two per side) so the shot is seen before it is saved. A bar steps
+// through them; orbit is left on so the shot can be tuned by hand; "Save" renders exactly what is on
+// screen at 3840x2560, "Save all" renders every standpoint into one zip; Done puts the view back. Signed-in only when cloud is configured: the photos are an
 // account perk, and it puts a name to who is taking the kitchen away.
 const PHOTO = { width: 3840, height: 2560, type: 'image/jpeg', quality: 0.94 };
 let photoMode = null;                                 // { views, i, was: { pos, target, fov } }
 const bytesOf = (url) => { const b64 = url.slice(url.indexOf(',') + 1), bin = atob(b64), data = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) data[k] = bin.charCodeAt(k); return data; };
 const saveBlob = (name, blob) => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); };
-const photoFile = (v, i) => `PLINTH_kitchen_${i + 1}_${v.key}.jpg`;   // 1 = your view, 2-6 the suggested angles, 7-9 the magazine presets
+const photoFile = (v, i) => `PLINTH_kitchen_${i + 1}_${v.key}.jpg`;   // 1 = your view, then two straight-on views of each side
 document.getElementById('btnPhoto')?.addEventListener('click', async () => {
   if (photoMode) { photoAngle(photoMode.i + 1); return; }          // pressed again: next angle
   if (isCloud()) {
@@ -248,8 +247,9 @@ function startPhotoMode() {
   // photo 1 is HER OWN VIEW, exactly as she left it (her catch 2026-09-25: "when I angle the camera
   // and click photo it removes my view"); the five suggested standpoints are one arrow away
   const mine = { key: 'your-view', name: 'Your view, as it is', pos: was.pos.toArray(), target: was.target.toArray(), fov: was.fov };
-  // then the three magazine presets: level cameras, real lenses (85 or shorter / 50 / 100mm), a lens shift
-  photoMode = { views: [mine, ...photoViews(store.state.room, store.state.items), ...magazineViews(store.state.room, store.state.items)], i: 0, was };
+  // then two STRAIGHT-ON views of every side that carries cabinets (her call 2026-10-14: the angled and
+  // magazine shots "look terrible and keep glitching"): level cameras, square to each run, no lens shift
+  photoMode = { views: [mine, ...straightViews(store.state.room, store.state.items)], i: 0, was };
   layer.select(null); ui.showSelbar(null); layer.setHover?.(null);
   room.setGridVisible(false);
   scene.setPhotoQuality(true);                        // finer shadow + contact shading, photo mode only
@@ -261,7 +261,7 @@ function startPhotoMode() {
     <span id="pbCap"></span>
     <button type="button" class="pb-ghost" id="pbNext" title="Next angle (→)">›</button>
     <button type="button" id="pbSave" title="Render what is on screen at ${PHOTO.width} × ${PHOTO.height} and save it">Save</button>
-    <button type="button" class="pb-ghost" id="pbAll" title="Your view, the five suggested standpoints and the three magazine presets, rendered at ${PHOTO.width} × ${PHOTO.height}, in one zip">Save all</button>
+    <button type="button" class="pb-ghost" id="pbAll" title="Your view and two straight-on views of every side, rendered at ${PHOTO.width} × ${PHOTO.height}, in one zip">Save all</button>
     <button type="button" class="pb-ghost" id="pbDone">Done</button>`;
   bar.querySelector('#pbPrev').addEventListener('click', () => photoAngle(photoMode.i - 1));
   bar.querySelector('#pbNext').addEventListener('click', () => photoAngle(photoMode.i + 1));
@@ -298,7 +298,7 @@ function startPhotoMode() {
     cap.style.minWidth = `${Math.ceil(widest)}px`;
   }
   photoAngle(0);
-  toast('Photo 1 is your view as it is: Save it, or ‹ › for five suggested angles at eye level, then three magazine shots.');
+  toast(`Photo 1 is your view as it is: Save it, or ‹ › for ${photoMode.views.length - 1} straight-on views, two of each side of the kitchen.`);
 }
 function photoAngle(i) {
   if (!photoMode) return;

@@ -11,7 +11,9 @@
 //   photoViews(room, items?) -> [{ key, name, pos:[x,y,z], target:[x,y,z], fov }]
 
 import { getCab } from './catalogue.js';
-import { SURFACE_Y } from './units.js';
+import { SURFACE_Y, MOUNT } from './units.js';
+
+const getMountY = (cab) => (typeof cab.mountY === 'number' ? cab.mountY : MOUNT[cab.type] ?? 0);
 
 const EYE = 56;             // 4'8": where kitchen photographers stand the camera (chest height keeps verticals straight and reads the counters)
 const LOW = 44;             // worktop-level close-up
@@ -127,4 +129,87 @@ export function magazineViews(room = {}, items = []) {
   const dz = Math.min(100, (j.island ? front - M : front - M) - j.z);
   const c = view('mag-detail', j.island ? 'Magazine: island junction, 100mm at 1.0 m' : 'Magazine: cabinet junction, 100mm at 1.0 m', 100, [j.x + 4, h10, j.z + dz], [j.x, j.z], 30);
   return [a, b, c];
+}
+
+// ---- STRAIGHT-ON VIEWS (her call 2026-10-14: "the photo views look terrible and keep glitching... just
+// give 2 straight on views of each side/angle of the kitchens") ------------------------------------
+// For every side that carries cabinets (back, left, right, front wall, the island) two level cameras
+// square to the run: WHOLE (the full run, floor to crown, centred on the run) and CLOSE (nearer, the
+// worktop and uppers band, centred on the working bay: the cooker, else the sink, else the middle).
+// Level camera = verticals stay vertical, no lens shift, no tilt. The lens is the longest of 50 / 35 /
+// 28 / 24mm that takes the frame in from where the room lets the camera stand; a shallow room steps
+// the camera back THROUGH the facing wall (it auto-hides behind the camera), up to 6'.
+//   straightViews(room, items) -> [{ key, name, pos, target, fov, lens, side }]
+const SIDES = { back: 0, left: 90, front: 180, right: 270 };
+const LENSES = [50, 35, 28, 24];
+const STEP_BACK = 72;
+
+export function straightViews(room = {}, items = []) {
+  const W = room.width || 144, D = room.depth || 120, H = room.height || 96, M = 6;
+  const groups = { back: [], left: [], right: [], front: [], island: [] };
+  for (const it of items || []) {
+    const cab = getCab(it && it.code); if (!cab || !cab.placeable) continue;
+    const rot = (((it.rotDeg || 0) % 360) + 360) % 360;
+    if (it.island) { groups.island.push({ it, cab, rot }); continue; }
+    if (rot === 0 && it.z < -D / 2 + 40) groups.back.push({ it, cab, rot });
+    else if (rot === 180 && it.z > D / 2 - 40) groups.front.push({ it, cab, rot });
+    else if (rot === 90 && it.x < -W / 2 + 40) groups.left.push({ it, cab, rot });
+    else if (rot === 270 && it.x > W / 2 - 40) groups.right.push({ it, cab, rot });
+  }
+  const out = [];
+  const NAMES = { back: 'Back wall', left: 'Left wall', right: 'Right wall', front: 'Front wall', island: 'Island' };
+  for (const side of ['back', 'left', 'right', 'front', 'island']) {
+    const g = groups[side]; if (!g.length) continue;
+    // the side's frame: `along` runs across the picture, `out` toward the camera, from the run's front
+    const rot = side === 'island' ? (g.filter((q) => q.rot === 180).length > g.length / 2 ? 180 : 0) : SIDES[side];
+    const rad = rot * Math.PI / 180, c = Math.cos(rad), s = Math.sin(rad);
+    const alongOf = (x, z) => x * c - z * s, outOf = (x, z) => x * s + z * c;   // local axes: +x along, +z out (the front)
+    let lo = Infinity, hi = -Infinity, frontP = -Infinity, backP = Infinity, top = 0;
+    for (const { it, cab } of g) {
+      const ret = cab.corner ? (cab.type === 'FLOOR' ? 24.25 : 14.25) : 0;
+      const retL = cab.corner && cab.cornerSide !== 'right' ? ret : 0, retR = cab.corner && cab.cornerSide === 'right' ? ret : 0;
+      const a = alongOf(it.x, it.z), o = outOf(it.x, it.z), horizItem = ((it.rotDeg || 0) - rot) % 180 === 0;
+      const w = horizItem ? cab.w : cab.d, d = horizItem ? cab.d : cab.w;
+      lo = Math.min(lo, a - w / 2 - retL); hi = Math.max(hi, a + w / 2 + retR);
+      frontP = Math.max(frontP, o + d / 2); backP = Math.min(backP, o - d / 2);
+      top = Math.max(top, getMountY(cab) + cab.h);
+    }
+    top = Math.min(top + 3, H);                                            // the crown line, never past the ceiling
+    // where the camera may stand: out from the front, to the facing wall (the room edge in that direction)
+    const edgeOut = (sign) => {                                            // the room boundary along +out (sign 1) or -out (sign -1)
+      const dx = s * sign, dz = c * sign;
+      const tx = dx > 0.5 ? W / 2 : dx < -0.5 ? -W / 2 : null, tz = dz > 0.5 ? D / 2 : dz < -0.5 ? -D / 2 : null;
+      return tx != null ? Math.abs(tx) : Math.abs(tz);
+    };
+    let face = frontP, dir = 1, outMax = edgeOut(1) - M - frontP;
+    if (side === 'island') {                                               // shoot the island from whichever side has the room
+      const other = edgeOut(-1) - M + backP;
+      if (other > outMax) { face = backP; dir = -1; outMax = other; }
+    }
+    const bay = (() => {                                                   // the working bay: cooker, else sink, else the middle
+      const cook = g.find(({ cab }) => cab.appliance === 'range' || cab.appliance === 'hob');
+      const sink = g.find(({ cab }) => cab.appliance === 'sink');
+      const q = cook || sink;
+      return q ? clamp(alongOf(q.it.x, q.it.z), lo + 20, hi - 20) : (lo + hi) / 2;
+    })();
+    const mk = (key, name, centreA, centreY, frameH, frameW) => {
+      let lens = LENSES[LENSES.length - 1], dist = 0;
+      for (const mm of LENSES) {
+        const t = Math.tan(vfovFor(mm) * Math.PI / 360);
+        const need = Math.max(frameH / (2 * t), frameW / (3 * t));            // 3:2 frame: width = 1.5 × height
+        if (need <= outMax + STEP_BACK) { lens = mm; dist = need; break; }
+        dist = need;
+      }
+      dist = Math.min(dist, outMax + STEP_BACK);
+      const o = face + dir * dist, y = clamp(centreY, 24, H - 10);
+      const px = centreA * c + o * s, pz = -centreA * s + o * c;             // back to world
+      const tx = centreA * c + face * s, tz = -centreA * s + face * c;
+      out.push({ key, name, side, pos: [px, y, pz], target: [tx, y, tz], fov: vfovFor(lens), lens, shift: 0 });
+    };
+    const label = NAMES[side] + (side === 'island' && dir < 0 ? ', from behind' : '');
+    const cy = Math.max(top / 2, 36);                                       // never a knee-high camera: the frame grows down to the floor instead
+    mk(`${side}-whole`, `${label}, straight on: the whole run`, (lo + hi) / 2, cy, Math.max(top + 6, 2 * cy + 4), hi - lo + 8);
+    mk(`${side}-close`, `${label}, straight on, closer: worktop and uppers`, bay, 48, 64, 0);
+  }
+  return out;
 }
