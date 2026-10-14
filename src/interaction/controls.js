@@ -262,7 +262,7 @@ export class PointerControls {
     // drop sent it back into the glass). Then it goes to the first clear stretch instead.
     const it = this.store.getItem(id);
     // a shelf or tray space dropped into a slot NARROWER than itself is cut to the slot (core/fitwidth.js)
-    if (it && flag === 'blocked' && last && canFitWidth(getCab(it.code))) {
+    if (it && flag === 'blocked' && last && canFitWidth(getCab(it.code)) && !it.fixedWidth) {   // a typed width is never cut
       const b = this.room.bounds(), wn = wallNear(b, last.x, last.z);
       const plan = planShrinkToSlot(this.store.state, getCab(it.code), wn.wall, wn.along, b, id);
       if (plan) {
@@ -300,7 +300,7 @@ export class PointerControls {
   /** Grow (or shrink) an open shelf / tray space into the space it stands in. Returns the plan or null. */
   fitToGap(id, opts = {}) {
     const it = this.store.getItem(id); const cab = it && getCab(it.code);
-    if (!cab) return null;
+    if (!cab || it.fixedWidth) return null;                    // a width she typed is pinned (2026-10-14)
     const m = measureRun(this.store, id, this.room.bounds());
     const plan = planFitToGap(cab, m, opts);
     if (!plan) return null;

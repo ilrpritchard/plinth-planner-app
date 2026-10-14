@@ -25,6 +25,9 @@ test('the wider shelf is cut to the narrower one, hood-side edge fixed, and the 
   assert.equal(planMatchShelves({ room, items: [hood, left, put(3, 'W12:w16', hw / 2 + 8)] }).reason, 'same');
   assert.equal(planMatchShelves({ room, items: [hood, left, right, put(6, 'W10R', hw / 2 + 20 + 12)] }).reason, 'corner');
   assert.equal(planMatchShelves({ room, items: [hood, left] }).reason, 'no pair');
+  // a width she typed is pinned: the wider shelf pinned is never cut; the narrower pinned still sets the width
+  assert.equal(planMatchShelves({ room, items: [hood, left, { ...right, fixedWidth: true }, w5] }).reason, 'pinned');
+  assert.equal(planMatchShelves({ room, items: [hood, { ...left, fixedWidth: true }, right, w5] }).pairs[0].cutId, 3);
 });
 
 test('a side wall pair works the same way, and the store applies it as one swap + moves', () => {

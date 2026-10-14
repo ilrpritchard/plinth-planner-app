@@ -6,7 +6,8 @@
 // difference (the leftover goes to the run's end, where a scribe filler takes it). A chain that holds a
 // corner unit is left alone: a corner never leaves its corner.
 //   planMatchShelves(state) -> { ok:true, pairs:[{ hoodId, keepId, cutId, code, w, x, z, moves:[{id,x,z}] }] }
-//                            | { ok:false, reason:'no pair' | 'same' | 'corner' }
+//                            | { ok:false, reason:'no pair' | 'same' | 'corner' | 'pinned' }
+// A shelf whose width was TYPED on the bar (item.fixedWidth) is never cut; the other one matches it.
 
 import { getCab, canFitWidth, sizedWidthCode } from './catalogue.js';
 
@@ -37,6 +38,7 @@ export function planMatchShelves(state) {
     const edge = along(wide.o) + side * wide.c.w / 2;                    // the wide shelf's far edge
     const chain = onWall.filter(({ o, c }) => o !== wide.o && (along(o) - side * c.w / 2) * side >= edge * side - 0.5);
     if (chain.some(({ c }) => c.corner)) { reason = 'corner'; continue; }
+    if (wide.o.fixedWidth) { reason = 'pinned'; continue; }               // a width she typed is never cut; the other shelf can still match it
     const code = sizedWidthCode(wide.c.baseCode || wide.c.code, w);
     const nx = horiz ? along(wide.o) - side * diff / 2 : wide.o.x, nz = horiz ? wide.o.z : along(wide.o) - side * diff / 2;
     const moves = chain.map(({ o }) => ({ id: o.id, x: horiz ? o.x - side * diff : o.x, z: horiz ? o.z : o.z - side * diff }));

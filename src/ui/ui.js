@@ -1293,11 +1293,14 @@ export class UI {
       const horiz = ((it.rotDeg || 0) % 180) === 0, rot = (((it.rotDeg || 0) % 360) + 360) % 360, dir = rot === 0 || rot === 90 ? 1 : -1;
       this.store.beginHistory();
       this.store.swapItem(id, plan.code, { quiet: true });
-      this.store.updateItem(id, horiz ? { x: it.x + dir * plan.shift } : { z: it.z + dir * plan.shift }, { quiet: false });
+      // a width she TYPED is pinned (her call 2026-10-14, "i make the left one 14.5 - drag it to touch the
+      // hood and it auto resizes to fill the space... this is not correct"): no drop, gap or shelf-matching
+      // ever resizes it again
+      this.store.updateItem(id, { fixedWidth: true, ...(horiz ? { x: it.x + dir * plan.shift } : { z: it.z + dir * plan.shift }) }, { quiet: false });
       this.store.endHistory();
       this.controls.onCommit();
       const nc = getCab(plan.code), base = getCab(nc.baseCode || nc.code);
-      this._toast(`${base.code} cut to ${fmtIn(plan.w)}. Priced as the ${fmtIn(nc.usd === base.usd ? base.w : plan.w)} standard size.`);
+      this._toast(`${base.code} cut to ${fmtIn(plan.w)} and kept at that: it will not be resized to fit again. Priced as the ${fmtIn(nc.usd === base.usd ? base.w : plan.w)} standard size.`);
       this.showSelbar(id);
     });
     document.getElementById('selCentreRoom').addEventListener('click', centre('room'));

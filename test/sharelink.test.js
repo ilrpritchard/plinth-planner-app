@@ -29,7 +29,7 @@ function kitchen() {
   return st;
 }
 
-test('round trip: room, openings, boxings, items, flags, hosted oven, accessories all come back', () => {
+test('round trip: room, openings, boxings, items, flags, hosted oven, accessories all come back', async () => {
   const a = kitchen(), s = a.serialize(), back = decodeDesign(encodeDesign(s));
   assert.deepEqual([back.room.width, back.room.depth, back.room.height, back.room.floor, back.room.wall, back.room.worktop, back.room.cornice], [200, 150, 96, 'herringbone', 'white', 'calacatta', 'plain']);
   assert.equal(back.finish, 'Custom RAL');
@@ -44,6 +44,9 @@ test('round trip: room, openings, boxings, items, flags, hosted oven, accessorie
   });
   const oven = back.items.find((i) => i.code === 'AP15'), housing = back.items.find((i) => i.code === 'T14');
   assert.equal(oven.hostId, housing.id, 'the oven still rides in its housing');
+  // a typed shelf width survives the link (2026-10-14)
+  const pinned = decodeDesign(encodeDesign({ ...s, items: [{ id: 1, code: 'W12:w14.5', x: 0, z: -60, rotDeg: 0, fixedWidth: true }, { id: 2, code: 'W12', x: 30, z: -60, rotDeg: 0 }] }));
+  assert.equal(pinned.items[0].fixedWidth, true); assert.equal(pinned.items[1].fixedWidth, undefined);
   assert.deepEqual(back.accessories, { A3: 2 });
 });
 
