@@ -36,8 +36,6 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     if (!seat) return { x: item.x, z: item.z, rotDeg: item.rotDeg || 0, flag: 'stacker' };
     return seat;
   }
-  let shelfDepth = null;                       // an open shelf's new depth (see section 1)
-  const noDeepen = !!opts.noDeepen;            // read HERE: section 1 shadows `opts` with its snap-point list
   // a range hood RIDES the cooker: centred over the range or cooktop nearest the pointer; so does
   // the hood COVER (W26), which sits over the hood at its own fixed height (top on the crown line)
   if (cab.appliance === 'hood' || cab.hoodCover) {
@@ -140,21 +138,8 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       }
       const opts = [{ out: 0, err: Math.abs(rawPerp - touch) }, ...(flush != null ? [{ out: flush - touch, err: Math.abs(rawPerp - flush) }] : []), ...(cover != null ? [{ out: cover - touch, err: Math.abs(rawPerp - cover) }] : [])];
       out = opts.sort((a, b) => a.err - b.err)[0].out;
-      // an OPEN SHELF pulled forward does not leave the wall: it gets DEEPER (her ask 2026-09-23, "any depth
-      // i need"). Its front follows the pointer to the inch, snapping within 3" onto a tall's front or a
-      // corner wall unit's body edge; the depth comes back as `depth` for the controller to apply.
-      // ...but never while a tapped-in shelf is being CARRIED to its place (opts.noDeepen): the pointer is
-      // wherever the hand is, and a 14" shelf arrived 24" deep beside a hood (her screenshot 2026-09-25,
-      // "wall full height open shelves, wrong depth"). Only a deliberate drag deepens.
-      if (cab.form === 'open' && cab.type === 'WALL' && !noDeepen) {
-        const frontFree = rawPerp + d / 2;
-        const fronts = [...(flush != null ? [flush + d / 2] : []), ...(cover != null ? [cover + d / 2] : [])];
-        const snapF = fronts.find((f) => Math.abs(f - frontFree) < 3);
-        const front = snapF != null ? snapF : Math.round(frontFree);
-        shelfDepth = Math.max(8, Math.min(36, Math.round(front - WALL_GAP)));
-        out = 0;
-      }
-    }
+      // (an open shelf is ONE depth, her call 2026-10-14: it never deepens on a pull; it goes back to
+      // the wall, or flush with a tall's face, like any wall cabinet)
     if (wall === 'back') z = bounds.minZ + touch + out;
     else if (wall === 'front') z = bounds.maxZ - touch - out;
     else if (wall === 'left') x = bounds.minX + touch + out;
@@ -691,7 +676,7 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     else if (returnBlockedBy && !flag) flag = 'cornerReturn:' + returnBlockedBy;
   }
 
-  return { x, z, rotDeg, flag, ...(shelfDepth != null ? { depth: shelfDepth } : {}) };
+  return { x, z, rotDeg, flag };
 }
 
 // cornerReturnLength moved to core/cornerreturn.js (W2W-243: the pure cost and worktop code need it too)

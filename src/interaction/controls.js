@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { snapPosition, settleCorners } from './snapping.js';
-import { getCab, sizedShelfCode } from '../core/catalogue.js';
+import { getCab } from '../core/catalogue.js';
 import { measureRun } from '../core/measure.js';
 import { fmtIn, MOUNT } from '../core/units.js';
 import { isOven, findOvenHost, housingCodeFor } from '../core/ovenseat.js';
@@ -217,7 +217,7 @@ export class PointerControls {
       if (hit && cab) ({ x: rawX, z: rawZ } = this._wallRaw(hit, cab, p));
     }
     this.drag.last = { x: rawX, z: rawZ };
-    const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds(), { noDeepen: !!this.drag.carry });   // a carried shelf keeps its depth
+    const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds());
     // a CORNER unit is refused everywhere but a room corner, and the snap then holds it where it
     // was — so a carried one looked frozen (her report 2026-09-26). Carried, it rides the hand
     // anyway; the drop seats it in the nearest corner (see _up).
@@ -227,18 +227,6 @@ export class PointerControls {
     }
     // a hood cover over a cooker of another width swaps to the cover made for it (snapping returns `code`)
     if (snapped.code) this.store.swapItem(this.drag.id, snapped.code, { quiet: true });
-    // an open shelf pulled forward gets deeper instead (snapping returns `depth`): swap to the sized code
-    // and keep its back on the wall
-    if (snapped.depth != null) {
-      const it0 = this.store.getItem(this.drag.id), c0 = it0 && getCab(it0.code);
-      if (c0 && Math.abs(c0.d - snapped.depth) >= 0.5) {
-        const code = sizedShelfCode(c0.baseCode || c0.code, snapped.depth);
-        this.store.swapItem(this.drag.id, code, { quiet: true });
-        const nd = getCab(code).d, b = this.room.bounds(), r = ((snapped.rotDeg % 360) + 360) % 360;
-        if (r === 0) snapped.z = b.minZ + 0.25 + nd / 2; else if (r === 180) snapped.z = b.maxZ - 0.25 - nd / 2;
-        else if (r === 90) snapped.x = b.minX + 0.25 + nd / 2; else snapped.x = b.maxX - 0.25 - nd / 2;
-      }
-    }
     this.store.updateItem(this.drag.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg, ...(snapped.hostId != null ? { hostId: snapped.hostId } : {}) }, { quiet: true });
     this.drag.flag = snapped.flag || null;
     const RULE_MSG = {

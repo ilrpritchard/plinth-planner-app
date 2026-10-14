@@ -1,6 +1,5 @@
-// shelfdepth.test.js — an open wall shelf deepens only on a deliberate drag, never while it is
-// being CARRIED to its place after a tap (her screenshot 2026-09-25: a 14" full-height shelf
-// arrived 24" deep beside the hood). Every wall and counter cabinet in the catalogue is 14" deep
+// shelfdepth.test.js — an open wall shelf is ONE depth (her call 2026-10-14, "they are only one
+// DEPTH"): a drag never deepens it. Every wall and counter cabinet in the catalogue is 14" deep
 // except the hood cover and the stackers that ride on talls.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,14 +14,14 @@ const { CATALOGUE } = await import('../src/core/catalogue.js');
 
 const W = 200, D = 150, bounds = { minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2 };
 
-test('a carried shelf keeps its 14" whatever the pointer does; a real drag forward still deepens it', () => {
+test('an open shelf is ONE depth: carried or dragged forward it never deepens, it goes back to the wall (her call 2026-10-14)', () => {
   const store = new Store(); store.setRoom({ width: W, depth: D, height: 96 });
   const sh = store.addItem('W23', { x: 0, z: -D / 2 + 7.25, rotDeg: 0 });
-  const carried = snapPosition(store, sh.id, 10, -D / 2 + 20, bounds, { noDeepen: true });   // pointer 20" into the room
-  assert.equal(carried.depth, undefined, 'no depth change while carried');
-  assert.ok(Math.abs(carried.z - (-D / 2 + 7.25)) < 0.01, 'back on the wall at 14"');
-  const dragged = snapPosition(store, sh.id, 10, -D / 2 + 20, bounds);
-  assert.ok(dragged.depth >= 26 && dragged.depth <= 28, `a deliberate drag deepens it to the pointer (${dragged.depth})`);
+  for (const r of [snapPosition(store, sh.id, 10, -D / 2 + 20, bounds), snapPosition(store, sh.id, 10, -D / 2 + 40, bounds)]) {
+    assert.equal(r.depth, undefined, 'no depth change on any drag');
+    assert.equal(r.flag, undefined);
+    assert.ok(Math.abs(r.z - (-D / 2 + 7.25)) < 0.01, 'back on the wall at its own 14"');
+  }
 });
 
 test('every wall and counter cabinet is 14" deep (hood cover and tall-riding stackers excepted)', () => {
