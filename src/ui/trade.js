@@ -21,7 +21,7 @@ import { saveNow } from '../core/persistence.js';
 import { uiConfirm, uiChoice, uiAlert, uiPrompt, mailFallback } from './dialog.js';
 import { frontSVG } from './frontdraw.js';
 import { withIslandFlags } from '../core/islands.js';
-import { buildDemoUnits, demoUnitCount, DEMO_PROJECT } from '../core/tradedemo.js';
+import { buildDemoUnits, demoUnitCount, DEMO_PROJECT, DEMO_ADDRESS } from '../core/tradedemo.js';
 
 /** Shared walls/cabinets-only chooser for every plan-DXF download. */
 function chooseDxfVariant() {
@@ -156,7 +156,7 @@ export class TradeUI {
             <button class="ghost sm" id="tOrders" title="Your quote requests and orders with live status">Orders</button>
           </div>` : ''}
         </header>
-        ${t.demo ? `<div class="trade-demo-note">An example building: 62 units across three kitchen types, priced live. Adjust the quantities and cabinets to match the project, or start over with a blank unit mix.</div>` : ''}
+        ${t.demo ? `<div class="trade-demo-note">An example building: ${demoUnitCount()} units across three kitchen types, each laid out in 3D and priced live. Rename it, adjust the floors and cabinets to match the project, or start over with a blank unit mix.</div>` : ''}
 
         ${t.units.length > 1 ? `<div class="units-bar">
           <span>${t.units.length} kitchen types</span>
@@ -243,8 +243,8 @@ export class TradeUI {
           <p>Specify each kitchen type and set the unit mix. Pricing is live, per unit and per project, including tariffs and delivery to a warehouse in the project's city.</p>
           <div class="tw-opts">
             <button class="tw-opt" id="twDemo">
-              <strong>Example building</strong>
-              <span>${n} units, three kitchen types, priced live. Adjust any figure, or clear it for a new project.</span>
+              <strong>Example building: ${esc(DEMO_PROJECT)}</strong>
+              <span>${n} units, three kitchen types laid out in 3D, priced live. Adjust any figure, or clear it for a new project.</span>
             </button>
             <button class="tw-opt" id="twMix">
               <strong>Enter the unit mix</strong>
@@ -276,6 +276,7 @@ export class TradeUI {
     const built = buildDemoUnits(t.nextUnitId, t.nextRowId);
     t.units = built.units; t.nextUnitId = built.nextUnitId; t.nextRowId = built.nextRowId;
     if (!t.project) t.project = DEMO_PROJECT;
+    if (!t.address) t.address = DEMO_ADDRESS;
     t.demo = true;
     this.store.touchTrade();
     this.render();
@@ -316,7 +317,7 @@ export class TradeUI {
   startOver() {
     const t = this.t;
     t.units = []; t.demo = false;
-    if (t.project === DEMO_PROJECT) t.project = '';
+    if (t.project === DEMO_PROJECT) { t.project = ''; if (t.address === DEMO_ADDRESS) t.address = ''; }
     this.store.touchTrade();
     this.render();
   }
@@ -333,13 +334,49 @@ export class TradeUI {
     if (s.tier) stats.push(`${esc(s.tier.label)} tier, −${s.tier.pct}%`);
     else if (s.totalUnits > 0) stats.push('volume pricing from 10 units');
     return `<div class="tb-left">
-        <div class="tb-proj">${esc(t.project) || 'Untitled project'}</div>
+        <div class="tb-proj">
+          <button type="button" class="tb-name" data-act="rename" title="Click to rename the project">${esc(t.project) || 'Untitled project'}</button>
+          <button type="button" class="tb-rename" data-act="rename" aria-label="Rename the project">Rename</button>
+        </div>
         <div class="tb-stats">${stats.join(' · ')}</div>
       </div>
       <div class="tb-right">
         <div class="tb-total"><span class="l">Project total</span><span class="v">${fmtUSD(s.grand)}</span></div>
         <button class="cta" id="tQuote">Request a quote</button>
       </div>`;
+  }
+
+  /** Rename in place (her ask 2026-10-14: the name lived in the Project details fold, out of
+   *  sight). The title in the bar turns into a field; Enter or clicking away keeps it, Escape
+   *  drops it. Writes the same t.project the Project details field does and keeps that field in
+   *  step, so a save still adopts its cloud row by name. */
+  renameInBar() {
+    const bar = document.getElementById('tBar'), proj = bar?.querySelector('.tb-proj');
+    if (!proj || proj.querySelector('input')) return;
+    const t = this.t;
+    proj.innerHTML = `<input class="tb-edit" type="text" value="${esc(t.project)}" placeholder="Name the project" aria-label="Project name" maxlength="80" spellcheck="false">`;
+    const inp = proj.querySelector('input');
+    inp.focus(); inp.select();
+    let done = false;
+    const commit = (keep) => {
+      if (done) return;
+      done = true;
+      if (keep) {
+        const v = inp.value.trim();
+        if (v !== t.project) {
+          t.project = v;
+          this.store.touchTrade({ quiet: true });
+          const f = document.getElementById('tProject');
+          if (f) f.value = v;
+        }
+      }
+      bar.innerHTML = this.barHTML();
+    };
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); commit(false); }
+    });
+    inp.addEventListener('blur', () => commit(true));
   }
 
   // ---- the elevation strip on each unit card: every front drawn by frontdraw,
@@ -623,6 +660,7 @@ export class TradeUI {
       this.t.units.push(u); this.store.touchTrade(); this.render();
       this.enterDesign(u, { roomFirst: true });
     });
+    $('tBar')?.addEventListener('click', (e) => { if (e.target.closest('[data-act="rename"]')) this.renameInBar(); });
     $('tQuote')?.addEventListener('click', () => {
       const sec = $('tOrder');
       sec?.scrollIntoView({ behavior: 'smooth', block: 'start' });

@@ -45,10 +45,12 @@ test('nothing changed, everything removed, wrong status, already pending: refuse
 test('duplicate rows merge, zero and unknown codes drop out', () => {
   const order = makeOrder();
   const p = startProposal(order, []);
-  p.units[0].rows.push({ code: 'F10', qty: 1 }, { code: 'NOPE', qty: 3 }, { code: 'F18', qty: 0 });
+  // a code the unit already has (whatever the example building's first type holds), pushed again
+  const first = p.units[0].rows[0], was = first.qty;
+  p.units[0].rows.push({ code: first.code, qty: 1 }, { code: 'NOPE', qty: 3 }, { code: 'F18', qty: 0 });
   const req = buildChangeRequest(order, [], p, { now: NOW });
-  const f10 = req.proposal.units[0].rows.filter((r) => r.code === 'F10');
-  assert.equal(f10.length, 1); assert.equal(f10[0].qty, 2);
+  const dup = req.proposal.units[0].rows.filter((r) => r.code === first.code);
+  assert.equal(dup.length, 1); assert.equal(dup[0].qty, was + 1);
   assert.ok(!req.proposal.units[0].rows.some((r) => r.code === 'NOPE' || r.code === 'F18'));
 });
 
