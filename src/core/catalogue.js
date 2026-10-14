@@ -155,6 +155,11 @@ const RAW = [
   { code: 'S22', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W13)', w: 28, d: 14, h: 21, hinge: 'L&R', usd: 1768, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   { code: 'S23', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W5, W7, W38)', w: 36, d: 14, h: 21, hinge: 'n/a', usd: 2148, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   { code: 'S24', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W6, W8)', w: 42, d: 14, h: 21, hinge: 'n/a', usd: 2315, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
+  // the 30" and 48" hood covers take a stacker too (her ask 2026-10-14): the flue hides behind it
+  { code: 'S35', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W37)', w: 30, d: 14, h: 15, hinge: 'n/a', usd: 0, priceTBC: true, mountY: 86, notes: 'Sits on the 30" hood cover, face flush with it, hiding the flue. For 9\'+ ceilings.' },
+  { code: 'S36', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W37)', w: 30, d: 14, h: 21, hinge: 'n/a', usd: 0, priceTBC: true, mountY: 86, notes: 'Sits on the 30" hood cover, face flush with it, hiding the flue. For 10\' ceilings.' },
+  { code: 'S37', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W39)', w: 48, d: 14, h: 15, hinge: 'n/a', usd: 0, priceTBC: true, mountY: 86, notes: 'Sits on the 48" hood cover, face flush with it, hiding the flue. For 9\'+ ceilings.' },
+  { code: 'S38', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W39)', w: 48, d: 14, h: 21, hinge: 'n/a', usd: 0, priceTBC: true, mountY: 86, notes: 'Sits on the 48" hood cover, face flush with it, hiding the flue. For 10\' ceilings.' },
   // fits the COUNTER dresser run (24/28/36/42 wide, d 14, mount = the counter cabinet's top)
   { code: 'S25', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C1, C2)', w: 24, d: 14, h: 15, hinge: 'L&R', usd: 1495, mountY: SURFACE_Y + 50, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
   { code: 'S26', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C7)', w: 28, d: 14, h: 15, hinge: 'L&R', usd: 1601, mountY: SURFACE_Y + 50, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
