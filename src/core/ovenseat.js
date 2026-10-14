@@ -8,7 +8,7 @@ import { getCab } from './catalogue.js';
 
 const TOPRAIL = mmToIn(35);
 
-/** The housing's front, bottom to top: low door, drawer panel, oven, blank. */
+/** The housing's front, bottom to top: low door, oven (base 900mm off the floor), upper door. */
 export function ovenSeat(housing) {
   const openY0 = SPEC.PLINTH_IN + SPEC.PANEL_IN;
   const openH = housing.h - TOPRAIL - openY0;
@@ -18,19 +18,33 @@ export function ovenSeat(housing) {
     // a 22mm painted rail, the front edge of the shelf the oven stands on, between the oven and
     // the drawer (her: "there would be a strip of wood, top of drawer, so if the oven was removed it
     // would have a base", 2026-09-22)
+    const faceW = housing.w - 2 * SPEC.LEG_IN - 2 * SPEC.REVEAL_IN, ovenW = housing.ovenW || 24;
+    // a US 30" or 36" single oven stands about 725mm: it fills the whole opening under the top rail,
+    // no drawer panel and no rail (her question 2026-10-09; proposed sizes, pack-only so far)
+    if (ovenW >= 30) return { openY0, openH, doorH: 0, railH: 0, drawH: 0, y0: openY0, ovenH: openH, faceW, ovenW };
     const ovenH = mmToIn(595), railH = SPEC.PANEL_IN;
-    return { openY0, openH, doorH: 0, railH, drawH: openH - ovenH - railH - 2 * SPEC.REVEAL_IN, y0: openY0 + openH - ovenH, ovenH,
-      faceW: housing.w - 2 * SPEC.LEG_IN - 2 * SPEC.REVEAL_IN, ovenW: housing.ovenW || 24 };
+    return { openY0, openH, doorH: 0, railH, drawH: openH - ovenH - railH - 2 * SPEC.REVEAL_IN, y0: openY0 + openH - ovenH, ovenH, faceW, ovenW };
   }
-  const doorH = openH * 0.26, drawH = openH * 0.09;
+  // the TALL housing (T9 / T14 / T15), her spec 2026-10-08 ("a cabinet above it and a cabinet below
+  // it, the oven would sit at like 900mm from the floor to the base of the oven"): a cupboard door
+  // below, the oven with its base 900mm off the floor, a cupboard door above. No drawer panel.
+  const y0 = mmToIn(OVEN_SEAT_MM);
+  const ovenH = wallOvenH(housing.ovenW || 24);
+  const doorH = y0 - SPEC.REVEAL_IN - openY0;               // the low cupboard, plinth panel to the oven
+  const upperY0 = y0 + ovenH + SPEC.REVEAL_IN;              // the upper cupboard starts here
+  const upperH = housing.h - TOPRAIL - upperY0;             // ...and runs to the top rail
   return {
-    openY0, openH, doorH, drawH,
-    y0: openY0 + doorH + drawH + 2 * SPEC.REVEAL_IN,        // oven fascia bottom, from the floor
-    ovenH: housing.w >= 36 ? 24 : 29,                       // a 36" oven is wide and short
+    openY0, openH, doorH, drawH: 0, y0, ovenH, upperY0, upperH,
     faceW: housing.w - 2 * SPEC.LEG_IN - 2 * SPEC.REVEAL_IN,
     ovenW: housing.ovenW || 24,                             // T9 predates the field: a 24" oven
   };
 }
+
+/** Floor to the base of a wall oven in a tall housing, mm. catalogue.js OVEN_SEAT_Y is the same number. */
+export const OVEN_SEAT_MM = 900;
+/** The fascia height of a wall oven by its width: a 24" (60cm) oven is 595mm like the under-counter
+ *  one (Miele H7660BP), a 30" stands ~29", a 36" is wide and short. */
+export const wallOvenH = (ovenW) => ovenW >= 36 ? 24 : ovenW >= 30 ? 29 : mmToIn(595);
 
 export const isOven = (cab) => !!cab && cab.type === 'APPLIANCES' && cab.appliance === 'oven';
 export const isOvenHousing = (cab) => !!cab && (cab.form === 'ovenHousing' || cab.form === 'ovenBase');

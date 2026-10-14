@@ -7,6 +7,8 @@ import { planIslandFlags } from './islands.js';
 import { boxAt } from './placement.js';
 import { DEFAULT_FINISH, getCab } from './catalogue.js';
 import { housingTakes } from './ovenseat.js';
+import { stackerSeat, stackerFits, stackerFor, stackerHostOf } from './stackers.js';
+import { hoodCoverFor } from './hoodseat.js';
 
 export const SCHEMA = 'plinth-planner';
 export const VERSION = 1;
@@ -264,7 +266,9 @@ export class Store {
     if (!opts.quiet) this._record();
     const was = { x: it.x, z: it.z, rotDeg: it.rotDeg || 0 };
     const wasCab = getCab(it.code);
-    const riders = ('x' in patch || 'z' in patch || 'rotDeg' in patch) && wasCab && (wasCab.type === 'FLOOR' || (wasCab.type === 'APPLIANCES' && (wasCab.mountY || 0) === 0)) ? this._ridersOn(it, wasCab) : [];
+    const moving = 'x' in patch || 'z' in patch || 'rotDeg' in patch;
+    const riders = moving && wasCab && (wasCab.type === 'FLOOR' || (wasCab.type === 'APPLIANCES' && (wasCab.mountY || 0) === 0)) ? this._ridersOn(it, wasCab) : [];
+    const hosted = moving ? this._hosted(it) : [];     // found BEFORE the move: an adopted stacker is matched by where the host stood
     Object.assign(it, patch);
     this._emit({ type: 'update', id, quiet: !!opts.quiet });
     // a sink or cooktop set in this base rides with it: same offset from the base's centre, turned with it
@@ -277,14 +281,24 @@ export class Store {
         this._emit({ type: 'update', id: r.id, quiet: !!opts.quiet });
       }
     }
-    // a wall oven rides in its housing: wherever the housing goes, it goes
-    if ('x' in patch || 'z' in patch || 'rotDeg' in patch) {
-      for (const r of this.state.items) {
-        if (r.hostId !== id) continue;
-        Object.assign(r, { x: it.x, z: it.z, rotDeg: it.rotDeg });
+    // a wall oven rides in its housing: wherever the housing goes, it goes. A STACKER rides its
+    // host the same way, re-seated on top of it (her call 2026-10-14: "the stacker should never
+    // be allowed to move off the tall cabinet"); one standing on this host from a design saved
+    // before stackers carried a hostId is adopted as it moves
+    if (moving) {
+      for (const r of hosted) {
+        const rc = getCab(r.code);
+        if (rc && rc.stacker) { r.hostId = id; Object.assign(r, stackerSeat(this.state, it, rc), { rotDeg: it.rotDeg || 0 }); }
+        else Object.assign(r, { x: it.x, z: it.z, rotDeg: it.rotDeg });
         this._emit({ type: 'update', id: r.id, quiet: !!opts.quiet });
       }
     }
+  }
+
+  /** Everything riding on this item: a wall oven by hostId, a stacker by hostId or, from an older
+   *  design, by standing right on it. */
+  _hosted(it) {
+    return this.state.items.filter((r) => r !== it && (r.hostId === it.id || (r.hostId == null && getCab(r.code)?.stacker && stackerHostOf(this.state, r) === it)));
   }
 
   /** The sinks and cooktops set in this base: a worktop appliance whose centre is inside the
@@ -318,9 +332,30 @@ export class Store {
     it.code = code;
     delete it.open;                       // door state doesn't carry across forms
     this._emit({ type: 'swap', id });
-    // swapped for something that is not its housing: the oven inside comes out
-    for (const r of this.state.items.filter((o) => o.hostId === id)) {
-      if (housingTakes(getCab(code), getCab(r.code))) continue;
+    // a cooker swapped for another width: the hood cover over it goes to the cover made for that width
+    const nc = getCab(code);
+    if (nc && (nc.appliance === 'range' || nc.appliance === 'hob')) {
+      for (const o of this.state.items) {
+        const oc = getCab(o.code);
+        if (!oc || !oc.hoodCover || Math.abs(o.x - it.x) > 1 || Math.abs(o.z - it.z) > 14 || ((o.rotDeg || 0) - (it.rotDeg || 0)) % 360 !== 0) continue;
+        const want = hoodCoverFor(nc);
+        if (want !== o.code) { o.code = want; this._emit({ type: 'swap', id: o.id }); }
+      }
+    }
+    // swapped for something that is not its housing: the oven inside comes out. A stacker on it
+    // becomes the one made for the new host (same height), or comes off when none is made
+    for (const r of this._hosted(it)) {
+      const rc = getCab(r.code);
+      if (housingTakes(getCab(code), rc)) continue;
+      if (rc && rc.stacker) {
+        const s = stackerFits(rc, code) ? rc : stackerFor(code, rc.h);
+        if (s) {
+          if (s.code !== r.code) { r.code = s.code; delete r.open; }
+          r.hostId = id; Object.assign(r, stackerSeat(this.state, it, s));
+          this._emit({ type: 'swap', id: r.id });
+          continue;
+        }
+      }
       this.state.items = this.state.items.filter((o) => o !== r);
       this._emit({ type: 'remove', id: r.id });
     }
@@ -328,8 +363,9 @@ export class Store {
 
   removeItem(id) {
     this._record();
-    const riders = this.state.items.filter((i) => i.hostId === id);   // the oven leaves with its housing
-    this.state.items = this.state.items.filter((i) => i.id !== id && i.hostId !== id);
+    const it = this.state.items.find((i) => i.id === id);
+    const riders = it ? this._hosted(it) : [];   // the oven leaves with its housing, the stacker with its host
+    this.state.items = this.state.items.filter((i) => i.id !== id && !riders.includes(i));
     this._emit({ type: 'remove', id });
     for (const r of riders) this._emit({ type: 'remove', id: r.id });
   }

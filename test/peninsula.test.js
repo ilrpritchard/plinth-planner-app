@@ -47,7 +47,7 @@ function penState() {
 
 test('a corner return runs to the peninsula back, not across the walkway (and a wall-leg is untouched)', () => {
   const s = penState(), corner = s.items[0], cab = getCab('F16');
-  assert.equal(cornerReturnLength(cab, corner, s.room), 20, 'the wall is 68" away: the plain rule stops at the SKU 20"');
+  assert.equal(cornerReturnLength(cab, corner, s.room), 24.25, 'one depth: 24.25" wherever it stands (her call 2026-10-14)');
   const rr = returnReach(cab, corner, s.items, s.room);
   assert.ok(rr.leg, 'reached from the leg');
   assert.ok(Math.abs((corner.x - 12 - rr.len) - s.legBack) < 0.3, `return ends on the leg's back plane (${corner.x - 12 - rr.len} vs ${s.legBack})`);

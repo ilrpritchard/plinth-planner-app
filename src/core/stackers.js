@@ -33,6 +33,53 @@ export function stackerFor(hostCode, h) {
   return any && h >= STACKER_HEIGHT_LIMITS[0] && h <= STACKER_HEIGHT_LIMITS[1] ? getCab(sizedStackerCode(any.code, h)) : null;
 }
 
+/** Where a stacker `s` stands on host `it`: over the host, back on the host's wall (a tall's
+ *  stacker proud with its tall). The stacker's own depth sets the perpendicular. */
+export function stackerSeat(state, it, s) {
+  const r = (state && state.room) || {}, W = r.width || 144, D = r.depth || 120, rot = rotOf(it);
+  const touch = s.d / 2 + WALL_GAP + (s.onTall ? TALL_PROUD : 0);      // a tall's stacker stands proud with the tall
+  return rot === 0 ? { x: it.x, z: -D / 2 + touch } : rot === 180 ? { x: it.x, z: D / 2 - touch } : rot === 90 ? { x: -W / 2 + touch, z: it.z } : { x: W / 2 - touch, z: it.z };
+}
+
+/** Does this stacker fit on this host cabinet (its "fits" list)? */
+export const stackerFits = (s, hostCode) => !!s && !!s.stacker && fitsOf(s).includes(hostCode);
+
+/** The host a placed stacker stands on: its hostId when it has one, else the cabinet it fits
+ *  standing right under it (a design saved before stackers carried a hostId). Null when none. */
+export function stackerHostOf(state, st) {
+  const items = (state && state.items) || [], s = getCab(st.code);
+  if (!s || !s.stacker) return null;
+  if (st.hostId != null) { const h = items.find((o) => o.id === st.hostId); if (h) return h; }
+  const rot = rotOf(st), along = (o) => (rot % 180 === 0 ? o.x : o.z);
+  return items.find((o) => o !== st && o.id !== st.id && stackerFits(s, o.code) && rotOf(o) === rot && Math.abs(along(o) - along(st)) < 1) || null;
+}
+
+/** The stacker standing on host `hostId`, if any: by hostId, or by standing right over it. */
+export function stackerOn(state, hostId) {
+  const items = (state && state.items) || [], host = items.find((o) => o.id === hostId);
+  if (!host) return null;
+  return items.find((o) => o.id !== hostId && getCab(o.code)?.stacker && (o.hostId === hostId || (o.hostId == null && stackerHostOf(state, o) === host))) || null;
+}
+
+/** A stacker is a RIDER: it only ever stands on an unstacked host it fits, nearest to (x, z),
+ *  against a wall. `selfId` is the stacker being dragged: the host it stands on counts as free.
+ *  -> { x, z, rotDeg, hostId } | null */
+export function findStackerSeat(state, s, x = 0, z = 0, selfId = null) {
+  if (!s || !s.stacker) return null;
+  const r = (state && state.room) || {}, W = r.width || 144, D = r.depth || 120;
+  const offWall = (it, c) => { const rot = rotOf(it); return rot === 0 ? it.z - c.d / 2 + D / 2 : rot === 180 ? D / 2 - (it.z + c.d / 2) : rot === 90 ? it.x - c.d / 2 + W / 2 : rot === 270 ? W / 2 - (it.x + c.d / 2) : Infinity; };
+  let best = null, bestD = Infinity;
+  for (const h of (state && state.items) || []) {
+    const c = getCab(h.code);
+    if (h.id === selfId || !stackerFits(s, h.code) || !c || c.corner || offWall(h, c) >= NEAR) continue;
+    const on = stackerOn(state, h.id);
+    if (on && on.id !== selfId) continue;
+    const d = Math.hypot(h.x - x, h.z - z);
+    if (d < bestD) { bestD = d; best = h; }
+  }
+  return best ? { ...stackerSeat(state, best, s), rotDeg: rotOf(best), hostId: best.id } : null;
+}
+
 // opts.bespoke: made to height, filling the ceiling (asked for, never the default). Every plan also
 // says what made-to-height size the ceiling would take (bespoke), when that differs from its own.
 export function planStackers(state, wall = null, onlyId = null, opts = {}) {
@@ -57,9 +104,7 @@ export function planStackers(state, wall = null, onlyId = null, opts = {}) {
     if (stacked.some((s) => rotOf(s) === rot && Math.abs((rot % 180 === 0 ? s.x : s.z) - along) < 1)) { skipped.push({ id: it.id, code: it.code, why: 'already stacked' }); continue; }
     const s = stackerFor(it.code, size);
     if (!s) { skipped.push({ id: it.id, code: it.code, why: 'none made' }); continue; }
-    const touch = s.d / 2 + WALL_GAP + (s.onTall ? TALL_PROUD : 0);      // a tall's stacker stands proud with the tall
-    const pos = rot === 0 ? { x: it.x, z: -D / 2 + touch } : rot === 180 ? { x: it.x, z: D / 2 - touch } : rot === 90 ? { x: -W / 2 + touch, z: it.z } : { x: W / 2 - touch, z: it.z };
-    placements.push({ code: s.code, ...pos, rotDeg: rot, hostId: it.id, top: hostTop(cab) + s.h });
+    placements.push({ code: s.code, ...stackerSeat(state, it, s), rotDeg: rot, hostId: it.id, top: hostTop(cab) + s.h });
   }
   if (!placements.length) return { ok: false, reason: 'nothing to add', size, skipped, bespoke };
   return { ok: true, size, placements, hosts: hosts.length, skipped, bespoke };
@@ -78,8 +123,7 @@ export function resizeStackers(state) {
     const cab = getCab(it.code);
     const size = cab && cab.madeToHeight ? fill : std;           // made to height stays made to height, refitted
     if (!size || !cab || !cab.stacker || cab.h === size) continue;
-    const rot = rotOf(it), fits = fitsOf(cab), along = (o) => (rot % 180 === 0 ? o.x : o.z);
-    const host = items.find((o) => o !== it && fits.includes(o.code) && rotOf(o) === rot && Math.abs(along(o) - along(it)) < 1);
+    const host = stackerHostOf(state, it);
     const s = host && stackerFor(host.code, size);
     if (s && s.code !== it.code) swaps.push({ id: it.id, from: it.code, to: s.code });
   }

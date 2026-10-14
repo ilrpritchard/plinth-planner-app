@@ -10,6 +10,7 @@ import { openingCenter, openingWidth, boxingBoxes } from '../core/openings.js';
 import { cornerReturnLength } from '../core/cornerreturn.js';
 import { isOven, findOvenHost } from '../core/ovenseat.js';
 import { baseUnder, overDishwasher } from '../core/sinkspec.js';
+import { findStackerSeat } from '../core/stackers.js';
 
 const WALL_SNAP = 16;   // perpendicular distance to a wall that triggers snap
 const EDGE_SNAP = 9;    // distance between neighbouring edges that triggers butt
@@ -28,6 +29,13 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     if (!host) return { x: item.x, z: item.z, rotDeg: item.rotDeg || 0, flag: 'oven' };
     return { x: host.x, z: host.z, rotDeg: host.rotDeg || 0, hostId: host.id };
   }
+  // a STACKER is a rider too: it only ever stands on an unstacked host it fits (nearest to the
+  // pointer), seated on top of it. Off every host it is refused (her call 2026-10-14)
+  if (cab.stacker) {
+    const seat = findStackerSeat(store.state, cab, rawX, rawZ, id);
+    if (!seat) return { x: item.x, z: item.z, rotDeg: item.rotDeg || 0, flag: 'stacker' };
+    return seat;
+  }
   let shelfDepth = null;                       // an open shelf's new depth (see section 1)
   const noDeepen = !!opts.noDeepen;            // read HERE: section 1 shadows `opts` with its snap-point list
   // a range hood RIDES the cooker: centred over the range or cooktop nearest the pointer; so does
@@ -35,7 +43,8 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   if (cab.appliance === 'hood' || cab.hoodCover) {
     const seat = findHoodSeat(store.state, rawX, rawZ, id, cab);
     if (!seat) return { x: item.x, z: item.z, rotDeg: item.rotDeg || 0, flag: 'hood' };
-    return { x: seat.x, z: seat.z, rotDeg: seat.rotDeg };
+    // the cover swaps to the width of the cooker it lands over (controls applies `code`)
+    return { x: seat.x, z: seat.z, rotDeg: seat.rotDeg, ...(seat.coverCode && seat.coverCode !== cab.code ? { code: seat.coverCode } : {}) };
   }
   // ...and because it sits wholly inside its housing it never blocks anything else
   const others = store.state.items.filter((o) => o.id !== id && !isOven(getCab(o.code)));

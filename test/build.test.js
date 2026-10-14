@@ -79,10 +79,10 @@ ok(`built all appliances (${apps})`, apps===28);   // ... + AP23 60cm hood + AP2
   ok('T15 houses a 36" oven in 39"', !!t15 && t15.type==='TALL' && t15.form==='ovenHousing' && t15.w===39 && t15.ovenW===36 && t15.h===86 && t15.d===24);
   ok('sized like the T11/T12 column housings: nominal appliance width + 3"', t14.w===getCab('T11').w && t15.w===getCab('T12').w && t14.w-t14.ovenW===3 && t15.w-t15.ovenW===3);
   ok('wider housings cost more than T9, in order', t9.usd < t14.usd && t14.usd < t15.usd);
-  ok('T14 keeps one low door', buildCabinet(t14, FINISHES[0].hex, {}).userData.doors.length===1);
-  const g15 = buildCabinet(t15, FINISHES[0].hex, {});
-  ok('T15 has a door pair opening opposite ways', g15.userData.doors.length===2 &&
-    Math.sign(g15.userData.doors[0].userData.openAngle)===-Math.sign(g15.userData.doors[1].userData.openAngle));
+  ok('T14 has a cupboard door below the oven and one above (her spec 2026-10-08)', buildCabinet(t14, FINISHES[0].hex, {}).userData.doors.length===2);
+  const g15 = buildCabinet(t15, FINISHES[0].hex, {}), d15 = g15.userData.doors;
+  ok('T15 has a door pair below the oven and a pair above, each opening opposite ways', d15.length===4 &&
+    Math.sign(d15[0].userData.openAngle)===-Math.sign(d15[1].userData.openAngle) && Math.sign(d15[2].userData.openAngle)===-Math.sign(d15[3].userData.openAngle));
 }
 
 // drawer inserts: a drawer bank is offered the inserts made for ITS width, nothing else
@@ -123,7 +123,7 @@ ok('T4 fridge housing has NO hinged doors', t4.userData.doors.length===0);
 let t3meshes=0; t3.traverse(o=>{ if(o.isMesh) t3meshes++; });
 ok('T3 housing still shows a shaker front', t3meshes>=8);
 const t9 = buildCabinet(getCab('T9'), FINISHES[0].hex, {});
-ok('T9 oven housing keeps exactly 1 hinged door', t9.userData.doors.length===1);
+ok('T9 oven housing has exactly 2 hinged doors, a cupboard below and above the oven', t9.userData.doors.length===2);
 
 // mount heights correct per family + appliances
 ok('FLOOR mount 0', getMountY(getCab('F1'))===0);

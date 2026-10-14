@@ -14,6 +14,8 @@ import { spotOk, findFreeSpot } from '../core/placement.js';
 import { boxingBoxes } from '../core/openings.js';
 import { planFitToGap, planShrinkToSlot, wallNear } from '../core/fitwidth.js';
 import { canFitWidth } from '../core/catalogue.js';
+import { findStackerSeat } from '../core/stackers.js';
+import { planMatchShelves } from '../core/matchshelves.js';
 
 export class PointerControls {
   constructor({ scene, cabinetLayer, room, store, onCommit, onSelect, onWallClick, onOpeningClick, onFitted }) {
@@ -223,6 +225,8 @@ export class PointerControls {
       const b = this.room.bounds(), cab0 = getCab(this.store.getItem(this.drag.id)?.code);
       if (cab0) { snapped.x = Math.max(b.minX + cab0.w / 2, Math.min(b.maxX - cab0.w / 2, rawX)); snapped.z = Math.max(b.minZ + cab0.d / 2, Math.min(b.maxZ - cab0.d / 2, rawZ)); }
     }
+    // a hood cover over a cooker of another width swaps to the cover made for it (snapping returns `code`)
+    if (snapped.code) this.store.swapItem(this.drag.id, snapped.code, { quiet: true });
     // an open shelf pulled forward gets deeper instead (snapping returns `depth`): swap to the sized code
     // and keep its back on the wall
     if (snapped.depth != null) {
@@ -245,6 +249,7 @@ export class PointerControls {
       corner: '✕ A corner unit sits against a wall, its blank return toward the corner',
       oven: '✕ A wall oven lives in an oven housing of its size',
       hood: '✕ A range hood sits over the range or cooktop. Add one first',
+      stacker: '✕ A stacker stands on the tall, wall or counter cabinet made for it',
       dishwasher: '✕ Nothing sits over the dishwasher: a sink needs a door or double base',
       blocked: '✕ No room here: it would overlap what is already there',
     };
@@ -288,7 +293,7 @@ export class PointerControls {
       if (cab && cab.corner && carry) {                       // a carried corner unit: the nearest corner seat
         const seat = this._cornerSeatNear(id, cab, last ? last.x : it.x, last ? last.z : it.z, b);
         if (seat) { back = seat; this._toastFree?.(cab, 'the nearest corner'); }
-      } else if (cab && !cab.corner && !spotOk(this.store.state, cab, start.x, start.z, start.rotDeg, b, id)) {
+      } else if (cab && !cab.corner && !cab.stacker && !spotOk(this.store.state, cab, start.x, start.z, start.rotDeg, b, id)) {   // a stacker's start is its host: always a seat
         const spot = findFreeSpot(this.store.state, cab, b, PointerControls._wallOf({ rotDeg: start.rotDeg }), id);
         if (spot) { back = { x: spot.x, z: spot.z, rotDeg: spot.rotDeg }; this._toastFree?.(cab, spot.wall); }
       }
@@ -321,7 +326,27 @@ export class PointerControls {
 
   /** A corner unit pulled out to meet a deeper run dropped on its face (settleCorners), inside the
    *  same undo step as the drop that caused it. */
-  _settle() { try { settleCorners(this.store, this.room.bounds(), { quiet: false }); } catch { /* never block a drop */ } }
+  _settle() {
+    try { settleCorners(this.store, this.room.bounds(), { quiet: false }); } catch { /* never block a drop */ }
+    try { this.matchShelves(); } catch { /* never block a drop */ }
+  }
+
+  /** Two open shelves either side of a hood come out the same width (core/matchshelves.js): the wider
+   *  one is cut to the narrower, the run beyond it slides up. Inside the current undo step. Returns the
+   *  pairs matched (and tells the UI through onFitted so it can say the shelves are a special size). */
+  matchShelves() {
+    const p = planMatchShelves(this.store.state);
+    if (!p.ok) return [];
+    for (const q of p.pairs) {
+      const was = getCab(this.store.getItem(q.cutId)?.code);
+      this.store.swapItem(q.cutId, q.code, { quiet: true });
+      this.store.updateItem(q.cutId, { x: q.x, z: q.z }, { quiet: true });
+      for (const m of q.moves) this.store.updateItem(m.id, { x: m.x, z: m.z }, { quiet: true });
+      this.onFitted?.({ matched: true, w: q.w, code: q.code }, was);
+    }
+    this.layer.rebuildAll?.();
+    return p.pairs;
+  }
 
   /** Every room corner a corner unit can sit in, tried through the snap itself (both ends of each
    *  wall, the unit turned to face into the room); the one nearest (px, pz) that the snap accepts. */
@@ -407,6 +432,7 @@ export class PointerControls {
       this.onCommit();
     } else if (e.key === 'r' || e.key === 'R') {
       const it = this.store.getItem(id);
+      if (getCab(it.code)?.stacker) return;          // a stacker faces the way its host faces
       const rot = ((it.rotDeg || 0) + 90) % 360;
       const snapped = snapPosition(this.store, id, it.x, it.z, this.room.bounds());
       // keep new rotation but re-snap position to it (ONE undo step)
@@ -428,13 +454,14 @@ export class PointerControls {
     const cab = getCab(code);
     if (!cab || !cab.placeable) return null;
     if (isOven(cab)) return this._placeOven(cab, wall);
+    if (cab.stacker) return this._placeStacker(cab, wall);
     if (cab.form === 'ovenBase' && !opts.plain) return this._placeOvenBase(code, wall);
     if (/cooktop/i.test(cab.desc || '') && !opts.plain) return this._placeCooktopBase(code, wall);
     // a range hood (or its cover, W26) goes straight over the cooker (core/hoodseat.js); with none, it waits on the wall
     if (cab.appliance === 'hood' || cab.hoodCover) {
       const seat = findHoodSeat(this.store.state, 0, 0, null, cab);
       if (seat) {
-        const item = this.store.addItem(code, { x: seat.x, z: seat.z, rotDeg: seat.rotDeg });
+        const item = this.store.addItem(seat.coverCode || code, { x: seat.x, z: seat.z, rotDeg: seat.rotDeg });   // the cover in the cooker's width
         this.layer.select(item.id); this.onSelect(item.id); this.onCommit();
         return { ...item, overCooker: true };
       }
@@ -541,6 +568,19 @@ export class PointerControls {
     return { ...host, withCooktop: hob };
   }
 
+  /** A stacker tapped in from the catalogue goes straight onto the nearest unstacked cabinet it
+   *  fits on this wall (any wall failing that); with none it is refused and the picker says why. */
+  _placeStacker(cab, wall) {
+    const b = this.room.bounds(), mid = { back: { x: 0, z: b.minZ }, front: { x: 0, z: b.maxZ }, left: { x: b.minX, z: 0 }, right: { x: b.maxX, z: 0 } }[wall] || { x: 0, z: 0 };
+    const seat = findStackerSeat(this.store.state, cab, mid.x, mid.z);
+    if (!seat) return { refused: true, needsHost: true, code: cab.code };
+    const item = this.store.addItem(cab.code, { x: seat.x, z: seat.z, rotDeg: seat.rotDeg, hostId: seat.hostId });
+    this.layer.select(item.id);
+    this.onSelect(item.id);
+    this.onCommit();
+    return { ...item, seated: true };
+  }
+
   _placeOven(cab, wall) {
     this.store.beginHistory();
     let host = findOvenHost(this.store.state, cab, 0, 0);
@@ -581,7 +621,7 @@ export class PointerControls {
     if (!placements || !placements.length) return 0;
     this.store.beginHistory();
     let n = 0;
-    for (const p of placements) { this.store.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg }); n++; }
+    for (const p of placements) { this.store.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg, hostId: p.hostId }); n++; }
     this.store.endHistory();
     this.onCommit();
     return n;

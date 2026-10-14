@@ -33,31 +33,24 @@ const minX = -room.width / 2, maxX = room.width / 2, minZ = -room.depth / 2, max
 
 // ---- 1. corner cabinet drawn return -----------------------------------------
 
-test('corner return is sized from the ACTUAL distance to the adjacent wall', () => {
+test('corner return is ONE depth: the cabinet depth plus the wall scribe, wherever the unit stands', () => {
+  // her call 2026-10-14: "the corner blank part is one depth only" — never stretched or shrunk to the wall
   const f16 = getCab('F16');
-  // exactly at the corner: body 20" in, return spans the full 20"
-  let len = cornerReturnLength(f16, { x: minX + 20 + 12, z: minZ + 12.25, rotDeg: 0 }, room);
-  assert.ok(Math.abs(len - 20) < 0.01, `flush corner → 20", got ${len}`);
-  // a 4" scribe gap: the drawn return stretches 24" so it still MEETS the wall
-  len = cornerReturnLength(f16, { x: minX + 24 + 12, z: minZ + 12.25, rotDeg: 0 }, room);
-  assert.ok(Math.abs(len - 24) < 0.01, `4" scribe → 24" drawn return, got ${len}`);
-  // room shrunk under the return (wall 15" away): the panel SHRINKS — never
-  // pokes through / gets clipped by the wall
-  len = cornerReturnLength(f16, { x: minX + 15 + 12, z: minZ + 12.25, rotDeg: 0 }, room);
-  assert.ok(Math.abs(len - 15) < 0.01, `15" to wall → 15" drawn return, got ${len}`);
-  // far from any corner: fall back to the SKU's 20"
-  len = cornerReturnLength(f16, { x: 0, z: minZ + 12.25, rotDeg: 0 }, room);
-  assert.ok(Math.abs(len - 20) < 0.01, `mid-wall → SKU 20", got ${len}`);
+  for (const x of [minX + 20 + 12, minX + 24.25 + 12, minX + 15 + 12, 0]) {
+    const len = cornerReturnLength(f16, { x, z: minZ + 12.25, rotDeg: 0 }, room);
+    assert.ok(Math.abs(len - 24.25) < 0.01, `F16 at ${x}: 24.25" drawn return, got ${len}`);
+  }
+  assert.ok(Math.abs(cornerReturnLength(getCab('W9'), { x: minX + 14.25 + 10, z: minZ + 7.25, rotDeg: 0 }, room) - 14.25) < 0.01, 'a wall corner: 14.25"');
 });
 
 test('corner return meets the wall at every rotation / both hands', () => {
   const cases = [
-    // [code, rotDeg, item pos with a 3" scribe gap, which wall the return must reach]
-    ['F16', 0, { x: minX + 23 + 12, z: minZ + 12.25 }, 'left'],   // back wall, blank left
-    ['F16R', 0, { x: maxX - 23 - 12, z: minZ + 12.25 }, 'right'], // back wall, blank right
-    ['F16', 90, { x: minX + 12.25, z: maxZ - 23 - 12 }, 'front'], // left wall, return → front
-    ['F16R', 270, { x: maxX - 12.25, z: maxZ - 23 - 12 }, 'front'],// right wall, blank right → front
-    ['W9', 0, { x: minX + 13 + 10, z: minZ + 7.25 }, 'left'],     // wall corner, 10" return + 3" scribe
+    // [code, rotDeg, item on its leg-to-leg seat (body edge one depth + scribe from the side wall), which wall the return must reach]
+    ['F16', 0, { x: minX + 24.25 + 12, z: minZ + 12.25 }, 'left'],   // back wall, blank left
+    ['F16R', 0, { x: maxX - 24.25 - 12, z: minZ + 12.25 }, 'right'], // back wall, blank right
+    ['F16', 90, { x: minX + 12.25, z: maxZ - 24.25 - 12 }, 'front'], // left wall, return → front
+    ['F16R', 270, { x: maxX - 12.25, z: maxZ - 24.25 - 12 }, 'front'],// right wall, blank right → front
+    ['W9', 0, { x: minX + 14.25 + 10, z: minZ + 7.25 }, 'left'],     // wall corner, 14.25" return
   ];
   for (const [code, rotDeg, pos, wallName] of cases) {
     const cab = getCab(code);

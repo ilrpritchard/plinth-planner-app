@@ -808,6 +808,7 @@ export class UI {
       const where = { back: 'the back wall', left: 'the left wall', right: 'the right wall', front: 'the front wall', floor: 'the floor, free-standing' }[res.movedTo];
       this._toast(`That wall is full, so it is on ${where}. Drag it where it belongs.`);
     }
+    if (res.refused && res.needsHost) { const fits = ((getCab(res.code)?.desc || '').match(/\(fits ([^)]*)\)/) || [, ''])[1]; this._toast(`${getCab(res.code)?.desc || 'A stacker'} stands on a ${fits} with nothing on it yet. Add one, or use "Add stackers" to match every cabinet.`); return; }
     if (res.refused) {
       const h = res.needs && getCab(res.needs);
       this._toast(h ? `A wall oven lives in an oven housing. Pick a wall, then add it again and the ${h.code} ${h.desc} comes with it.` : 'A wall oven lives in an oven housing.');
@@ -1317,7 +1318,7 @@ export class UI {
     document.getElementById('selDuplicate').addEventListener('click', () => {
       const id = this.controls.layer.selectedId; if (id == null) return;
       const it = this.store.getItem(id);
-      if (getCab(it.code)?.appliance === 'oven') { this._announcePlaced(this.controls.placeNew(it.code, this.activeWall)); return; }
+      if (getCab(it.code)?.appliance === 'oven' || getCab(it.code)?.stacker) { this._announcePlaced(this.controls.placeNew(it.code, this.activeWall)); return; }   // riders seat themselves: an oven in a housing, a stacker on a host
       // the copy stands in the first FREE space on its wall (never 4" over the original, which
       // used to leave two cabinets through each other until one was dragged clear, her screenshot
       // 2026-09-26), then rides the pointer like a tapped-in cabinet
@@ -1427,6 +1428,7 @@ export class UI {
     document.getElementById('selCentreRoom').style.display = cRoom.reason === 'not island' ? 'none' : '';
     document.getElementById('selSpaceWrap').style.display = cRoom.reason === 'not island' ? 'none' : '';
     document.getElementById('selCentreRange').style.display = (cRange.ok && !(cRoom.ok && Math.abs(cRoom.dx - cRange.dx) < 0.25)) || (cRange.reason === 'blocked') ? '' : 'none';
+    document.getElementById('selRotate').style.display = getCab(it.code)?.stacker ? 'none' : '';   // a stacker faces the way its host faces
     const sk = document.getElementById('selStacker'), skp = planStackers(this.store.state, null, id);
     sk.style.display = skp.ok ? '' : 'none';
     if (skp.ok) sk.textContent = `Add a stacker (${skp.placements[0].code}, ${skp.size}")`;

@@ -159,23 +159,25 @@ export function frontParts(cab) {
     case 'drawers':
       drawerStack(dx0, dx1, zB, zT);
       break;
-    case 'ovenHousing': {                        // low door(s) · drawer panel · OVEN opening · blank panel
+    case 'ovenHousing': {                        // cupboard · OVEN opening, base at 900mm · cupboard (her spec 2026-10-08)
       // same stack as the 3D (core/ovenseat.js) — an approver must see the oven
       // aperture, never a plain full-height door
-      const seat = ovenSeat(cab), doorTop = seat.openY0 + seat.doorH;
-      const single = [[zB + F, doorTop - F]];
-      if (w >= 36) { vline('leaf', w / 2, zB, doorTop); leaf(dx0, w / 2, single, false, zB, doorTop); leaf(w / 2, dx1, single, false, zB, doorTop); }
-      else leaf(dx0, dx1, single, false, zB, doorTop);
-      rect('drawer', dx0, doorTop + FD.GAP, dx1 - dx0, seat.drawH - FD.GAP);
+      const seat = ovenSeat(cab), lowTop = seat.openY0 + seat.doorH, upBot = seat.upperY0;
+      const cupboard = (y0, y1) => {
+        const zones = [[y0 + F, y1 - F]];
+        if (w >= 36) { vline('leaf', w / 2, y0, y1); leaf(dx0, w / 2, zones, false, y0, y1); leaf(w / 2, dx1, zones, false, y0, y1); }
+        else leaf(dx0, dx1, zones, false, y0, y1);
+      };
+      cupboard(zB, lowTop);
       rect('void', dx0, seat.y0, dx1 - dx0, seat.ovenH);
       parts.push({ k: 'text', x: w / 2, y: seat.y0 + seat.ovenH / 2, s: 'OVEN' });
-      if (zT - (seat.y0 + seat.ovenH) > 1) rect('drawer', dx0, seat.y0 + seat.ovenH + FD.GAP, dx1 - dx0, zT - (seat.y0 + seat.ovenH) - FD.GAP);
+      if (zT - upBot > 1) cupboard(upBot, zT);
       break;
     }
     case 'ovenBase': {                           // drawer panel · OVEN opening, right under the top rail
       const seat = ovenSeat(cab);
-      rect('drawer', dx0, zB, dx1 - dx0, seat.drawH - FD.GAP);
-      rect('panel', dx0, seat.y0 - seat.railH, dx1 - dx0, seat.railH);      // the rail the oven stands on
+      if (seat.drawH > FD.GAP) rect('drawer', dx0, zB, dx1 - dx0, seat.drawH - FD.GAP);
+      if (seat.railH > 0) rect('panel', dx0, seat.y0 - seat.railH, dx1 - dx0, seat.railH);      // the rail the oven stands on
       rect('void', dx0, seat.y0, dx1 - dx0, seat.ovenH);
       parts.push({ k: 'text', x: w / 2, y: seat.y0 + seat.ovenH / 2, s: 'OVEN' });
       break;

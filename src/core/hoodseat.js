@@ -20,6 +20,12 @@ const rotOf = (it) => (((it.rotDeg || 0) % 360) + 360) % 360;
 export const cookerTop = (c) => (c.mountY || 0) + (c.h || 0);
 export const hoodMountY = (cookerCab) => cookerTop(cookerCab) + HOOD_CLEAR_IN;
 
+/** The hood cover made for this cooker's width: W26 24", W37 30", W38 36", W39 48". */
+export function hoodCoverFor(cookerCab) {
+  const w = (cookerCab && cookerCab.w) || 24;
+  return w <= 24.5 ? 'W26' : w <= 30.5 ? 'W37' : w <= 36.5 ? 'W38' : 'W39';
+}
+
 export function findHoodSeat(state, rawX, rawZ, ignoreId = null, hoodCab = null) {
   const r = (state && state.room) || {}, W = r.width || 144, D = r.depth || 120;
   const hd = (hoodCab && hoodCab.d) || 20;
@@ -40,5 +46,6 @@ export function findHoodSeat(state, rawX, rawZ, ignoreId = null, hoodCab = null)
   }
   if (!best) return null;
   const { dist, cooker, ...seat } = best;
-  return { ...seat, mountY: hoodMountY(cooker) };
+  // a hood COVER is the cooker's width: the seat says which cover code fits the cooker it lands over
+  return { ...seat, mountY: hoodMountY(cooker), ...(hoodCab && hoodCab.hoodCover ? { coverCode: hoodCoverFor(cooker) } : {}) };
 }

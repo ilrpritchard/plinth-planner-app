@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planStackers, stackerFor, resizeStackers } from '../src/core/stackers.js';
-import { getCab } from '../src/core/catalogue.js';
+import { getCab, CATALOGUE } from '../src/core/catalogue.js';
 
 const W = 200, D = 160;
 const room = (height) => ({ width: W, depth: D, height, openings: [] });
@@ -63,4 +63,85 @@ test('made to height, when asked: fills the ceiling 12" to 30", at the 21" price
   assert.ok(re.length === m.placements.length && re.every((s) => getCab(s.to).h === 27 && getCab(s.to).madeToHeight));
   const back21 = resizeStackers({ room: room(110), items: placed });
   assert.ok(back21.every((s) => getCab(s.to).h === 21 && !getCab(s.to).madeToHeight));
+});
+
+// ---- a stacker RIDES its host (her call 2026-10-14: "the stacker should never be allowed to
+// move off the tall cabinet"): it only lands on a host it fits, follows the host, and leaves with it
+import { Store } from '../src/core/store.js';
+import { snapPosition } from '../src/interaction/snapping.js';
+import { findStackerSeat, stackerHostOf, stackerOn, stackerSeat } from '../src/core/stackers.js';
+
+const roomOf = (st) => { st.setRoom({ width: W, depth: D, height: 108 }); return { minX: -W / 2, maxX: W / 2, minZ: -D / 2, maxZ: D / 2 }; };
+const tallZ = -D / 2 + 12 + 0.25 + 30 / 25.4;
+
+test('dragged, a stacker only ever lands on an unstacked host it fits; off every host it is refused and stays put', () => {
+  const st = new Store(); const b = roomOf(st);
+  const t4 = st.addItem('T4', { x: -60, z: tallZ }), t9 = st.addItem('T9', { x: 20, z: tallZ }), t1 = st.addItem('T1', { x: 60, z: tallZ });
+  st.addItem('F10', { x: -20, z: -D / 2 + 12.25 });
+  const s = st.addItem('S11', { x: -60, z: tallZ, rotDeg: 0, hostId: t4.id });          // Double 21" fits T4, T9
+  const seat = stackerSeat(st.state, t4, getCab('S11'));
+  // pulled sideways over the base cabinet (her screenshot 2026-10-14): it stays on its tall
+  const off = snapPosition(st, s.id, -30, tallZ, b);
+  assert.deepEqual([off.x, off.z, off.hostId, off.flag], [-60, tallZ, t4.id, undefined]);
+  assert.ok(Math.abs(seat.z - tallZ) < 1e-9 && seat.x === -60, 'seated over its tall, proud with it');
+  // pulled toward the T9: it hops onto the T9 and takes it as host
+  const hop = snapPosition(st, s.id, 14, tallZ, b);
+  assert.deepEqual([hop.x, hop.z, hop.rotDeg, hop.hostId, hop.flag], [20, tallZ, 0, t9.id, undefined]);
+  // the T1 does not fit it: pulled there it lands on the nearest tall it does fit
+  assert.equal(snapPosition(st, s.id, 60, tallZ, b).hostId, t9.id);
+  // with no host it fits anywhere, it is refused and held where it is
+  const s1 = st.addItem('S1', { x: 60, z: tallZ, hostId: t1.id });        // 15" fits T1, T3
+  st.removeItem(t1.id);
+  assert.equal(st.getItem(s1.id), undefined, 'leaves with the T1');
+  const s3 = st.addItem('S3', { x: 0, z: 0 });                             // fits T2, T5, T6: none here
+  assert.deepEqual([snapPosition(st, s3.id, -60, tallZ, b).flag, findStackerSeat(st.state, getCab('S3'), -60, tallZ, s3.id)], ['stacker', null]);
+  st.removeItem(s3.id);
+  // a second S11 cannot land on the T4 while the first stands on it, but the first can go back to its own
+  const s2 = st.addItem('S11', { x: 0, z: 0 });
+  assert.equal(findStackerSeat(st.state, getCab('S11'), -60, tallZ, s2.id).hostId, t9.id, 'the T4 is taken: the T9 is the free one');
+  assert.equal(findStackerSeat(st.state, getCab('S11'), -60, tallZ, s.id).hostId, t4.id);
+  assert.equal(stackerOn(st.state, t4.id).id, s.id);
+  assert.equal(stackerOn(st.state, t1.id), null);
+});
+
+test('the stacker follows its host, is re-fitted when the host is swapped, and leaves with it', () => {
+  const st = new Store(); roomOf(st);
+  const t4 = st.addItem('T4', { x: -60, z: tallZ });
+  const s = st.addItem('S11', { x: -60, z: tallZ, hostId: t4.id });
+  st.updateItem(t4.id, { x: 10 });
+  assert.equal(st.getItem(s.id).x, 10, 'slides along with its tall');
+  // the tall hops to the left wall: the stacker turns with it, seated on it there
+  st.updateItem(t4.id, { x: -W / 2 + 12.25 + 30 / 25.4, z: 30, rotDeg: 90 });
+  const on = st.getItem(s.id);
+  assert.deepEqual([on.rotDeg, on.z], [90, 30]); assert.ok(Math.abs(on.x - (-W / 2 + 12.25 + 30 / 25.4)) < 1e-9);
+  // swapped for a tall that takes a different stacker: the stacker becomes the one made for it, same height
+  st.swapItem(t4.id, 'T11');
+  assert.equal(st.getItem(s.id).code, 'S12', 'the 21" made for the T11');
+  assert.equal(st.getItem(s.id).hostId, t4.id);
+  st.swapItem(t4.id, 'T10');
+  assert.equal(st.getItem(s.id).code, 'S9');
+  // swapped for a corner tall with no stacker made: the stacker comes off
+  st.swapItem(t4.id, 'T16');
+  const gone = getCab('T16') && !CATALOGUE.some((c) => c.stacker && /\bT16\b/.test(c.desc));
+  if (gone) assert.equal(st.getItem(s.id), undefined, 'nothing is made for it: it comes off');
+  st.swapItem(t4.id, 'T4');
+  const s2 = st.getItem(s.id) || st.addItem('S11', { x: st.getItem(t4.id).x, z: st.getItem(t4.id).z, rotDeg: 90, hostId: t4.id });
+  st.removeItem(t4.id);
+  assert.equal(st.getItem(s2.id), undefined, 'leaves with its host');
+  st.undo();
+  assert.ok(st.getItem(t4.id) && st.getItem(s2.id), 'one undo brings both back');
+});
+
+test('a stacker saved before hostId is adopted by the cabinet under it: it follows and leaves with that host too', () => {
+  const st = new Store(); roomOf(st);
+  const t1 = st.addItem('T1', { x: -40, z: tallZ });
+  const s = st.addItem('S1', { x: -40, z: tallZ });                     // no hostId: an older design
+  assert.equal(stackerHostOf(st.state, s).id, t1.id);
+  st.updateItem(t1.id, { x: 0 });
+  assert.deepEqual([st.getItem(s.id).x, st.getItem(s.id).hostId], [0, t1.id], 'adopted as it moves');
+  const w2 = st.addItem('W2', { x: 40, z: -D / 2 + getCab('W2').d / 2 + 0.25 });
+  const s16 = st.addItem('S16', { x: 40, z: -D / 2 + 7.25 });
+  st.removeItem(w2.id);
+  assert.equal(st.getItem(s16.id), undefined, 'a wall cabinet takes its stacker with it');
+  assert.ok(st.getItem(s.id), 'the other stacker stays');
 });

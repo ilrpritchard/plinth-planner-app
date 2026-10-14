@@ -556,7 +556,7 @@ export class Wizard {
 
   _generate(roomPatch) {
     this.store.beginHistory();                            // the whole build = ONE undo step
-    try { this._generateInner(roomPatch); }
+    try { this._generateInner(roomPatch); this.controls?.matchShelves?.(); }   // shelves either side of the hood: the same width
     finally { this.store.endHistory(); }
   }
 

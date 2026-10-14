@@ -6,6 +6,7 @@ import { getCab, CATALOGUE } from '../src/core/catalogue.js';
 import { computeElevation } from '../src/core/submittal.js';
 import { buildElevationSVG } from '../src/ui/submittal.js';
 import { mmToIn } from '../src/core/units.js';
+import { ovenSeat } from '../src/core/ovenseat.js';
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { c ? pass++ : (fail++, console.error('✗ ' + n)); };
@@ -186,13 +187,16 @@ const lines = (code, cls) => parts(code).filter((p) => p.k === 'line' && p.cls =
   ok('no matches → empty list, no throw', filterCabinets(all, 'zzz-nothing').length === 0);
 }
 
-// ---- oven housings show their oven opening (never a plain full-height door) ----
+// ---- oven housings show their oven opening (never a plain full-height door): a cupboard below,
+// the oven base 900mm off the floor, a cupboard above (her spec 2026-10-08) ----
 {
   for (const code of ['T9', 'T14', 'T15']) {
-    const fp = frontParts(getCab(code));
+    const cab = getCab(code), fp = frontParts(cab), seat = ovenSeat(cab), pair = code === 'T15';
     const leafs = fp.parts.filter((p) => p.k === 'rect' && p.cls === 'leaf'), hole = fp.parts.find((p) => p.cls === 'void');
-    ok(`${code}: a low door${code === 'T15' ? ' PAIR' : ''} under an OVEN opening`, leafs.length === (code === 'T15' ? 2 : 1) && hole
-      && leafs.every((l) => l.y + l.h <= hole.y + 0.01) && hole.h === (code === 'T15' ? 24 : 29) && fp.parts.some((p) => p.k === 'text' && p.s === 'OVEN'));
+    const below = leafs.filter((l) => l.y + l.h <= hole.y + 0.01), above = leafs.filter((l) => l.y >= hole.y + hole.h - 0.01);
+    ok(`${code}: a cupboard${pair ? ' PAIR' : ''} below and above an OVEN opening whose base is 900mm off the floor`,
+      hole && below.length === (pair ? 2 : 1) && above.length === (pair ? 2 : 1) && below.length + above.length === leafs.length
+      && Math.abs(hole.y - mmToIn(900)) < 1e-9 && Math.abs(hole.h - seat.ovenH) < 1e-9 && fp.parts.some((p) => p.k === 'text' && p.s === 'OVEN'));
   }
 }
 

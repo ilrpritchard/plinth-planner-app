@@ -742,23 +742,24 @@ function buildFront(g, cab, ctx) {
       return false;
     }
     case 'ovenHousing': {
-      // painted tall housing with an inset stainless wall oven at counter-to-
-      // eye height: (bottom→top) hinged door · drawer-style panel · oven ·
-      // blank painted panel up to the top rail. Neutral steels only.
+      // painted tall housing with an inset stainless wall oven, its base 900mm off
+      // the floor (her spec 2026-10-08): (bottom→top) hinged cupboard door · oven ·
+      // hinged cupboard door up to the top rail. Neutral steels only.
       const steel = stainlessMat(0xb9bdc2, 0.85, 0.3);
       const steelDk = stainlessMat(0x8f959b, 0.85, 0.35);
       const dkGlass = new THREE.MeshStandardMaterial({ color: 0x131518, metalness: 0.3, roughness: 0.15 });
       const y0 = openCenterY - openH / 2, openTop = openCenterY + openH / 2;
       const seat = ovenSeat(cab);                    // shared with the oven appliance + the snap (core/ovenseat.js)
-      const doorH = seat.doorH;                      // low cupboard door
-      const drawH = seat.drawH;                      // slim drawer-style panel
-      const ovenH = seat.ovenH;                      // single wall oven front: 24" / 30" ovens stand ~29", a 36" is lower and wider
-      if (cab.w >= 36) {                             // T15: a 36"+ face takes a door PAIR, never one yard-wide door
-        const colW = faceW / 2 - REVEAL / 2;
-        for (const sgn of [-1, 1]) hingedDoor(g, doors, { w: colW, h: doorH, mat, glazed: false, frontZ, hingeX: sgn * faceW / 2, centerY: y0 + doorH / 2, hingeSign: sgn, handle });
-      } else hingedDoor(g, doors, { w: faceW, h: doorH, mat, glazed: false, frontZ, hingeX: (ctx.hinge ?? -1) * faceW / 2, centerY: y0 + doorH / 2, hingeSign: ctx.hinge ?? -1, handle });
-      g.add(flatDrawer(faceW, drawH - REVEAL, mat, ctx.frontFlush, y0 + doorH + REVEAL + (drawH - REVEAL) / 2, handle));
-      const oy0 = y0 + doorH + drawH + 2 * REVEAL;   // oven fascia bottom (~33")
+      const doorH = seat.doorH;                      // the low cupboard, up to the oven
+      const ovenH = seat.ovenH;                      // single wall oven front: a 24" is 595mm, a 30" ~29", a 36" lower and wider
+      const cupboard = (centerY, h) => {
+        if (cab.w >= 36) {                           // T15: a 36"+ face takes a door PAIR, never one yard-wide door
+          const colW = faceW / 2 - REVEAL / 2;
+          for (const sgn of [-1, 1]) hingedDoor(g, doors, { w: colW, h, mat, glazed: false, frontZ, hingeX: sgn * faceW / 2, centerY, hingeSign: sgn, handle });
+        } else hingedDoor(g, doors, { w: faceW, h, mat, glazed: false, frontZ, hingeX: (ctx.hinge ?? -1) * faceW / 2, centerY, hingeSign: ctx.hinge ?? -1, handle });
+      };
+      cupboard(y0 + doorH / 2, doorH);
+      const oy0 = y0 + doorH + REVEAL;               // oven fascia bottom, 900mm off the floor
       if (ctx.ovenFitted) {
         // a real wall oven (AP14 / AP15) rides here and draws itself: the housing
         // shows the seat it sits in, painted filler stiles closing the face each
@@ -783,9 +784,8 @@ function buildFront(g, cab, ctx) {
         post.rotation.x = Math.PI / 2; post.position.set(sx * (faceW - 4) / 2, oy0 + ovenH - 4.6, frontZ + 0.45); g.add(post);
       }
       }
-      const bh = Math.max(0.5, openTop - (oy0 + ovenH + REVEAL));
-      const blank = box(faceW, bh, DOOR_T, mat); blank.position.set(0, oy0 + ovenH + REVEAL + bh / 2, frontZ - DOOR_T / 2); g.add(blank);
-      revealRing(g, 0, oy0 + ovenH + REVEAL + bh / 2, faceW, bh, frontZ);
+      const uy0 = oy0 + ovenH + REVEAL, uh = Math.max(0.5, openTop - uy0);   // the upper cupboard, oven to top rail
+      cupboard(uy0 + uh / 2, uh);
       return false;
     }
     case 'ovenBase': {
@@ -797,10 +797,10 @@ function buildFront(g, cab, ctx) {
       const dkGlass = new THREE.MeshStandardMaterial({ color: 0x131518, metalness: 0.3, roughness: 0.15 });
       const y0 = openCenterY - openH / 2;
       const seat = ovenSeat(cab);
-      g.add(flatDrawer(faceW, seat.drawH - REVEAL, mat, ctx.frontFlush, y0 + (seat.drawH - REVEAL) / 2, handle));
+      if (seat.drawH > REVEAL) g.add(flatDrawer(faceW, seat.drawH - REVEAL, mat, ctx.frontFlush, y0 + (seat.drawH - REVEAL) / 2, handle));
       const oy0 = seat.y0, ovenH = seat.ovenH;
-      // the painted rail the oven stands on, flush with the drawer face
-      const rail = box(faceW, seat.railH, DOOR_T, mat); rail.position.set(0, oy0 - REVEAL - seat.railH / 2, frontZ - DOOR_T / 2); g.add(rail);
+      // the painted rail the oven stands on, flush with the drawer face (a 30"+ oven fills the opening: neither)
+      if (seat.railH > 0) { const rail = box(faceW, seat.railH, DOOR_T, mat); rail.position.set(0, oy0 - REVEAL - seat.railH / 2, frontZ - DOOR_T / 2); g.add(rail); }
       if (ctx.ovenFitted) {
         const ovenFace = seat.ovenW - 0.25, stile = Math.max(0, (faceW - ovenFace) / 2);
         const cavity = box(faceW, ovenH, 0.3, new THREE.MeshStandardMaterial({ color: 0x17181a, roughness: 0.9 }));

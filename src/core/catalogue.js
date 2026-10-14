@@ -113,7 +113,12 @@ const RAW = [
   // a hung box over the cooker with one FIXED shaker panel, no knob, no hinge; it conceals a 24" extractor
   // insert (supply your own: the AP23 canopy sits inside it) and its top lands on the 86" crown line, so
   // the flue above is a 24" wall stacker. 20" deep to take the canopy. It RIDES the cooker like the hood.
-  { code: 'W26', type: 'WALL', desc: 'Hood Cover', w: 24, d: 20, h: 16, hinge: 'n/a', usd: 0, priceTBC: true, mountY: 70, hoodCover: true, notes: 'Fixed shaker panel over a built-in canopy extractor up to 54cm wide, such as the AEG DGE5661HM (supplied by others): only its liner shows underneath. Sits between the wall cabinets with its top on the crown line; add a stacker above to hide the flue.' },
+  { code: 'W26', type: 'WALL', desc: 'Hood Cover 24"', w: 24, d: 20, h: 16, hinge: 'n/a', usd: 0, priceTBC: true, mountY: 70, hoodCover: true, notes: 'Fixed shaker panel over a built-in canopy extractor up to 54cm wide, such as the AEG DGE5661HM (supplied by others): only its liner shows underneath. Sits between the wall cabinets with its top on the crown line; add a stacker above to hide the flue.' },
+  // ...and one for each range size (her call 2026-10-14: "it needs to be designed to fit all size range
+  // cookers"): the cover is the cooker's width, 30" / 36" / 48", and swaps to size over the cooker it rides
+  { code: 'W37', type: 'WALL', desc: 'Hood Cover 30"', w: 30, d: 20, h: 16, hinge: 'n/a', usd: 0, priceTBC: true, mountY: 70, hoodCover: true, notes: 'Fixed shaker panel over a built-in canopy extractor for a 30" range or cooktop (supplied by others): only its liner shows underneath. Sits between the wall cabinets with its top on the crown line.' },
+  { code: 'W38', type: 'WALL', desc: 'Hood Cover 36"', w: 36, d: 20, h: 16, hinge: 'n/a', usd: 0, priceTBC: true, mountY: 70, hoodCover: true, notes: 'Fixed shaker panel over a built-in canopy extractor for a 36" range or cooktop (supplied by others): only its liner shows underneath. Sits between the wall cabinets with its top on the crown line.' },
+  { code: 'W39', type: 'WALL', desc: 'Hood Cover 48"', w: 48, d: 20, h: 16, hinge: 'n/a', usd: 0, priceTBC: true, mountY: 70, hoodCover: true, notes: 'Fixed shaker panel over a built-in canopy extractor for a 48" range (supplied by others): only its liner shows underneath. Sits between the wall cabinets with its top on the crown line.' },
   // WALL — S-series STACKERS: boxes that sit ON TOP of an existing run for
   // tall ceilings, matched per family so every wall/tall/counter cabinet has
   // a stacker with the SAME width, the right depth, and its mountY exactly at
@@ -143,12 +148,12 @@ const RAW = [
   { code: 'S17', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W13)', w: 28, d: 14, h: 15, hinge: 'L&R', usd: 1601, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S33', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits W25)', w: 10, d: 14, h: 15, hinge: 'L&R', usd: 0, priceTBC: true, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S34', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W25)', w: 10, d: 14, h: 21, hinge: 'L&R', usd: 0, priceTBC: true, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 107".' },
-  { code: 'S18', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W5, W7)', w: 36, d: 14, h: 15, hinge: 'n/a', usd: 1981, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
+  { code: 'S18', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W5, W7, W38)', w: 36, d: 14, h: 15, hinge: 'n/a', usd: 1981, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S19', type: 'WALL', stacker: true, desc: 'Stacker Double 15\" (fits W6, W8)', w: 42, d: 14, h: 15, hinge: 'n/a', usd: 2148, mountY: 86, notes: 'Sits directly on a standard hung wall run (tops at 86"), stacked uppers to the ceiling.' },
   { code: 'S20', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W1, W3, W11)', w: 20, d: 14, h: 21, hinge: 'L&R', usd: 1586, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   { code: 'S21', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W2, W4, W12, W26)', w: 24, d: 14, h: 21, hinge: 'L&R', usd: 1662, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   { code: 'S22', type: 'WALL', stacker: true, desc: 'Stacker 21\" (fits W13)', w: 28, d: 14, h: 21, hinge: 'L&R', usd: 1768, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
-  { code: 'S23', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W5, W7)', w: 36, d: 14, h: 21, hinge: 'n/a', usd: 2148, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
+  { code: 'S23', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W5, W7, W38)', w: 36, d: 14, h: 21, hinge: 'n/a', usd: 2148, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   { code: 'S24', type: 'WALL', stacker: true, desc: 'Stacker Double 21\" (fits W6, W8)', w: 42, d: 14, h: 21, hinge: 'n/a', usd: 2315, mountY: 86, notes: 'Stacked uppers, the taller size, wall run + 21" reaches 105".' },
   // fits the COUNTER dresser run (24/28/36/42 wide, d 14, mount = the counter cabinet's top)
   { code: 'S25', type: 'WALL', stacker: true, desc: 'Stacker 15\" (fits C1, C2)', w: 24, d: 14, h: 15, hinge: 'L&R', usd: 1495, mountY: SURFACE_Y + 50, notes: 'Sits on the counter-to-ceiling dresser run (tops at 86½"). For 9\'+ ceilings.' },
@@ -283,13 +288,11 @@ export function familyOf(cab) {
 // ----- appliances (NOT Plinth products — visual placeholders, unpriced) ----
 // Each sits at its own mount height: ranges/fridges on the floor, hobs & sinks
 // in the worktop (36.5"). They snap to walls/runs like base units.
-// floor to the bottom of the oven fascia in an 86" oven housing: plinth + base
-// panel + low door (26% of the opening) + drawer panel (9%) + two reveals.
-// core/ovenseat.js ovenSeat() derives the same number; build.test.js locks them together.
-const OVEN_SEAT_Y = (() => {
-  const openY0 = SPEC.PLINTH_IN + SPEC.PANEL_IN, openH = 86 - mmToIn(35) - openY0;
-  return openY0 + openH * 0.35 + 2 * SPEC.REVEAL_IN;
-})();
+// floor to the bottom of the oven fascia in an 86" oven housing: 900mm, her spec 2026-10-08 (a
+// cupboard below, the oven, a cupboard above). core/ovenseat.js OVEN_SEAT_MM is the same number;
+// walloven.test.js locks them together.
+const OVEN_SEAT_Y = mmToIn(900);
+const WALL_OVEN_24_H = mmToIn(595);   // a 60cm oven, the same fascia as the under-counter AP21
 // floor to the bottom of a 23.4" oven sitting right under the top rail of a 35" base housing
 // (F32): the aperture's top is the opening's top. core/ovenseat.js derives the same number.
 const UNDER_OVEN_H = mmToIn(595);
@@ -303,7 +306,7 @@ const APPLIANCES = [
   { code: 'AP3', appliance: 'range', desc: 'Range cooker 48"', w: 48, d: 26, h: 36, mountY: 0 },
   // wall ovens: RIDERS that live inside an oven housing (T9 24", T14 30", T15 36"), the
   // way a sink lives in a base. mountY = the housing's oven seat (core/ovenseat.js).
-  { code: 'AP14', appliance: 'oven', ovenW: 24, desc: 'Wall oven 24"', w: 24, d: 23.7, h: 29, mountY: OVEN_SEAT_Y },
+  { code: 'AP14', appliance: 'oven', ovenW: 24, desc: 'Wall oven 24"', w: 24, d: 23.7, h: WALL_OVEN_24_H, mountY: OVEN_SEAT_Y },
   { code: 'AP15', appliance: 'oven', ovenW: 30, desc: 'Wall oven 30"', w: 30, d: 23.7, h: 29, mountY: OVEN_SEAT_Y },
   // 36": wide and short (Wolf / BlueStar / Gaggenau), rides in T15 whose seat is 24" tall
   { code: 'AP16', appliance: 'oven', ovenW: 36, desc: 'Wall oven 36"', w: 36, d: 23.7, h: 24, mountY: OVEN_SEAT_Y },

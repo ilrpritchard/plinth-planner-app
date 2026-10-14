@@ -151,7 +151,9 @@ const controls = new PointerControls({
   onCommit: () => { store.syncIslands(); rebuildWorktop(); },
   onSelect: (id) => ui.showSelbar(id),
   onOpeningClick: (info) => openOpeningCard(info),
-  onFitted: (plan, cab) => toast(plan.shrunk
+  onFitted: (plan, cab) => toast(plan.matched
+    ? `The two open shelves either side of the hood are now both ${fmtIn(plan.w)}: a special size, priced at the standard shelf plus 10%.`
+    : plan.shrunk
     ? `${cab.baseCode || cab.code} cut down to ${fmtIn(plan.w)} to fit that slot. Type a width on the bar to change it.`
     : `${cab.baseCode || cab.code} cut to ${fmtIn(plan.w)} to fill the space. Type a width on the bar to change it.`),
 });
