@@ -59,6 +59,7 @@ import { buildChangeOrderModel } from '../core/changeorder.js';
 import { buildChangeOrderHTML } from './changeorder.js';
 import { planRowsLayout, rowsNotInDesign, removeFromDesign } from '../core/rowlayout.js';
 import { freshRoom } from '../core/store.js';
+import { foldRecoveredDesign, keepEarlier } from '../core/unitsafety.js';
 import { trackURL, ORDER_NO } from '../core/ordertrack.js';
 import { trackingHTML, trackingPageHTML, findOrderHTML, buildTrackingDocHTML } from './ordertrack.js';
 import { looksLikeEmail } from './dxfgate.js';
@@ -113,15 +114,13 @@ export class TradeUI {
     try {
       const cur = this.store.serialize();
       const t = saved.stash.trade;
-      const u = (t.units || []).find((x) => x.id === saved.unitId);
-      if (u && cur.mode === 'home' && Array.isArray(cur.items) && cur.items.length) {
-        const design = cur; design.mode = 'home'; delete design.trade;
-        u.design = design;
-        u.rows = rowsFromDesign(design.items, design.accessories).map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
-      }
+      // only the SAME room goes back into the unit; any other drawing on screen becomes its
+      // own kitchen type (2026-10-16: a different kitchen replaced her 1 Bed this way)
+      const r = cur.mode === 'home' ? foldRecoveredDesign(t, saved.unitId, cur, (d) => rowsFromDesign(d.items, d.accessories)) : { action: 'none' };
       this.store.replace(saved.stash);
       saveNow(this.store);            // on disk before the stash is dropped
-      toast('Recovered your trade project after an interrupted design session ✓');
+      if (r.action === 'added') uiAlert(`The kitchen that was on screen is a different room from ${unitName((t.units || []).find((x) => x.id === saved.unitId) || {})}, so it was kept as its own kitchen type, "Recovered layout". ${unitName((t.units || []).find((x) => x.id === saved.unitId) || {})} is unchanged.`, { title: 'Recovered your project', okLabel: 'Got it' });
+      else toast('Recovered your trade project after an interrupted design session ✓');
     } catch { /* leave state as-is */ }
     try { localStorage.removeItem('plnr-trade-stash'); } catch { /* ignore */ }
   }
@@ -543,6 +542,7 @@ export class TradeUI {
         <span>${count} item${count === 1 ? '' : 's'} placed · cabinet rows derived from the design</span>
         <div class="unit-design-btns">
           <button class="sm" data-act="u-design" title="Reopen this unit's kitchen in the 3D designer">✎ Edit layout in 3D</button>
+          ${(u.earlier || []).length ? `<button class="ghost sm" data-act="u-earlier" title="Put back the layout this unit had before its last change. The one on it now is kept, so this can be undone">↶ Earlier layout</button>` : ''}
         </div>
         <div class="unit-docs">
           <span class="ud-l">Documents · Rev ${esc(unitRev(u))}</span>
@@ -783,6 +783,19 @@ export class TradeUI {
     }
     else if (act === 'u-addrow') { u.rows.push(this.newRow()); this.store.touchTrade(); this.render(); }
     else if (act === 'u-design') { this.enterDesign(u); }
+    else if (act === 'u-earlier') {
+      const prev = (u.earlier || [])[0]; if (!prev) return;
+      const when = prev.at ? new Date(prev.at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'before';
+      const n = (prev.design.items || []).length;
+      uiConfirm(`Put back the layout ${unitName(u)} had on ${when} (${n} item${n === 1 ? '' : 's'})? The layout on it now is kept as an earlier layout, so you can switch back.`, { title: 'Earlier layout', confirmLabel: 'Put it back', cancelLabel: 'Keep this one' }).then((go) => {
+        if (!go) return;
+        const swap = { at: new Date().toISOString(), design: u.design, rows: u.rows };
+        u.design = prev.design; u.rows = prev.rows && prev.rows.length ? prev.rows : rowsFromDesign(prev.design.items || [], prev.design.accessories).map((r) => ({ id: this.t.nextRowId++, code: r.code, qty: r.qty }));
+        u.earlier = [swap, ...u.earlier.slice(1)];
+        this.store.touchTrade(); this.render();
+        toast(`${unitName(u)}: earlier layout put back.`);
+      });
+    }
     else if (act === 'u-submittal') {
       if (!u.design) return toast('Design this unit first. The submittal is built from its layout.');
       drawingsBlocked([u]).then((stop) => !stop && ensureEmailGate('unit-submittal', DOC_GATE).then((ok) => {
@@ -864,6 +877,7 @@ export class TradeUI {
     }
     this._stash = this.store.serialize();
     this._designUnitId = u.id;
+    this._keptEarlier = false;                     // the layout before this session is kept once, on the first write
     // the stash holds the ENTIRE trade project — persist it so a reload
     // mid-design can never lose the project (recovered on next boot)
     try { localStorage.setItem('plnr-trade-stash', JSON.stringify({ stash: this._stash, unitId: u.id })); } catch { /* storage full */ }
@@ -943,6 +957,7 @@ export class TradeUI {
     const t = stash.trade;
     const su = (t.units || []).find((x) => x.id === this._designUnitId);
     if (su) {
+      if (!this._keptEarlier) this._keptEarlier = keepEarlier(su, design) || this._keptEarlier;   // a replace can always be undone
       su.design = design;                          // JSONB-ready snapshot
       su.rows = rowsFromDesign(design.items, design.accessories)       // manual rows → derived rows (inserts ride along)
         .map((r) => ({ id: t.nextRowId++, code: r.code, qty: r.qty }));
