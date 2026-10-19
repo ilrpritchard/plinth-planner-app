@@ -625,18 +625,23 @@ export function getFinish(name) { return FINISHES.find((f) => f.name === name) |
 // `usd` sell price (whole dollars, incl. US import tariff + wrapping) written
 // by the pricing sheet's sync script. No cost, FX or margin maths lives here.
 export function sellUSD(cab) {
-  return cab && cab.usd > 0 ? cab.usd : 0;
+  if (!(cab && cab.usd > 0)) return 0;
+  // Sea freight is folded into every cabinet's price (never shown as its own
+  // line); accessories travel with the cabinets and carry none.
+  return cab.usd + (cab.type === 'ACCESSORIES' ? 0 : TRADE.freightPerCabUSD);
 }
 
 export function fmtUSD(n) {
   return '$' + Math.round(n).toLocaleString('en-US');
 }
 
-// Trade (multi-unit) pricing: cabinets priced per-unit by the same sell formula,
-// plus shipping added once per order by the container. Adjust as needed.
+// Trade (multi-unit) pricing: cabinets priced per-unit by the same sell formula.
+// Sea freight is inside each cabinet's price (freightPerCabUSD, added by sellUSD),
+// so orders carry no separate shipping line: shipPerContainerUSD stays 0.
 export const TRADE = {
   capPerContainer: 60,       // cabinets per shipping container
-  shipPerContainerUSD: 5280, // sell $ per container (synced from the pricing sheet)
+  shipPerContainerUSD: 0,    // no per-container charge; freight is in unit prices
+  freightPerCabUSD: 119,     // sea freight per cabinet, at cost (synced from the pricing sheet)
 };
 
 // Indicative volume pricing tiers, applied to the trade cabinet subtotal by

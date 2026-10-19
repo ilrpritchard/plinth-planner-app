@@ -209,7 +209,7 @@ export class TradeUI {
     return `<div class="trade-exports">
         <div class="tx-group"><h4>Spreadsheets</h4><div class="tx-tiles">
           ${tile('tWorkbook', 'Project workbook (.xlsx)', 'Summary, a sheet per unit type, the full order with a PO field, and delivery phasing.')}
-          ${tile('tOrderCsv', 'Order CSV', 'Every line, totals, containers and shipping as one flat file.')}
+          ${tile('tOrderCsv', 'Order CSV', 'Every line and the totals as one flat file.')}
         </div></div>
         <div class="tx-group"><h4>Drawings and models</h4><div class="tx-tiles">
           ${tile('tUnitPlans', 'Unit plans (DXF)', 'One AutoCAD plan per unit type.', true)}
@@ -328,7 +328,6 @@ export class TradeUI {
     const stats = [
       `${s.totalUnits} unit${s.totalUnits === 1 ? '' : 's'}`,
       `${s.totalCabs} cabinet${s.totalCabs === 1 ? '' : 's'}`,
-      `${s.containers} container${s.containers === 1 ? '' : 's'}`,
     ];
     if (s.tier) stats.push(`${esc(s.tier.label)} tier, −${s.tier.pct}%`);
     else if (s.totalUnits > 0) stats.push('volume pricing from 10 units');
@@ -592,10 +591,9 @@ export class TradeUI {
       <div class="grand">
         <div><span class="l">Units</span><span class="v">${s.totalUnits}</span></div>
         <div><span class="l">Cabinets</span><span class="v">${s.totalCabs}</span></div>
-        <div><span class="l">Containers</span><span class="v">${s.containers}</span></div>
         <div><span class="l">Cabinets</span><span class="v">${fmtUSD(s.subtotal)}</span></div>
         ${s.tier ? `<div><span class="l">Volume tier · ${esc(s.tier.label)}</span><span class="v">−${fmtUSD(s.discount)} (${s.tier.pct}%)</span></div>` : ''}
-        <div><span class="l">Shipping</span><span class="v">${fmtUSD(s.shipping)}</span></div>
+        ${s.shipping ? `<div><span class="l">Shipping</span><span class="v">${fmtUSD(s.shipping)}</span></div>` : ''}
         <div class="hi"><span class="l">Order total</span><span class="v">${fmtUSD(s.grand)}</span></div>
       </div>
       ${s.tier

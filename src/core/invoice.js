@@ -139,7 +139,7 @@ export function buildInvoiceModel(order, opts = {}) {
     lines,
     charges: [
       ...(discountCents ? [{ label: `Volume tier${t.tier ? ` ${String(t.tier.label).replace(/–/g, '-')} (-${t.tier.pct}%)` : ''} - confirmed on quote`, amountCents: -discountCents }] : []),
-      { label: 'Shipping & containers', amountCents: shippingCents },
+      ...(shippingCents ? [{ label: 'Shipping', amountCents: shippingCents }] : []),
     ],
     totals: {
       cabinets: Number(t.cabinets) || lines.reduce((x, l) => x + l.cabinets, 0),

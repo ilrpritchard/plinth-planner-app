@@ -105,10 +105,10 @@ export function buildTradeOrderEmail(state) {
   }
   L.push('');
   L.push(`Total units: ${s.totalUnits}`);
-  L.push(`Total cabinets: ${s.totalCabs}  (~${s.containers} container${s.containers === 1 ? '' : 's'})`);
+  L.push(`Total cabinets: ${s.totalCabs}`);
   L.push(`Cabinets sub-total: ${fmtUSD(s.subtotal)}`);
   if (s.tier) L.push(`Volume tier ${s.tier.label} (indicative -${s.tier.pct}%): -${fmtUSD(s.discount)}`);
-  L.push(`Shipping (per container): ${fmtUSD(s.shipping)}`);
+  if (s.shipping) L.push(`Shipping: ${fmtUSD(s.shipping)}`);
   L.push(`Order total (excl. tax): ${fmtUSD(s.grand)}`);
   if (c.notes) { L.push(''); L.push('Notes:'); L.push(c.notes); }
   L.push('');

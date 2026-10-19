@@ -49,8 +49,7 @@ export function buildTradeOrderCSV(trade, now = Date.now()) {
   rows.push([]);
   rows.push(['CABINETS SUBTOTAL', '', '', '', '', '', '', '', s.totalCabs, '', s.subtotal.toFixed(2)]);
   if (s.tier) rows.push([`VOLUME TIER ${s.tier.label} (indicative -${s.tier.pct}%)`, '', '', '', '', '', '', '', '', '', (-s.discount).toFixed(2)]);
-  rows.push(['CONTAINERS', '', '', '', '', '', '', '', s.containers, '', '']);
-  rows.push(['SHIPPING', '', '', '', '', '', '', '', '', '', s.shipping.toFixed(2)]);
+  if (s.shipping) rows.push(['SHIPPING', '', '', '', '', '', '', '', '', '', s.shipping.toFixed(2)]);
   rows.push(['GRAND TOTAL', '', '', '', '', '', '', '', '', '', s.grand.toFixed(2)]);
   if (phasing && phasing.batches.length) {
     rows.push([]);

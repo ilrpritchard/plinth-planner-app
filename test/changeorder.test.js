@@ -170,7 +170,7 @@ test('reconciliation: net delta === type deltas + shipping delta, and matches li
   // both endpoints agree with the pricing engines they came from
   assert.equal(t.oldGrandCents, toCents(snap.totals.grand));
   assert.equal(t.newGrandCents, toCents(tradeSummary(live).grand));
-  assert.ok(t.shippingDeltaCents > 0, 'expected the bigger order to add a container');
+  assert.equal(t.shippingDeltaCents, 0, 'freight is inside unit prices, so a bigger order adds no shipping line');
 });
 
 test('project mismatch is flagged when the live project differs', () => {

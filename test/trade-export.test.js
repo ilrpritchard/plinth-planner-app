@@ -84,12 +84,13 @@ test('order CSV has the full header and one line per unit × cabinet', () => {
   assert.ok(!csv.includes(',AP2,'));
 });
 
-test('order CSV footer carries containers, shipping and grand total from tradeSummary', () => {
+test('order CSV footer: subtotal and grand total, no container or shipping line (freight is in unit prices)', () => {
   const csv = buildTradeOrderCSV(demoTrade);
   const s = tradeSummary(demoTrade);
   assert.ok(csv.includes(`CABINETS SUBTOTAL,,,,,,,,${s.totalCabs},,${s.subtotal.toFixed(2)}`));
-  assert.ok(csv.includes(`CONTAINERS,,,,,,,,${s.containers},,`));
-  assert.ok(csv.includes(`SHIPPING,,,,,,,,,,${s.shipping.toFixed(2)}`));
+  assert.ok(!csv.includes('CONTAINERS'));
+  assert.equal(s.shipping, 0);
+  assert.ok(!csv.includes('SHIPPING'));
   assert.ok(csv.includes(`GRAND TOTAL,,,,,,,,,,${s.grand.toFixed(2)}`));
   assert.equal(s.containers, Math.ceil(s.totalCabs / TRADE.capPerContainer));
   assert.equal(unitQty(demoTrade.units[1]), 32);

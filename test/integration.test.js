@@ -8,7 +8,8 @@ let pass=0, fail=0;
 const ok=(n,c)=>{ c?pass++:(fail++,console.error('✗ '+n)); };
 
 // pricing sanity: F1 workshop £676 -> (676*1.15 tariff + £20 wrap) * 1.32 FX * 2 = $2105 (synced, whole dollars)
-ok('F1 sell = $2105', sellUSD(getCab('F1')) === 2105);
+// + sea freight folded in at cost: £5,400 / 60 * 1.32 = $119 -> $2224
+ok('F1 sell = $2224', sellUSD(getCab('F1')) === 2224);
 
 const store=new Store();
 store.setRoom({width:144,depth:120,height:96});

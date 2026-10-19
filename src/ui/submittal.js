@@ -505,7 +505,7 @@ export function buildUnitSheets({ project, unit, date, pm = {} }) {
           <tr><th>Cabinets per unit</th><td class="num">${sched.rows.reduce((t, r) => t + (r.accessory ? 0 : r.qty), 0)}</td><td></td></tr>
           <tr><th>Cabinet total per unit</th><td class="num">${fmtUSD(sched.subtotal)}</td><td></td></tr>
           <tr><th>Unit count</th><td class="num">&times;${qty}</td><td class="mut">${esc(uname)}</td></tr>
-          <tr class="hi"><th>Cabinet total, all units</th><td class="num"><strong>${fmtUSD(sched.subtotal * qty)}</strong></td><td class="mut">excl. shipping, confirmed on order</td></tr>
+          <tr class="hi"><th>Cabinet total, all units</th><td class="num"><strong>${fmtUSD(sched.subtotal * qty)}</strong></td><td class="mut">incl. sea freight; delivery confirmed on order</td></tr>
         </table>
       </div>
     </div>
@@ -773,7 +773,7 @@ export function buildSubmittalPackHTML(trade, date) {
       </div>
       <h3>UNIT TYPES &amp; COLORS</h3>
       <table class="units"><tr><th></th><th>Kitchen</th><th>Color</th><th>Rev</th><th class="num">Units</th><th class="num">Cabinets</th><th class="num">Cabinet total</th></tr>${rows}
-        <tr class="tot"><td></td><td colspan="5">Cabinet total, all unit types <span class="mut">excl. shipping &amp; volume pricing, confirmed on order</span></td><td class="num">${fmtUSD(grand)}</td></tr></table>
+        <tr class="tot"><td></td><td colspan="5">Cabinet total, all unit types <span class="mut">incl. sea freight, excl. volume pricing; confirmed on order</span></td><td class="num">${fmtUSD(grand)}</td></tr></table>
       <div class="cv-cols"><div>${directoryHTML(pm)}</div><div>${SYMBOLS}</div></div>
     </div>`, titleBlock(ctx, { no: 'P-000', title: 'Project cover &amp; unit types', scale: 'NTS', action: true }));
   const body = designed.map((u) => buildUnitSheets({ project: trade.project, unit: u, date, pm })).join('\n');

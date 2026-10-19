@@ -2,7 +2,7 @@
 // riding right under its top rail and a 60cm cooktop (AP22) on the worktop over it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getCab, CATALOGUE } from '../src/core/catalogue.js';
+import { getCab, CATALOGUE, sellUSD } from '../src/core/catalogue.js';
 import { ovenSeat, housingTakes, housingCodeFor, findOvenHost } from '../src/core/ovenseat.js';
 import { canHost } from '../src/core/sinkspec.js';
 import { frontParts } from '../src/ui/frontdraw.js';
@@ -38,7 +38,7 @@ test('a cooktop may sit on the oven housing; a sink may not; priced as the 24" s
   assert.ok(Math.abs(hob.w - 22.9) < 0.01 && hob.mountY === SURFACE_Y && hob.notSupplied, 'a 582mm four-burner hob, supply your own');
   const sum = summarize([{ id: 1, code: 'F32', x: 0, z: 0, rotDeg: 0 }, { id: 2, code: 'F2', x: 30, z: 0, rotDeg: 0 }]);
   const line = sum.lines.find((l) => l.code === 'F32');
-  assert.ok(!line.priceTBC && line.line === getCab('F2').usd && sum.subtotal === 2 * getCab('F2').usd, 'F32 is priced as F2 (her call 2026-09-22)');
+  assert.ok(!line.priceTBC && line.line === sellUSD(getCab('F2')) && sum.subtotal === 2 * sellUSD(getCab('F2')), 'F32 is priced as F2 (her call 2026-09-22)');
   assert.deepEqual(CATALOGUE.filter((c) => c.priceTBC).map((c) => c.code), ['F35', 'F36', 'F37', 'F38', 'F39', 'W25', 'W26', 'W37', 'W38', 'W39', 'S33', 'S34', 'S35', 'S36', 'S37', 'S38'], 'only the stool niches (W2W-243), the 10in open shelf, the four hood covers, the shelf stackers and the hood-cover stackers wait on a price (the double corners were priced 2026-09-25)');
 });
 

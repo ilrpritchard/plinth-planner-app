@@ -80,7 +80,7 @@ export function buildQuoteHTML(state, heroDataURL = null) {
     </section>
 
     <footer class="q-foot">
-      Customer price for cabinets only; shipping &amp; tax confirmed on your order. Countertops shown are representative
+      Customer price for cabinets, including sea freight to our New York warehouse; delivery to site &amp; tax confirmed on your order. Countertops shown are representative
       and not supplied by PL/NTH. Prices held 30 days. Questions? imogen@plinthmade.com<br><br>
       <strong>Dimensions:</strong> all room sizes, openings and services are as entered by the client. The client is
       responsible for checking and confirming every measurement on site before ordering. PL/NTH does not survey

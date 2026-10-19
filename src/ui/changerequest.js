@@ -77,7 +77,7 @@ export function openChangeEditor({ order, changes, onSubmit }) {
         c.oldUnits !== c.newUnits ? `${c.oldUnits} to ${c.newUnits} units` : '',
         ...c.lines.map((l) => `${esc(l.code)} ${l.oldQty} to ${l.newQty} per unit`),
       ].filter(Boolean).join(', ')} <em>${esc(signed(c.deltaCents))}</em></li>`).join('')}</ul>
-      <div class="chg-sum-tot"><span>Order total ${esc(fmtCents(t.oldGrandCents))} to ${esc(fmtCents(t.newGrandCents))}, shipping and volume tier included</span><strong>${esc(signed(t.netDeltaCents))}</strong></div>`;
+      <div class="chg-sum-tot"><span>Order total ${esc(fmtCents(t.oldGrandCents))} to ${esc(fmtCents(t.newGrandCents))}, volume tier included</span><strong>${esc(signed(t.netDeltaCents))}</strong></div>`;
   };
 
   $('chgUnits').addEventListener('input', (e) => {

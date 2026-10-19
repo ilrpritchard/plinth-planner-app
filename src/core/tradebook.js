@@ -54,11 +54,10 @@ function summarySheet(trade, s, dateStr) {
   rows.push([]);
   rows.push(['Units', s.totalUnits]);
   rows.push(['Cabinets', s.totalCabs]);
-  rows.push(['Containers', s.containers]);
   rows.push(['Cabinets subtotal', C(s.subtotal)]);
   if (s.tier) rows.push([`Volume tier ${s.tier.label} (indicative -${s.tier.pct}%)`, C(-s.discount)]);
-  rows.push(['Shipping', C(s.shipping)]);
-  rows.push([B('Order total (incl. shipping)'), BC(s.grand)]);
+  if (s.shipping) rows.push(['Shipping', C(s.shipping)]);
+  rows.push([B('Order total (incl. sea freight)'), BC(s.grand)]);
   return { name: 'Summary', rows, widths: [30, 12, 10, 12, 16] };
 }
 
@@ -105,8 +104,7 @@ function orderSheet(trade, s, orderNo) {
   rows.push([]);
   rows.push([B('CABINETS SUBTOTAL'), '', '', '', '', '', '', '', '', s.totalCabs, '', BC(s.subtotal)]);
   if (s.tier) rows.push([`VOLUME TIER ${s.tier.label} (indicative -${s.tier.pct}%)`, '', '', '', '', '', '', '', '', '', '', C(-s.discount)]);
-  rows.push(['CONTAINERS', '', '', '', '', '', '', '', '', s.containers, '', '']);
-  rows.push(['SHIPPING', '', '', '', '', '', '', '', '', '', '', C(s.shipping)]);
+  if (s.shipping) rows.push(['SHIPPING', '', '', '', '', '', '', '', '', '', '', C(s.shipping)]);
   rows.push([B('ORDER TOTAL'), '', '', '', '', '', '', '', '', '', '', BC(s.grand)]);
 
   // spec-check findings, appended as notes

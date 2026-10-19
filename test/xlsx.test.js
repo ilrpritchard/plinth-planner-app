@@ -179,7 +179,7 @@ test('workbook: sheet set = Summary + one per designed unit + Order + Phasing', 
     ['Summary', 'Unit 1 Bed Type A', 'Order', 'Phasing']);
 });
 
-test('workbook: Summary totals match tradeSummary (incl. shipping)', () => {
+test('workbook: Summary totals match tradeSummary (freight in unit prices, no container/shipping rows)', () => {
   const sheets = buildTradeWorkbook(demoTrade, FIXED_NOW);
   const sum = sheets[0];
   const s = tradeSummary(demoTrade);
@@ -188,15 +188,15 @@ test('workbook: Summary totals match tradeSummary (incl. shipping)', () => {
   assert.deepEqual(flat[6], ['Unit type', 'Cab/unit', 'Units', 'Cabinets', 'Sub-total']);
   assert.equal(flat[6 + s.lines.length + 2][1], s.totalUnits, 'Units total');
   assert.equal(flat[6 + s.lines.length + 3][1], s.totalCabs, 'Cabinets total');
-  assert.equal(flat[6 + s.lines.length + 4][1], s.containers, 'Containers');
-  assert.equal(flat[6 + s.lines.length + 5][1], s.subtotal, 'Cabinets subtotal');
-  // an indicative volume-tier row appears between subtotal and shipping at 10+ units
+  assert.equal(flat[6 + s.lines.length + 4][1], s.subtotal, 'Cabinets subtotal');
+  // an indicative volume-tier row appears between subtotal and the total at 10+ units
   const off = s.tier ? 1 : 0;
-  if (s.tier) assert.equal(flat[6 + s.lines.length + 6][1], -s.discount, 'Volume tier discount');
-  assert.equal(flat[6 + s.lines.length + 6 + off][1], s.shipping, 'Shipping');
-  const grandRow = flat[6 + s.lines.length + 7 + off];
-  assert.equal(grandRow[0], 'Order total (incl. shipping)');
-  assert.equal(grandRow[1], s.grand, 'grand total = subtotal - discount + shipping');
+  if (s.tier) assert.equal(flat[6 + s.lines.length + 5][1], -s.discount, 'Volume tier discount');
+  assert.equal(s.shipping, 0);
+  assert.ok(!flat.some((r) => r[0] === 'Containers' || r[0] === 'Shipping'), 'no container or shipping rows');
+  const grandRow = flat[6 + s.lines.length + 5 + off];
+  assert.equal(grandRow[0], 'Order total (incl. sea freight)');
+  assert.equal(grandRow[1], s.grand, 'grand total = subtotal - discount');
   // header + one line per unit type
   assert.equal(s.lines.length, 2);
 });
