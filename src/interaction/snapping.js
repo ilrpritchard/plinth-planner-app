@@ -125,8 +125,11 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       // ...and a THIRD point for a WALL cabinet (her ask 2026-09-22, "pull the open shelves forward to
       // cover the oak part"): its front on the BODY edge of a corner wall unit on the adjoining wall
       // whose blank return runs toward this wall, so the shelf hides that return
-      let cover = null;
-      if (cab.type === 'WALL' && flush != null) {
+      // ...and a FOURTH (her call 2026-10-19, share zgesvvj: "aligned where the corner cabinet ends"): its
+      // front on the END of that return, the shelf and the return meeting in a clean L, so a shelf of
+      // any width stands clear of the corner unit right back to the corner
+      let cover = null, retEnd = null;
+      if (cab.type === 'WALL') {
         const perpOf = (px, pz) => pick.rot === 0 ? pz - bounds.minZ : pick.rot === 180 ? bounds.maxZ - pz : pick.rot === 90 ? px - bounds.minX : bounds.maxX - px;
         const me = worldBox({ ...item, x: rawX, z: rawZ, rotDeg: pick.rot }, cab);
         for (const o of others) {
@@ -142,11 +145,13 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
           // and it must sit at my end: its box next to mine along my run, not somewhere else on the wall
           const gapAlong = pick.rot % 180 === 0 ? Math.max(ob.x0 - me.x1, me.x0 - ob.x1) : Math.max(ob.z0 - me.z1, me.z0 - ob.z1);
           if (gapAlong > 4) continue;
-          cover = nearer.p - d / 2;
+          if (flush != null) cover = nearer.p - d / 2;
+          const endP = pLo < pHi ? (horizO ? perpOf(boxLo, o.z) : perpOf(o.x, boxLo)) : (horizO ? perpOf(boxHi, o.z) : perpOf(o.x, boxHi));
+          if (endP - d / 2 > touch + 0.5) retEnd = endP - d / 2;
         }
       }
-      const opts = [{ out: 0, err: Math.abs(rawPerp - touch) }, ...(flush != null ? [{ out: flush - touch, err: Math.abs(rawPerp - flush) }] : []), ...(cover != null ? [{ out: cover - touch, err: Math.abs(rawPerp - cover) }] : [])];
-      out = opts.sort((a, b) => a.err - b.err)[0].out;
+      const pts = [{ out: 0, err: Math.abs(rawPerp - touch) }, ...[flush, cover, retEnd].filter((p) => p != null).map((p) => ({ out: p - touch, err: Math.abs(rawPerp - p) }))];
+      out = pts.sort((a, b) => a.err - b.err)[0].out;
       // (an open shelf is ONE depth, her call 2026-10-14: it never deepens on a pull; it goes back to
       // the wall, or flush with a tall's face, like any wall cabinet)
       // ...and pulled flush with the tall, off the wall at its 14", a CUT-TO-FIT shelf can meet a corner

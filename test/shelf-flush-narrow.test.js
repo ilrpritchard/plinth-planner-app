@@ -52,3 +52,26 @@ test('mid-drag, snapped at its wide code it narrows again and comes back to full
   const f = snapPosition(store, sh.id, -41, -30.97, b, { wideCode: 'W25:w24.5' });
   assert.ok(f.narrowed);
 });
+
+// her next ask the same day ("i need it to be aligned where the corner cabinet ends"): a snap point with
+// the shelf's front on the END of the corner unit's blank return, full width, right back to the corner
+test('a shelf pulled to the end of the corner unit\'s return lands there at its full width', () => {
+  const { store, sh } = kitchen();
+  const endX = -19.47 - 10 - 10;                                    // W9 body 20", return 10" toward the left wall
+  for (const px of [-47, -46.5, -45.5]) {
+    const r = snapPosition(store, sh.id, px, -30.97, b);
+    assert.equal(r.flag, undefined, `not refused (${r.flag})`);
+    assert.equal(r.narrowed, undefined, 'keeps its 24.5"');
+    assert.ok(Math.abs(r.x + 7 - endX) < 0.01, `front on the return's end (${r.x + 7} vs ${endX})`);
+    assert.equal(r.rotDeg, 90, 'still on its own wall');
+  }
+});
+
+// ...and the 4.5" filler that stood INSIDE the W9's blank return (the speckle in her screenshot): a run's
+// end is measured from its outer box, the return included, so no filler there
+test('no end filler inside a corner unit\'s blank return', async () => {
+  const { computeFillers } = await import('../src/core/fillers.js');
+  const { store } = kitchen();
+  const inside = computeFillers(store.state).filter((f) => f.band !== 'floor' && Math.abs(f.z - (-35.85)) < 1 && f.x > -40 && f.x < -29);
+  assert.equal(inside.length, 0, JSON.stringify(inside));
+});

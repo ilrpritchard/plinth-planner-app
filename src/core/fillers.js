@@ -105,8 +105,11 @@ function bandFillers(state, band, out) {
     if (bxL && bxL.a1 > cL.edge) cL = { edge: bxL.a1, flankH: bxL.h };
     if (bxR && bxR.a0 < cR.edge) cR = { edge: bxR.a0, flankH: bxR.h };
     const eL = cL.edge, eR = cR.edge;
-    addEnd(out, (L.it.x - L.cab.w / 2) - eL, (g) => ({ x: eL + g / 2, z: L.it.z, rotDeg: rot, w: g, d: L.cab.d, h: endH(L.cab, cL), y0: band.y0(L.cab), band: band.name }));
-    addEnd(out, eR - (R.it.x + R.cab.w / 2), (g) => ({ x: eR - g / 2, z: R.it.z, rotDeg: rot, w: g, d: R.cab.d, h: endH(R.cab, cR), y0: band.y0(R.cab), band: band.name }));
+    // a run's END is its outer box too, so a corner unit's blank return counts: measured from the door
+    // body, a 4.5" filler stood inside the W9's return, flickering through it (her share zgesvvj, 2026-10-19)
+    const lx0 = boxAt(L.cab, L.it.x, L.it.z, L.it.rotDeg).x0, rx1 = boxAt(R.cab, R.it.x, R.it.z, R.it.rotDeg).x1;
+    addEnd(out, lx0 - eL, (g) => ({ x: eL + g / 2, z: L.it.z, rotDeg: rot, w: g, d: L.cab.d, h: endH(L.cab, cL), y0: band.y0(L.cab), band: band.name }));
+    addEnd(out, eR - rx1, (g) => ({ x: eR - g / 2, z: R.it.z, rotDeg: rot, w: g, d: R.cab.d, h: endH(R.cab, cR), y0: band.y0(R.cab), band: band.name }));
     for (let i = 0; i < sorted.length - 1; i++) {
       const A = sorted[i], B = sorted[i + 1];
       // a corner unit's near edge is its blank RETURN, not its door body (her open shelf beside a W9, 2026-09-22)
@@ -135,8 +138,9 @@ function bandFillers(state, band, out) {
     if (bxL && bxL.a1 > cL.edge) cL = { edge: bxL.a1, flankH: bxL.h };
     if (bxR && bxR.a0 < cR.edge) cR = { edge: bxR.a0, flankH: bxR.h };
     const eL = cL.edge, eR = cR.edge;
-    addEnd(out, (L.it.z - L.cab.w / 2) - eL, (g) => ({ x: L.it.x, z: eL + g / 2, rotDeg: rot, w: g, d: L.cab.d, h: endH(L.cab, cL), y0: band.y0(L.cab), band: band.name }));
-    addEnd(out, eR - (R.it.z + R.cab.w / 2), (g) => ({ x: R.it.x, z: eR - g / 2, rotDeg: rot, w: g, d: R.cab.d, h: endH(R.cab, cR), y0: band.y0(R.cab), band: band.name }));
+    const lz0 = boxAt(L.cab, L.it.x, L.it.z, L.it.rotDeg).z0, rz1 = boxAt(R.cab, R.it.x, R.it.z, R.it.rotDeg).z1;
+    addEnd(out, lz0 - eL, (g) => ({ x: L.it.x, z: eL + g / 2, rotDeg: rot, w: g, d: L.cab.d, h: endH(L.cab, cL), y0: band.y0(L.cab), band: band.name }));
+    addEnd(out, eR - rz1, (g) => ({ x: R.it.x, z: eR - g / 2, rotDeg: rot, w: g, d: R.cab.d, h: endH(R.cab, cR), y0: band.y0(R.cab), band: band.name }));
     for (let i = 0; i < sorted.length - 1; i++) {
       const A = sorted[i], B = sorted[i + 1];
       const a1 = boxAt(A.cab, A.it.x, A.it.z, A.it.rotDeg).z1, b0 = boxAt(B.cab, B.it.x, B.it.z, B.it.rotDeg).z0;
