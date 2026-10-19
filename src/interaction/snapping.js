@@ -146,11 +146,15 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
           const gapAlong = pick.rot % 180 === 0 ? Math.max(ob.x0 - me.x1, me.x0 - ob.x1) : Math.max(ob.z0 - me.z1, me.z0 - ob.z1);
           if (gapAlong > 4) continue;
           if (flush != null) cover = nearer.p - d / 2;
-          const endP = pLo < pHi ? (horizO ? perpOf(boxLo, o.z) : perpOf(o.x, boxLo)) : (horizO ? perpOf(boxHi, o.z) : perpOf(o.x, boxHi));
-          if (endP - d / 2 > touch + 0.5) retEnd = endP - d / 2;
+          // the end as DRAWN (cornerReturnLength: one depth, 14.25" on a wall unit), not the SKU's 10":
+          // the first cut lined the shelf up 4.25" short of the end she sees (her screenshot, same day)
+          const endP = nearer.p - cornerReturnLength(oc, o, store.state.room);
+          if (endP - d / 2 > touch + 0.25) retEnd = endP - d / 2;
         }
       }
-      const pts = [{ out: 0, err: Math.abs(rawPerp - touch) }, ...[flush, cover, retEnd].filter((p) => p != null).map((p) => ({ out: p - touch, err: Math.abs(rawPerp - p) }))];
+      // a return end only a few inches out from the wall seat REPLACES it: back on the wall, the shelf
+      // would stop just short of the corner unit's end, the near miss she kept seeing
+      const pts = [...(retEnd != null && retEnd - touch < 4 ? [] : [{ out: 0, err: Math.abs(rawPerp - touch) }]), ...[flush, cover, retEnd].filter((p) => p != null).map((p) => ({ out: p - touch, err: Math.abs(rawPerp - p) }))];
       out = pts.sort((a, b) => a.err - b.err)[0].out;
       // (an open shelf is ONE depth, her call 2026-10-14: it never deepens on a pull; it goes back to
       // the wall, or flush with a tall's face, like any wall cabinet)

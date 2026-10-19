@@ -57,8 +57,8 @@ test('mid-drag, snapped at its wide code it narrows again and comes back to full
 // the shelf's front on the END of the corner unit's blank return, full width, right back to the corner
 test('a shelf pulled to the end of the corner unit\'s return lands there at its full width', () => {
   const { store, sh } = kitchen();
-  const endX = -19.47 - 10 - 10;                                    // W9 body 20", return 10" toward the left wall
-  for (const px of [-47, -46.5, -45.5]) {
+  const endX = -19.47 - 10 - 14.25;                                 // W9 body 20", return DRAWN 14.25" toward the left wall
+  for (const px of [-52.2, -51, -49]) {
     const r = snapPosition(store, sh.id, px, -30.97, b);
     assert.equal(r.flag, undefined, `not refused (${r.flag})`);
     assert.equal(r.narrowed, undefined, 'keeps its 24.5"');
