@@ -217,7 +217,10 @@ export class PointerControls {
       if (hit && cab) ({ x: rawX, z: rawZ } = this._wallRaw(hit, cab, p));
     }
     this.drag.last = { x: rawX, z: rawZ };
-    const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds());
+    // a shelf cut to the gap beside a tall mid-drag (snapping returns `narrowed`) is snapped at its own
+    // width, and gets it back wherever it fits again: only where it lands is it cut
+    const snapped = snapPosition(this.store, this.drag.id, rawX, rawZ, this.room.bounds(), { ...(this.drag.wide ? { wideCode: this.drag.wide } : {}) });
+    if (this.drag.wide && !snapped.narrowed && !snapped.flag) { this.store.swapItem(this.drag.id, this.drag.wide, { quiet: true }); this.drag.wide = null; }
     // a CORNER unit is refused everywhere but a room corner, and the snap then holds it where it
     // was — so a carried one looked frozen (her report 2026-09-26). Carried, it rides the hand
     // anyway; the drop seats it in the nearest corner (see _up).
@@ -226,6 +229,7 @@ export class PointerControls {
       if (cab0) { snapped.x = Math.max(b.minX + cab0.w / 2, Math.min(b.maxX - cab0.w / 2, rawX)); snapped.z = Math.max(b.minZ + cab0.d / 2, Math.min(b.maxZ - cab0.d / 2, rawZ)); }
     }
     // a hood cover over a cooker of another width swaps to the cover made for it (snapping returns `code`)
+    if (snapped.narrowed && !this.drag.wide) this.drag.wide = this.store.getItem(this.drag.id).code;
     if (snapped.code) this.store.swapItem(this.drag.id, snapped.code, { quiet: true });
     this.store.updateItem(this.drag.id, { x: snapped.x, z: snapped.z, rotDeg: snapped.rotDeg, ...(snapped.hostId != null ? { hostId: snapped.hostId } : {}) }, { quiet: true });
     this.drag.flag = snapped.flag || null;
@@ -250,7 +254,7 @@ export class PointerControls {
   _up() {
     if (!this.drag) return;
     const id = this.drag.id;
-    const { flag, start, carry, last } = this.drag;
+    const { flag, start, carry, last, wide } = this.drag;
     this.drag = null;
     this.floor.constant = 0;
     this._hideDims();
@@ -292,7 +296,9 @@ export class PointerControls {
     this._settle();
     // an open shelf or tray space CUT TO FIT the leftover beside it (core/fitwidth.js): dropped
     // touching one neighbour with a sliver to the next, it grows to close the sliver
-    if (it && !flag) this.fitToGap(id);
+    // ...but not one just cut to the gap beside a tall (`wide` still set): growing it back would run it
+    // into the corner unit's return it was cut for
+    if (it && !flag && !wide) this.fitToGap(id);
     this.store.endHistory();
     this.onCommit();
   }

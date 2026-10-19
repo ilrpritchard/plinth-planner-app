@@ -3,7 +3,7 @@
 // room) and butt edge-to-edge into a continuous run with their neighbours.
 
 import { findHoodSeat } from '../core/hoodseat.js';
-import { getCab } from '../core/catalogue.js';
+import { getCab, canFitWidth, sizedWidthCode } from '../core/catalogue.js';
 import { getFootprint, getMountY } from '../models/cabinet.js';
 import { mmToIn, COOK_SIDE_IN } from '../core/units.js';
 import { openingCenter, openingWidth, boxingBoxes } from '../core/openings.js';
@@ -19,7 +19,7 @@ export const TALL_PROUD = mmToIn(30); // a tall cabinet sits 30mm in front of an
 
 export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
   const item = store.getItem(id);
-  const cab = getCab(item.code);
+  const cab = getCab(opts.asCode || opts.wideCode || item.code);   // asCode: the same item tried at another size (a narrowed shelf, below); wideCode: its width before that
   const fp = getFootprint(cab);
   const w = fp.w, d = fp.d;
   // a wall oven is a RIDER: it only ever lands inside an empty oven housing of
@@ -94,9 +94,17 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     { wall: 'right', rot: 270, err: Math.abs(rawX - (bounds.maxX - touch)) },
   ].filter((c) => ['WALL', 'COUNTER', 'TALL'].includes(cab.type) || (c.err < WALL_SNAP && !backToBack)).sort((a, b) => a.err - b.err);
   let wall = null;
+  let narrow = null;                           // a shelf pulled flush with a tall, to be cut to the gap there
   if (cands.length) {
     const match = cands.find((c) => (c.rot % 180) === ((item.rotDeg || 0) % 180));
-    const pick = (match && match.err <= cands[0].err + 6) ? match : cands[0];
+    // ...and a wall or counter cabinet standing beside a TALL on its own wall stays on that wall while it
+    // is pulled out to the tall's face (up to 30"): near a corner, a shelf pulled flush with the tall
+    // hopped onto the next wall instead (her share zgesvvj, 2026-10-19)
+    const besideTall = match && (cab.type === 'WALL' || cab.type === 'COUNTER') && match.err <= 31 && others.some((o) => {
+      const oc = getCab(o.code); if (!oc || oc.type !== 'TALL' || (((o.rotDeg || 0) % 360) + 360) % 360 !== match.rot) return false;
+      return Math.abs((match.rot % 180 === 0 ? o.x - rawX : o.z - rawZ)) <= (w + oc.w) / 2 + 2;
+    });
+    const pick = (match && (match.err <= cands[0].err + 6 || besideTall)) ? match : cands[0];
     wall = pick.wall; rotDeg = pick.rot;
     // a WALL / COUNTER cabinet beside a TALL in the same run has TWO snap points: its back on the
     // wall, or its FRONT flush with the tall's front (her ask 2026-09-22: "you should be able to
@@ -105,13 +113,14 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     let out = 0;
     if (cab.type === 'WALL' || cab.type === 'COUNTER') {
       const along = pick.rot % 180 === 0 ? rawX : rawZ, rawPerp = pick.rot === 0 ? rawZ - bounds.minZ : pick.rot === 180 ? bounds.maxZ - rawZ : pick.rot === 90 ? rawX - bounds.minX : bounds.maxX - rawX;
-      let flush = null;
+      let flush = null, flushTall = null;
       for (const o of others) {
         const oc = getCab(o.code); if (!oc || oc.type !== 'TALL' || (((o.rotDeg || 0) % 360) + 360) % 360 !== pick.rot) continue;
         const oAlong = pick.rot % 180 === 0 ? o.x : o.z;
         if (Math.abs(oAlong - along) > (w + oc.w) / 2 + 2) continue;                      // must stand beside it
         const oPerp = pick.rot === 0 ? o.z - bounds.minZ : pick.rot === 180 ? bounds.maxZ - o.z : pick.rot === 90 ? o.x - bounds.minX : bounds.maxX - o.x;
         flush = oPerp + oc.d / 2 - d / 2;                                                  // my front on the tall's front
+        flushTall = o;
       }
       // ...and a THIRD point for a WALL cabinet (her ask 2026-09-22, "pull the open shelves forward to
       // cover the oak part"): its front on the BODY edge of a corner wall unit on the adjoining wall
@@ -140,11 +149,21 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
       out = opts.sort((a, b) => a.err - b.err)[0].out;
       // (an open shelf is ONE depth, her call 2026-10-14: it never deepens on a pull; it goes back to
       // the wall, or flush with a tall's face, like any wall cabinet)
+      // ...and pulled flush with the tall, off the wall at its 14", a CUT-TO-FIT shelf can meet a corner
+      // wall unit's return on the next wall: it narrows to the gap between that and the tall instead of
+      // being refused (her call 2026-10-19, share zgesvvj: "i want them level with the tall cabinet")
+      if (flush != null && out > 0.5 && Math.abs(out - (flush - touch)) < 0.01 && canFitWidth(cab) && !item.fixedWidth && !opts.asCode) {
+        narrow = { tall: flushTall, rot: pick.rot, along, perpOf: (px, pz) => pick.rot === 0 ? pz - bounds.minZ : pick.rot === 180 ? bounds.maxZ - pz : pick.rot === 90 ? px - bounds.minX : bounds.maxX - px };
+      }
     }
     if (wall === 'back') z = bounds.minZ + touch + out;
     else if (wall === 'front') z = bounds.maxZ - touch - out;
     else if (wall === 'left') x = bounds.minX + touch + out;
     else x = bounds.maxX - touch - out;
+  }
+  if (narrow) {
+    const res = narrowToGap(store, id, cab, narrow, x, z, rotDeg, bounds, others, w, d, opts);
+    if (res) return res;
   }
 
   // ---- 1b. a CORNER unit may be pulled off its wall to BUTT the adjoining
@@ -775,6 +794,35 @@ function worldBox(it, cab) {
   }
   const y0 = getMountY(cab);
   return { x0, x1, z0, z1, y0, y1: y0 + (cab.h || 1) };
+}
+
+// The free stretch beside the tall at a shelf's flush spot (its one depth, off the wall), and the shelf
+// cut to it. Null when the full width fits there anyway, or the stretch is under the 6" minimum.
+function narrowToGap(store, id, cab, n, x, z, rotDeg, bounds, others, w, d, opts) {
+  const horiz = n.rot % 180 === 0, alongOf = (bx) => horiz ? [bx.x0, bx.x1] : [bx.z0, bx.z1];
+  const perpRange = (bx) => { const a = n.perpOf(bx.x0, bx.z0), b = n.perpOf(bx.x1, bx.z1); return [Math.min(a, b), Math.max(a, b)]; };
+  const me = worldBox({ x, z, rotDeg }, cab), [mp0, mp1] = perpRange(me);
+  const tc = getCab(n.tall.code), [t0, t1] = alongOf(worldBox(n.tall, tc));
+  const low = n.along < (horiz ? n.tall.x : n.tall.z);        // the shelf on the tall's low side
+  const lim = horiz ? [bounds.minX, bounds.maxX] : [bounds.minZ, bounds.maxZ];
+  let lo = low ? lim[0] : t1, hi = low ? t0 : lim[1];
+  const room = store.state.room || {};
+  const solids = [
+    ...others.filter((o) => o.id !== n.tall.id).map((o) => { const oc = getCab(o.code); return oc && oc.placeable && !oc.stacker ? worldBox(o, oc) : null; }).filter(Boolean),
+    ...boxingBoxes(room).map((b) => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, y0: -1, y1: b.y1 })),
+  ];
+  for (const ob of solids) {
+    const [p0, p1] = perpRange(ob), [a0, a1] = alongOf(ob);
+    if (Math.min(mp1, p1) - Math.max(mp0, p0) <= 0.75 || Math.min(me.y1, ob.y1) - Math.max(me.y0, ob.y0) <= 1) continue;
+    if (low && a1 <= hi + 0.75 && a1 > lo) lo = Math.min(a1, hi);
+    if (!low && a0 >= lo - 0.75 && a0 < hi) hi = Math.max(a0, lo);
+  }
+  const span = Math.floor((hi - lo) * 2 + 0.01) / 2;
+  if (span >= w - 0.05 || span < 6) return null;
+  const code = sizedWidthCode(cab.baseCode || cab.code, span), nw = getFootprint(getCab(code)).w;
+  const a = low ? hi - nw / 2 : lo + nw / 2;
+  const r = snapPosition(store, id, horiz ? a : x, horiz ? z : a, bounds, { ...opts, asCode: code });
+  return r.flag ? null : { ...r, code, narrowed: true };
 }
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
