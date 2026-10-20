@@ -117,3 +117,18 @@ test('a glazed single takes a bespoke blank return into the corner (W3:h37.625l2
   assert.ok(front && front.length > 24 && front.length < 24.6, `W3 crown: door + the 4¼" of return on show (${front && front.length})`);
   assert.ok(!segs.some((g) => Math.abs(g.angle - Math.PI) < 0.01 && Math.abs(g.z + 28.85) < 0.5), 'no crown on the shelf side tucked against the return');
 });
+
+test('a bespoke T3 made to the 560mm niche is built for an integrated 60/40 fridge-freezer (Bosch KIN86NSE0G): fixed shelf at 1775mm, freezer / fridge / cupboard fronts', async () => {
+  const { fridgeFront, FRIDGE_NICHE } = await import('../src/core/fridgeseat.js');
+  const { frontParts } = await import('../src/ui/frontdraw.js');
+  const c = getCab('T3:h93.625w23.875');
+  assert.equal(c.fridgeFront, true); assert.equal(c.baseCode, 'T3');
+  assert.equal(getCab('T3:h93.625').fridgeFront, undefined, 'the 24" opening does not give the 560mm niche');
+  const inside = (c.w - 2 * 22 / 25.4) * 25.4;
+  assert.ok(inside >= 560 && inside <= 570, `inside width ${inside.toFixed(1)}mm`);
+  const f = fridgeFront(c);
+  assert.ok(Math.abs((f.nicheTop - f.nicheY0) - FRIDGE_NICHE.h) < 1e-9);
+  assert.ok(f.split > f.y0 && f.nicheTop > f.split && f.top - f.shelfTop > 10, 'a cupboard above the niche');
+  const leaves = frontParts(c).parts.filter((p) => p.k === 'rect' && p.cls === 'leaf');
+  assert.equal(leaves.length, 3, 'freezer, fridge and cupboard');
+});

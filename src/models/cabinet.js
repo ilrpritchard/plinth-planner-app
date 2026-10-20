@@ -13,6 +13,7 @@ import {
 } from './materials.js';
 import { makeKnob } from './knob.js';
 import { ovenSeat } from '../core/ovenseat.js';
+import { fridgeFront } from '../core/fridgeseat.js';
 
 const PANEL = SPEC.PANEL_IN;     // 22mm carcass
 const LEG = SPEC.LEG_IN;         // 22mm legs
@@ -742,6 +743,29 @@ function buildFront(g, cab, ctx) {
       return false;
     }
     case 'housing': {
+      if (cab.fridgeFront) {
+        // built to an integrated 60/40 fridge-freezer's niche (core/fridgeseat.js, her pick 2026-10-20):
+        // freezer door · fridge door (sliding hinge, so they are furniture doors on the appliance's
+        // sliders, drawn fixed) · the fixed shelf's 22mm painted front · a hinged cupboard to the top rail
+        const f = fridgeFront(cab), hs = ctx.hinge ?? -1, edgeX = -hs * (faceW / 2 - 1.4);
+        const front = (y0, y1, knobAt) => {
+          const hh = y1 - y0, c = (y0 + y1) / 2, leaf = shakerLeaf(faceW, hh, mat, false, 1);
+          leaf.position.set(0, c, frontZ - DOOR_T / 2);
+          if (handle === 'knob') { const k = makeKnob(mat); k.position.set(edgeX, knobAt - c, LEAF_KNOB_Z); leaf.add(k); }
+          else if (handle === 'bar') { const b = barPull(mat, true, Math.min(hh, 40)); b.position.set(edgeX, knobAt - c, DOOR_T / 2 - 0.1); leaf.add(b); }
+          g.add(leaf); revealRing(g, 0, c, faceW, hh, frontZ);
+        };
+        front(f.y0, f.split - f.gap / 2, f.split - f.gap / 2 - 4);        // freezer: knob near its top
+        front(f.split + f.gap / 2, f.nicheTop, f.split + 4);               // fridge: knob near its bottom
+        const rail = box(faceW, PANEL, DOOR_T, mat); rail.position.set(0, f.nicheTop + PANEL / 2, frontZ - DOOR_T / 2); g.add(rail);
+        const shelf = box(ctx.inW - 0.2, PANEL, ctx.inD - 0.5, mat); shelf.position.set(0, f.nicheTop + PANEL / 2, -0.25); g.add(shelf);
+        const cupH = f.top - f.shelfTop - f.gap;
+        if (cupH > 4) hingedDoor(g, doors, { w: faceW, h: cupH, mat, glazed: false, frontZ, hingeX: hs * faceW / 2, centerY: f.shelfTop + f.gap + cupH / 2, hingeSign: hs, panels: 1, handle });
+        // the 200cm² air inlet: a slotted vent across the plinth (Bosch, KIN86 installation drawing)
+        const ventMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 });
+        for (let k = 0; k < 3; k++) { const slot = box(faceW * 0.8, 0.35, 0.06, ventMat); slot.position.set(0, SPEC.PLINTH_IN / 2 + (k - 1) * 0.8, ctx.frontFlush + 0.03); g.add(slot); }
+        return false;
+      }
       // fridge/freezer HOUSING: the shaker leaves are appliance FRONTS — they
       // clad the appliance, they never hinge open. Same 2-panel shaker look
       // (a single leaf, or a pair for w ≥ 40) with the handle at mid-height,

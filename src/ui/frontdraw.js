@@ -26,6 +26,7 @@ import { PLAN_STYLE as P, svgLine, svgN as n } from './floorplan.js';
 import { esc } from '../core/submittal.js';
 import { rangeSpec } from '../core/rangespec.js';
 import { ovenSeat } from '../core/ovenseat.js';
+import { fridgeFront } from '../core/fridgeseat.js';
 
 // master-library constants, mm → inches (same numbers as core/dxf.js)
 export const FD = {
@@ -44,7 +45,7 @@ export const FD = {
 
 /** Blank-return width (in) a corner unit adds beside its door. */
 export function cornerReturnIn(cab) {
-  return cab && cab.corner ? (cab.type === 'WALL' ? 10 : 20) : 0;
+  return cab && cab.corner ? (cab.returnIn ?? (cab.type === 'WALL' ? 10 : 20)) : 0;   // a bespoke return is its own length
 }
 
 function bottomZone(cab) {
@@ -183,6 +184,15 @@ export function frontParts(cab) {
       break;
     }
     case 'larder': case 'housing': {
+      if (cab.fridgeFront) {                     // built to the 60/40 fridge-freezer's niche (core/fridgeseat.js)
+        const f = fridgeFront(cab), one = (y0, y1) => leaf(dx0, dx1, [[y0 + F, y1 - F]], false, y0, y1);
+        one(zB, f.split - f.gap / 2);              // freezer
+        one(f.split + f.gap / 2, f.nicheTop);      // fridge
+        rect('panel', dx0, f.nicheTop, dx1 - dx0, f.shelfTop - f.nicheTop);   // the fixed shelf's painted front
+        if (zT - f.shelfTop > 4) one(f.shelfTop + f.gap, zT);                  // cupboard
+        parts.push({ k: 'text', x: w / 2, y: zB / 2, s: 'VENT' });
+        break;
+      }
       const zones = tallZones(zT);
       if (tallDouble) {
         vline('leaf', w / 2, zB, zT);
