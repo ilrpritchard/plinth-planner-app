@@ -292,5 +292,7 @@ export function computeWarnings(state) {
     }
   }
 
+  // a bespoke size reads by its own code (W7, not W7:h37.625 / F33:fit) wherever a person reads it
+  for (const w of out) if (w.msg) w.msg = w.msg.replace(/\b([A-Z]+\d+R?):[a-z0-9.]+/g, '$1');
   return out;
 }
