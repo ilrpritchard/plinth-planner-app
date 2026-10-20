@@ -147,3 +147,13 @@ test('bespoke Bosch fits for one project: F32:fit (no top rail, oven shelf 602mm
   assert.ok(Math.abs(mm(leaf.h) - 725) < 0.5, `door ${mm(leaf.h)}mm`);
   assert.ok(mm(leaf.y + leaf.h) <= 875, 'the door top under Bosch\'s 875mm niche max');
 });
+
+test('a washer housing (F2:wash24.5625) hides a freestanding washer-dryer: one upright the dishwasher borrows, the wall as the other side, no floor or back', async () => {
+  const { computeWarnings } = await import('../src/core/warnings.js');
+  const c = getCab('F2:wash24.5625');
+  assert.equal(c.washerHousing, true); assert.equal(c.baseCode, 'F2'); assert.equal(c.w, 24.5625);
+  assert.ok((c.w - 22 / 25.4) * 25.4 >= 595 + 6, `room inside for the 595mm machine (${((c.w - 22 / 25.4) * 25.4).toFixed(1)}mm)`);
+  const room = { width: 118.9, depth: 86.2, height: 95.3, openings: [], boxings: [] };
+  const items = [{ id: 1, code: 'F1', x: 47.2, z: -9.5236, rotDeg: 270 }, { id: 2, code: 'F33:fit', x: 47.2, z: 9.4764, rotDeg: 270 }, { id: 3, code: 'F2:wash24.5625', x: 47.2, z: 30.7576, rotDeg: 270 }];
+  assert.ok(!computeWarnings({ room, items }).some((w) => /legless/.test(w.msg)), 'the dishwasher panel has a leg both sides');
+});

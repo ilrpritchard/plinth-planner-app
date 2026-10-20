@@ -336,7 +336,12 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   const left = box(PANEL, bodyH, d, mat); left.position.set(-shellW / 2 + PANEL / 2, bodyY0 + bodyH / 2, 0);
   const right = box(PANEL, bodyH, d, mat); right.position.set(shellW / 2 - PANEL / 2, bodyY0 + bodyH / 2, 0);
   const bottom = box(shellW, PANEL, d, mat); bottom.position.set(0, bodyY0 + PANEL / 2, 0);
-  if (cornerDir < 0) g.add(right, bottom); else if (cornerDir > 0) g.add(left, bottom); else g.add(left, right, bottom);
+  if (cab.washerHousing) {
+    // an empty housing for a freestanding washer (catalogue WASH_RX): the upright on the run side (local -x),
+    // the wall on the other with only a 22mm painted scribe stile at the front; no floor
+    g.add(left);
+    const stile = box(PANEL, bodyH, PANEL, mat); stile.position.set(shellW / 2 - PANEL / 2, bodyY0 + bodyH / 2, d / 2 - PANEL / 2); g.add(stile);
+  } else if (cornerDir < 0) g.add(right, bottom); else if (cornerDir > 0) g.add(left, bottom); else g.add(left, right, bottom);
   // ...but the face frame keeps its 22mm LEG on that side: the stile between the door and the
   // blank return (her catch 2026-09-22, "should be a 22mm leg not a gaping hole")
   if (cornerDir) { const leg = box(PANEL, bodyH, PANEL, mat); leg.position.set(cornerDir * (shellW / 2 - PANEL / 2), bodyY0 + bodyH / 2, d / 2 - PANEL / 2); g.add(leg); }
@@ -374,7 +379,7 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // and the raw edge z-fights through the paint on any exposed side
   const back = box(shellW - 2 * PANEL, bodyH, PANEL, opts.backPanel ? mat : oakMat());
   back.position.set(0, bodyY0 + bodyH / 2, -d / 2 + PANEL / 2);
-  g.add(back);
+  if (!cab.washerHousing) g.add(back);           // a washer housing has no back: the hoses run behind the machine
   // inset slightly so the oak faces sit just inside the cavity (no z-fighting
   // with the painted carcass inner faces)
   // a corner unit's liner is ONE box through the door section and the return (a second box
@@ -384,15 +389,22 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   const liner = box(inW - 0.5 + cornerRet, inH - 0.5, lnD, interiorMat());
   liner.position.set(cornerDir * cornerRet / 2, bodyY0 + bodyH / 2, 0.25 - (cab.corner ? (DOOR_T + HAIR) / 2 : 0));
   liner.castShadow = false; liner.material = liner.material.clone(); liner.material.side = THREE.BackSide;
-  g.add(liner);
+  if (!cab.washerHousing) g.add(liner);
 
   // ----- flush plinth (painted) -----
   if (hasPlinth) {
     // FLUSH plinth per the PL/NTH spec — the door bottom runs straight to the
     // floor with no shadow band or setback.
-    const plinth = box(shellW, pH, d, mat);
-    plinth.position.set(0, pH / 2, 0);
-    g.add(plinth);
+    if (cab.washerHousing) {
+      // the machine stands on the floor: a plinth BOARD at the front only, slotted for the washer-dryer's air
+      const board = box(shellW, pH, PANEL, mat); board.position.set(0, pH / 2, d / 2 - PANEL / 2); g.add(board);
+      const ventMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 });
+      for (let k = 0; k < 3; k++) { const slot = box(shellW * 0.7, 0.35, 0.06, ventMat); slot.position.set(0, pH / 2 + (k - 1) * 0.8, d / 2 + 0.03); g.add(slot); }
+    } else {
+      const plinth = box(shellW, pH, d, mat);
+      plinth.position.set(0, pH / 2, 0);
+      g.add(plinth);
+    }
   }
 
   // ----- opening -----
@@ -676,7 +688,7 @@ function buildFront(g, cab, ctx) {
   };
 
   switch (form) {
-    case 'door': singleDoor(false); return true;
+    case 'door': singleDoor(false); return !cab.washerHousing;   // a washer housing has no shelf
     case 'bin': {
       // PULL-OUT bin: a full-height shaker front on RUNNERS — it slides, it
       // never hinges. Knob dead-centre per the PL/NTH drawing. No open pivot.

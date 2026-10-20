@@ -503,8 +503,28 @@ const eighths = (h) => { const n = Math.round(h * 8), whole = Math.floor(n / 8),
 //    plinth a separate piece the door clears. Same codes on every document; priced at the standard + 20%.
 export const OVEN_FIT_NICHE = mmToIn(602), DW_FIT = { top: mmToIn(852), door: mmToIn(725), gap: mmToIn(2) };
 const FIT_RX = /^(F32|F33):fit$/;
+//  'F2:wash24.625' — a housing that HIDES a freestanding washer-dryer (her ask 2026-10-20, "the washing machine
+//    should be in an empty cabinet... not on show"; the Hotpoint F153354 she keeps, 595 x 850 x 540): one 22mm
+//    upright on the run side (the dishwasher borrows it), the room wall as the other side with a 22mm painted
+//    scribe stile at the front, no floor and no back (it slides in on the floor, hoses behind), a door hinged on
+//    the upright, a vented plinth board at the front. Width to the sixteenth; priced as the F2 + 20%.
+const WASH_RX = /^F2:wash(\d+(?:\.\d+)?)$/;
 const fitCache = new Map();
 export function getCab(code) {
+  const mwh = typeof code === 'string' && WASH_RX.exec(code);
+  if (mwh) {
+    let hit = fitCache.get(code);
+    if (!hit) {
+      const base = CATALOGUE.find((c) => c.code === 'F2'), w = Math.round(clampDim(mwh[1], [24, 30], 24.625) * 16) / 16;   // to the sixteenth: it fills the run to the wall
+      const n16 = Math.round(w * 16), r16 = n16 % 16, g16 = r16 ? (r16 % 8 === 0 ? 8 : r16 % 4 === 0 ? 4 : r16 % 2 === 0 ? 2 : 1) : 1;
+      const eighthsW = r16 ? `${Math.floor(n16 / 16)} ${r16 / g16}/${16 / g16}"` : `${n16 / 16}"`;
+      hit = { ...base, code, w, baseCode: 'F2', washerHousing: true, usd: Math.round(base.usd * (1 + BESPOKE_WALL_UPCHARGE)),
+        desc: `Washer housing · bespoke ${eighthsW} wide for this project, hides the freestanding washer-dryer (no floor or back, wall side open, vented plinth)`,
+        notes: 'Bespoke for this project: an empty housing for a freestanding washer-dryer (Hotpoint F153354, 595 x 850 x 540mm). One 22mm upright on the run side, which the dishwasher panel also borrows as its leg; the room wall is the other side, with a 22mm painted scribe stile fixed at the front. No floor and no back: the machine slides in on the floor, hoses and the waste behind it. A shaker door hinged on the upright, its knob on the wall side; a vented plinth board in front. Washer-dryer heat: keep the plinth vent and an air gap at the top. Dry-fit: about 42mm behind the machine for the hoses, and the hinge plates beside its front.' };
+      fitCache.set(code, hit);
+    }
+    return hit;
+  }
   const mf = typeof code === 'string' && FIT_RX.exec(code);
   if (mf) {
     let hit = fitCache.get(code);
