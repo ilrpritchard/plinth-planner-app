@@ -164,3 +164,12 @@ test('the dishwasher space narrows to Bosch\'s range, never under 450mm (F33:fit
   assert.ok(d.w * 25.4 >= 450 && d.w * 25.4 <= 458, `space ${(d.w * 25.4).toFixed(1)}mm`);
   assert.ok(getCab('F33:fitw16').w * 25.4 >= 450, 'clamped to 450mm');
 });
+
+test('a base door cabinet takes a bespoke corner return too (F1:l23.25, the sink base into the dead corner), and still hosts its sink; the niche and tray codes are untouched', async () => {
+  const c = getCab('F1:l23.25');
+  assert.equal(c.corner, true); assert.equal(c.cornerSide, 'left'); assert.equal(c.returnIn, 23.25); assert.equal(c.baseCode, 'F1');
+  assert.equal(getCab('F35:w56d24').form, 'niche'); assert.equal(getCab('F8:w12').cutToFit, true);
+  const { sinkHosts } = await import('../src/core/sinkspec.js');
+  const items = [{ id: 1, code: 'F1:l23.25', x: 0, z: 0, rotDeg: 0 }, { id: 2, code: 'AP10', x: 0, z: 0, rotDeg: 0 }];
+  assert.equal(sinkHosts({ items })[0].baseCab.code, 'F1:l23.25');
+});

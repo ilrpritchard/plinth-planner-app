@@ -250,6 +250,7 @@ function classify(it) {
 // catalogue can group them and the ceiling check can read them.
 // ----- the double corners' price: the double + the corner uplift (her rule 2026-09-25) --------------
 const usdOf = (code) => RAW.find((c) => c.code === code).usd;
+export const FLOOR_CORNER_UPLIFT = usdOf('F16') - usdOf('F2');   // a base corner: the corner F16 over the plain 24" F2
 export const WALL_CORNER_UPLIFT = Math.round(((usdOf('W9') - usdOf('W1')) + (usdOf('W10') - usdOf('W2'))) / 2);   // (143 + 270) / 2 → $207
 for (const c of RAW) if (c.priceFrom) c.usd = RAW.find((b) => b.code === c.priceFrom).usd + WALL_CORNER_UPLIFT;
 
@@ -492,7 +493,7 @@ export const TALL_HEIGHT_LIMITS = [72, 108];
 // 'r' for the side): it stays where it stands and its body runs back into the corner (her ask 2026-10-20,
 // "the glazed wall cabinet stays where it is but just extends back into the corner"). A corner unit then,
 // priced as the cabinet + the corner uplift, + 20%.
-const SIZED_WALL_H_RX = /^([WT]\d+R?):(?:h(\d+(?:\.\d+)?))?(?:w(\d+(?:\.\d+)?))?(?:d(\d+(?:\.\d+)?))?(?:([lr])(\d+(?:\.\d+)?))?$/;
+const SIZED_WALL_H_RX = /^([WTF]\d+R?):(?:h(\d+(?:\.\d+)?))?(?:w(\d+(?:\.\d+)?))?(?:d(\d+(?:\.\d+)?))?(?:([lr])(\d+(?:\.\d+)?))?$/;
 const sizedWallCache = new Map();
 const eighths = (h) => { const n = Math.round(h * 8), whole = Math.floor(n / 8), r = n % 8; if (!r) return `${whole}"`; const g = r % 4 === 0 ? 4 : r % 2 === 0 ? 2 : 1; return `${whole} ${r / g}/${8 / g}"`; };
 
@@ -546,22 +547,23 @@ export function getCab(code) {
     return hit;
   }
   const mh = typeof code === 'string' && SIZED_WALL_H_RX.exec(code);
-  if (mh && (mh[2] || mh[4] || mh[5] || (mh[3] && mh[2]))) {
+  // a base (F) code only comes here for a corner return ('F1:l23.25'): its other sized codes (F35:w56d24, F8:w12) are the niche / tray idioms below
+  if (mh && (mh[1][0] !== 'F' ? (mh[2] || mh[4] || mh[5] || (mh[3] && mh[2])) : mh[5] && !mh[2] && !mh[3] && !mh[4])) {
     let hit = sizedWallCache.get(code);
     if (!hit) {
       const base = CATALOGUE.find((c) => c.code === mh[1].toUpperCase());
-      if (!base || (base.type !== 'WALL' && base.type !== 'TALL') || base.stacker || base.high || base.corner) return undefined;
+      if (!base || (base.type !== 'WALL' && base.type !== 'TALL' && !(base.type === 'FLOOR' && mh[5])) || base.stacker || base.high || base.corner) return undefined;
       if (mh[4] && !base.hoodCover && !canFitWidth(base)) return undefined;   // a hood cover or an open shelf is made to a depth
-      if (mh[5] && (base.type !== 'WALL' || base.pair || !['door', 'glazed'].includes(base.form))) return undefined;   // a single-door upper takes a return
+      if (mh[5] && ((base.type !== 'WALL' && base.type !== 'FLOOR') || base.pair || !['door', 'glazed'].includes(base.form))) return undefined;   // a single-door upper or base takes a return (her catch 2026-10-20: the sink base runs into the corner)
       if (mh[3] && !canFitWidth(base) && base.form !== 'housing') return undefined;   // an open shelf is cut to a width, a fridge housing made to its niche
       const lim = base.type === 'TALL' ? TALL_HEIGHT_LIMITS : WALL_HEIGHT_LIMITS;
       const h = mh[2] ? Math.round(clampDim(mh[2], lim, base.h) * 8) / 8 : base.h;
       const w = mh[3] ? (base.form === 'housing' ? Math.round(clampDim(mh[3], [18, 40], base.w) * 8) / 8 : Math.round(clampDim(mh[3], FIT_WIDTH_LIMITS, base.w) * 2) / 2) : base.w;
       const d = mh[4] ? Math.round(clampDim(mh[4], base.hoodCover ? HOOD_DEPTH_LIMITS : SHELF_DEPTH_LIMITS, base.d) * 8) / 8 : base.d;
-      const ret = mh[5] ? Math.round(clampDim(mh[6], [2, 48], 10) * 8) / 8 : 0;
+      const ret = mh[5] ? Math.round(clampDim(mh[6], [2, 48], base.type === 'FLOOR' ? 20 : 10) * 8) / 8 : 0;
       const size = [h !== base.h ? `${eighths(h)} high` : '', w !== base.w ? `${eighths(w)} wide` : '', d !== base.d ? `${eighths(d)} deep` : '',
         ret ? `${eighths(ret)} blank return ${mh[5] === 'l' ? 'left' : 'right'}` : ''].filter(Boolean).join(', ');
-      const std = (w !== base.w && base.form !== 'housing' ? fitPriceFor(base, w) : base.usd) + (ret ? WALL_CORNER_UPLIFT : 0);
+      const std = (w !== base.w && base.form !== 'housing' ? fitPriceFor(base, w) : base.usd) + (ret ? (base.type === 'FLOOR' ? FLOOR_CORNER_UPLIFT : WALL_CORNER_UPLIFT) : 0);
       // a housing made to the 560mm niche of an integrated 60/40 fridge-freezer (core/fridgeseat.js): three doors and a fixed shelf
       const fridge = base.form === 'housing' && h >= 80 && fitsFridgeNiche(w);
       hit = { ...base, code, h, w, d, usd: Math.round(std * (1 + BESPOKE_WALL_UPCHARGE)), baseCode: base.code, bespokeHeight: h !== base.h, bespokeDepth: d !== base.d, cutToFit: w !== base.w || undefined,
