@@ -69,3 +69,25 @@ test('W26 hood cover seats centred over the cooktop, coexists with the hood, no 
   const c = getCab('W26');
   assert.equal(c.mountY + c.h, 86, 'its top lands on the crown line, so a 24in wall stacker fits above');
 });
+
+test('uppers meet a hood cover\'s flank: no 50mm cooktop keep-clear beside a W26, bespoke heights keep through a cooker swap', async () => {
+  const { snapPosition } = await import('../src/interaction/snapping.js');
+  const { computeWarnings } = await import('../src/core/warnings.js');
+  const { Store } = await import('../src/core/store.js');
+  const room = { width: 118.9, depth: 86.2, height: 95.3, cornice: 'decorative', openings: [], boxings: [] };
+  const items = [
+    { id: 1, code: 'F32', x: 1.98, z: -30.85, rotDeg: 0 }, { id: 2, code: 'AP22', x: 1.98, z: -30.85, rotDeg: 0 },
+    { id: 3, code: 'W26:h23.625', x: 1.98, z: -32.85, rotDeg: 0 }, { id: 4, code: 'W3:h37.625', x: -30, z: -35.85, rotDeg: 0 },
+  ];
+  const store = { state: { room, items }, getItem: (id) => items.find((i) => i.id === id) };
+  const b = { minX: -room.width / 2, maxX: room.width / 2, minZ: -room.depth / 2, maxZ: room.depth / 2 };
+  const s = snapPosition(store, 4, -15, -35.85, b);
+  const cover = getCab('W26:h23.625');
+  assert.equal(cover.mountY + cover.h, 56 + 37.625, 'the taller cover tops out on the uppers\' line');
+  assert.ok(Math.abs((s.x + 10) - (1.98 - 12)) < 0.2, `the W3 butts the cover's flank (x ${s.x})`);
+  items[3].x = s.x;
+  assert.ok(!computeWarnings(store.state).some((w) => /keep 50mm/.test(w.msg)), 'no cooktop keep-clear warning beside the cover');
+  const st = new Store(); st.replace({ schema: 'plinth-planner', version: 1, mode: 'home', room, items: JSON.parse(JSON.stringify(items)), accessories: {}, nextId: 5 });
+  st.swapItem(2, 'AP4');
+  assert.equal(st.state.items.find((i) => i.id === 3).code, 'W37:h23.625', 'the 30" cover, same bespoke height');
+});

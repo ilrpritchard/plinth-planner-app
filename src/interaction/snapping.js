@@ -524,13 +524,15 @@ export function snapPosition(store, id, rawX, rawZ, bounds, opts = {}) {
     const winSolid = cab.appliance !== 'sink' && cab.appliance !== 'hob';
     const overCooker = cab.type === 'COUNTER' || (cab.type === 'WALL' && !cab.stacker && !cab.hoodCover);
     // a cooker under a PLASTER hood (AP26-28) needs no 50mm keep-clear beside it: the hood is
-    // wider than the cooker and solid, and the uppers butt its flank (her rule 2026-09-25)
+    // wider than the cooker and solid, and the uppers butt its flank (her rule 2026-09-25). A HOOD
+    // COVER (W26, W37-W39) is the same: the uppers meet its flank (her ask 2026-10-20)
+    const flankHood = (c) => !!c && (c.plaster || c.hoodCover);
     const plasterOver = new Set();
-    for (const o of others) { const oc = getCab(o.code); if (!oc || !oc.plaster) continue; const hb = worldBox(o, oc);
+    for (const o of others) { const oc = getCab(o.code); if (!flankHood(oc)) continue; const hb = worldBox(o, oc);
       for (const k of others) { const kc = getCab(k.code); if (kc && (kc.appliance === 'range' || kc.appliance === 'hob') && k.x > hb.x0 && k.x < hb.x1 && k.z > hb.z0 - 8 && k.z < hb.z1 + 8) plasterOver.add(k.id); } }
     // the plaster hoods are tested FIRST: an upper dropped into one butts the hood's flank, and
     // never reaches the cooker column behind it (which would raise the cooker flag on the way)
-    const ordered = [...others].sort((a, b) => ((getCab(b.code)?.plaster ? 1 : 0) - (getCab(a.code)?.plaster ? 1 : 0)));
+    const ordered = [...others].sort((a, b) => ((flankHood(getCab(b.code)) ? 1 : 0) - (flankHood(getCab(a.code)) ? 1 : 0)));
     const hitAt = (px, pz) => {
       const me = worldBox({ x: px, z: pz, rotDeg }, cab);
       const testOn = (m) => (ob) =>

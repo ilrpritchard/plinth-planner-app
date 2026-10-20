@@ -338,7 +338,8 @@ export class Store {
       for (const o of this.state.items) {
         const oc = getCab(o.code);
         if (!oc || !oc.hoodCover || Math.abs(o.x - it.x) > 1 || Math.abs(o.z - it.z) > 14 || ((o.rotDeg || 0) - (it.rotDeg || 0)) % 360 !== 0) continue;
-        const want = hoodCoverFor(nc);
+        const hSuffix = (o.code.match(/:h[\d.]+$/) || [''])[0];       // a bespoke-height cover keeps its height
+        const want = hoodCoverFor(nc) + hSuffix;
         if (want !== o.code) { o.code = want; this._emit({ type: 'swap', id: o.id }); }
       }
     }
