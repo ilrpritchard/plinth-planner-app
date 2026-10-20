@@ -377,7 +377,8 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // the back sits BETWEEN the side panels (real carcass construction) — a
   // full-width back puts its oak side edges in the side panels' outer plane,
   // and the raw edge z-fights through the paint on any exposed side
-  const back = box(shellW - 2 * PANEL, bodyH, PANEL, opts.backPanel ? mat : oakMat());
+  const paintedInside = cab.form === 'open';        // open shelves are painted inside, not oak (her catch 2026-10-20)
+  const back = box(shellW - 2 * PANEL, bodyH, PANEL, opts.backPanel || paintedInside ? mat : oakMat());
   back.position.set(0, bodyY0 + bodyH / 2, -d / 2 + PANEL / 2);
   if (!cab.washerHousing) g.add(back);           // a washer housing has no back: the hoses run behind the machine
   // inset slightly so the oak faces sit just inside the cavity (no z-fighting
@@ -386,7 +387,7 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // would draw an oak wall between them: her screenshot 2026-09-22, "the shelf needs to go into
   // the corner"), and it stops behind the blank return's face
   const lnD = cab.corner ? inD - 0.5 - DOOR_T - HAIR : inD - 0.5;
-  const liner = box(inW - 0.5 + cornerRet, inH - 0.5, lnD, interiorMat());
+  const liner = box(inW - 0.5 + cornerRet, inH - 0.5, lnD, paintedInside ? mat : interiorMat());
   liner.position.set(cornerDir * cornerRet / 2, bodyY0 + bodyH / 2, 0.25 - (cab.corner ? (DOOR_T + HAIR) / 2 : 0));
   liner.castShadow = false; liner.material = liner.material.clone(); liner.material.side = THREE.BackSide;
   if (!cab.washerHousing) g.add(liner);
@@ -663,7 +664,7 @@ function buildFront(g, cab, ctx) {
     if (cab.type === 'COUNTER') return counterShelves();
     for (let i = 1; i <= n; i++) {
       const sy = openCenterY - openH / 2 + (openH * i) / (n + 1);
-      const sh = box(ctx.inW - 0.3, SHELF, ctx.inD - 1.2, oakMat());
+      const sh = box(ctx.inW - 0.3, SHELF, ctx.inD - 1.2, mat);   // an open shelf unit is PAINTED inside, shelves too (her catch 2026-10-20)
       sh.position.set(0, sy, -0.2); g.add(sh);
     }
   };

@@ -79,8 +79,17 @@ const FRACTIONS = [
  * nearest eighth and using nice unicode fractions, e.g. 28.5 -> 28½".
  * Matches the convention used in Plinth's existing costing tool.
  */
+// DISPLAY UNITS for the drawings: inches (the default, US) or millimetres, e.g. for a UK client's
+// pack (her ask 2026-10-20, "for her, show all dims in mm"). setUnits('mm') turns every fmtIn /
+// fmtFeetIn on the plans, elevations and cut sheets into whole millimetres.
+let DISPLAY_UNITS = 'in';
+export function setUnits(u) { DISPLAY_UNITS = u === 'mm' ? 'mm' : 'in'; }
+export const displayUnits = () => DISPLAY_UNITS;
+const fmtMM = (value) => `${Math.round(value * MM_PER_INCH)}`;
+
 export function fmtIn(value) {
   if (!isFinite(value)) return '—';
+  if (DISPLAY_UNITS === 'mm') return fmtMM(value);
   const neg = value < 0;
   let v = Math.abs(value);
   let whole = Math.floor(v);
@@ -102,6 +111,7 @@ export function fmtIn(value) {
 /** Format inches as feet'inches" e.g. 96 -> 8' 0". Useful for wall lengths. */
 export function fmtFeetIn(value) {
   if (!isFinite(value)) return '—';
+  if (DISPLAY_UNITS === 'mm') return fmtMM(value);
   const neg = value < 0;
   const v = Math.abs(value);
   const ft = Math.floor(v / 12);
