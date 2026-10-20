@@ -123,7 +123,7 @@ test('a bespoke T3 made to the 560mm niche is built for an integrated 60/40 frid
   const { frontParts } = await import('../src/ui/frontdraw.js');
   const c = getCab('T3:h93.625w23.875');
   assert.equal(c.fridgeFront, true); assert.equal(c.baseCode, 'T3');
-  assert.equal(getCab('T3:h93.625').fridgeFront, undefined, 'the 24" opening does not give the 560mm niche');
+  assert.equal(getCab('T4:h93.625').fridgeFront, undefined, 'a 30" housing does not give the 560mm niche');
   const inside = (c.w - 2 * 22 / 25.4) * 25.4;
   assert.ok(inside >= 560 && inside <= 570, `inside width ${inside.toFixed(1)}mm`);
   const f = fridgeFront(c);
