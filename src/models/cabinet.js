@@ -17,6 +17,7 @@ import { fridgeFront } from '../core/fridgeseat.js';
 import { DW_FIT } from '../core/catalogue.js';
 
 const PANEL = SPEC.PANEL_IN;     // 22mm carcass
+const GLAZED_INSIDE = '#F7F4EB';  // the off-white a glazed cabinet is painted inside (Ghost)
 const LEG = SPEC.LEG_IN;         // 22mm legs
 const PLINTH = SPEC.PLINTH_IN;   // 115mm flush plinth
 const REVEAL = SPEC.REVEAL_IN;   // gap between faces
@@ -377,8 +378,11 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // the back sits BETWEEN the side panels (real carcass construction) — a
   // full-width back puts its oak side edges in the side panels' outer plane,
   // and the raw edge z-fights through the paint on any exposed side
-  const paintedInside = cab.form === 'open';        // open shelves are painted inside, not oak (her catch 2026-10-20)
-  const back = box(shellW - 2 * PANEL, bodyH, PANEL, opts.backPanel || paintedInside ? mat : oakMat());
+  // INSIDE (her calls 2026-10-20): open shelves are painted the cabinet colour inside; a GLAZED cabinet is
+  // painted off-white inside, shelves too, so it reads through the glass; a solid door keeps the oak interior
+  const paintedInside = cab.form === 'open';
+  const insideMat = paintedInside ? mat : cab.glazed ? paintMat(GLAZED_INSIDE) : null;
+  const back = box(shellW - 2 * PANEL, bodyH, PANEL, opts.backPanel ? mat : insideMat || oakMat());
   back.position.set(0, bodyY0 + bodyH / 2, -d / 2 + PANEL / 2);
   if (!cab.washerHousing) g.add(back);           // a washer housing has no back: the hoses run behind the machine
   // inset slightly so the oak faces sit just inside the cavity (no z-fighting
@@ -387,7 +391,7 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // would draw an oak wall between them: her screenshot 2026-09-22, "the shelf needs to go into
   // the corner"), and it stops behind the blank return's face
   const lnD = cab.corner ? inD - 0.5 - DOOR_T - HAIR : inD - 0.5;
-  const liner = box(inW - 0.5 + cornerRet, inH - 0.5, lnD, paintedInside ? mat : interiorMat());
+  const liner = box(inW - 0.5 + cornerRet, inH - 0.5, lnD, insideMat || interiorMat());
   liner.position.set(cornerDir * cornerRet / 2, bodyY0 + bodyH / 2, 0.25 - (cab.corner ? (DOOR_T + HAIR) / 2 : 0));
   liner.castShadow = false; liner.material = liner.material.clone(); liner.material.side = THREE.BackSide;
   if (!cab.washerHousing) g.add(liner);
@@ -451,17 +455,17 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // ----- one 18mm oak shelf for door cabinets (a COUNTER cabinet gets its two) -----
   if (hasShelf && cab.type === 'COUNTER') {
     for (const top of counterShelfTops(bodyH - PANEL)) {
-      const shelf = box(inW - 0.3, SHELF, inD - 1.2, oakMat());
+      const shelf = box(inW - 0.3, SHELF, inD - 1.2, insideMat || oakMat());
       shelf.position.set(0, bodyY0 + top - SHELF / 2, -0.2);
       g.add(shelf);
     }
   } else if (hasShelf && cab.high) {                // a full-height wall cabinet: two shelves, equally spaced (her spec 2026-09-22)
     const extra = cab.corner ? cornerRet : 0;                     // a full-height corner: both shelves run on through the return
-    for (const k of [1, 2]) { const shelf = box(inW - 0.3 + extra, SHELF, inD - 1.2, oakMat()); shelf.position.set(cornerDir * extra / 2, openY0 + (openH * k) / 3, -0.2); g.add(shelf); }
+    for (const k of [1, 2]) { const shelf = box(inW - 0.3 + extra, SHELF, inD - 1.2, insideMat || oakMat()); shelf.position.set(cornerDir * extra / 2, openY0 + (openH * k) / 3, -0.2); g.add(shelf); }
   } else if (hasShelf) {
     // a corner unit's shelf carries on through the return to the end panel in the corner
     const extra = cab.corner ? cornerRet : 0;                     // door cavity + the return cavity (the shared side panel is gone)
-    const shelf = box(inW - 0.3 + extra, SHELF, inD - 1.2, oakMat());
+    const shelf = box(inW - 0.3 + extra, SHELF, inD - 1.2, insideMat || oakMat());
     shelf.position.set(cornerDir * extra / 2, openCenterY, -0.2);
     g.add(shelf);
   }
@@ -485,11 +489,11 @@ export function buildCabinet(cab, finishHex, opts = {}) {
     // it, or the two coplanar fronts z-fight and the return renders as a streaky, half-framed
     // panel, the classic "corner cabinet looks wrong" artifact)
     const cd = d - DOOR_T - HAIR, cz = -(DOOR_T + HAIR) / 2;
-    const rFloor = box(ret, PANEL, cd, oakMat()); rFloor.position.set(px, bodyY0 + PANEL / 2, cz); g.add(rFloor);
-    const rTop = box(ret, PANEL, cd, cab.returnIn != null ? mat : oakMat()); rTop.position.set(px, h - PANEL / 2, cz); g.add(rTop);   // a bespoke return's top is on show beside the run: painted
-    const rBack = box(ret, bodyH, PANEL, oakMat()); rBack.position.set(px, bodyY0 + bodyH / 2, -d / 2 + PANEL / 2); g.add(rBack);
+    const rFloor = box(ret, PANEL, cd, insideMat || oakMat()); rFloor.position.set(px, bodyY0 + PANEL / 2, cz); g.add(rFloor);
+    const rTop = box(ret, PANEL, cd, cab.returnIn != null ? mat : insideMat || oakMat()); rTop.position.set(px, h - PANEL / 2, cz); g.add(rTop);   // a bespoke return's top is on show beside the run: painted
+    const rBack = box(ret, bodyH, PANEL, insideMat || oakMat()); rBack.position.set(px, bodyY0 + bodyH / 2, -d / 2 + PANEL / 2); g.add(rBack);
     const endX = right ? (w / 2 + ret - PANEL / 2) : (-w / 2 - ret + PANEL / 2);
-    const rEnd = box(PANEL, bodyH, cd, oakMat()); rEnd.position.set(endX, bodyY0 + bodyH / 2, cz); g.add(rEnd);
+    const rEnd = box(PANEL, bodyH, cd, insideMat || oakMat()); rEnd.position.set(endX, bodyY0 + bodyH / 2, cz); g.add(rEnd);
     // flat blank front face — FULL body height (plinth top → carcass top), one
     // clean panel with no rail bands, per the blank-return spec
     // a BESPOKE return (W3:...l29.375) shows part of its face beside the run in front of it: painted, like the cabinet
