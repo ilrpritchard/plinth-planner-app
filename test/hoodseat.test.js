@@ -91,3 +91,19 @@ test('uppers meet a hood cover\'s flank: no 50mm cooktop keep-clear beside a W26
   st.swapItem(2, 'AP4');
   assert.equal(st.state.items.find((i) => i.id === 3).code, 'W37:h23.625', 'the 30" cover, same bespoke height');
 });
+
+test('a hood cover made to a bespoke depth, designed per hood: W26:h23.625d16 is 16" deep, seats back on its wall, keeps it through a cooker swap', async () => {
+  const c = getCab('W26:h23.625d16');
+  assert.equal(c.d, 16); assert.equal(c.h, 23.625); assert.equal(c.baseCode, 'W26'); assert.equal(c.bespokeDepth, true);
+  assert.match(c.desc, /bespoke 23 5\/8" high, 16" deep for this project/);
+  assert.equal(getCab('W26:d16').h, 16); assert.equal(getCab('W26:d16').d, 16);
+  assert.equal(getCab('W7:d16'), undefined, 'only a hood cover takes a depth');
+  const room = { width: 118.9, depth: 86.2, height: 95.3, openings: [] };
+  const items = [{ id: 1, code: 'AP22', x: 2, z: -30.85, rotDeg: 0 }, { id: 2, code: 'W26:h23.625d16', x: 2, z: -30, rotDeg: 0 }];
+  const seat = findHoodSeat({ room, items }, 2, -30, 2, c);
+  assert.ok(Math.abs((seat.z - c.d / 2) - (-room.depth / 2)) < 0.5, `back on the wall (z ${seat.z})`);
+  const { Store } = await import('../src/core/store.js');
+  const st = new Store(); st.replace({ schema: 'plinth-planner', version: 1, mode: 'home', room, items: [{ id: 1, code: 'F32', x: 2, z: -30.85, rotDeg: 0 }, { ...items[0], id: 3 }, { ...items[1], z: seat.z }], accessories: {}, nextId: 4 });
+  st.swapItem(3, 'AP4');
+  assert.equal(st.state.items.find((i) => i.id === 2).code, 'W37:h23.625d16');
+});

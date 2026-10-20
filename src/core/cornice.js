@@ -76,7 +76,10 @@ export function planCornice(state) {
   const topOf = (cab) => (cab.type === 'TALL' ? cab.h : (cab.mountY ?? MOUNT[cab.type] ?? 0) + cab.h);
   // for the crown, a stacker standing on a tall IS the top of that tall column: 24" deep, proud of
   // the uppers, so its flank returns like a tall's (her screenshot 2026-09-22: "cornice doesn't return")
-  const kind = (c) => (c.cab.type === 'TALL' || c.cab.onTall || c.hood ? 'TALL' : c.cab.type);
+  // ...and so is a HOOD COVER: deeper than the uppers either side, its crown returns down its flanks to
+  // meet theirs and mitres, as at a tall (her ask 2026-10-20, "make sure the cornice returns down the
+  // sides of the hood cover to meet the wall cabinets")
+  const kind = (c) => (c.cab.type === 'TALL' || c.cab.onTall || c.hood || c.cab.hoodCover ? 'TALL' : c.cab.type);
   const rotOf = (it) => (((it.rotDeg || 0) % 360) + 360) % 360;
   const all = (state.items || []).map((it) => ({ it, cab: getCab(it.code) })).filter((x) => x.cab && QUALIFY.has(x.cab.type));
   const stackedOver = (x) => all.some((o) => o.cab.stacker && rotOf(o.it) === rotOf(x.it) && Math.abs((rotOf(x.it) % 180 === 0 ? o.it.x - x.it.x : o.it.z - x.it.z)) < 1 && Math.abs((o.cab.mountY || 0) - TOP[x.cab.type]) < 1);
@@ -177,6 +180,21 @@ export function planCornice(state) {
         continue;
       }
       exposed[i] = true;
+      // an INSIDE CORNER: a cabinet on the side wall standing in front of this run's end hides that
+      // end of the face, so the crown stops at that cabinet's face (where its own crown meets it)
+      // instead of running on over its top (her corner open shelves, 2026-10-20)
+      const ax = i < 2 ? co : s, az = i < 2 ? -s : co;                   // the run direction of this face
+      const covered = (t) => insideAnother(cx + ax * t + f.ox * 1.0, cz + az * t + f.oz * 1.0, c.it, cabs, topY);
+      let lo = -f.len / 2, hi = f.len / 2;
+      while (hi - lo > 2 && covered(lo + 0.6)) lo += 0.25;
+      while (hi - lo > 2 && covered(hi - 0.6)) hi -= 0.25;
+      if (lo > -f.len / 2 || hi < f.len / 2) {
+        const mid = (lo + hi) / 2;
+        exposed[i] = !(i >= 2);                                          // a trimmed side never mitres
+        segments.push({ x: cx + ax * mid, z: cz + az * mid, topY, angle: Math.atan2(f.ox, f.oz), length: hi - lo });
+        totalIn += hi - lo;
+        continue;
+      }
       segments.push({ x: cx, z: cz, topY, angle: Math.atan2(f.ox, f.oz), length: f.len });
       totalIn += f.len;
     }

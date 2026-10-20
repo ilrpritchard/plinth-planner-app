@@ -477,21 +477,35 @@ export function sizedStackerCode(baseCode, h) {
 // range: the wall cabinet + 20%.
 export const WALL_HEIGHT_LIMITS = [18, 60];
 export const BESPOKE_WALL_UPCHARGE = 0.20;
-const SIZED_WALL_H_RX = /^(W\d+R?):h(\d+(?:\.\d+)?)$/i;
+// ...and a HOOD COVER takes a bespoke DEPTH too, designed per hood (her call 2026-10-20, "16\" just for
+// this one, we will design per hood"): 'W26:h23.625d16' or 'W26:d16'. 12" to 24", to the eighth.
+// An OPEN SHELF takes a cut-to-fit width with its height ('W11:h37.625w29.5', priced as the resized
+// shelf + 20%), and a TALL takes a height too ('T1:h93.625', 72" to 108"), so a corner can line up
+// with bespoke uppers (her ask 2026-10-20, "make the tall the same height... open shelves in the corner").
+export const HOOD_DEPTH_LIMITS = [12, 24];
+export const TALL_HEIGHT_LIMITS = [72, 108];
+const SIZED_WALL_H_RX = /^([WT]\d+R?):(?:h(\d+(?:\.\d+)?))?(?:w(\d+(?:\.\d+)?))?(?:d(\d+(?:\.\d+)?))?$/i;
 const sizedWallCache = new Map();
 const eighths = (h) => { const n = Math.round(h * 8), whole = Math.floor(n / 8), r = n % 8; if (!r) return `${whole}"`; const g = r % 4 === 0 ? 4 : r % 2 === 0 ? 2 : 1; return `${whole} ${r / g}/${8 / g}"`; };
 
 export function getCab(code) {
   const mh = typeof code === 'string' && SIZED_WALL_H_RX.exec(code);
-  if (mh) {
+  if (mh && (mh[2] || mh[4] || (mh[3] && mh[2]))) {
     let hit = sizedWallCache.get(code);
     if (!hit) {
       const base = CATALOGUE.find((c) => c.code === mh[1].toUpperCase());
-      if (!base || base.type !== 'WALL' || base.stacker || base.high) return undefined;
-      const h = Math.round(clampDim(mh[2], WALL_HEIGHT_LIMITS, base.h) * 8) / 8;
-      hit = { ...base, code, h, usd: Math.round(base.usd * (1 + BESPOKE_WALL_UPCHARGE)), baseCode: base.code, bespokeHeight: true,
-        desc: `${base.desc} · bespoke ${eighths(h)} high for this project`,
-        notes: `The ${base.code} made ${eighths(h)} high for this project only (bespoke, not a stock size), hung at the same 56". Priced at the standard ${base.code} plus 20%. ${base.notes || ''}`.trim() };
+      if (!base || (base.type !== 'WALL' && base.type !== 'TALL') || base.stacker || base.high || base.corner) return undefined;
+      if (mh[4] && !base.hoodCover) return undefined;               // only a hood cover is made to a depth
+      if (mh[3] && !canFitWidth(base)) return undefined;            // only an open shelf is cut to a width
+      const lim = base.type === 'TALL' ? TALL_HEIGHT_LIMITS : WALL_HEIGHT_LIMITS;
+      const h = mh[2] ? Math.round(clampDim(mh[2], lim, base.h) * 8) / 8 : base.h;
+      const w = mh[3] ? Math.round(clampDim(mh[3], FIT_WIDTH_LIMITS, base.w) * 2) / 2 : base.w;
+      const d = mh[4] ? Math.round(clampDim(mh[4], HOOD_DEPTH_LIMITS, base.d) * 8) / 8 : base.d;
+      const size = [h !== base.h ? `${eighths(h)} high` : '', w !== base.w ? `${eighths(w)} wide` : '', d !== base.d ? `${eighths(d)} deep` : ''].filter(Boolean).join(', ');
+      const std = w !== base.w ? fitPriceFor(base, w) : base.usd;
+      hit = { ...base, code, h, w, d, usd: Math.round(std * (1 + BESPOKE_WALL_UPCHARGE)), baseCode: base.code, bespokeHeight: h !== base.h, bespokeDepth: d !== base.d, cutToFit: w !== base.w || undefined,
+        desc: `${base.desc} · bespoke ${size} for this project`,
+        notes: `The ${base.code} made ${size} for this project only (bespoke, not a stock size)${base.type === 'WALL' ? `, hung at the same ${base.mountY ?? 56}"` : ''}. Priced at the standard ${w !== base.w ? 'size' : base.code} plus 20%. ${base.notes || ''}`.trim() };
       sizedWallCache.set(code, hit);
     }
     return hit;
