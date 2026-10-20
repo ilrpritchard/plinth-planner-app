@@ -7,7 +7,7 @@ import { buildAppliance } from '../models/appliances.js';
 import { exposedBackIds } from '../core/endpanels.js';
 import { getCab, getFinish } from '../core/catalogue.js';
 import { returnReach } from '../core/cornerreturn.js';
-import { isOvenHousing, ovenIn } from '../core/ovenseat.js';
+import { isOvenHousing, ovenIn, ovenSeat } from '../core/ovenseat.js';
 import { WALLS } from '../scene/Room.js';
 
 export class CabinetLayer {
@@ -167,7 +167,7 @@ export class CabinetLayer {
         this._addOrUpdate(item); return;
       }
     }
-    rec.group.position.set(item.x, getMountY(cab), item.z);
+    rec.group.position.set(item.x, this._mountY(item, cab), item.z);
     rec.group.rotation.y = THREE.MathUtils.degToRad(item.rotDeg || 0);
     if (this.selectedId === id) this._refreshBoxes();
   }
@@ -229,12 +229,22 @@ export class CabinetLayer {
   }
 
   /** Per-frame: re-seat to mount height + ease doors toward open/closed. */
+  /** Where an item hangs: its own mount height, except an under-counter oven riding a housing that seats it
+   *  elsewhere (the bespoke Bosch fit F32:fit raises the oven shelf): the housing's seat decides. */
+  _mountY(item, cab) {
+    if (cab && cab.appliance === 'oven' && item.hostId != null) {
+      const host = this.store.getItem(item.hostId), hc = host && getCab(host.code);
+      if (hc && hc.ovenFit) return ovenSeat(hc).y0;
+    }
+    return getMountY(cab);
+  }
+
   groundTick() {
     const k = 0.2;
     for (const [id, rec] of this.map) {
       const item = this.store.getItem(id);
       if (!item) continue;
-      const my = getMountY(getCab(item.code));
+      const my = this._mountY(item, getCab(item.code));
       if (rec.group.position.y !== my) rec.group.position.y = my;
       const doors = rec.group.userData.doors;
       if (doors && doors.length) {

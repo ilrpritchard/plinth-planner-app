@@ -14,6 +14,7 @@ import {
 import { makeKnob } from './knob.js';
 import { ovenSeat } from '../core/ovenseat.js';
 import { fridgeFront } from '../core/fridgeseat.js';
+import { DW_FIT } from '../core/catalogue.js';
 
 const PANEL = SPEC.PANEL_IN;     // 22mm carcass
 const LEG = SPEC.LEG_IN;         // 22mm legs
@@ -347,7 +348,10 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // where the bowl drops through (bowl cut margins are >= 2.25" front/back,
   // >= 1.2" sides — models/appliances.js — so the ring never shows under the
   // worktop cutout).
-  if (!opts.sinkOver) {
+  if (cab.ovenFit) {
+    // the bespoke Bosch oven fit: nothing across the front over the oven (no battens), only a stretcher at the back
+    const st = box(shellW - 2 * PANEL, PANEL, 3.5, mat); st.position.set(0, h - PANEL / 2, -d / 2 + 1.75); g.add(st);
+  } else if (!opts.sinkOver) {
     const top = box(shellW, PANEL, d, mat); top.position.set(0, h - PANEL / 2, 0);
     g.add(top);
   } else {
@@ -423,7 +427,7 @@ export function buildCabinet(cab, finishHex, opts = {}) {
   // neighbours once the drawer banks came down to the rail).
   const railBar = box(shellW - 2 * PANEL, TOPRAIL - PANEL, PANEL, mat);
   railBar.position.set(0, h - PANEL - (TOPRAIL - PANEL) / 2, d / 2 - PANEL / 2);
-  g.add(railBar);
+  if (!cab.ovenFit && !cab.dwFit) g.add(railBar);       // the Bosch fits: no rail over the oven, the dishwasher's own rail below
   const openCenterY = openY0 + openH / 2;
   const faceW = w - 2 * LEG - 2 * REVEAL;     // door spans between the legs
   const doorFrontZ = frontZ - RECESS;         // a leaf's panel face: its stiles come forward to the legs' plane
@@ -731,6 +735,17 @@ function buildFront(g, cab, ctx) {
     }
     case 'tray': return false;   // open slot for trays/boards to LEAN in — NO shelf
     case 'dishwasher': {
+      if (cab.dwFit) {
+        // the bespoke Bosch fit (catalogue DW_FIT): a 37mm painted rail fixed from the machine's top (852mm)
+        // to the worktop line, the 725mm door 2mm under it, a gap down to the separate plinth
+        const top = DW_FIT.top, railH = cab.h - top, pw = cab.w - 2 * HAIR;
+        const rail = box(pw, railH - HAIR, DOOR_T, mat); rail.position.set(0, top + (railH - HAIR) / 2, ctx.frontFlush - DOOR_T / 2); g.add(rail);
+        const dTop = top - DW_FIT.gap, dh = DW_FIT.door, leaf = shakerLeaf(pw, dh, mat, false, 1);
+        leaf.position.set(0, dTop - dh / 2, frontZ - DOOR_T / 2);
+        const k = makeKnob(mat); k.position.set(0, dh / 2 - STILE / 2, LEAF_KNOB_Z); leaf.add(k);
+        g.add(leaf); revealRing(g, 0, dTop - dh / 2, pw, dh, frontZ);
+        return false;
+      }
       // appliance DOOR PANEL only: it always sits BETWEEN two cabinets, so it
       // has no legs of its own — one full-width shaker panel from the plinth
       // up to the 35mm top rail, level with its neighbours, as the F7 drawing.
@@ -848,6 +863,10 @@ function buildFront(g, cab, ctx) {
       const oy0 = seat.y0, ovenH = seat.ovenH;
       // the painted rail the oven stands on, flush with the drawer face (a 30"+ oven fills the opening: neither)
       if (seat.railH > 0) { const rail = box(faceW, seat.railH, DOOR_T, mat); rail.position.set(0, oy0 - REVEAL - seat.railH / 2, frontZ - DOOR_T / 2); g.add(rail); }
+      if (cab.ovenFit) {   // the oven shelf, a 25mm vent slot left open along its back (Bosch: min 20)
+        const sd = ctx.inD - mmToIn(25) - DOOR_T, shelf = box(ctx.inW - 0.1, PANEL, sd, mat);
+        shelf.position.set(0, oy0 - PANEL / 2, frontZ - DOOR_T - sd / 2); g.add(shelf);
+      }
       if (ctx.ovenFitted) {
         const ovenFace = seat.ovenW - 0.25, stile = Math.max(0, (faceW - ovenFace) / 2);
         const cavity = box(faceW, ovenH, 0.3, new THREE.MeshStandardMaterial({ color: 0x17181a, roughness: 0.9 }));

@@ -21,6 +21,12 @@ export function ovenSeat(housing) {
     const faceW = housing.w - 2 * SPEC.LEG_IN - 2 * SPEC.REVEAL_IN, ovenW = housing.ovenW || 24;
     // a US 30" or 36" single oven stands about 725mm: it fills the whole opening under the top rail,
     // no drawer panel and no rail (her question 2026-10-09; proposed sizes, pack-only so far)
+    // the bespoke Bosch under-worktop fit (F32:fit): no top rail, the oven on a shelf 602mm under the
+    // worktop, a 7mm gap over it (its 595mm front), the shelf's 22mm painted edge under it, the drawer below
+    if (housing.ovenFit) {
+      const ovenH = mmToIn(595), railH = SPEC.PANEL_IN, y0 = housing.h - mmToIn(602);
+      return { openY0, openH: housing.h - openY0, doorH: 0, railH, drawH: y0 - railH - 2 * SPEC.REVEAL_IN - openY0, y0, ovenH, faceW, ovenW, noTopRail: true };
+    }
     if (ovenW >= 30) return { openY0, openH, doorH: 0, railH: 0, drawH: 0, y0: openY0, ovenH: openH, faceW, ovenW };
     const ovenH = mmToIn(595), railH = SPEC.PANEL_IN;
     return { openY0, openH, doorH: 0, railH, drawH: openH - ovenH - railH - 2 * SPEC.REVEAL_IN, y0: openY0 + openH - ovenH, ovenH, faceW, ovenW };

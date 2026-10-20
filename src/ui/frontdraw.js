@@ -27,6 +27,7 @@ import { esc } from '../core/submittal.js';
 import { rangeSpec } from '../core/rangespec.js';
 import { ovenSeat } from '../core/ovenseat.js';
 import { fridgeFront } from '../core/fridgeseat.js';
+import { DW_FIT } from '../core/catalogue.js';
 
 // master-library constants, mm → inches (same numbers as core/dxf.js)
 export const FD = {
@@ -90,7 +91,7 @@ export function frontParts(cab) {
   if (cab.form === 'leg') { hline('rail', h - bottomZone(cab), 0, w); return out; }   // the end leg: one upright over the plinth line
 
   const E = FD.E, F = FD.FRAME;
-  const zB = bottomZone(cab), zT = h - FD.TOP;
+  const zB = bottomZone(cab), zT = cab.ovenFit || cab.dwFit ? h : h - FD.TOP;   // the Bosch fits: no top rail (the dishwasher draws its own)
   // a stool niche (W2W-243): the two legs and the 35mm top rail round an open bay, no plinth line
   if (cab.form === 'niche') { vline('leg', E, 0, h); vline('leg', w - E, 0, h); hline('rail', zT, E, w - E); return out; }
   const dishwasher = cab.form === 'dishwasher';
@@ -232,6 +233,12 @@ export function frontParts(cab) {
       parts.push({ k: 'text', x: (dx0 + dx1) / 2, y: (zB + zT) / 2, s: 'OPEN' });
       break;
     case 'dishwasher':                           // full-width panel, no legs
+      if (cab.dwFit) {                           // the Bosch fit: rail above the machine, a 725mm door under it
+        const top = DW_FIT.top, dT = top - DW_FIT.gap, dB = dT - DW_FIT.door;
+        rect('panel', 0, top, w, zT - top); hline('rail', top, 0, w);
+        leaf(0, w, [[dB + F, dT - F]], false, dB, dT);
+        break;
+      }
       leaf(0, w, singleZone);
       break;
     case 'hoodCover':                            // one fixed shaker panel between the legs, no swing mark

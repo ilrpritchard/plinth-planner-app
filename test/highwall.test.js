@@ -132,3 +132,18 @@ test('a bespoke T3 made to the 560mm niche is built for an integrated 60/40 frid
   const leaves = frontParts(c).parts.filter((p) => p.k === 'rect' && p.cls === 'leaf');
   assert.equal(leaves.length, 3, 'freezer, fridge and cupboard');
 });
+
+test('bespoke Bosch fits for one project: F32:fit (no top rail, oven shelf 602mm under the worktop, vent slot) and F33:fit (rail above, 725mm door)', async () => {
+  const { ovenSeat } = await import('../src/core/ovenseat.js');
+  const { frontParts } = await import('../src/ui/frontdraw.js');
+  const o = getCab('F32:fit'), d = getCab('F33:fit');
+  assert.equal(o.baseCode, 'F32'); assert.equal(o.form, 'ovenBase'); assert.equal(o.ovenFit, true);
+  const s = ovenSeat(o), mm = (v) => v * 25.4;
+  assert.ok(Math.abs(mm(o.h - s.y0) - 602) < 0.5, 'niche 602mm from the shelf to the worktop underside');
+  assert.ok(mm(o.h - (s.y0 + s.ovenH)) >= 2, 'the oven front sits 2mm+ below the worktop');
+  assert.ok(s.drawH > 3, 'a drawer still fits below');
+  assert.equal(d.baseCode, 'F33'); assert.equal(d.dwFit, true);
+  const leaf = frontParts(d).parts.find((p) => p.k === 'rect' && p.cls === 'leaf');
+  assert.ok(Math.abs(mm(leaf.h) - 725) < 0.5, `door ${mm(leaf.h)}mm`);
+  assert.ok(mm(leaf.y + leaf.h) <= 875, 'the door top under Bosch\'s 875mm niche max');
+});
