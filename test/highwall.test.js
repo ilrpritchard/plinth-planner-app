@@ -157,3 +157,10 @@ test('a washer housing (F2:wash24.5625) hides a freestanding washer-dryer: one u
   const items = [{ id: 1, code: 'F1', x: 47.2, z: -9.5236, rotDeg: 270 }, { id: 2, code: 'F33:fit', x: 47.2, z: 9.4764, rotDeg: 270 }, { id: 3, code: 'F2:wash24.5625', x: 47.2, z: 30.7576, rotDeg: 270 }];
   assert.ok(!computeWarnings({ room, items }).some((w) => /legless/.test(w.msg)), 'the dishwasher panel has a leg both sides');
 });
+
+test('the dishwasher space narrows to Bosch\'s range, never under 450mm (F33:fitw17.75)', () => {
+  const d = getCab('F33:fitw17.75');
+  assert.equal(d.dwFit, true); assert.equal(d.baseCode, 'F33');
+  assert.ok(d.w * 25.4 >= 450 && d.w * 25.4 <= 458, `space ${(d.w * 25.4).toFixed(1)}mm`);
+  assert.ok(getCab('F33:fitw16').w * 25.4 >= 450, 'clamped to 450mm');
+});

@@ -502,7 +502,7 @@ const eighths = (h) => { const n = Math.round(h * 8), whole = Math.floor(n / 8),
 //    the machine set at 852mm, a 37mm painted rail fixed above it, the door panel 725mm (Bosch max), the
 //    plinth a separate piece the door clears. Same codes on every document; priced at the standard + 20%.
 export const OVEN_FIT_NICHE = mmToIn(602), DW_FIT = { top: mmToIn(852), door: mmToIn(725), gap: mmToIn(2) };
-const FIT_RX = /^(F32|F33):fit$/;
+const FIT_RX = /^(F32|F33):fit(?:w(\d+(?:\.\d+)?))?$/;   // F33:fitw17.75 — the dishwasher space narrowed (Bosch niche 450-458mm)
 //  'F2:wash24.625' — a housing that HIDES a freestanding washer-dryer (her ask 2026-10-20, "the washing machine
 //    should be in an empty cabinet... not on show"; the Hotpoint F153354 she keeps, 595 x 850 x 540): one 22mm
 //    upright on the run side (the dishwasher borrows it), the room wall as the other side with a 22mm painted
@@ -531,9 +531,10 @@ export function getCab(code) {
     if (!hit) {
       const base = CATALOGUE.find((c) => c.code === mf[1]);
       const oven = mf[1] === 'F32';
-      hit = { ...base, code, baseCode: base.code, usd: Math.round(base.usd * (1 + BESPOKE_WALL_UPCHARGE)),
+      const dwW = !oven && mf[2] ? Math.round(clampDim(mf[2], [mmToIn(450) + 0.01, mmToIn(458)], base.w) * 16) / 16 : base.w;   // never under Bosch's 450mm
+      hit = { ...base, code, w: dwW, baseCode: base.code, usd: Math.round(base.usd * (1 + BESPOKE_WALL_UPCHARGE)),
         ...(oven ? { ovenFit: true } : { dwFit: true }),
-        desc: `${base.desc} · bespoke for this project, built to the ${oven ? 'Bosch 60cm built-in oven (under-worktop niche 602mm, no top rail, vented shelf)' : 'Bosch 45cm integrated dishwasher (rail above, 725mm door, separate plinth)'}`,
+        desc: `${base.desc} · bespoke for this project, built to the ${oven ? 'Bosch 60cm built-in oven (under-worktop niche 602mm, no top rail, vented shelf)' : `Bosch 45cm integrated dishwasher (${dwW !== base.w ? `space ${Math.round(dwW * 25.4)}mm, ` : ''}rail above, 725mm door, separate plinth)`}`,
         notes: oven
           ? 'Bespoke for this project: built to the Bosch HHF113 under-worktop drawing. No top rail and no top panel over the oven (no battens between oven and worktop; the oven front sits 7mm below the worktop), the oven shelf raised so the niche is 602mm to the worktop underside (Bosch 600-604), a vent slot at least 20mm deep along the back of the shelf. A 13A socket outside the oven space. Units rated to 90°C.'
           : 'Bespoke for this project: built to the Bosch SPV2HKX02G drawing (niche 815-875mm, fixed hinge). The machine set at 852mm on its feet, a 37mm painted rail fixed above it to the worktop line, the furniture door 725mm (Bosch max), 2mm under the rail, fixed to the machine door; the plinth a separate piece that the door clears when it opens (dry-fit). Fixed to the side panels, not the worktop.' };
