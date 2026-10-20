@@ -470,7 +470,32 @@ export function sizedStackerCode(baseCode, h) {
   return std ? std.code : `${base.code}:h${hh}`;
 }
 
+// BESPOKE-HEIGHT WALL CABINETS (her ask 2026-10-20, "make them the height they need to be with the
+// decorative crown on them... label them as bespoke for this project, dont create a new code"):
+// 'W7:h37.625' is the W7 made 37⅝" high for one project. Same code on every document (baseCode),
+// labelled bespoke, hung at the same 56". 18" to 60" to the eighth. Priced like the full-height
+// range: the wall cabinet + 20%.
+export const WALL_HEIGHT_LIMITS = [18, 60];
+export const BESPOKE_WALL_UPCHARGE = 0.20;
+const SIZED_WALL_H_RX = /^(W\d+R?):h(\d+(?:\.\d+)?)$/i;
+const sizedWallCache = new Map();
+const eighths = (h) => { const n = Math.round(h * 8), whole = Math.floor(n / 8), r = n % 8; if (!r) return `${whole}"`; const g = r % 4 === 0 ? 4 : r % 2 === 0 ? 2 : 1; return `${whole} ${r / g}/${8 / g}"`; };
+
 export function getCab(code) {
+  const mh = typeof code === 'string' && SIZED_WALL_H_RX.exec(code);
+  if (mh) {
+    let hit = sizedWallCache.get(code);
+    if (!hit) {
+      const base = CATALOGUE.find((c) => c.code === mh[1].toUpperCase());
+      if (!base || base.type !== 'WALL' || base.stacker || base.high) return undefined;
+      const h = Math.round(clampDim(mh[2], WALL_HEIGHT_LIMITS, base.h) * 8) / 8;
+      hit = { ...base, code, h, usd: Math.round(base.usd * (1 + BESPOKE_WALL_UPCHARGE)), baseCode: base.code, bespokeHeight: true,
+        desc: `${base.desc} · bespoke ${eighths(h)} high for this project`,
+        notes: `The ${base.code} made ${eighths(h)} high for this project only (bespoke, not a stock size), hung at the same 56". Priced at the standard ${base.code} plus 20%. ${base.notes || ''}`.trim() };
+      sizedWallCache.set(code, hit);
+    }
+    return hit;
+  }
   const mk = typeof code === 'string' && SIZED_STACKER_RX.exec(code);
   if (mk) {
     let hit = sizedStackerCache.get(code);

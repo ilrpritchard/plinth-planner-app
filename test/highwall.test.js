@@ -89,3 +89,13 @@ test('double wall corners W31 / W32 (+R) and their full-height W33-W36: a door P
   const alts = swapAlternatives('W31').map((c) => c.code);
   assert.ok(alts.includes('W33') && alts.includes('W31R') && !alts.includes('W18'), 'a double corner swaps for its other hand or its full-height version, never a plain double');
 });
+
+test('bespoke-height wall cabinets: W7:h37.625 keeps the W7 code, labelled bespoke for this project, +20%, hung at 56"', () => {
+  const std = getCab('W7'), c = getCab('W7:h37.625');
+  assert.equal(c.h, 37.625); assert.equal(c.baseCode, 'W7'); assert.equal(c.w, std.w); assert.equal(c.d, std.d);
+  assert.equal(c.type, 'WALL'); assert.equal(c.bespokeHeight, true); assert.equal(c.usd, Math.round(std.usd * 1.2));
+  assert.match(c.desc, /bespoke 37 5\/8" high for this project/);
+  assert.equal(getCab('W2:h40').h, 40);
+  assert.equal(getCab('W18:h40'), undefined, 'the full-height range is not re-sized');
+  assert.equal(getCab('S11:h24').madeToHeight, true, 'stacker codes untouched');
+});
