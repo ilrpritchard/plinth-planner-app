@@ -310,6 +310,9 @@ const APPLIANCES = [
   { code: 'AP1', appliance: 'range', desc: 'Range cooker 30"', w: 30, d: 26, h: 36, mountY: 0 },
   { code: 'AP2', appliance: 'range', desc: 'Range cooker 36"', w: 36, d: 26, h: 36, mountY: 0 },
   { code: 'AP3', appliance: 'range', desc: 'Range cooker 48"', w: 48, d: 26, h: 36, mountY: 0 },
+  // a UK 60cm freestanding range (her pick 2026-10-20, the Smeg Classic SUK61PX8 dual fuel: 900 x 600 x 600mm,
+  // four gas burners, one oven, 750mm to the hood): it stands in a 600mm gap between two bases
+  { code: 'AP29', appliance: 'range', desc: 'Range cooker 24" (60cm)', w: mmToIn(600), d: mmToIn(600), h: mmToIn(900), mountY: 0, notes: 'Not supplied by PL/NTH, shown for layout only. Sized to a 60cm freestanding range such as the Smeg Classic SUK61PX8 dual fuel (900 x 600 x 600mm, 75cm minimum to the hood). It stands in the 600mm gap between two base cabinets; check the cooker height against the worktop.' },
   // wall ovens: RIDERS that live inside an oven housing (T9 24", T14 30", T15 36"), the
   // way a sink lives in a base. mountY = the housing's oven seat (core/ovenseat.js).
   { code: 'AP14', appliance: 'oven', ovenW: 24, desc: 'Wall oven 24"', w: 24, d: 23.7, h: WALL_OVEN_24_H, mountY: OVEN_SEAT_Y },

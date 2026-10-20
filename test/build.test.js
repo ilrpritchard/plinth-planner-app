@@ -28,7 +28,7 @@ for(const cab of CATALOGUE.filter(c=>c.type==='APPLIANCES')){
   try { const g=buildAppliance(cab); let m=0; g.traverse(o=>o.isMesh&&m++); if(m<1) fail++; apps++; }
   catch(e){ fail++; console.error(`✗ appliance ${cab.code}: ${e.message}`); }
 }
-ok(`built all appliances (${apps})`, apps===28);   // ... + AP23 60cm hood + AP24 washing machine + AP25 Andano 450 sink + AP26-28 plaster hoods
+ok(`built all appliances (${apps})`, apps===29);   // ... + AP23 60cm hood + AP24 washing machine + AP25 Andano 450 sink + AP26-28 plaster hoods + AP29 60cm range
 // plaster chimney hoods (her ask 2026-09-25): one per range, 50mm wider overall, seated like every hood, painted with the walls
 {
   const mm50 = 50 / 25.4;

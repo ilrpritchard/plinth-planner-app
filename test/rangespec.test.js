@@ -9,11 +9,11 @@ import { getCab, CATALOGUE } from '../src/core/catalogue.js';
 import { drawFront } from '../src/ui/frontdraw.js';
 import { cabinetSVG } from '../src/ui/icon.js';
 
-const EXPECT = { AP1: { burners: 4, ovens: 1, griddle: false }, AP2: { burners: 6, ovens: 1, griddle: false }, AP3: { burners: 6, ovens: 2, griddle: true } };
+const EXPECT = { AP29: { burners: 4, ovens: 1, griddle: false }, AP1: { burners: 4, ovens: 1, griddle: false }, AP2: { burners: 6, ovens: 1, griddle: false }, AP3: { burners: 6, ovens: 2, griddle: true } };
 
-test('the catalogue carries a 30", a 36" and a 48" range', () => {
-  const widths = CATALOGUE.filter((c) => c.appliance === 'range').map((c) => c.w).sort((a, b) => a - b);
-  assert.deepEqual(widths, [30, 36, 48]);
+test('the catalogue carries a 60cm (24"), a 30", a 36" and a 48" range', () => {
+  const widths = CATALOGUE.filter((c) => c.appliance === 'range').map((c) => Math.round(c.w)).sort((a, b) => a - b);
+  assert.deepEqual(widths, [24, 30, 36, 48]);
 });
 
 test('burners, ovens, griddle and knobs per size', () => {

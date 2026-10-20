@@ -35,8 +35,8 @@ function fill(st, walls) {
   for (const wall of walls) { const pl = planWallInfill(st.state, wall); for (const id of (pl.remove || [])) st.removeItem(id); for (const p of pl) st.addItem(p.code, { x: p.x, z: p.z, rotDeg: p.rotDeg }); }
 }
 
-test('a range offers 30, 36 and 48', () => {
-  assert.deepEqual(rangeSizes('AP1').map((c) => c.w), [30, 36, 48]);
+test('a range offers 60cm, 30, 36 and 48', () => {
+  assert.deepEqual(rangeSizes('AP1').map((c) => Math.round(c.w)), [24, 30, 36, 48]);
   assert.deepEqual(rangeSizes('F2'), []);
 });
 
