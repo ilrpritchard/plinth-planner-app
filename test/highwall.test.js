@@ -99,3 +99,21 @@ test('bespoke-height wall cabinets: W7:h37.625 keeps the W7 code, labelled bespo
   assert.equal(getCab('W18:h40'), undefined, 'the full-height range is not re-sized');
   assert.equal(getCab('S11:h24').madeToHeight, true, 'stacker codes untouched');
 });
+
+test('a glazed single takes a bespoke blank return into the corner (W3:h37.625l29.375): a corner unit, same code, door where it stood; open shelves take a depth', async () => {
+  const c = getCab('W3:h37.625l29.375');
+  assert.equal(c.corner, true); assert.equal(c.cornerSide, 'left'); assert.equal(c.returnIn, 29.375); assert.equal(c.form, 'corner'); assert.equal(c.glazed, true);
+  assert.equal(c.baseCode, 'W3'); assert.match(c.desc, /29 3\/8" blank return left for this project/);
+  assert.equal(getCab('W7:l10'), undefined, 'a double does not take a return');
+  assert.equal(getCab('W11:h37.625w13.5d25.125').d, 25.125);
+  const { cornerReturnLength } = await import('../src/core/cornerreturn.js');
+  assert.equal(cornerReturnLength(c, { x: -19.88, z: -35.85, rotDeg: 0 }, { width: 118.9, depth: 86.2, openings: [], boxings: [] }), 29.375);
+  // the crown runs across the door AND the return's face where the deep shelf in front leaves it on show
+  const room = { width: 118.9, depth: 86.2, height: 95.3, cornice: 'decorative', openings: [], boxings: [] };
+  const items = [{ id: 1, code: 'T1:h93.625', x: -46.02, z: -3.2, rotDeg: 90 }, { id: 2, code: 'W3:h37.625l29.375', x: -19.88, z: -35.85, rotDeg: 0 },
+    { id: 3, code: 'W11:h37.625w13.5d25.125', x: -46.6375, z: -22.1, rotDeg: 90 }];
+  const segs = planCornice({ room, items }).segments;
+  const front = segs.find((g) => Math.abs(g.z + 28.85) < 0.1 && Math.abs(g.angle) < 0.01);
+  assert.ok(front && front.length > 24 && front.length < 24.6, `W3 crown: door + the 4¼" of return on show (${front && front.length})`);
+  assert.ok(!segs.some((g) => Math.abs(g.angle - Math.PI) < 0.01 && Math.abs(g.z + 28.85) < 0.5), 'no crown on the shelf side tucked against the return');
+});

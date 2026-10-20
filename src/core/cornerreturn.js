@@ -18,7 +18,7 @@ const WALL_GAP = 0.25;
  */
 export function cornerReturnLength(cab, item, room) {
   if (!cab.corner) return 0;
-  const ret = (cab.d || (cab.type === 'FLOOR' ? 24 : 14)) + WALL_GAP;
+  const ret = cab.returnIn != null ? cab.returnIn : (cab.d || (cab.type === 'FLOOR' ? 24 : 14)) + WALL_GAP;   // a bespoke return is its own length
   if (!room || !item) return ret;
   const dir = cab.cornerSide === 'right' ? 1 : -1;     // which side the return extends
   const rad = ((item.rotDeg || 0) * Math.PI) / 180;

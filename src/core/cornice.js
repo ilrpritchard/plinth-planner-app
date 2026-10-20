@@ -34,7 +34,9 @@ function insideAnother(px, pz, self, cabs, topY = 0) {
     const dx = px - o.it.x, dz = pz - o.it.z;
     const lx = dx * Math.cos(-th) - dz * Math.sin(-th);
     const lz = dx * Math.sin(-th) + dz * Math.cos(-th);
-    if (Math.abs(lx) <= o.w / 2 + 0.25 && Math.abs(lz) <= o.d / 2 + 0.25) return true;
+    // a bespoke corner return is part of the unit: its body runs on into the corner on that side
+    const rL = o.cab.returnIn && o.cab.cornerSide !== 'right' ? o.cab.returnIn : 0, rR = o.cab.returnIn && o.cab.cornerSide === 'right' ? o.cab.returnIn : 0;
+    if (lx >= -o.w / 2 - rL - 0.25 && lx <= o.w / 2 + rR + 0.25 && Math.abs(lz) <= o.d / 2 + 0.25) return true;
   }
   return false;
 }
@@ -145,14 +147,18 @@ export function planCornice(state) {
     const reach = tallReach(c);
     // front strip grows across any tall gap; the side return on a tall side
     // is suppressed (the crown butts the tall's flank instead)
-    const growL = reach[-1] != null ? reach[-1] : 0;
-    const growR = reach[1] != null ? reach[1] : 0;
+    // a BESPOKE corner return (W3:...l29.375) carries the crown along its face too, wherever the run in
+    // front of it leaves it on show (the inside-corner trim below cuts the hidden part); its door-side flank is inside the unit
+    const retL = c.cab.returnIn && c.cab.cornerSide !== 'right' ? c.cab.returnIn : 0;
+    const retR = c.cab.returnIn && c.cab.cornerSide === 'right' ? c.cab.returnIn : 0;
+    const growL = (reach[-1] != null ? reach[-1] : 0) + retL;
+    const growR = (reach[1] != null ? reach[1] : 0) + retR;
     // four faces: front, back, right(+widthAxis), left(-widthAxis)
     const faces = [
       { ox: s, oz: co, half: c.d / 2, len: c.w + growL + growR, slide: (growR - growL) / 2 },  // 0 front (+localZ)
       { ox: -s, oz: -co, half: c.d / 2, len: c.w },    // 1 back
-      { ox: co, oz: -s, half: c.w / 2, len: c.d, tall: reach[1] != null },     // 2 right (+localX)
-      { ox: -co, oz: s, half: c.w / 2, len: c.d, tall: reach[-1] != null },    // 3 left
+      { ox: co, oz: -s, half: c.w / 2 + retR, len: c.d, tall: reach[1] != null },     // 2 right (+localX)
+      { ox: -co, oz: s, half: c.w / 2 + retL, len: c.d, tall: reach[-1] != null },    // 3 left
     ];
     const exposed = [false, false, false, false];
     for (let i = 0; i < faces.length; i++) {
@@ -165,7 +171,12 @@ export function planCornice(state) {
         (f.ox < -0.5 && cx <= minX + WALL_TOL) || (f.ox > 0.5 && cx >= maxX - WALL_TOL) ||
         (f.oz < -0.5 && cz <= minZ + WALL_TOL) || (f.oz > 0.5 && cz >= maxZ - WALL_TOL);
       if (onWall) continue;
-      if (insideAnother(cx + f.ox * 1.0, cz + f.oz * 1.0, c.it, cabs, topY)) {
+      // a bespoke corner's long front can be hidden in the middle of its length (the run in front of
+      // its return) and still be on show at the door: it only counts as hidden when hidden ALL along
+      const hiddenAll = (fi) => { const ax = fi < 2 ? co : s, az = fi < 2 ? -s : co;
+        for (let t = -f.len / 2 + 0.6; t <= f.len / 2 - 0.6; t += 0.5) if (!insideAnother(cx + ax * t + f.ox * 1.0, cz + az * t + f.oz * 1.0, c.it, cabs, topY)) return false;
+        return true; };
+      if (c.cab.returnIn && i === 0 ? hiddenAll(i) : insideAnother(cx + f.ox * 1.0, cz + f.oz * 1.0, c.it, cabs, topY)) {
         // LEVEL TOPS (wall cabinets now top out with the talls at 86"): a TALL's
         // flank is only hidden as far forward as the 14"-deep upper butting
         // it. The crown returns along the rest — from the tall's proud face
@@ -208,8 +219,9 @@ export function planCornice(state) {
       // cabinet outer corner in world (width axis = (co,-s), depth axis = (s,co))
       const wx = co, wz = -s;       // +width
       const fx = s, fz = co;        // +depth/front
-      const x = c.it.x + wx * (sx * c.w / 2) + fx * (sz * c.d / 2);
-      const z = c.it.z + wz * (sx * c.w / 2) + fz * (sz * c.d / 2);
+      const hw = c.w / 2 + (sx > 0 ? retR : retL);                     // out to the end of a bespoke return
+      const x = c.it.x + wx * (sx * hw) + fx * (sz * c.d / 2);
+      const z = c.it.z + wz * (sx * hw) + fz * (sz * c.d / 2);
       // sx/sz are the local width/depth signs of this corner; the layer extrudes
       // the profile outward along them to wrap the corner.
       corners.push({ x, z, topY, angle: th, sx, sz });

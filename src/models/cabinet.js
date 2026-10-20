@@ -44,7 +44,7 @@ export function getMountY(cab) {
 }
 
 export function getFootprint(cab) {
-  const ret = cab.corner ? (cab.type === 'FLOOR' ? 20 : 10) : 0;
+  const ret = cab.corner ? (cab.returnIn ?? (cab.type === 'FLOOR' ? 20 : 10)) : 0;
   return { w: cab.w, d: cab.d, returnLeg: ret };
 }
 
@@ -468,13 +468,14 @@ export function buildCabinet(cab, finishHex, opts = {}) {
     // panel, the classic "corner cabinet looks wrong" artifact)
     const cd = d - DOOR_T - HAIR, cz = -(DOOR_T + HAIR) / 2;
     const rFloor = box(ret, PANEL, cd, oakMat()); rFloor.position.set(px, bodyY0 + PANEL / 2, cz); g.add(rFloor);
-    const rTop = box(ret, PANEL, cd, oakMat()); rTop.position.set(px, h - PANEL / 2, cz); g.add(rTop);
+    const rTop = box(ret, PANEL, cd, cab.returnIn != null ? mat : oakMat()); rTop.position.set(px, h - PANEL / 2, cz); g.add(rTop);   // a bespoke return's top is on show beside the run: painted
     const rBack = box(ret, bodyH, PANEL, oakMat()); rBack.position.set(px, bodyY0 + bodyH / 2, -d / 2 + PANEL / 2); g.add(rBack);
     const endX = right ? (w / 2 + ret - PANEL / 2) : (-w / 2 - ret + PANEL / 2);
     const rEnd = box(PANEL, bodyH, cd, oakMat()); rEnd.position.set(endX, bodyY0 + bodyH / 2, cz); g.add(rEnd);
     // flat blank front face — FULL body height (plinth top → carcass top), one
     // clean panel with no rail bands, per the blank-return spec
-    const face = box(Math.max(0.5, ret - HAIR), bodyH, DOOR_T, oakMat());
+    // a BESPOKE return (W3:...l29.375) shows part of its face beside the run in front of it: painted, like the cabinet
+    const face = box(Math.max(0.5, ret - HAIR), bodyH, DOOR_T, cab.returnIn != null ? mat : oakMat());
     face.position.set(px, bodyY0 + bodyH / 2, frontZ - DOOR_T / 2); g.add(face);
     flushRing(g, px, bodyY0 + bodyH / 2, Math.max(0.5, ret - HAIR), bodyH, frontZ);
     if (hasPlinth) {
@@ -683,7 +684,7 @@ function buildFront(g, cab, ctx) {
       return false;
     }
     case 'corner':                                    // hinge on the blank side; a full-height corner door gets the centre rail too
-      if (cab.pair) doublePair(false, cab.high ? 2 : 1); else singleDoor(false, cab.high ? 2 : 1, cab.cornerSide === 'right' ? 1 : -1);   // a double corner: the pair meets in the middle
+      if (cab.pair) doublePair(false, cab.high ? 2 : 1); else singleDoor(!!cab.glazed, cab.high ? 2 : 1, cab.cornerSide === 'right' ? 1 : -1);   // a double corner: the pair meets in the middle
       return true;
     case 'glazed': singleDoor(true); return true;
     case 'double': doublePair(false); return true;
