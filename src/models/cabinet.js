@@ -367,8 +367,10 @@ export function buildCabinet(cab, finishHex, opts = {}) {
     };
     rail(shellW, FB, 0, d / 2 - FB / 2);               // front — closes the slot
     rail(shellW, FB, 0, -d / 2 + FB / 2);              // back
-    rail(SIDE, d - 2 * FB, -shellW / 2 + SIDE / 2, 0); // left
-    rail(SIDE, d - 2 * FB, shellW / 2 - SIDE / 2, 0);  // right
+    // a bespoke corner base's corner side is open: a sink may run over it, so no side strip there
+    const openSide = cab.returnIn != null ? (cab.cornerSide === 'right' ? 1 : -1) : 0;
+    if (openSide !== -1) rail(SIDE, d - 2 * FB, -shellW / 2 + SIDE / 2, 0); // left
+    if (openSide !== 1) rail(SIDE, d - 2 * FB, shellW / 2 - SIDE / 2, 0);  // right
   }
 
   // ----- oak-veneer interior (always lined; visible when doors open) -----
@@ -490,7 +492,7 @@ export function buildCabinet(cab, finishHex, opts = {}) {
     // panel, the classic "corner cabinet looks wrong" artifact)
     const cd = d - DOOR_T - HAIR, cz = -(DOOR_T + HAIR) / 2;
     const rFloor = box(ret, PANEL, cd, insideMat || oakMat()); rFloor.position.set(px, bodyY0 + PANEL / 2, cz); g.add(rFloor);
-    const rTop = box(ret, PANEL, cd, cab.returnIn != null ? mat : insideMat || oakMat()); rTop.position.set(px, h - PANEL / 2, cz); g.add(rTop);   // a bespoke return's top is on show beside the run: painted
+    const rTop = box(ret, PANEL, cd, cab.returnIn != null ? mat : insideMat || oakMat()); rTop.position.set(px, h - PANEL / 2, cz); if (!opts.sinkOver) g.add(rTop);   // a bespoke return's top is painted; with a sink over the base it is left open, the bowl may run into the corner
     const rBack = box(ret, bodyH, PANEL, insideMat || oakMat()); rBack.position.set(px, bodyY0 + bodyH / 2, -d / 2 + PANEL / 2); g.add(rBack);
     const endX = right ? (w / 2 + ret - PANEL / 2) : (-w / 2 - ret + PANEL / 2);
     const rEnd = box(PANEL, bodyH, cd, insideMat || oakMat()); rEnd.position.set(endX, bodyY0 + bodyH / 2, cz); g.add(rEnd);

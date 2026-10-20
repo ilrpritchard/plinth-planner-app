@@ -506,7 +506,11 @@ const eighths = (h) => { const n = Math.round(h * 8), whole = Math.floor(n / 8),
 //    the machine set at 852mm, a 37mm painted rail fixed above it, the door panel 725mm (Bosch max), the
 //    plinth a separate piece the door clears. Same codes on every document; priced at the standard + 20%.
 export const OVEN_FIT_NICHE = mmToIn(602), DW_FIT = { top: mmToIn(852), door: mmToIn(725), gap: mmToIn(2) };
-const FIT_RX = /^(F32|F33):fit(?:w(\d+(?:\.\d+)?))?$/;   // F33:fitw17.75 — the dishwasher space narrowed (Bosch niche 450-458mm)
+const FIT_RX = /^(F32|F33):fit(?:w(\d+(?:\.\d+)?))?$/;
+//  'AP25:supra500' — a project's own sink, not a standard (her pick 2026-10-20 for Evie's corner sink base): the
+//    Blanco Supra 500-U undermount, 530 x 430mm overall, a 500 x 400 x 175mm bowl. Its open-sided corner base takes it.
+const OWN_SINKS = { 'AP25:supra500': { desc: 'Sink (Single) · Blanco Supra 500-U, bespoke for this project', w: mmToIn(530), d: mmToIn(430), h: mmToIn(175), bowl: { n: 1, w: mmToIn(500), d: mmToIn(400), depth: mmToIn(175), r: mmToIn(60) / 2.5 },
+  notes: 'Not supplied by PL/NTH. Blanco Supra 500-U undermount (530 x 430 overall, 500 x 400 x 175mm bowl, 60mm corner radius). Blanco asks for a 600mm cabinet; here the corner sink base is open on its corner side, so the sink runs about 65mm into the corner. Take the cut-out from Blanco\'s fitting drawing.' } };   // F33:fitw17.75 — the dishwasher space narrowed (Bosch niche 450-458mm)
 //  'F2:wash24.625' — a housing that HIDES a freestanding washer-dryer (her ask 2026-10-20, "the washing machine
 //    should be in an empty cabinet... not on show"; the Hotpoint F153354 she keeps, 595 x 850 x 540): one 22mm
 //    upright on the run side (the dishwasher borrows it), the room wall as the other side with a 22mm painted
@@ -527,6 +531,11 @@ export function getCab(code) {
         notes: 'Bespoke for this project: an empty housing for a freestanding washer-dryer (Hotpoint F153354, 595 x 850 x 540mm). One 22mm upright on the run side, which the dishwasher panel also borrows as its leg; the room wall is the other side, with a 22mm painted scribe stile fixed at the front. No floor and no back: the machine slides in on the floor, hoses and the waste behind it. A shaker door, hinged on whichever side the item says: on the wall side the 22mm scribe stile and a ply pad on the wall take the hinge plates; a vented plinth board in front. Washer-dryer heat: keep the plinth vent and an air gap at the top. Dry-fit: about 42mm behind the machine for the hoses, and the hinge plates beside its front.' };
       fitCache.set(code, hit);
     }
+    return hit;
+  }
+  if (typeof code === 'string' && OWN_SINKS[code]) {
+    let hit = fitCache.get(code);
+    if (!hit) { const base = CATALOGUE.find((c) => c.code === 'AP25'); hit = { ...base, ...OWN_SINKS[code], code, baseCode: 'AP25', minBase: null }; fitCache.set(code, hit); }
     return hit;
   }
   const mf = typeof code === 'string' && FIT_RX.exec(code);
