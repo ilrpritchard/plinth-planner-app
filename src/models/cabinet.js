@@ -501,7 +501,7 @@ export function buildCabinet(cab, finishHex, opts = {}) {
     face.position.set(px, bodyY0 + bodyH / 2, frontZ - DOOR_T / 2); g.add(face);
     flushRing(g, px, bodyY0 + bodyH / 2, Math.max(0.5, ret - HAIR), bodyH, frontZ);
     if (hasPlinth) {
-      const ap = box(ret, pH, d, oakMat()); ap.position.set(px, pH / 2, 0); g.add(ap);
+      const ap = box(ret, pH, d, cab.returnIn != null ? mat : oakMat()); ap.position.set(px, pH / 2, 0); g.add(ap);   // a bespoke return is on show: its plinth is painted
     }
   }
 
