@@ -25,7 +25,7 @@ export function buildQuoteHTML(state, heroDataURL = null) {
   const appliances = lines.filter((l) => l.notSupplied);
 
   const row = (l) => `<tr>
-    <td class="q-code">${esc(l.code)}</td>
+    <td class="q-code">${esc(l.label || l.code)}</td>
     <td>${esc(l.desc)}</td>
     <td class="q-dims">${esc(l.dims)}</td>
     <td class="q-num">${l.qty}</td>

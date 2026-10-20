@@ -41,7 +41,7 @@ function liveLines(u) {
     if (!cab || cab.notSupplied) continue;
     const qty = Number(r.qty) || 0;
     if (!qty) continue;
-    const cur = byCode.get(cab.code) || { code: cab.code, desc: cab.desc, qty: 0, eachCents: toCents(sellUSD(cab)) };
+    const cur = byCode.get(cab.code) || { code: cab.code, label: cab.baseCode || cab.code, desc: cab.desc, qty: 0, eachCents: toCents(sellUSD(cab)) };
     cur.qty += qty;
     byCode.set(cab.code, cur);
   }
@@ -76,7 +76,7 @@ export function diffLines(oldLines, newLines) {
       : oldQty !== newQty ? 'qty'
       : oldEachCents !== newEachCents ? 'reprice' : 'same';
     rows.push({
-      code: (o || n).code, desc: (n || o).desc || '',
+      code: (o || n).code, label: (n || o).label || (o || n).code, desc: (n || o).desc || '',
       oldQty, newQty, oldEachCents, newEachCents, deltaCents, kind,
     });
   }

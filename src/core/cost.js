@@ -117,7 +117,7 @@ export function summarize(items, fillers = [], cornice = null, endPanels = 0, ac
     if (supplied) { totalCabs += qty; subtotal += line; }
     else applianceCount += qty;
     lines.push({
-      code: cab.code, type: cab.type, desc: cab.desc, qty, w: cab.w, stacker: !!cab.stacker,
+      code: cab.code, label: cab.baseCode || cab.code, type: cab.type, desc: cab.desc, qty, w: cab.w, stacker: !!cab.stacker,   // label: a bespoke size shows its own code (W7, not W7:h37.625)
       dims: cab.h ? `${fmtIn(cab.w)} × ${fmtIn(cab.d)} × ${fmtIn(cab.h)}` : '—',
       each, line, notSupplied: !supplied, priceTBC: !!cab.priceTBC,
     });

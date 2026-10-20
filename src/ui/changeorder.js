@@ -79,7 +79,7 @@ function unitTypeRows(ut) {
   const head = `<tr class="ut-head"><td colspan="6">${esc(ut.name)} - ${revStr} - ${unitsStr}${KIND_TAG[ut.kind] || ''}</td></tr>`;
 
   const lines = ut.lines.map((l) => `<tr>
-      <td>${esc(l.code)}${KIND_TAG[l.kind] || ''}</td><td>${esc(l.desc)}</td>
+      <td>${esc(l.label || l.code)}${KIND_TAG[l.kind] || ''}</td><td>${esc(l.desc)}</td>
       <td class="num">${l.oldQty}</td><td class="num">${l.newQty}</td>
       <td class="num">${fmtCents(l.newEachCents || l.oldEachCents)}</td>
       <td class="num ${dcls(l.deltaCents)}"><strong>${fmtDelta(l.deltaCents)}</strong> /unit</td></tr>`).join('');

@@ -999,13 +999,13 @@ export class UI {
       // code tucked after it; TRADE keeps the code-first list it works from
       const home = this.store.state.mode !== 'trade';
       const label = (l) => {
-        if (!home) return `${l.code} <span class="cl-desc">${l.desc}</span>`;
+        if (!home) return `${l.label || l.code} <span class="cl-desc">${l.desc}</span>`;
         const fam = l.stacker ? 'Stacker' : FAMILY_LABEL[l.type];
         const isCab = ['FLOOR', 'WALL', 'COUNTER', 'TALL'].includes(l.type);
         const name = isCab
           ? `${fam} cabinet <span class="cl-desc">${l.desc}${l.w ? ' ' + fmtIn(l.w) : ''}</span>`
           : `<span class="cl-desc">${l.desc}</span>`;
-        return `${name} <span class="cl-code">${l.code}</span>`;
+        return `${name} <span class="cl-code">${l.label || l.code}</span>`;
       };
       body.innerHTML = lines.map((l) => `<div class="cost-line" data-code="${l.code}" data-qty="${l.qty}">
         <span><strong>${l.qty}×</strong> ${label(l)}</span>
@@ -1365,7 +1365,7 @@ export class UI {
     const it = this.store.getItem(id);
     const cab = getCab(it.code);
     this._pickedCode = it.code; this._markPickedLine();
-    document.getElementById('selLabel').textContent = `${cab.code} · ${cab.desc}`;
+    document.getElementById('selLabel').textContent = `${cab.baseCode || cab.code} · ${cab.desc}`;
     // swap-in-place options: same width/type/depth — drawers ↔ door ↔ open shelf
     const swap = document.getElementById('selSwap');
     if (swap) {
