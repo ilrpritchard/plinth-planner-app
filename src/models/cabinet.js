@@ -699,6 +699,28 @@ function buildFront(g, cab, ctx) {
       // stainless plate with a grease filter and two lamps, all you see of the extractor
       const steel = stainlessMat(0xbcc1c5, 0.7, 0.4);
       const dark = new THREE.MeshStandardMaterial({ color: 0x3a3d40, metalness: 0.3, roughness: 0.7 });
+      if (cab.w <= 24.5) {
+        // the 24" cover holds an ELICA LANE 60 (LANE-60-SS / PRF0157333, her pick 2026-10-20), drawn to
+        // Elica's sheet: a 493 x 260 x 303mm body (322 to the top of its 150mm collar) set into the cover's
+        // bottom near the front, a 514 x 283mm stainless underside flush under it. Underneath: a flat steel
+        // panel inside a dark perimeter-extraction slot, the LED strip along the front, push buttons front right
+        const mm = (v) => v / 25.4, fw = mm(514), fd = mm(283), bw = mm(493), bd = mm(260), bh = mm(303);
+        const fz = frontZ - PANEL - 0.6 - fd / 2;                       // flange just behind the face frame
+        const flange = box(fw, 0.12, fd, steel); flange.position.set(0, -0.06, fz); g.add(flange);
+        const body = box(bw, bh, bd, stainlessMat(0x9ea3a8, 0.6, 0.5)); body.position.set(0, bh / 2, fz); g.add(body);
+        const collar = new THREE.Mesh(new THREE.CylinderGeometry(mm(75), mm(75), mm(19), 32), steel);
+        collar.position.set(0, bh + mm(9.5), fz - bd / 2 + mm(110)); g.add(collar);
+        const RIM = mm(22), SLOT = mm(14), LED = mm(16);
+        const slotW = fw - 2 * RIM, slotD = fd - 2 * RIM;
+        const slot = box(slotW, 0.04, slotD, dark); slot.position.set(0, -0.14, fz); g.add(slot);
+        const panel = box(slotW - 2 * SLOT, 0.06, slotD - 2 * SLOT - LED, steel);
+        panel.position.set(0, -0.17, fz - LED / 2); g.add(panel);
+        const led = box(slotW - 2 * SLOT, 0.05, LED * 0.6, new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xfff0c8, emissiveIntensity: 0.8 }));
+        led.position.set(0, -0.16, fz + slotD / 2 - SLOT - LED / 2); g.add(led);
+        const btnMat = new THREE.MeshStandardMaterial({ color: 0x2c2f33, metalness: 0.4, roughness: 0.5 });
+        for (let k = 0; k < 4; k++) { const b = box(mm(9), 0.05, mm(9), btnMat); b.position.set(fw / 2 - RIM - mm(14) - k * mm(16), -0.14, fz + fd / 2 - RIM / 2); g.add(b); }
+        return false;
+      }
       const lw = Math.min(faceW - 1, 21.3), ld = ctx.inD - 3;
       const plate = box(lw, 0.8, ld, steel); plate.position.set(0, -0.4, -0.5); g.add(plate);
       const filt = box(lw * 0.7, 0.12, ld * 0.55, dark); filt.position.set(0, -0.85, -0.5); g.add(filt);
