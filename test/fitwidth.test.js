@@ -63,6 +63,9 @@ test('a single-door upper takes a bespoke width with its height (Evie\'s equal c
   assert.ok(c && c.w === 19.125 && c.h === 37.625 && c.baseCode === 'W1', 'to the eighth, with its height');
   assert.equal(c.usd, Math.round(getCab('W1').usd * 1.2), 'priced as the standard single + 20%');
   assert.equal(getCab('W1:w19'), undefined, 'no width without the bespoke path');
-  assert.equal(getCab('W5:h37.625w19'), undefined, 'a pair of doors is never cut');
+  const d = getCab('W5:h37.625w38.25');
+  assert.ok(d && d.w === 38.25 && d.form === 'double', 'a double upper takes a width too');
+  assert.equal(d.usd, Math.round(getCab('W6').usd * 1.2), 'priced as the next double up (42") + 20%');
+  assert.equal(getCab('W5:h37.625w19').w, 24, 'a double is never narrower than 24"');
   assert.equal(canFitWidth(getCab('W1')), false, 'the resize tool still offers widths to open shelves only');
 });
