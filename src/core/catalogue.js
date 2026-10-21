@@ -564,22 +564,25 @@ export function getCab(code) {
       if (!base || (base.type !== 'WALL' && base.type !== 'TALL' && !(base.type === 'FLOOR' && mh[5])) || base.stacker || base.high || base.corner) return undefined;
       if (mh[4] && !base.hoodCover && !canFitWidth(base)) return undefined;   // a hood cover or an open shelf is made to a depth
       if (mh[5] && ((base.type !== 'WALL' && base.type !== 'FLOOR') || base.pair || !['door', 'glazed'].includes(base.form))) return undefined;   // a single-door upper or base takes a return (her catch 2026-10-20: the sink base runs into the corner)
-      if (mh[3] && !canFitWidth(base) && base.form !== 'housing') return undefined;   // an open shelf is cut to a width, a fridge housing made to its niche
+      // a single-door upper made to a width, so a run of uppers can be equal (her ask 2026-10-21, Evie's: close the open
+      // shelves right of the hood with equal cupboards). Only on this bespoke path: the resize tool still offers widths to open shelves only.
+      const doorW = base.type === 'WALL' && ['door', 'glazed'].includes(base.form) && !base.pair;
+      if (mh[3] && !canFitWidth(base) && base.form !== 'housing' && !doorW) return undefined;   // an open shelf is cut to a width, a fridge housing made to its niche
       const lim = base.type === 'TALL' ? TALL_HEIGHT_LIMITS : WALL_HEIGHT_LIMITS;
       const h = mh[2] ? Math.round(clampDim(mh[2], lim, base.h) * 8) / 8 : base.h;
-      const w = mh[3] ? (base.form === 'housing' ? Math.round(clampDim(mh[3], [18, 40], base.w) * 8) / 8 : Math.round(clampDim(mh[3], FIT_WIDTH_LIMITS, base.w) * 2) / 2) : base.w;
+      const w = mh[3] ? (base.form === 'housing' || doorW ? Math.round(clampDim(mh[3], doorW ? [12, 24] : [18, 40], base.w) * 8) / 8 : Math.round(clampDim(mh[3], FIT_WIDTH_LIMITS, base.w) * 2) / 2) : base.w;
       const d = mh[4] ? Math.round(clampDim(mh[4], base.hoodCover ? HOOD_DEPTH_LIMITS : SHELF_DEPTH_LIMITS, base.d) * 8) / 8 : base.d;
       const ret = mh[5] ? Math.round(clampDim(mh[6], [2, 48], base.type === 'FLOOR' ? 20 : 10) * 8) / 8 : 0;
       const size = [h !== base.h ? `${eighths(h)} high` : '', w !== base.w ? `${eighths(w)} wide` : '', d !== base.d ? `${eighths(d)} deep` : '',
         ret ? `${eighths(ret)} blank return ${mh[5] === 'l' ? 'left' : 'right'}` : ''].filter(Boolean).join(', ');
-      const std = (w !== base.w && base.form !== 'housing' ? fitPriceFor(base, w) : base.usd) + (ret ? (base.type === 'FLOOR' ? FLOOR_CORNER_UPLIFT : WALL_CORNER_UPLIFT) : 0);
+      const std = (w !== base.w && base.form !== 'housing' && !doorW ? fitPriceFor(base, w) : base.usd) + (ret ? (base.type === 'FLOOR' ? FLOOR_CORNER_UPLIFT : WALL_CORNER_UPLIFT) : 0);
       // a housing made to the 560mm niche of an integrated 60/40 fridge-freezer (core/fridgeseat.js): three doors and a fixed shelf
       const fridge = base.form === 'housing' && h >= 80 && fitsFridgeNiche(w);
       hit = { ...base, code, h, w, d, usd: Math.round(std * (1 + BESPOKE_WALL_UPCHARGE)), baseCode: base.code, bespokeHeight: h !== base.h, bespokeDepth: d !== base.d, cutToFit: w !== base.w || undefined,
         ...(ret ? { corner: true, cornerSide: mh[5] === 'l' ? 'left' : 'right', returnIn: ret, form: 'corner' } : {}),
         ...(fridge ? { fridgeFront: true } : {}),
         desc: `${base.desc} · bespoke ${size}${fridge ? ', built for a 560mm integrated 60/40 fridge-freezer (1775mm niche, sliding hinge)' : ''} for this project`,
-        notes: `The ${base.code} made ${size} for this project only (bespoke, not a stock size)${base.type === 'WALL' ? `, hung at the same ${base.mountY ?? 56}"` : ''}. Priced at the standard ${w !== base.w && base.form !== 'housing' ? 'size' : base.code} plus 20%.${fridge ? ' Built to the niche of an integrated 60/40 fridge-freezer such as the Bosch KIN86NSE0G: 560mm wide inside, a fixed shelf 1775mm above the carcass floor, a freezer door and a fridge door split with the appliance doors (sliding hinge, 3mm apart), a cupboard above; 200cm² of air in through a vented plinth and out at the top.' : ''} ${base.notes || ''}`.trim() };
+        notes: `The ${base.code} made ${size} for this project only (bespoke, not a stock size)${base.type === 'WALL' ? `, hung at the same ${base.mountY ?? 56}"` : ''}. Priced at the standard ${w !== base.w && base.form !== 'housing' && !doorW ? 'size' : base.code} plus 20%.${fridge ? ' Built to the niche of an integrated 60/40 fridge-freezer such as the Bosch KIN86NSE0G: 560mm wide inside, a fixed shelf 1775mm above the carcass floor, a freezer door and a fridge door split with the appliance doors (sliding hinge, 3mm apart), a cupboard above; 200cm² of air in through a vented plinth and out at the top.' : ''} ${base.notes || ''}`.trim() };
       sizedWallCache.set(code, hit);
     }
     return hit;

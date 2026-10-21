@@ -57,3 +57,12 @@ test('her share link: a 20" shelf dropped between an upper and a corner bulkhead
   assert.equal(planShrinkToSlot(state, getCab('W22'), 'back', -10, b, 31), null, 'inside the bulkhead-free run where it fits: nothing to shrink');
   assert.equal(planShrinkToSlot(state, getCab('W2'), 'back', 75, b, 31), null, 'a door cabinet is never cut');
 });
+
+test('a single-door upper takes a bespoke width with its height (Evie\'s equal cupboards, 2026-10-21); the plain resize still never cuts a door', () => {
+  const c = getCab('W1:h37.625w19.125');
+  assert.ok(c && c.w === 19.125 && c.h === 37.625 && c.baseCode === 'W1', 'to the eighth, with its height');
+  assert.equal(c.usd, Math.round(getCab('W1').usd * 1.2), 'priced as the standard single + 20%');
+  assert.equal(getCab('W1:w19'), undefined, 'no width without the bespoke path');
+  assert.equal(getCab('W5:h37.625w19'), undefined, 'a pair of doors is never cut');
+  assert.equal(canFitWidth(getCab('W1')), false, 'the resize tool still offers widths to open shelves only');
+});
