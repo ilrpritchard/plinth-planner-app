@@ -41,7 +41,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-257 · The phone notice is friendlier: have a look round, open it on a laptop to lay out and price';
+const BUILD = 'W2W-258 · Phone notice: Better on a laptop';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -543,8 +543,8 @@ const mobileHold = (() => {
   // nothing else shows underneath the notice (welcome card / wizard wait)
   document.body.classList.add('notice-up');
   return uiAlert(
-    'Have a look round. Laying out and pricing a kitchen needs a bit more room, so when you want to do that, open this on a laptop.',
-    { title: 'Hello, phone.', okLabel: 'Have a look' }
+    'Have a look round. Laying out and pricing a kitchen needs more room than a phone, so when you want to do that, open this on a laptop.',
+    { title: 'Better on a laptop.', okLabel: 'Have a look' }
   ).then(() => document.body.classList.remove('notice-up'));
 })();
 
