@@ -41,7 +41,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-256 · A kitchen type is never replaced by a different drawing: recovery adds it as its own type, and every type keeps its earlier layouts';
+const BUILD = 'W2W-257 · The phone notice is friendlier: have a look round, open it on a laptop to lay out and price';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -543,8 +543,8 @@ const mobileHold = (() => {
   // nothing else shows underneath the notice (welcome card / wizard wait)
   document.body.classList.add('notice-up');
   return uiAlert(
-    'The PL/NNER is built for a laptop or desktop screen. You are welcome to look around here, but for laying out and pricing a kitchen, come back on a bigger screen.',
-    { title: 'Best on a bigger screen', okLabel: 'Look around anyway' }
+    'Have a look round. Laying out and pricing a kitchen needs a bit more room, so when you want to do that, open this on a laptop.',
+    { title: 'Hello, phone.', okLabel: 'Have a look' }
   ).then(() => document.body.classList.remove('notice-up'));
 })();
 
