@@ -87,3 +87,31 @@ test('empty plan still renders walls and wall dims without a key', () => {
   assert.doesNotMatch(svg, />KEY</);
   assert.match(svg, />12' 0"</);
 });
+
+// 2026-10-22: the 3 bed (?s=kphtwup) ends its back run with an upper scribe (4¾") over a base scribe (1¾"):
+// the two FILL labels were written in one spot. The 2 bed (?s=wq4g4g5) has a stacker scribe exactly over its
+// tall's, which wrote the same label twice.
+function fromItems(room, list) {
+  const s = new Store();
+  s.setRoom(room);
+  const st = s.serialize();
+  st.items = list.map((it, i) => ({ id: i + 1, finish: null, ...it }));
+  return st;
+}
+function fillLabelBoxes(svg) {
+  return [...svg.matchAll(/<text x="([-\d.]+)" y="([-\d.]+)"[^>]*?(transform="rotate\(-90[^"]*")?[^>]*>(FILL [^<]+)<\/text>/g)].map((m) => {
+    const x = +m[1], z = +m[2], len = m[4].length * 1.4, th = 2.4;
+    return m[3] ? { x0: x - th / 2, x1: x + th / 2, z0: z - len / 2, z1: z + len / 2, t: m[4] }
+                : { x0: x - len / 2, x1: x + len / 2, z0: z - th / 2, z1: z + th / 2, t: m[4] };
+  });
+}
+
+test('FILL labels never land on one another, and a stacker scribe over its tall is labelled once', () => {
+  const three = buildFloorplanSVG(fromItems({ width: 216, depth: 120, height: 110 }, [{"code": "F19", "x": 16.25, "z": -47.75, "rotDeg": 0}, {"code": "AP3", "x": 54.25, "z": -46.75, "rotDeg": 0}, {"code": "T4", "x": -94.57, "z": 29.25, "rotDeg": 90}, {"code": "F10", "x": -39.75, "z": -47.75, "rotDeg": 0}, {"code": "AP19", "x": -39.75, "z": -47.75, "rotDeg": 0}, {"code": "F7", "x": -9.75, "z": -47.75, "rotDeg": 0}, {"code": "T4", "x": -94.57, "z": -0.75, "rotDeg": 90, "hinge": "R"}, {"code": "F15R", "x": -95.75, "z": -25.75, "rotDeg": 90}, {"code": "F19", "x": 92.25, "z": -47.75, "rotDeg": 0}, {"code": "F22", "x": -70.75, "z": -47.75, "rotDeg": 0}, {"code": "AP28", "x": 54.25, "z": -49.75, "rotDeg": 0}, {"code": "S11", "x": -94.57, "z": -0.75, "rotDeg": 90, "hostId": 7}, {"code": "S11", "x": -94.57, "z": 29.25, "rotDeg": 90, "hostId": 3}, {"code": "W23:w30", "x": -100.75, "z": -30.75, "rotDeg": 90}, {"code": "W15", "x": 91.24, "z": -52.75, "rotDeg": 0, "hinge": "R"}, {"code": "W15", "x": 17.26, "z": -52.75, "rotDeg": 0}, {"code": "W19", "x": -15.74, "z": -52.75, "rotDeg": 0}, {"code": "W19", "x": -57.74, "z": -52.75, "rotDeg": 0}, {"code": "W22:w29.5", "x": -93.37, "z": -52.75, "rotDeg": 0}]));
+  const boxes = fillLabelBoxes(three);
+  assert.deepEqual(boxes.map((b) => b.t).sort(), ['FILL 1¾"', 'FILL 4¾"']);
+  const [p, q] = boxes;
+  assert.ok(!(p.x0 < q.x1 && q.x0 < p.x1 && p.z0 < q.z1 && q.z0 < p.z1), 'the two labels overlap');
+  const two = buildFloorplanSVG(fromItems({ width: 192, depth: 120, height: 110 }, [{"code": "F7", "x": -52, "z": -47.75, "rotDeg": 0}, {"code": "F2", "x": -28, "z": -47.75, "rotDeg": 0}, {"code": "F21", "x": -6, "z": -48, "rotDeg": 0}, {"code": "F19", "x": 18, "z": -47.75, "rotDeg": 0}, {"code": "AP2", "x": 50, "z": -46.75, "rotDeg": 0}, {"code": "AP6", "x": -28, "z": -47.75, "rotDeg": 0}, {"code": "F19", "x": 82, "z": -48, "rotDeg": 0}, {"code": "T4", "x": -79, "z": -46.57, "rotDeg": 0}, {"code": "AP27", "x": 50, "z": -49.75, "rotDeg": 0}, {"code": "S11", "x": -79, "z": -46.57, "rotDeg": 0, "hostId": 8}, {"code": "W18", "x": -46, "z": -52.75, "rotDeg": 0}, {"code": "W18", "x": -10, "z": -52.75, "rotDeg": 0}, {"code": "W22:w23", "x": 19.51, "z": -52.75, "rotDeg": 0}, {"code": "W22:w23", "x": 80.49, "z": -52.75, "rotDeg": 0, "fixedWidth": true}]));
+  assert.equal(fillLabelBoxes(two).filter((b) => b.t === 'FILL 2"').length, 1);
+});

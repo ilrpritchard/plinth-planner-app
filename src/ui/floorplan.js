@@ -73,7 +73,12 @@ export function buildFloorplanSVG(state, underlay = null, opts = {}) {
   }
 
   // ---- scribe fillers: hatched panels closing run-to-wall gaps ----
-  for (const f of computeFillers(state)) {
+  // Labels go on the biggest panels first, and a label that would land on one already written slides
+  // along its own panel (an upper's scribe sits over the base's at the same wall end, 3 bed, 2026-10-22);
+  // a stacker's scribe lies exactly over its tall's, so the two share one label.
+  const fillers = computeFillers(state).sort((a, b) => b.w * b.d - a.w * a.d);
+  const fillLabels = [], fillSeen = new Set();
+  for (const f of fillers) {
     const horiz = ((f.rotDeg || 0) % 180) === 0;
     const fw = horiz ? f.w : f.d, fd = horiz ? f.d : f.w;
     const fx0 = f.x - fw / 2, fz0 = f.z - fd / 2;
@@ -83,9 +88,13 @@ export function buildFloorplanSVG(state, underlay = null, opts = {}) {
       out.push(line(fx0, fz0 + fd * t, fx0 + fw * t, fz0, W_18, '#9a9a9a'));
       out.push(line(fx0 + fw * t, fz0 + fd, fx0 + fw, fz0 + fd * t, W_18, '#9a9a9a'));
     }
-    if (fw >= 4 || fd >= 4) {
+    const key = [fx0, fz0, fw, fd].map(n).join(',');
+    if ((fw >= 4 || fd >= 4) && !fillSeen.has(key)) {
+      fillSeen.add(key);
       // the label runs ALONG the panel (a filler is a sliver: its long side is its depth)
-      out.push(`<text x="${n(f.x)}" y="${n(f.z)}" font-size="2.4" fill="#666" text-anchor="middle" dominant-baseline="central"${HALO}${fw >= fd ? '' : ` transform="rotate(-90 ${n(f.x)} ${n(f.z)})"`}>FILL ${fmtIn(f.w)}</text>`);
+      const text = `FILL ${fmtIn(f.w)}`;
+      const at = fillLabelAt(fx0, fz0, fw, fd, text, fillLabels);
+      out.push(`<text x="${n(at.x)}" y="${n(at.z)}" font-size="2.4" fill="#666" text-anchor="middle" dominant-baseline="central"${HALO}${fw >= fd ? '' : ` transform="rotate(-90 ${n(at.x)} ${n(at.z)})"`}>${esc(text)}</text>`);
     }
   }
   out.push(...labels);
@@ -565,6 +574,31 @@ export const PLAN_STYLE = { INK, DIM, UPPER, SWING, W_WALL_OUT, W_WALL_IN, W_CAB
 export { rect as svgRect, line as svgLine, dimH as svgDimH, dimV as svgDimV, esc as svgEsc, n as svgN };
 
 // ---- primitives ---------------------------------------------------------
+/** Where a FILL label sits: the panel's middle, or, if a label already written is in the way, the
+ *  nearest spot along the panel's long side that clears it (the label's middle stays on the panel).
+ *  Records the label's box in `placed`. */
+const FILL_CH = 1.4, FILL_TH = 3.2, FILL_PAD = 0.6;   // inches per character at 2.4", label thickness with halo, gap
+function fillLabelAt(x0, z0, w, d, text, placed) {
+  const along = w >= d ? 'x' : 'z';
+  const len = text.length * FILL_CH;
+  const lo = along === 'x' ? x0 : z0, hi = along === 'x' ? x0 + w : z0 + d;
+  const cross = along === 'x' ? z0 + d / 2 : x0 + w / 2;
+  const boxAt = (c) => along === 'x'
+    ? { x0: c - len / 2, x1: c + len / 2, z0: cross - FILL_TH / 2, z1: cross + FILL_TH / 2 }
+    : { x0: cross - FILL_TH / 2, x1: cross + FILL_TH / 2, z0: c - len / 2, z1: c + len / 2 };
+  const hits = (b) => placed.some((p) => b.x0 < p.x1 && p.x0 < b.x1 && b.z0 < p.z1 && p.z0 < b.z1);
+  const mid = (lo + hi) / 2;
+  const tries = [mid];
+  for (const p of placed) {
+    const p0 = along === 'x' ? p.x0 : p.z0, p1 = along === 'x' ? p.x1 : p.z1;
+    tries.push(p1 + len / 2 + FILL_PAD, p0 - len / 2 - FILL_PAD);
+  }
+  const c = tries.filter((t) => t >= lo && t <= hi && !hits(boxAt(t)))
+    .sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid))[0] ?? mid;
+  placed.push(boxAt(c));
+  return along === 'x' ? { x: c, z: cross } : { x: cross, z: c };
+}
+
 function rect(x, y, w, h, sw, stroke = INK) { return `<rect x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}" fill="none" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/>`; }
 function line(x1, y1, x2, y2, sw, stroke = INK) { return `<line x1="${n(x1)}" y1="${n(y1)}" x2="${n(x2)}" y2="${n(y2)}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/>`; }
 function arc(x1, y1, x2, y2, r2, large, sweep, sw, stroke = INK) { return `<path d="M ${n(x1)} ${n(y1)} A ${n(r2)} ${n(r2)} 0 ${large} ${sweep} ${n(x2)} ${n(y2)}" fill="none" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/>`; }
