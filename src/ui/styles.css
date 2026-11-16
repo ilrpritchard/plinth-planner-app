@@ -1511,24 +1511,51 @@ body.notice-up #emptyState { visibility: hidden; }
 .trade-welcome { max-width: 760px; margin: 24px auto 0; padding: 36px 34px 30px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
 .trade-welcome h2 { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 34px; line-height: 1.1; color: var(--cream-hi); margin: 0 0 12px; letter-spacing: 0; }
 .trade-welcome > p { font-size: 14px; line-height: 1.55; color: var(--cream); margin: 0 0 24px; max-width: 600px; }
-.tw-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.tw-opt {
-  display: flex; flex-direction: column; gap: 8px; align-items: flex-start; text-align: left;
-  font-family: inherit; text-decoration: none; cursor: pointer;
-  padding: 18px 16px 20px; min-height: 150px;
-  background: var(--paper); border: 1px solid var(--line-strong); border-radius: 10px; color: var(--cream);
-  transition: border-color 0.15s, background 0.15s;
-}
-.tw-opt:hover, .tw-opt:focus-visible { border-color: var(--cream); background: #fff; outline: none; }
-.tw-opt strong { font-size: 14px; font-weight: 600; color: var(--cream-hi); letter-spacing: 0.01em; }
-.tw-opt span { font-size: 12px; line-height: 1.5; color: var(--dim); }
-#twDemo { background: var(--cream); border-color: var(--cream); }
-#twDemo strong, #twDemo span { color: var(--paper); }
-#twDemo span { opacity: 0.85; }
-#twDemo:hover, #twDemo:focus-visible { background: var(--cream-hi); border-color: var(--cream-hi); }
 .tw-foot { margin-top: 18px; font-size: 12px; color: var(--dim); }
 .tw-foot a { color: var(--cream); }
-@media (max-width: 760px) { .tw-opts { grid-template-columns: 1fr; } .tw-opt { min-height: 0; } .trade-welcome { padding: 26px 20px; } .trade-welcome h2 { font-size: 28px; } }
+/* ---- Trade first run: the estimate from the unit mix (W2W-260). The mix on the
+   left, the olive estimate sheet on the right, three quiet next steps under both. ---- */
+.trade-welcome.tw-est { max-width: 1040px; border-radius: 4px; }
+.te-cols { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 44px; align-items: start; }
+.te-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cream); margin: 0 0 12px; }
+.te-mix { width: 100%; border-collapse: collapse; }
+.te-mix th { font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); text-align: left; padding: 0 0 8px; vertical-align: bottom; }
+.te-mix .te-n { width: 104px; padding-left: 12px; }
+.te-mix td { border-top: 1px solid var(--line-strong); padding: 10px 0; }
+.te-mix td.te-t { font-family: var(--serif); font-style: italic; font-size: 20px; line-height: 1.2; color: var(--cream-hi); }
+.te-mix input, .te-fields input {
+  width: 100%; height: 40px; padding: 0 10px; font: inherit; font-size: 15px; font-variant-numeric: tabular-nums;
+  color: var(--cream-hi); background: var(--brown); border: 1px solid var(--line-strong); border-radius: 3px;
+}
+.te-hint { font-size: 12px; line-height: 1.5; color: var(--dim); margin: 14px 0 0; }
+.te-send { margin-top: 26px; }
+.te-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.te-send button.cta { min-height: 42px; padding: 0 20px; }
+.te-msg { font-size: 12px; line-height: 1.5; color: var(--cream); margin: 10px 0 0; min-height: 18px; }
+.te-sheet { background: var(--cream); color: var(--paper); border-radius: 3px; padding: 24px 26px 22px; min-width: 0; }
+.te-head { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.72; padding-bottom: 12px; border-bottom: 1px solid rgba(247,245,235,0.22); }
+.te-scroll { overflow-x: auto; }
+.te-sheet table { width: 100%; border-collapse: collapse; margin-top: 4px; color: inherit; }
+.te-sheet th { font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(247,245,235,0.68); text-align: left; padding: 12px 12px 8px 0; white-space: nowrap; }
+.te-sheet td { font-size: 14px; color: var(--paper); padding: 10px 12px 10px 0; border-top: 1px solid rgba(247,245,235,0.2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.te-sheet .te-r { text-align: right; padding-right: 0; }
+.te-sheet td.te-u { font-family: var(--serif); font-style: italic; font-size: 18px; }
+.te-sheet td.te-empty { white-space: normal; color: rgba(247,245,235,0.72); }
+.te-tots { border-top: 1px solid rgba(247,245,235,0.4); padding-top: 6px; }
+.te-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13.5px; padding: 6px 0; font-variant-numeric: tabular-nums; }
+.te-row span { color: rgba(247,245,235,0.72); }
+.te-row b { text-align: right; }
+.te-big { padding-top: 16px; }
+.te-lab { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(247,245,235,0.72); }
+.te-fig { font-family: var(--serif); font-style: italic; font-size: 34px; line-height: 1.2; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.te-note { font-size: 11.5px; line-height: 1.55; color: rgba(247,245,235,0.72); margin: 14px 0 0; }
+.te-next { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 26px; margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line); }
+.te-next .te-eyebrow { margin: 0; color: var(--dim); }
+.te-next .tquiet { font-size: 13px; color: var(--cream); }
+@media (max-width: 900px) { .te-cols { grid-template-columns: minmax(0, 1fr); gap: 28px; } .te-fig { font-size: 28px; } .te-sheet { padding: 20px 16px 18px; } .te-mix .te-n { width: 88px; padding-left: 10px; } }
+@media (max-width: 480px) { .te-fields { grid-template-columns: 1fr; } .te-sheet th, .te-sheet td { white-space: normal; padding-right: 8px; font-size: 13px; } .te-sheet th { font-size: 9.5px; letter-spacing: 0.1em; } .te-sheet td.te-u { font-size: 16px; white-space: nowrap; } }
+.te-row b { white-space: nowrap; }
+@media (max-width: 760px) { .trade-welcome { padding: 26px 20px; } .trade-welcome h2 { font-size: 28px; } }
 
 /* ---- sticky project bar: the running total, one call to action ---- */
 .trade-bar {

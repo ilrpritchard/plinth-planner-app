@@ -8,7 +8,9 @@ import { tradeSummary, unitQty, unitName, rowsFromDesign } from '../core/cost.js
 import { buildTradeOrderEmail } from '../core/order.js';
 import { buildCabinetLibraryDXF, buildPlanDXF } from '../core/dxf.js';
 import { buildUnitIFC } from '../core/ifc.js';
-import { ensureDxfEmail, ensureEmailGate } from './dxfgate.js';
+import { ensureDxfEmail, ensureEmailGate, capturedEmail, captureEmail } from './dxfgate.js';
+import { ESTIMATE_TYPES, EST_MAX_UNITS, EST_MAX_CABS, buildEstimate, estimateLeadSource, estimateText } from '../core/estimate.js';
+import { estimateSheetHTML, buildEstimateHTML } from './estimate.js';
 
 // documents never leave without an email on file (one email unlocks everything;
 // signed-in users and anyone who came through the Project-view gate pass silently)
@@ -223,12 +225,19 @@ export class TradeUI {
   }
 
   // ---- first run: no unit types yet -------------------------------------------
-  // Three doors instead of an empty form: start from an example building (the
-  // demo mix, priced live), enter a unit mix, or send us the floor plans.
+  // An estimate from the unit mix (core/estimate.js), read from the live
+  // catalogue: a developer types how many kitchens of each type and reads a
+  // range for the project before anything is laid out. The three earlier doors
+  // (lay out in 3D, the example building, send the floor plans) sit underneath.
   renderWelcome() {
     const n = demoUnitCount();
-    const mail = 'mailto:imogen@plinthmade.com?subject=' + encodeURIComponent('Floor plans for pricing') +
-      '&body=' + encodeURIComponent('Project name and address:\n\nNumber of units:\n\nKitchen types (A, B, C) and how many of each:\n\nAttach a plan per floor. We lay out the kitchens and send back a priced project.\n');
+    if (!this._est) this._est = ESTIMATE_TYPES.map((t) => ({ ...t }));
+    const cu = this.store.state.customer || {};
+    const row = (m) => `<tr>
+      <td class="te-t">${esc(m.beds)}</td>
+      <td class="te-n"><input type="number" inputmode="numeric" min="0" max="${EST_MAX_UNITS}" data-est="${m.id}" data-k="units" value="${Number(m.units) || 0}" aria-label="${esc(m.beds)}: kitchens"></td>
+      <td class="te-n"><input type="number" inputmode="numeric" min="1" max="${EST_MAX_CABS}" data-est="${m.id}" data-k="cabs" value="${Number(m.cabs) || 1}" aria-label="${esc(m.beds)}: cabinets in each kitchen"></td>
+    </tr>`;
     this.root.innerHTML = `
       <div class="trade-wrap trade-first">
         <header class="trade-head trade-head-slim">
@@ -237,36 +246,94 @@ export class TradeUI {
             <button class="ghost sm" id="tOrders" title="Your quote requests and orders with live status">Orders</button>
           </div>` : ''}
         </header>
-        <section class="trade-welcome">
-          <h2>Price a building.</h2>
-          <p>Specify each kitchen type and set the unit mix. Pricing is live, per unit and per project, including tariffs and delivery to a warehouse in the project's city.</p>
-          <div class="tw-opts">
-            <button class="tw-opt" id="twDemo">
-              <strong>Example building: ${esc(DEMO_PROJECT)}</strong>
-              <span>${n} units, three kitchen types laid out in 3D, priced live. Adjust any figure, or clear it for a new project.</span>
-            </button>
-            <button class="tw-opt" id="twMix">
-              <strong>Enter the unit mix</strong>
-              <span>Specify each kitchen type from the cabinet list or in 3D, then set its unit count.</span>
-            </button>
-            <a class="tw-opt" id="twSend" href="${mail}">
-              <strong>Submit floor plans</strong>
-              <span>One plan per floor, with the kitchen types. PL/NTH lays out the kitchens and returns a priced project.</span>
-            </a>
+        <section class="trade-welcome tw-est">
+          <h2>Price a project.</h2>
+          <p>Enter the unit mix. The estimate follows the mix, with volume pricing applied across the building.</p>
+          <div class="te-cols">
+            <div class="te-left">
+              <h4 class="te-eyebrow">The unit mix</h4>
+              <table class="te-mix">
+                <thead><tr><th>Kitchen type</th><th class="te-n">Kitchens</th><th class="te-n">Cabinets in each</th></tr></thead>
+                <tbody id="teMix">${this._est.map(row).join('')}</tbody>
+              </table>
+              <p class="te-hint">A kitchen of 8 to 14 cabinets is typical. Leave a type at 0 if the building has none.</p>
+              <form class="te-send" id="teSend" novalidate>
+                <h4 class="te-eyebrow">Keep the estimate</h4>
+                <div class="te-fields">
+                  <input type="text" id="teName" placeholder="Contact name" aria-label="Contact name" autocomplete="name" value="${esc(cu.name || '')}">
+                  <input type="email" id="teEmail" placeholder="Email" aria-label="Email" autocomplete="email" value="${esc(cu.email || capturedEmail())}">
+                </div>
+                <button class="cta" type="submit" id="teGo">Download the estimate (PDF)</button>
+                <p class="te-msg" id="teMsg" role="status"></p>
+              </form>
+            </div>
+            <div class="te-sheet" id="teSheet" aria-live="polite">${estimateSheetHTML(buildEstimate(this._est))}</div>
+          </div>
+          <div class="te-next">
+            <span class="te-eyebrow">Next</span>
+            <button class="tquiet" id="twMix">Lay out each kitchen type in 3D</button>
+            <button class="tquiet" id="twSend">Send the floor plans</button>
+            <button class="tquiet" id="twDemo">Example building: ${esc(DEMO_PROJECT)}, ${n} units</button>
           </div>
         </section>
       </div>`;
     const $ = (id) => document.getElementById(id);
+    $('teMix').addEventListener('input', (e) => {
+      const el = e.target.closest('[data-est]'); if (!el) return;
+      const m = this._est.find((x) => x.id === el.dataset.est); if (!m) return;
+      m[el.dataset.k] = el.value;
+      $('teSheet').innerHTML = estimateSheetHTML(buildEstimate(this._est));
+      $('teMsg').textContent = '';
+    });
+    $('teSend').addEventListener('submit', (e) => { e.preventDefault(); this.sendEstimate(); });
     $('twDemo').addEventListener('click', () => this.loadDemo());
     $('twMix').addEventListener('click', () => {
-      // straight into the first unit's room, on the page where the dimensions and the floorplan
-      // go in (her ask 2026-09-25); the project page is where it comes back to on Done
-      const u = this.newUnit();
-      this.t.units.push(u); this._detailsOpen = true; this.store.touchTrade(); this.render();
-      this.enterDesign(u, { roomFirst: true });
+      // the mix carries over: one unit type per kitchen type with kitchens in it,
+      // then straight into the first one's room (her ask 2026-09-25); the project
+      // page is where it comes back to on Done
+      const est = buildEstimate(this._est);
+      if (!est.lines.length) this.t.units.push(this.newUnit());
+      for (const l of est.lines) {
+        const u = this.newUnit();
+        u.beds = l.beds; u.qty = l.units;
+        this.t.units.push(u);
+      }
+      this._detailsOpen = true; this.store.touchTrade(); this.render();
+      this.enterDesign(this.t.units[0], { roomFirst: true });
     });
+    $('twSend').addEventListener('click', () => mailFallback({
+      title: 'Send the floor plans',
+      sub: 'One plan per floor, with the kitchen types. PL/NTH lays out the kitchens and returns a priced project.',
+      subject: 'Floor plans for pricing',
+      body: 'Project name and address:\n\nNumber of units:\n\nKitchen types (A, B, C) and how many of each:\n\nAttach a plan per floor. We lay out the kitchens and send back a priced project.\n',
+    }));
     $('tCloudOpen')?.addEventListener('click', () => this.cloudOpen());
     $('tOrders')?.addEventListener('click', () => { this.view = 'orders'; this.render(); });
+  }
+
+  /** "Download the estimate (PDF)": the take-away leaves a name and an email, as
+   *  every document does. The lead is recorded with the unit mix, PL/NTH is told
+   *  by the website endpoint (best effort, never blocks), and the one-page
+   *  estimate opens to save or print. The planner cannot email visitors, so
+   *  nothing here says it will. */
+  sendEstimate() {
+    const $ = (id) => document.getElementById(id);
+    const est = buildEstimate(this._est);
+    const msg = $('teMsg');
+    const name = $('teName').value.trim(), email = $('teEmail').value.trim();
+    if (!est.units) { msg.textContent = 'Enter the number of kitchens for at least 1 type.'; return; }
+    if (!name) { msg.textContent = 'Add a contact name for the estimate.'; $('teName').focus(); return; }
+    if (!looksLikeEmail(email)) { msg.textContent = 'That email does not look right.'; $('teEmail').focus(); return; }
+    this.store.setCustomer({ name, email });
+    captureEmail(email, estimateLeadSource(est), { design_value: est.low, cabinets: est.cabs, mode: 'estimate' });
+    try {
+      fetch('https://plinthmade.com/wp-json/plinth/v1/quote', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, notes: '', project: `Estimate, ${est.units} kitchens`, summary: estimateText(est) }),
+      }).catch(() => { /* the estimate still opens */ });
+    } catch { /* the estimate still opens */ }
+    openPrintWindow(buildEstimateHTML(est, { name }));
+    msg.textContent = 'The estimate opens as a one-page document. Choose Save as PDF in the print dialog.';
   }
 
   /** Replace an empty project with the example building. */

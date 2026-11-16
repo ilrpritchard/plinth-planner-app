@@ -23,7 +23,7 @@ export function capturedEmail() {
 let leadContext = null;
 export function setLeadContext(fn) { leadContext = fn; }
 
-async function recordLead(email, source) {
+async function recordLead(email, source, extra = null) {
   if (!cloudEnabled()) return;
   let ctx = {};
   try { ctx = leadContext ? (leadContext() || {}) : {}; } catch { /* lead still records */ }
@@ -35,7 +35,7 @@ async function recordLead(email, source) {
   };
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/dxf_leads`, {
-      method: 'POST', headers, body: JSON.stringify({ email, source, ...ctx }),
+      method: 'POST', headers, body: JSON.stringify({ email, source, ...ctx, ...(extra || {}) }),
     });
     if (!r.ok) throw new Error(String(r.status));
   } catch {
@@ -53,12 +53,12 @@ export const looksLikeEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v 
 /** An email left somewhere other than the gate modal (the Keep-this-layout card):
  *  remembered exactly like a gate email, so no later gate asks again, and recorded
  *  as a lead with the usual design context. */
-export function captureEmail(email, source) {
+export function captureEmail(email, source, extra = null) {
   const e = String(email || '').trim();
   if (!looksLikeEmail(e)) return false;
   try { localStorage.setItem(KEY, e); } catch { /* private mode: the lead still records */ }
   markGated();
-  recordLead(e, source);
+  recordLead(e, source, extra);
   return true;
 }
 
