@@ -63,7 +63,8 @@ export function identify(email) {
 }
 
 async function postLinkOpened(ref, view) {
-  if (!cloudEnabled()) return;
+  // live planner only: a local or test run must never report a link as opened
+  if (!cloudEnabled() || window.location.hostname !== 'planner.plinthmade.com') return;
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/contact_messages`, {
       method: 'POST',

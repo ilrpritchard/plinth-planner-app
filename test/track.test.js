@@ -21,6 +21,7 @@ ok('nothing throws without a browser', !threw);
 // the link code never maps to a company in public code
 const src = readFileSync(new URL('../src/ui/track.js', import.meta.url), 'utf8');
 ok('the notification names the code only', /The link with code \$\{ref\}/.test(src) && !/company|developer name/i.test(src.split('async function postLinkOpened')[1].split('export function')[0]));
+ok('a link opening is reported from the live planner only', /hostname !== 'planner\.plinthmade\.com'\) return;/.test(src.split('async function postLinkOpened')[1].split('export function')[0]));
 ok('the planner loads the HubSpot tag for portal 245964419', /js-na2\.hs-scripts\.com\/245964419\.js/.test(readFileSync(new URL('../index.html', import.meta.url), 'utf8')));
 
 console.log(`track: ${pass} passed, ${fail} failed`);

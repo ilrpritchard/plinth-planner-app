@@ -349,6 +349,20 @@
     </div>
   </div>
 
+  <!-- Keeps the planner's files in step after an update (sw.js). Live host only. If the planner failed to start
+       because this browser held a mix of old and new files, it reloads ONCE as soon as the worker takes over. -->
+  <script>
+  (function () {
+    if (!('serviceWorker' in navigator) || location.hostname !== 'planner.plinthmade.com') return;
+    var had = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (had || window.PlinthPlanner) return;
+      try { if (sessionStorage.getItem('plnr-sw-reloaded')) return; sessionStorage.setItem('plnr-sw-reloaded', '1'); } catch (e) { return; }
+      setTimeout(function () { if (!window.PlinthPlanner) location.reload(); }, 4000);
+    });
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  })();
+  </script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
