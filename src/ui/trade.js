@@ -248,8 +248,8 @@ export class TradeUI {
           </div>` : ''}
         </header>
         <section class="trade-welcome tw-est">
-          <h2>Price a project.</h2>
-          <p>Enter the unit mix. The estimate follows the mix, with volume pricing applied across the building.</p>
+          <h2>A quick estimate.</h2>
+          <p>Enter the unit mix for a range. The price comes from laying out each kitchen type.</p>
           <div class="te-cols">
             <div class="te-left">
               <h4 class="te-eyebrow">The unit mix</h4>
@@ -272,7 +272,7 @@ export class TradeUI {
           </div>
           <div class="te-next">
             <span class="te-eyebrow">Next</span>
-            <button class="tquiet" id="twMix">Lay out each kitchen type in 3D</button>
+            <button class="tquiet" id="twMix">Price the project: lay out each kitchen type</button>
             <button class="tquiet" id="twSend">Send the floor plans</button>
             <button class="tquiet" id="twDemo">Example building: ${esc(DEMO_PROJECT)}, ${n} units</button>
           </div>
