@@ -11,13 +11,13 @@ import { mailFallback } from './dialog.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /** opts: { est (buildEstimate result or null), customer {name,email}, onCustomer(patch) } */
-export function openFloorPlans({ est = null, customer = {}, onCustomer } = {}) {
+export function openFloorPlans({ est = null, customer = {}, onCustomer, project = '' } = {}) {
   document.getElementById('plansModal')?.remove();
   const el = document.createElement('div'); el.id = 'plansModal'; el.className = 'show';
   const units = est && est.units ? est.units : 0;
   el.innerHTML = `<form class="cloud-card fp-card" role="dialog" aria-label="Send the floor plans" novalidate>
       <h3>Send the floor plans.</h3>
-      <p class="cloud-sub">${units ? `${units} ${units === 1 ? 'kitchen' : 'kitchens'} from the unit mix. ` : 'One plan per floor, with the kitchen types. '}PL/NTH lays out the kitchen types and returns a priced project.</p>
+      <p class="cloud-sub">${units ? `${units} ${units === 1 ? 'kitchen' : 'kitchens'} from ${est.from === 'project' ? 'the project' : 'the unit mix'}. ` : 'One plan per floor, with the kitchen types. '}PL/NTH lays out the kitchen types and returns a priced project.</p>
       <div class="fp-fields">
         <input type="text" id="sfpName" placeholder="Contact name" aria-label="Contact name" autocomplete="name" value="${esc(customer.name || '')}">
         <input type="text" id="sfpCo" placeholder="Company" aria-label="Company" autocomplete="organization">
@@ -78,7 +78,7 @@ export function openFloorPlans({ est = null, customer = {}, onCustomer } = {}) {
     busy = true; const btn = $('sfpSend'); btn.disabled = true; btn.textContent = 'Sending…'; say('');
     onCustomer?.({ name: v.name.trim(), email: v.email.trim() });
     const fd = new FormData();
-    for (const [k, val] of plansFields({ ...v, est, ref: leadRef() })) fd.append(k, val);
+    for (const [k, val] of plansFields({ ...v, est, ref: leadRef(), project })) fd.append(k, val);
     for (const f of files) fd.append('plans[]', f, f.name);
     let ok = false;
     try {

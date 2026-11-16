@@ -32,11 +32,15 @@ ok('the unit mix and the link code ride along', /1 Bed 24 x 8 cabinets/.test(f.k
 const bare = Object.fromEntries(plansFields({ ...good, name: 'Ada' }));
 ok('with no estimate every required field is still filled', bare.fn === 'Ada' && bare.ln === '' && bare.un === 'Not given' && bare.kt.length > 0);
 ok('the handler\'s required fields are never empty', ['fn', 'em', 'co', 'un'].every((k) => f[k] && bare[k]));
+const proj = Object.fromEntries(plansFields({ ...good, project: 'Hudson Yards Tower', est: { from: 'project', units: 47, cabs: 567, lines: [{ beds: '1 Bed Type A', units: 22, cabs: 11 }, { beds: '2 Bed Type B', units: 15, cabs: 11 }] } }));
+ok('from a project page the unit count is the project\'s own', proj.un === '47');
+ok('and the project name and its unit types ride along', /^Project: Hudson Yards Tower\. From the project in the PL\/NNER: 1 Bed Type A 22 x 11 cabinets, 2 Bed Type B 15 x 11 cabinets$/.test(proj.kt));
 ok('it posts to the site\'s inquiry handler', PLANS_ENDPOINT === 'https://plinthmade.com/wp-json/plinth/v1/inquire');
 
 // the card: files go as plans[], no bare mail link is left, the copy keeps her rules
 const ui = readFileSync(new URL('../src/ui/plans.js', import.meta.url), 'utf8');
 const trade = readFileSync(new URL('../src/ui/trade.js', import.meta.url), 'utf8');
+ok('the project toolbar passes the project\'s totals', /from: 'project', units: s\.totalUnits/.test(trade));
 ok('files are sent as plans[]', ui.includes("fd.append('plans[]'"));
 ok('a failed send offers the email card', ui.includes('mailFallback('));
 ok('the project toolbar opens the card, not a mail link', trade.includes('id="tPlans"') && !/href="mailto:imogen@plinthmade\.com\?subject=\$\{encodeURIComponent\('Floor plans/.test(trade));

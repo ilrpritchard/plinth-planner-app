@@ -314,7 +314,13 @@ export class TradeUI {
   /** "Send the floor plans": the drop-box card (ui/plans.js). From the quick estimate the
    *  unit mix typed there goes with the plans; from a project page it goes without one. */
   sendFloorPlans(est = null) {
-    openFloorPlans({ est, customer: this.store.state.customer || {}, onCustomer: (p) => this.store.setCustomer(p) });
+    let project = '';
+    if (!est && this.t.units.length) {            // a project page knows its own unit types and counts
+      const s = tradeSummary(this.t);
+      est = { from: 'project', units: s.totalUnits, cabs: s.totalCabs, lines: s.lines.filter((l) => l.qty > 0).map((l) => ({ beds: l.name, units: l.qty, cabs: l.cabsPerUnit })) };
+      project = this.t.demo ? '' : (this.t.project || '');
+    }
+    openFloorPlans({ est, project, customer: this.store.state.customer || {}, onCustomer: (p) => this.store.setCustomer(p) });
   }
 
   /** "Download the estimate (PDF)": the take-away leaves a name and an email, as

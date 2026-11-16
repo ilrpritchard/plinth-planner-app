@@ -36,13 +36,15 @@ export function plansFormProblem({ name, company, email, files }) {
 /**
  * The handler's field names: fn / ln (name split at the first space), em, co, un (units,
  * required there), kt (kitchen types: the unit mix typed into the estimate, and the link
- * code the visitor arrived with). Returns [key, value] pairs; the files go on as plans[].
+ * code the visitor arrived with; from a project page, the project's name and its own unit types).
+ * Returns [key, value] pairs; the files go on as plans[].
  */
-export function plansFields({ name, company, email, est = null, ref = '' }) {
+export function plansFields({ name, company, email, est = null, ref = '', project = '' }) {
   const parts = String(name).trim().split(/\s+/);
   const mix = est && est.lines && est.lines.length
     ? est.lines.map((l) => `${l.beds} ${l.units} x ${l.cabs} cabinets`).join(', ') : '';
-  const kt = [mix && `From the quick estimate: ${mix}`, ref && `Link code: ${ref}`].filter(Boolean).join('. ');
+  const from = est && est.from === 'project' ? 'From the project in the PL/NNER' : 'From the quick estimate';
+  const kt = [project && `Project: ${String(project).trim()}`, mix && `${from}: ${mix}`, ref && `Link code: ${ref}`].filter(Boolean).join('. ');
   return [
     ['fn', parts[0]], ['ln', parts.slice(1).join(' ')], ['em', String(email).trim()], ['co', String(company).trim()],
     ['un', est && est.units ? String(est.units) : 'Not given'], ['kt', kt || 'Sent from the PL/NNER'],
