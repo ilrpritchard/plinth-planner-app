@@ -12,6 +12,7 @@ import { ensureDxfEmail, ensureEmailGate, capturedEmail, captureEmail } from './
 import { ESTIMATE_TYPES, EST_MAX_UNITS, EST_MAX_CABS, buildEstimate, estimateLeadSource, estimateText } from '../core/estimate.js';
 import { estimateSheetHTML, buildEstimateHTML } from './estimate.js';
 import { track, leadRef } from './track.js';
+import { openFloorPlans } from './plans.js';
 
 // documents never leave without an email on file (one email unlocks everything;
 // signed-in users and anyone who came through the Project-view gate pass silently)
@@ -148,7 +149,7 @@ export class TradeUI {
         <header class="trade-head trade-head-slim">
           <div class="trade-cloud trade-cloud-left">
             <button class="tquiet" id="tStartOver" title="Clear this project and go back to the three ways to start">&larr; Start over</button>
-            <a class="tquiet" href="mailto:imogen@plinthmade.com?subject=${encodeURIComponent('Floor plans for pricing')}" title="One plan per floor: PL/NTH lays out the kitchens and returns a priced project">Submit floor plans</a>
+            <button class="tquiet" id="tPlans" title="One plan per floor: PL/NTH lays out the kitchens and returns a priced project">Send the floor plans</button>
           </div>
           ${isCloud() ? `<div class="trade-cloud">
             <button class="sm" id="tCloudSave" title="Save this project to your PL/NTH account (sign-in required)">Save project</button>
@@ -305,14 +306,15 @@ export class TradeUI {
       this._detailsOpen = true; this.store.touchTrade(); this.render();
       this.enterDesign(this.t.units[0], { roomFirst: true });
     });
-    $('twSend').addEventListener('click', () => { track('floorplans_open'); mailFallback({
-      title: 'Send the floor plans',
-      sub: 'One plan per floor, with the kitchen types. PL/NTH lays out the kitchens and returns a priced project.',
-      subject: 'Floor plans for pricing',
-      body: 'Project name and address:\n\nNumber of units:\n\nKitchen types (A, B, C) and how many of each:\n\nAttach a plan per floor. We lay out the kitchens and send back a priced project.\n',
-    }); });
+    $('twSend').addEventListener('click', () => this.sendFloorPlans(buildEstimate(this._est)));
     $('tCloudOpen')?.addEventListener('click', () => this.cloudOpen());
     $('tOrders')?.addEventListener('click', () => { this.view = 'orders'; this.render(); });
+  }
+
+  /** "Send the floor plans": the drop-box card (ui/plans.js). From the quick estimate the
+   *  unit mix typed there goes with the plans; from a project page it goes without one. */
+  sendFloorPlans(est = null) {
+    openFloorPlans({ est, customer: this.store.state.customer || {}, onCustomer: (p) => this.store.setCustomer(p) });
   }
 
   /** "Download the estimate (PDF)": the take-away leaves a name and an email, as
@@ -750,6 +752,7 @@ export class TradeUI {
     $('tcName').addEventListener('input', (e) => this.store.setCustomer({ name: e.target.value }));
     $('tcEmail').addEventListener('input', (e) => this.store.setCustomer({ email: e.target.value }));
     $('tcNotes').addEventListener('input', (e) => this.store.setCustomer({ notes: e.target.value }));
+    $('tPlans')?.addEventListener('click', () => this.sendFloorPlans());
     $('tPlaceOrder').addEventListener('click', () => { track('quote_request'); this.placeOrder(); });
     $('tDxfLib')?.addEventListener('click', async () => {
       if (!(await ensureDxfEmail('cabinet-library'))) return;

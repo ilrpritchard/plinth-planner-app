@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>PL/NNER · A quick estimate · PL/NTH</title>
+<script>
+// planner.plinthmade.com/estimate/?ny61 — the short form of a link sent to one company (ui/track.js).
+// Opens the Project tab's quick estimate and carries the code as ?ref=. A missing or odd code is dropped.
+(function () {
+  var first = location.search.replace(/^\?/, '').split('&')[0];
+  var raw = /^ref=/i.test(first) ? first.slice(4) : first.split('=')[0];
+  var m = /^[a-z0-9][a-z0-9-]{1,23}$/i.exec(raw);
+  location.replace('../?mode=project' + (m ? '&ref=' + raw.toLowerCase() : ''));
+})();
+</script>
+</head>
+<body><noscript><a href="../?mode=project">Open the PL/NNER</a></noscript></body>
+</html>

@@ -47,6 +47,10 @@ const STATES = {
     P.tradeUI?.showBanner('1 Bed Type A'); select(P);
     (await import('/src/ui/dialog.js')).uiAlert('A check.'); return '#uiDialog';
   },
+  'design + floor plans': async (P) => {
+    P.tradeUI?.showBanner('1 Bed Type A'); select(P);
+    (await import('/src/ui/plans.js')).openFloorPlans({ est: null, customer: {} }); return '#plansModal';
+  },
   'photo + wizard': async (P) => { P.photoMode.start(); P.wizard.open(); return '#wizard'; },
   'design + cards + selection': async (P) => {           // everything that can share the top of the stage
     P.tradeUI?.showBanner('1 Bed Type A'); select(P);

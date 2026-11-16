@@ -1513,6 +1513,23 @@ body.notice-up #emptyState { visibility: hidden; }
 .trade-welcome > p { font-size: 14px; line-height: 1.55; color: var(--cream); margin: 0 0 24px; max-width: 600px; }
 .tw-foot { margin-top: 18px; font-size: 12px; color: var(--dim); }
 .tw-foot a { color: var(--cream); }
+/* ---- Send the floor plans: the drop-box card (W2W-264). A modal, band 55-80. ---- */
+#plansModal { position: fixed; inset: 0; z-index: 66; background: rgba(70,63,42,0.42); display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+.cloud-card.fp-card { width: 480px; max-width: 100%; margin: auto; }
+.fp-card input[type=text], .fp-card input[type=email] { width: 100%; font-family: inherit; font-size: 14px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--brown-soft); color: var(--cream-hi); }
+.fp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 10px; }
+.fp-drop { margin-top: 14px; padding: 24px 14px; text-align: center; border: 1.5px dashed var(--line-strong); border-radius: 6px; background: var(--paper); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.fp-drop.over { background: #ece8d6; border-color: var(--cream); }
+.fp-drop strong { display: block; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 20px; color: var(--cream-hi); }
+.fp-drop span { display: block; font-size: 12px; color: var(--dim); margin-top: 6px; }
+.fp-files { list-style: none; margin: 8px 0 0; padding: 0; max-height: 168px; overflow-y: auto; }
+.fp-files li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.fp-files .fp-nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.fp-files .fp-sz { color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fp-files button { padding: 4px 2px; min-height: 0; border: 0; background: none; color: var(--cream); font: inherit; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.fp-msg { font-size: 12px; line-height: 1.5; color: var(--cream); margin: 10px 0 0; min-height: 18px; }
+.fp-msg.bad { color: var(--red); }
+@media (max-width: 480px) { .fp-fields { grid-template-columns: 1fr; } }
 /* ---- Trade first run: the estimate from the unit mix (W2W-260). The mix on the
    left, the olive estimate sheet on the right, three quiet next steps under both. ---- */
 .trade-welcome.tw-est { max-width: 1040px; border-radius: 4px; }
