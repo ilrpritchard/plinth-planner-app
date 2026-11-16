@@ -11,6 +11,7 @@ import { buildUnitIFC } from '../core/ifc.js';
 import { ensureDxfEmail, ensureEmailGate, capturedEmail, captureEmail } from './dxfgate.js';
 import { ESTIMATE_TYPES, EST_MAX_UNITS, EST_MAX_CABS, buildEstimate, estimateLeadSource, estimateText } from '../core/estimate.js';
 import { estimateSheetHTML, buildEstimateHTML } from './estimate.js';
+import { track, leadRef } from './track.js';
 
 // documents never leave without an email on file (one email unlocks everything;
 // signed-in users and anyone who came through the Project-view gate pass silently)
@@ -277,6 +278,7 @@ export class TradeUI {
           </div>
         </section>
       </div>`;
+    if (!this._estSeen) { this._estSeen = true; track('estimate_view'); }
     const $ = (id) => document.getElementById(id);
     $('teMix').addEventListener('input', (e) => {
       const el = e.target.closest('[data-est]'); if (!el) return;
@@ -284,10 +286,12 @@ export class TradeUI {
       m[el.dataset.k] = el.value;
       $('teSheet').innerHTML = estimateSheetHTML(buildEstimate(this._est));
       $('teMsg').textContent = '';
+      if (!this._estEdited) { this._estEdited = true; track('estimate_edit'); }
     });
     $('teSend').addEventListener('submit', (e) => { e.preventDefault(); this.sendEstimate(); });
-    $('twDemo').addEventListener('click', () => this.loadDemo());
+    $('twDemo').addEventListener('click', () => { track('example_open'); this.loadDemo(); });
     $('twMix').addEventListener('click', () => {
+      track('layout_start');
       // the mix carries over: one unit type per kitchen type with kitchens in it,
       // then straight into the first one's room (her ask 2026-09-25); the project
       // page is where it comes back to on Done
@@ -301,12 +305,12 @@ export class TradeUI {
       this._detailsOpen = true; this.store.touchTrade(); this.render();
       this.enterDesign(this.t.units[0], { roomFirst: true });
     });
-    $('twSend').addEventListener('click', () => mailFallback({
+    $('twSend').addEventListener('click', () => { track('floorplans_open'); mailFallback({
       title: 'Send the floor plans',
       sub: 'One plan per floor, with the kitchen types. PL/NTH lays out the kitchens and returns a priced project.',
       subject: 'Floor plans for pricing',
       body: 'Project name and address:\n\nNumber of units:\n\nKitchen types (A, B, C) and how many of each:\n\nAttach a plan per floor. We lay out the kitchens and send back a priced project.\n',
-    }));
+    }); });
     $('tCloudOpen')?.addEventListener('click', () => this.cloudOpen());
     $('tOrders')?.addEventListener('click', () => { this.view = 'orders'; this.render(); });
   }
@@ -326,10 +330,11 @@ export class TradeUI {
     if (!looksLikeEmail(email)) { msg.textContent = 'That email does not look right.'; $('teEmail').focus(); return; }
     this.store.setCustomer({ name, email });
     captureEmail(email, estimateLeadSource(est), { design_value: est.low, cabinets: est.cabs, mode: 'estimate' });
+    track('estimate_download', { kitchens: est.units, cabinets: est.cabs, value: est.low });
     try {
       fetch('https://plinthmade.com/wp-json/plinth/v1/quote', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, notes: '', project: `Estimate, ${est.units} kitchens`, summary: estimateText(est) }),
+        body: JSON.stringify({ name, email, notes: leadRef() ? `Link code: ${leadRef()}` : '', project: `Estimate, ${est.units} kitchens`, summary: estimateText(est) }),
       }).catch(() => { /* the estimate still opens */ });
     } catch { /* the estimate still opens */ }
     openPrintWindow(buildEstimateHTML(est, { name }));
@@ -745,7 +750,7 @@ export class TradeUI {
     $('tcName').addEventListener('input', (e) => this.store.setCustomer({ name: e.target.value }));
     $('tcEmail').addEventListener('input', (e) => this.store.setCustomer({ email: e.target.value }));
     $('tcNotes').addEventListener('input', (e) => this.store.setCustomer({ notes: e.target.value }));
-    $('tPlaceOrder').addEventListener('click', () => this.placeOrder());
+    $('tPlaceOrder').addEventListener('click', () => { track('quote_request'); this.placeOrder(); });
     $('tDxfLib')?.addEventListener('click', async () => {
       if (!(await ensureDxfEmail('cabinet-library'))) return;
       download('PLINTH_cabinet_library.dxf', buildCabinetLibraryDXF(), 'application/dxf');

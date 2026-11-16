@@ -31,6 +31,7 @@ import { uiAlert, uiChoice, uiConfirm, mailFallback } from './ui/dialog.js';
 import { buildQuoteHTML } from './ui/quote.js';
 import { openPrintWindow } from './ui/submittal.js';
 import { TradeUI } from './ui/trade.js';
+import { initTracking } from './ui/track.js';
 import { CloudUI } from './ui/cloudUI.js';
 import { Wizard } from './ui/wizard.js';
 import { isCloud, requestOrderCheck, currentUser } from './core/cloud.js';
@@ -41,7 +42,7 @@ import { fetchSharedProject } from './core/tradecloud.js';
 // Build stamp — bump on each change so you can confirm the browser is running
 // the latest code (shown in the top bar + logged to the console). If this
 // doesn't update after a hard refresh, the browser is serving cached JS.
-const BUILD = 'W2W-260 · Project tab opens on an estimate from the unit mix';
+const BUILD = 'W2W-261 · Tracking: events, contact identification and link codes';
 console.log('%cPL/NNER build: ' + BUILD, 'color:#8a7', 'font-weight:bold');
 { const t = document.getElementById('buildTag'); if (t) { t.textContent = BUILD.split(' · ')[0]; t.title = BUILD; } }
 
@@ -49,6 +50,8 @@ const store = new Store();
 // ?tshare=<token> → read-only trade approval view (never autosaved, so a
 // shared project can't clobber the viewer's own local work)
 const TSHARE = new URLSearchParams(location.search).get('tshare');
+// ?ref=code — a link sent to one company: remembered, and its first opening is reported (ui/track.js)
+initTracking({ view: ['project', 'trade'].includes(new URLSearchParams(location.search).get('mode')) ? 'Project' : 'Kitchen' });
 // ?book=1 — site links land straight in the order-check flow (see below)
 const BOOK = new URLSearchParams(location.search).get('book') === '1';
 // ?s=code — a very short share link: the design is fetched after boot (see below)

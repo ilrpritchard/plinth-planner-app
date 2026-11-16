@@ -6,6 +6,7 @@
 // contact_messages if that table is missing.
 import { currentUser } from '../core/cloud.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, cloudEnabled } from '../core/config.js';
+import { track, identify, withRef } from './track.js';
 
 const KEY = 'plinthDxfEmail';
 /** body.gated lets print CSS release the plan/quote once an email is on file. */
@@ -24,6 +25,9 @@ let leadContext = null;
 export function setLeadContext(fn) { leadContext = fn; }
 
 async function recordLead(email, source, extra = null) {
+  // the visit joins the contact in HubSpot, and the lead carries the link code it arrived with
+  identify(email); track('email_left', { gate: String(source || '').split(':')[0] });
+  source = withRef(source);
   if (!cloudEnabled()) return;
   let ctx = {};
   try { ctx = leadContext ? (leadContext() || {}) : {}; } catch { /* lead still records */ }
