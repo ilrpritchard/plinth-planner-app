@@ -21,8 +21,11 @@ ok('sizes read plainly', fileSize(2400000) === '2.3 MB' && fileSize(900) === '1 
 
 const good = { name: 'Ada Lovelace', company: 'Analytical Homes', email: 'ada@example.test', files: [F('a.pdf')] };
 ok('a complete form goes', plansFormProblem(good) === '');
-ok('each missing part is named', /name/.test(plansFormProblem({ ...good, name: ' ' })) && /company/.test(plansFormProblem({ ...good, company: '' }))
-  && /email/.test(plansFormProblem({ ...good, email: 'ada@' })) && /floor plan/.test(plansFormProblem({ ...good, files: [] })));
+ok('an email and a plan are all it needs', plansFormProblem({ email: 'ada@example.test', files: [F('a.pdf')] }) === '' && plansFormProblem({ ...good, name: ' ', company: '' }) === '');
+ok('a blank email is asked for plainly', /^Add an email address/.test(plansFormProblem({ email: ' ', files: [F('a.pdf')] })));
+ok('a bad email or no plan is named', /email/.test(plansFormProblem({ ...good, email: 'ada@' })) && /floor plan/.test(plansFormProblem({ ...good, files: [] })));
+const anon = Object.fromEntries(plansFields({ email: 'ada@example.test' }));
+ok('with no name or company those fields go empty, never a placeholder', anon.fn === '' && anon.ln === '' && anon.co === '' && anon.em === 'ada@example.test' && anon.un === 'Not given');
 
 const est = buildEstimate(ESTIMATE_TYPES);
 const f = Object.fromEntries(plansFields({ ...good, est, ref: 'ny61' }));
@@ -31,7 +34,7 @@ ok('email, company and units as the handler wants them', f.em === 'ada@example.t
 ok('the unit mix and the link code ride along', /1 Bed 24 x 8 cabinets/.test(f.kt) && /Link code: ny61/.test(f.kt));
 const bare = Object.fromEntries(plansFields({ ...good, name: 'Ada' }));
 ok('with no estimate every required field is still filled', bare.fn === 'Ada' && bare.ln === '' && bare.un === 'Not given' && bare.kt.length > 0);
-ok('the handler\'s required fields are never empty', ['fn', 'em', 'co', 'un'].every((k) => f[k] && bare[k]));
+ok('the handler\'s required fields (email, units) are never empty', ['em', 'un'].every((k) => f[k] && bare[k] && anon[k]));
 const proj = Object.fromEntries(plansFields({ ...good, project: 'Hudson Yards Tower', est: { from: 'project', units: 47, cabs: 567, lines: [{ beds: '1 Bed Type A', units: 22, cabs: 11 }, { beds: '2 Bed Type B', units: 15, cabs: 11 }] } }));
 ok('from a project page the unit count is the project\'s own', proj.un === '47');
 ok('and the project name and its unit types ride along', /^Project: Hudson Yards Tower\. From the project in the PL\/NNER: 1 Bed Type A 22 x 11 cabinets, 2 Bed Type B 15 x 11 cabinets$/.test(proj.kt));

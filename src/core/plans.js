@@ -25,9 +25,9 @@ export function fileSize(bytes) {
 }
 
 /** Why the form cannot go yet ('' when it can). */
-export function plansFormProblem({ name, company, email, files }) {
-  if (!String(name || '').trim()) return 'Add a contact name.';
-  if (!String(company || '').trim()) return 'Add the company.';
+// Name and company are OPTIONAL (W2W-267): the website handler stopped requiring them on 16 Nov 2026.
+export function plansFormProblem({ email, files }) {
+  if (!String(email || '').trim()) return 'Add an email address to reply to.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim())) return 'That email does not look right.';
   if (!files || !files.length) return 'Add at least 1 floor plan.';
   return '';
@@ -40,13 +40,13 @@ export function plansFormProblem({ name, company, email, files }) {
  * Returns [key, value] pairs; the files go on as plans[].
  */
 export function plansFields({ name, company, email, est = null, ref = '', project = '' }) {
-  const parts = String(name).trim().split(/\s+/);
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
   const mix = est && est.lines && est.lines.length
     ? est.lines.map((l) => `${l.beds} ${l.units} x ${l.cabs} cabinets`).join(', ') : '';
   const from = est && est.from === 'project' ? 'From the project in the PL/NNER' : 'From the quick estimate';
   const kt = [project && `Project: ${String(project).trim()}`, mix && `${from}: ${mix}`, ref && `Link code: ${ref}`].filter(Boolean).join('. ');
   return [
-    ['fn', parts[0]], ['ln', parts.slice(1).join(' ')], ['em', String(email).trim()], ['co', String(company).trim()],
+    ['fn', parts[0] || ''], ['ln', parts.slice(1).join(' ')], ['em', String(email).trim()], ['co', String(company || '').trim()],
     ['un', est && est.units ? String(est.units) : 'Not given'], ['kt', kt || 'Sent from the PL/NNER'],
   ];
 }

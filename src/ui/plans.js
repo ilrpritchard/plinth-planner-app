@@ -18,11 +18,11 @@ export function openFloorPlans({ est = null, customer = {}, onCustomer, project 
   el.innerHTML = `<form class="cloud-card fp-card" role="dialog" aria-label="Send the floor plans" novalidate>
       <h3>Send the floor plans.</h3>
       <p class="cloud-sub">${units ? `${units} ${units === 1 ? 'kitchen' : 'kitchens'} from ${est.from === 'project' ? 'the project' : 'the unit mix'}. ` : 'One plan per floor, with the kitchen types. '}PL/NTH lays out the kitchen types and returns a priced project.</p>
-      <div class="fp-fields">
-        <input type="text" id="sfpName" placeholder="Contact name" aria-label="Contact name" autocomplete="name" value="${esc(customer.name || '')}">
-        <input type="text" id="sfpCo" placeholder="Company" aria-label="Company" autocomplete="organization">
-      </div>
       <input type="email" id="sfpEmail" placeholder="Email" aria-label="Email" autocomplete="email" value="${esc(customer.email || '')}">
+      <div class="fp-fields">
+        <input type="text" id="sfpName" placeholder="Contact name (optional)" aria-label="Contact name, optional" autocomplete="name" value="${esc(customer.name || '')}">
+        <input type="text" id="sfpCo" placeholder="Company (optional)" aria-label="Company, optional" autocomplete="organization">
+      </div>
       <div class="fp-drop" id="sfpDrop" tabindex="0" role="button" aria-label="Add floor plans">
         <strong>Drop the floor plans here.</strong>
         <span>Or <u>choose files</u>. PDF, DWG or a sketch, up to 25 MB each.</span>
@@ -103,12 +103,12 @@ export function openFloorPlans({ est = null, customer = {}, onCustomer, project 
       b.addEventListener('click', () => { close(); mailFallback({
         title: 'Send the floor plans', sub: 'Copy the message below, attach the plans and send it.',
         subject: 'Floor plans for pricing',
-        body: `Name: ${v.name.trim()}\nCompany: ${v.company.trim()}\n${units ? `Number of units: ${units}\n` : 'Number of units:\n'}\nAttach a plan per floor. We lay out the kitchens and send back a priced project.\n`,
+        body: `${v.name.trim() ? `Name: ${v.name.trim()}\n` : ''}${v.company.trim() ? `Company: ${v.company.trim()}\n` : ''}${units ? `Number of units: ${units}\n` : 'Number of units:\n'}\nAttach a plan per floor. We lay out the kitchens and send back a priced project.\n`,
       }); });
       el.querySelector('.dlg-btns').insertBefore(b, btn);
     }
   });
-  setTimeout(() => ($('sfpName').value ? $('sfpCo') : $('sfpName')).focus(), 30);
+  setTimeout(() => ($('sfpEmail').value ? $('sfpName') : $('sfpEmail')).focus(), 30);
   track('floorplans_open');
   return el;
 }

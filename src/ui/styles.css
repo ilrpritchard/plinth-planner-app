@@ -1517,7 +1517,8 @@ body.notice-up #emptyState { visibility: hidden; }
 #plansModal { position: fixed; inset: 0; z-index: 66; background: rgba(70,63,42,0.42); display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
 .cloud-card.fp-card { width: 480px; max-width: 100%; margin: auto; }
 .fp-card input[type=text], .fp-card input[type=email] { width: 100%; font-family: inherit; font-size: 14px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--brown-soft); color: var(--cream-hi); }
-.fp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 10px; }
+.fp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 0; }
+.fp-card .cloud-sub { margin-bottom: 14px; }
 .fp-drop { margin-top: 14px; padding: 24px 14px; text-align: center; border: 1.5px dashed var(--line-strong); border-radius: 6px; background: var(--paper); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
 .fp-drop.over { background: #ece8d6; border-color: var(--cream); }
 .fp-drop strong { display: block; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 20px; color: var(--cream-hi); }
