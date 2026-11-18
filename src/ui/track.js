@@ -13,6 +13,13 @@
 //    session is posted to PL/NTH (contact_messages, which emails her). The code
 //    is opaque: which company holds it lives only in the leads workbook, never
 //    in this public code or in a URL.
+// 4. PEOPLE, NOT SCANNERS (W2W-268). Company mail security (Defender Safe Links,
+//    Mimecast, Proofpoint) opens every link in a hidden browser within a minute of
+//    the email landing, and that ran the planner like a visit: three "opened"
+//    emails in a row came 1 to 2 minutes after sending. An opening now counts
+//    only once a person touches the page (a click, a tap, a key or a scroll wheel),
+//    and never from a browser that says it is automated. The code is still
+//    remembered at once, so a lead from that browser carries it either way.
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY, cloudEnabled } from '../core/config.js';
 
@@ -77,14 +84,43 @@ async function postLinkOpened(ref, view) {
   } catch { /* offline: the visit still shows in analytics */ }
 }
 
-/** Call once at boot. Reads ?ref=, remembers it, and reports its first opening per session. */
+/** The things only a person does to a page. A scanner loads and renders; it does not click or type. */
+export const HUMAN_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
+
+/** True for a browser that announces itself as automated (headless Chrome, a mail scanner, a crawler). */
+export function looksAutomated(nav) {
+  if (!nav) return true;
+  if (nav.webdriver) return true;
+  const ua = String(nav.userAgent || '');
+  return /HeadlessChrome|PhantomJS|bot\b|crawler|spider|Mimecast|Barracuda|Proofpoint|SafeLinks|Safe Links|BingPreview/i.test(ua);
+}
+
+/** Run fn once, on the first sign of a person on the page. */
+function onFirstHuman(fn) {
+  let done = false;
+  const go = () => {
+    if (done) return;
+    done = true;
+    HUMAN_EVENTS.forEach((e) => window.removeEventListener(e, go, true));
+    fn();
+  };
+  HUMAN_EVENTS.forEach((e) => window.addEventListener(e, go, { capture: true, passive: true }));
+}
+
+/** Call once at boot. Reads ?ref=, remembers it, and reports its first opening per session by a person. */
 export function initTracking({ view = 'Kitchen' } = {}) {
   if (typeof window === 'undefined') return '';
   const ref = refFromSearch(window.location.search);
   if (!ref) return leadRef();
   try { sessionStorage.setItem(REF_KEY, ref); localStorage.setItem(REF_KEY, ref); } catch { /* private mode */ }
   let seen = false;
-  try { seen = sessionStorage.getItem(SEEN_KEY) === ref; sessionStorage.setItem(SEEN_KEY, ref); } catch { /* private mode */ }
-  if (!seen) { track('link_open', { view }); postLinkOpened(ref, view); }
+  try { seen = sessionStorage.getItem(SEEN_KEY) === ref; } catch { /* private mode */ }
+  if (!seen && !looksAutomated(window.navigator)) {
+    onFirstHuman(() => {
+      try { if (sessionStorage.getItem(SEEN_KEY) === ref) return; sessionStorage.setItem(SEEN_KEY, ref); } catch { /* private mode */ }
+      track('link_open', { view });
+      postLinkOpened(ref, view);
+    });
+  }
   return ref;
 }
